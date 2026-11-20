@@ -388,7 +388,7 @@ BEGIN
 END
 $watch$;
 
-CREATE FUNCTION pg_temp.effects() RETURNS jsonb LANGUAGE plpgsql AS $
+CREATE FUNCTION pg_temp.effects() RETURNS jsonb LANGUAGE plpgsql AS $$
 DECLARE
   watched text;
   data jsonb;

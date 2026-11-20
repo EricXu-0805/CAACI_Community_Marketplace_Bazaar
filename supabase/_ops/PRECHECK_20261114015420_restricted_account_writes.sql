@@ -19,27 +19,29 @@ DECLARE
   role_name text;
 BEGIN
   -- 1. The eight bodies the migration reissues and the helpers its decision
-  --    rests on: stored body, owner, SECURITY DEFINER and fixed search_path.
+  --    rests on: stored body, owner, SECURITY DEFINER, fixed search_path, and
+  --    exactly the API roles that may execute them (none means owner only).
+  --    CREATE OR REPLACE keeps these grants, and VERIFY expects the same.
   FOR expected IN
     SELECT * FROM (VALUES
-    ('public.make_offer(uuid,numeric,uuid,text)', 'eee96bd736e5e44d28404fb5ffe2e42f', '20260717141822:537'),
-    ('public.respond_to_offer(uuid,text,uuid,numeric,text)', 'eedd35bdc442a1555de118ec9db12b54', '20260717141822:625'),
-    ('public.propose_meetup(uuid,text,timestamptz,uuid,text)', '63858426acbe8afa26138e97d8be06c3', '20260718250000:192'),
-    ('public.respond_to_meetup(uuid,text,uuid,text,timestamptz,text)', '4441017e1efe799192671e4f10f7e473', '20260718250000:308'),
-    ('public.reschedule_accepted_meetup(uuid,text,timestamptz,uuid,text)', '6f76780627aae2944da4af8ea57081ee', '20260718250000:476'),
-    ('public.submit_transaction_rating(uuid,uuid,integer,text,uuid)', '28afadd43500f64e6e481917239875df', '20260718210000:450'),
-    ('public.enforce_chat_block_boundary()', '8feb985943e203fb4a9b1f6f5bf6a506', '20260916050227:27'),
-    ('private.chat_media_access(text,boolean)', 'e6ff430f3706418b337508bcb7ae013c', '20260916192738:17'),
-    ('moderation_private.current_profile_state(uuid)', '9c0b020a7ecdaa83372062a1cc85edc6', '20260718160000:284'),
-    ('public.is_posting_allowed(uuid)', 'f572629404dca4e2f487fb437cd1b12d', '20260718160000:686'),
-    ('public.trg_enforce_actor()', '9f2166257b987ce4147e11eb4f441dbf', '20260718160000:633'),
-    ('public.get_my_profile()', 'e4e09e4d119542f14a84a4765a0a71f1', '20260718160000:710'),
-    ('private.current_account_storage_writes_allowed()', '71fbf20d326d176094196b7a2dbb7974', '20260717194646:308')
-    ) AS known(signature, body_md5, source)
+    ('public.make_offer(uuid,numeric,uuid,text)', 'eee96bd736e5e44d28404fb5ffe2e42f', '20260717141822:537', 'authenticated'),
+    ('public.respond_to_offer(uuid,text,uuid,numeric,text)', 'eedd35bdc442a1555de118ec9db12b54', '20260717141822:625', 'authenticated'),
+    ('public.propose_meetup(uuid,text,timestamptz,uuid,text)', '63858426acbe8afa26138e97d8be06c3', '20260718250000:192', 'authenticated'),
+    ('public.respond_to_meetup(uuid,text,uuid,text,timestamptz,text)', '4441017e1efe799192671e4f10f7e473', '20260718250000:308', 'authenticated'),
+    ('public.reschedule_accepted_meetup(uuid,text,timestamptz,uuid,text)', '6f76780627aae2944da4af8ea57081ee', '20260718250000:476', 'authenticated'),
+    ('public.submit_transaction_rating(uuid,uuid,integer,text,uuid)', '28afadd43500f64e6e481917239875df', '20260718210000:450', 'authenticated'),
+    ('public.enforce_chat_block_boundary()', '8feb985943e203fb4a9b1f6f5bf6a506', '20260916050227:27', ''),
+    ('private.chat_media_access(text,boolean)', 'e6ff430f3706418b337508bcb7ae013c', '20260916192738:17', 'authenticated'),
+    ('moderation_private.current_profile_state(uuid)', '9c0b020a7ecdaa83372062a1cc85edc6', '20260718160000:284', ''),
+    ('public.is_posting_allowed(uuid)', 'f572629404dca4e2f487fb437cd1b12d', '20260718160000:686', 'service_role'),
+    ('public.trg_enforce_actor()', '9f2166257b987ce4147e11eb4f441dbf', '20260718160000:633', ''),
+    ('public.get_my_profile()', 'e4e09e4d119542f14a84a4765a0a71f1', '20260718160000:708', 'authenticated'),
+    ('private.current_account_storage_writes_allowed()', '71fbf20d326d176094196b7a2dbb7974', '20260717194646:308', 'authenticated')
+    ) AS known(signature, body_md5, source, api_roles)
   LOOP
     SELECT pg_catalog.md5(p.prosrc) AS body_md5, p.prosecdef,
            pg_catalog.pg_get_userbyid(p.proowner)::text AS owner,
-           coalesce(p.proconfig, ARRAY[]::text[]) AS config
+           coalesce(p.proconfig, ARRAY[]::text[]) AS config, p.proacl
       INTO routine
       FROM pg_catalog.pg_proc AS p
      WHERE p.oid = pg_catalog.to_regprocedure(expected.signature);
@@ -53,6 +55,18 @@ BEGIN
     IF NOT routine.prosecdef OR routine.owner <> 'postgres'
        OR NOT ('search_path=pg_catalog' = ANY (routine.config)) THEN
       RAISE EXCEPTION 'restricted_account_writes_function_attributes:%', expected.signature;
+    END IF;
+    SELECT coalesce(pg_catalog.string_agg(
+             CASE WHEN acl.grantee = 0 THEN 'PUBLIC'
+                  ELSE pg_catalog.pg_get_userbyid(acl.grantee)::text END,
+             ',' ORDER BY acl.grantee), '')
+      INTO listed
+      FROM pg_catalog.aclexplode(routine.proacl) AS acl
+     WHERE acl.privilege_type = 'EXECUTE'
+       AND (acl.grantee = 0
+         OR pg_catalog.pg_get_userbyid(acl.grantee)::text IN ('anon', 'authenticated', 'service_role'));
+    IF routine.proacl IS NULL OR listed IS DISTINCT FROM expected.api_roles THEN
+      RAISE EXCEPTION 'restricted_account_writes_function_grants:%:%', expected.signature, listed;
     END IF;
   END LOOP;
 
@@ -104,6 +118,33 @@ BEGIN
            WHERE oid = 'storage.objects'::pg_catalog.regclass) THEN
     RAISE EXCEPTION 'restricted_account_writes_storage_rls_disabled';
   END IF;
+  -- The existing gates and Storage policies the migration builds on. VERIFY
+  -- expects the same ones afterwards, so a missing one is found here first.
+  FOR expected IN
+    SELECT * FROM (VALUES
+    ('public.posts', 'enforce_actor_posts'), ('public.post_comments', 'enforce_actor_post_comments'),
+    ('public.items', 'enforce_actor_items'), ('public.messages', 'enforce_actor_messages')
+    ) AS target(relation, trigger_name)
+  LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_catalog.pg_trigger AS t
+       WHERE t.tgrelid = pg_catalog.to_regclass(expected.relation)
+         AND t.tgname = expected.trigger_name AND NOT t.tgisinternal
+         AND t.tgfoid = pg_catalog.to_regprocedure('public.trg_enforce_actor()')
+         AND t.tgtype::integer = 7 AND t.tgenabled::text = 'O') THEN
+      RAISE EXCEPTION 'restricted_account_writes_actor_trigger:%', expected.relation;
+    END IF;
+  END LOOP;
+  FOREACH object_name IN ARRAY ARRAY[
+    'Authenticated users can upload to own folder', 'Owner can list own images',
+    'Users can delete own images', 'account_deletion_tombstone_blocks_item_image_insert',
+    'account_deletion_tombstone_blocks_item_image_update', 'chat_media_participant_read',
+    'chat_media_sender_insert', 'chat_media_unlinked_delete'] LOOP
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_policy
+                    WHERE polrelid = 'storage.objects'::pg_catalog.regclass AND polname = object_name) THEN
+      RAISE EXCEPTION 'restricted_account_writes_existing_policy_missing:%', object_name;
+    END IF;
+  END LOOP;
   IF NOT pg_catalog.has_schema_privilege('authenticated', 'private', 'USAGE') THEN
     RAISE EXCEPTION 'restricted_account_writes_private_schema_usage_missing';
   END IF;
