@@ -1283,3 +1283,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: P2.6、P2.13 仍等 E2（D-29 书面确认 staging 只有合成数据）、E3、E5，不因本项开工
 - 下一条: D-51 第 5 项（D-49 子任务）、第 7 项、第五批报告
 - 附: E4 的 staging 那一半（20261112120000 应用到 staging-smoke 并 VERIFY 通过）由 supervisor 按 Eric 2026-11-19 的批准代做，见 D-51 第 6 项；生产没动。写进第五批 ④：staging 上 posts_visible 的写权限是 041 建视图时的默认权限，没收回（视图是 security_invoker，经视图写入仍按 posts 的列权限判，不算提权），本批任何迁移都不做，由 Eric 定；staging 另缺 3 条与本迁移无关的旧迁移 20260811140018、20260811143207、20261003175231，这次不补。
+
+### L103 · 2026-11-19 19:18 CT · D-49 客户端与服务端分开并行 [OMO自决]
+- task_id: D-51.5（顺序）
+- code_sha: 本地 local/d49-client-20261120（~/work/illini-restricted-client，从 04edaa3 切出，不推送）
+- docs_sha: d7cfa19（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: `git worktree add -b local/d49-client-20261120 ~/work/illini-restricted-client 04edaa3`；客户端交给子任务 st_01a1f688（unspecified-high）；服务端仍是 st_01a1f660（architect，~/work/illini-restricted）
+- 计数: —
+- ci_run_url: —
+- 未测项: 客户端和服务端合起来的全量检查，等两边都完成后由主会话在 D-49 分支上做
+- 下一条: D-49 两个子任务的结果
+- 附: D-49 第 4 项的客户端原定在服务端通过以后再做。为了省时间，客户端先在单独的工作树上开工，只在本地提交；服务端的回放和全等级回归通过之前，不把客户端合进 D-49 分支，也不放开任何浏览（「先在服务端拦住写入，再放开浏览」不变）。两个子任务各用自己的工作树，不碰对方的文件，D-49 分支只由主会话推送。
