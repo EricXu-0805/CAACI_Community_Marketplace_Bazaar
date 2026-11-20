@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
+import { postgresBinDir } from './_postgres-bin.mjs'
 
 /*
  * A card shows the reader localize(title_i18n, title). Two things have to hold
@@ -105,13 +106,7 @@ test('every column list that fetches an item title also fetches title_i18n, beca
 // 2. The search RPC, on a throwaway local cluster
 // ---------------------------------------------------------------------------
 
-const PG_BIN = [
-  process.env.PG_BIN_DIR,
-  '/opt/homebrew/opt/postgresql@17/bin',
-  '/opt/homebrew/opt/postgresql@16/bin',
-  '/usr/lib/postgresql/17/bin',
-  '/usr/lib/postgresql/16/bin',
-].find(dir => dir && existsSync(path.join(dir, 'initdb')))
+const PG_BIN = postgresBinDir()
 
 const SIGNATURE = 'terms_in text[], category_in item_category, condition_in item_condition, '
   + 'price_min_in numeric, price_max_in numeric, user_id_in uuid, listing_type_in text, '

@@ -1,7 +1,7 @@
 {
   "name": "uni-preset-vue",
   "version": "0.0.0",
-  "packageManager": "npm@10.8.2",
+  "packageManager": "npm@10.9.9",
   "engines": {
     "node": ">=22.15.0 <23"
   },
@@ -71,13 +71,13 @@
     "@dcloudio/uni-cli-shared": "3.0.0-4080420251103001",
     "@dcloudio/uni-stacktracey": "3.0.0-4080420251103001",
     "@dcloudio/vite-plugin-uni": "3.0.0-4080420251103001",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.65.0",
     "@sentry/vite-plugin": "^5.2.0",
     "@vue/runtime-core": "3.4.21",
     "@vue/tsconfig": "0.9.1",
     "sass": "^1.99.0",
     "typescript": "5.9.3",
-    "vite": "file:./vendor/source-builds/vite-6.4.4-local.8dafccdc5cd1a5ac.tgz",
+    "vite": "file:./vendor/source-builds/vite-6.4.6-local.55927b45dd34273c.tgz",
     "vue-tsc": "3.3.7",
     "rollup": "file:./vendor/source-builds/rollup-4.60.2-local.5f94a2c689eb367b.tgz"
   },
@@ -85,10 +85,14 @@
     "adm-zip": "$adm-zip",
     "@babel/core": "7.29.7",
     "@babel/plugin-transform-modules-systemjs": "7.29.7",
-    "@intlify/core-base": "9.14.5",
-    "@intlify/message-compiler": "9.14.5",
-    "@intlify/shared": "9.14.5",
+    "@intlify/core-base": "11.4.19",
+    "@intlify/message-compiler": "11.4.19",
+    "@intlify/shared": "11.4.19",
     "@intlify/vue-devtools": "9.14.1",
+    "@sentry/bundler-plugin-core": {
+      "glob": "14.0.6",
+      "minimatch": "11.0.8"
+    },
     "brace-expansion": "5.0.12",
     "express": "4.22.2",
     "esbuild": "0.25.12",
@@ -100,7 +104,7 @@
     "postcss": "8.5.25",
     "ws@8.18.0": "8.21.1",
     "browserslist": "4.28.8",
-    "qs@^6.0.0": "6.16.0",
+    "qs@^6.0.0": "6.16.2",
     "fast-glob@3.3.3": "file:./build-compat/glob",
     "chokidar@3.6.0": "file:./build-compat/watch",
     "rollup@4.60.2": "$rollup",
@@ -109,6 +113,6 @@
     "source-map-js": "1.2.2",
     "postcss-selector-parser": "7.1.6",
     "body-parser": "1.20.9",
-    "follow-redirects": "1.16.1"
+    "follow-redirects": "1.16.3"
   }
 }

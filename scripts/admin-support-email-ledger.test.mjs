@@ -1,21 +1,10 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { delimiter, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { postgresBinDir } from './_postgres-bin.mjs'
 
-const pgBin = [
-  process.env.PG_BIN,
-  process.env.PG_BIN_DIR,
-  '/opt/homebrew/opt/postgresql@17/bin',
-  '/usr/local/opt/postgresql@17/bin',
-  '/usr/lib/postgresql/17/bin',
-  '/opt/homebrew/opt/postgresql@16/bin',
-  '/usr/local/opt/postgresql@16/bin',
-  '/usr/lib/postgresql/16/bin',
-  ...(process.env.PATH || '').split(delimiter),
-].find(dir => dir && ['initdb', 'pg_ctl', 'psql'].every(binary => existsSync(join(dir, binary))))
+const pgBin = postgresBinDir()
 
 test('support email ledger enforces real PostgreSQL authorization, audit, replay, rate, and race boundaries', {
   skip: !pgBin && !process.env.CI ? 'PostgreSQL 16/17 unavailable locally; set PG_BIN' : false,

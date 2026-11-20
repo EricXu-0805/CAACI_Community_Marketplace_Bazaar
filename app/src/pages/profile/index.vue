@@ -1000,7 +1000,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
     top: -40px; right: -40px;
     width: 140px; height: 140px;
     border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, rgba(199, 74, 47, 0.45), rgba(199, 74, 47, 0) 65%);
+    background: radial-gradient(circle at 30% 30%, rgba(185, 69, 44, 0.45), rgba(185, 69, 44, 0) 65%);
     pointer-events: none;
   }
   /*
@@ -1052,7 +1052,7 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
   width: 72px; height: 72px; border-radius: 50%;
   background: linear-gradient(135deg, var(--brand-soft) 0%, var(--brand) 100%);
   flex-shrink: 0;
-  box-shadow: 0 6px 16px rgba(199, 74, 47, 0.35);
+  box-shadow: 0 6px 16px rgba(185, 69, 44, 0.35);
   border: 2px solid var(--ink-inverse);
 }
 .user-info { flex: 1; min-width: 0; }

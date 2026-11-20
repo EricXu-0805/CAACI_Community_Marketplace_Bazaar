@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { after, before, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { postgresBinDir } from './_postgres-bin.mjs'
 
 /**
  * 20260903060000 changes what the database refuses, and the only honest way to
@@ -35,18 +36,8 @@ const MIGRATION_20260904060000 = path.join(
   'supabase/migrations/20260904060000_ad_signals_stop_catching_ordinary_listings.sql',
 )
 
-const PG_BIN_CANDIDATES = [
-  '/opt/homebrew/opt/postgresql@17/bin',
-  '/usr/local/opt/postgresql@17/bin',
-  '/usr/lib/postgresql/17/bin',
-  '/opt/homebrew/opt/postgresql@16/bin',
-]
-
 function findPgBin() {
-  for (const dir of PG_BIN_CANDIDATES) {
-    if (existsSync(path.join(dir, 'initdb'))) return dir
-  }
-  return null
+  return postgresBinDir()
 }
 
 // ---------------------------------------------------------------------------

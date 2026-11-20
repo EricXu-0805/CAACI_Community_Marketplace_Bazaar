@@ -4,12 +4,13 @@
 // deliberately not a full Supabase/auth/storage disaster-recovery acceptance.
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createHash } from 'node:crypto'
+import { postgresBinDir } from './_postgres-bin.mjs'
 
-const bin = ['/opt/homebrew/opt/postgresql@17/bin', '/usr/lib/postgresql/17/bin'].find(p => existsSync(join(p, 'initdb')))
+const bin = postgresBinDir()
 assert.ok(bin, 'PostgreSQL 17 is required; no silent skip')
 const dir = mkdtempSync(join(tmpdir(), 'illini-recovery-'))
 const read = name => readFileSync(new URL(name, import.meta.url), 'utf8')
