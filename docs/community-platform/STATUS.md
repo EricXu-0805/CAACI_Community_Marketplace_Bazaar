@@ -109,7 +109,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P1.9 | 通过 | 镜像 169f16e6…，全量每步 rc=0；test 1994 / 1993 / 0 / 1 [本地测] |
 | P1.10 | 通过 | D-44：#369 5abcb86 新增 4 份 _ops LOCAL_BOOTSTRAP 后第 1 次计数尝试 181/181；变红验证停在 20260916073035 [隔离环境 L-SQL] |
 | P1.7 | 通过 | 草稿 PR #371，head b259105；Type-check、Build H5、Build mp-weixin、public sweep success，Boundary 只卡依赖审计（# fail 0、# skipped 1）[CI run#43397680516] |
-| P1.6 / P1.8 / P1.11、P1.12 | 部分 / 未测 | P1.6：同大版本在 #371 23ce3b6；跨大版本按 D-44 在草稿 PR #373（55716ba），容器内全量通过、审计只剩 vite，等 Eric 定合不合；P1.8 等 E5（合并 #371）；P1.11、P1.12 等 D-29（E2）与 E3 |
+| P1.6 / P1.8 | 部分 / 通过 | P1.6：同大版本在 #371，跨大版本在 #373，vite 6.4.6 在 #378；#378 → #373 → #371 → main 已由 supervisor 合完（D-53 第 9 项，main 057d07d）。P1.8：#369 8f5fc43 先 revert c52badf 再 merge main，级联到 #375、#374、#377（L136）。P1.11、P1.12 见下面各自一行 |
 | P2.1 | 通过 | ①②④ 本地；③ 由 CI 的 public sweep 在 staging 上给出预期报错（本地 S-1 运行等 E3）[CI run#43377614567] |
 | P2.2 | 通过 | test 2001 / 2000 / 0 / 1，smoke 35 passed [本地测]；CI Boundary 同数 [CI run#43377614567] |
 | P2.3 | 通过 | 9→0；两张截图第 2 项为「社区」；smoke 14 passed、test 2001/2000/0/1 [本地测]；CI 同前 [CI run#43380822445] |
@@ -125,7 +125,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P2.10 | 通过 | 92698d1；主包 1,558,489（CI 环境，由当时 H5 stub 环境实测的 1,558,580 按 D-46 的 91 字节差换算；预算余 14,375）[本地测] |
 | P2.9 | 通过 | ece6d12，OG 标题用话题标题 [本地测] |
 | REGION.2 | 通过 | 44629b4 [本地测] |
-| P2.11–P2.13 | 未测 | 依赖 P2.6（等 E3/E4）；P2.13 还依赖 P1.8（等 E5） |
+| P2.13 | 通过（等 supervisor 审阅） | #369 描述按 8f5fc43 重写；CI run 44743800313 在 8f5fc43 上 5 个必需 job success；仍是草稿（L136）。P2.11 见上面单独一行 |
 | BRAND.1 | 通过 | 草稿 PR #372，全量通过、projectname 玉米地 [本地测]；CI Build H5 等 E5 [CI run#43393646871] |
 | BRAND.3 | 通过 | 徽章检索 10 → 0 [本地测] |
 | BRAND.2 | 通过（⑦ 等 E5） | 品牌名检索 76 → 0，test 1991/1990/0/1 [本地测]；Build H5 等 E5 [CI run#43393646871] |
@@ -175,7 +175,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 1. 合并与迁移的完整顺序（写给 Eric，OMO 不执行；托管库的事属于 STOP-2/3，D-52 第 4 项 b）：① #376 随时可以合；#371 → #373。② 在生产应用 20261112120000 并跑它的 VERIFY（staging 已做，L102；ENGINEERING §6；应用后 VERIFY_20260718_reconcile_app_table_acl_boundaries 报 posts 列漂移属预期，见 L46），并且 P2.13 通过以后，依次合 #369 → #375 → #374。合 #369 进 main 就是把前端发布到 illinimarket.com 生产。③ #372 在 #374 之后任何时候手工合，规则见第 11 条。④ #377 最后合：前提是 staging 和生产上都已应用并 VERIFY 了 20261112120000，再 PRECHECK、应用、VERIFY 了 20261114015420（生产上必须先有前一条，否则 D-49 的 PRECHECK 会报 restricted_account_writes_column_missing），见第 14 条。⑤ 删分支之前先改 base，见第 12 条。
 2. D-29 → E2、E3：已完成（D-53 第 0 项 b、c，supervisor 代做）。D-29 定为 A：supervisor 2026-11-20 约 03:20 与 03:45 CT 只读核对 staging-smoke，auth.users 5 个 example.invalid 合成号加 1 个冒烟号、profiles 9 行、items 2 行、posts 0 行、messages 2 行都归合成号或冒烟号；E3 的 syn-a、syn-b、syn-c 已注册确认并能登录，~/.config/illini/staging.env 已写好（600）。OMO 不在 #369 代 Eric 留言；staging.env 不 cat、不打印。P1.11、P1.12、P2.6、P2.11 由第七批第 5 项跑。
-3. E4：staging 那一半已完成——supervisor 按 Eric 2026-11-19 批准把 20261112120000 应用到 staging-smoke 并 VERIFY 通过（D-51 第 6 项），#369 的 public sweep 已过（L102）。P2.6、P2.13 仍等 E2（D-29）、E3、E5。
+3. E4：staging 那一半已完成——supervisor 按 Eric 2026-11-19 批准把 20261112120000 应用到 staging-smoke 并 VERIFY 通过（D-51 第 6 项），#369 的 public sweep 已过（L102）。P2.6 已通过（D-53 第 5 项，L126）；P2.13 已通过（L136）。
 4. P1.6 跨大版本已按 D-44 做成草稿 PR #373（base #371）：合不合由 Eric 定；合之前请在带 SENTRY_AUTH_TOKEN 的发布构建里确认 source map 上传。#373 不触发 CI（ci.yml 只认 base=main）。vite 6.4.4 那条 moderate 的 CI 例外已由 #376 提供（只放行 vite 包上的 GHSA-8g5g-mxqh-grgj、严重程度不高于 moderate、到 2026-12-13，见第 20 条）；#376、#371、#373 都合并后 main 上的 Boundary 才会绿。
 5. E5：已完成。supervisor 2026-11-20 把 #371 squash 合进 main（mergeCommit 057d07d，主会话核过是 origin/main 的祖先；CI run 44737046939 全绿）。P1.8 已开工：#369 上先 revert c52badf，再 merge origin/main（ci.yml 与 main 一致，三处 ubuntu-24.04 由 #376 在 main 上提供），然后依次合进 #375、#374、#377；P3、P4 等它们的子任务收尾后再合。
 6. D-35 已定（A 纸本书院），HOME.4、P2.12、BRAND.7 只剩各自的任务依赖；D-34 已按 D-43 代定（B 的单字「玉」），BRAND.4 ② 由 OMO 做。
