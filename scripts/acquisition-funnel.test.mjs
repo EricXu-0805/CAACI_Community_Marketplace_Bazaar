@@ -1,10 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-const bin=['/opt/homebrew/opt/postgresql@17/bin','/usr/lib/postgresql/17/bin'].find(p=>existsSync(join(p,'initdb')))
+import { postgresBinDir } from './_postgres-bin.mjs'
+const bin=postgresBinDir()
 const read=name=>readFileSync(new URL(name,import.meta.url),'utf8')
 const visit='11111111-1111-4111-8111-111111111111', user='22222222-2222-4222-8222-222222222222'
 test('campaign cohorts require verified new users, consent, real actions and service-only access; expire and delete safely', {skip:!bin&&'PostgreSQL unavailable'},()=>{

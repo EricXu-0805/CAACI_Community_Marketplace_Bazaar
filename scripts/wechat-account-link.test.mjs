@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFileSync, execFile } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { promisify } from 'node:util'
-const bin = ['/opt/homebrew/opt/postgresql@17/bin','/usr/lib/postgresql/17/bin'].find(p => existsSync(join(p,'initdb')))
+import { postgresBinDir } from './_postgres-bin.mjs'
+const bin = postgresBinDir()
 const id = n => `caac0916-2026-4000-8000-${String(n).padStart(12,'0')}`
 const code = n => String(n).repeat(64)
 const app = 'wx1234567890abcdef'
