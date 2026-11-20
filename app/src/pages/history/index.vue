@@ -1,6 +1,8 @@
 <template>
   <view class="page secondary-page secondary-page--list has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <!-- #ifdef H5 -->
     <AppSidebar current="profile" />
+    <!-- #endif -->
     <view class="secondary-content">
     <view class="header">
       <view class="back-btn" role="button" :aria-label="t('a11y.back')" @click="goBack"><UIcon name="chevron-left" size="xs" color="accent-primary" /></view>
@@ -89,7 +91,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
@@ -101,7 +105,7 @@ import { listingPriceLabel, navigateBackOr, thumbUrl } from '../../utils'
 import UAvatar from '../../components/UAvatar.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
 import UIcon from '../../components/UIcon.vue'
-import USwipeAction from '../../components/USwipeAction.vue'
+import USwipeAction from './USwipeAction.vue'
 import { onAccountTransition } from '../../composables/accountScope'
 
 const { t, localize } = useI18n()
@@ -246,7 +250,7 @@ function onClear() {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .item-price-row { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
-.item-price { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.item-price { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 
 .post-row {
   display: flex; padding: 12px 16px; gap: 10px;

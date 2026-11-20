@@ -1,6 +1,8 @@
 <template>
   <view class="page secondary-page secondary-page--settings has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <!-- #ifdef H5 -->
     <AppSidebar current="profile" />
+    <!-- #endif -->
     <view class="secondary-content link-content">
       <view class="link-header">
         <button class="back-button" :aria-label="t('a11y.back')" :disabled="busy" @click="goBack"><UIcon name="chevron-left" size="sm" /></button>
@@ -72,7 +74,9 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
 import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import UIcon from '../../components/UIcon.vue'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'

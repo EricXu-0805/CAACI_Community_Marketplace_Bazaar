@@ -87,6 +87,8 @@ async function fixture(t, { account = null, state = 'unavailable', app = false, 
     if (name.endsWith('/useAuth')) return { useAuth: () => auth }
     if (name.endsWith('/useI18n')) return { useI18n: () => ({ t: key => key, lang: ref('en') }) }
     if (name.endsWith('/useTheme')) return { useTheme() {} }
+    if (name.endsWith('/useUnread')) return { useUnread() {} }
+    if (name.endsWith('/useNotifications')) return { useNotifications() {} }
     if (name.endsWith('/useMpChrome')) return { mpChromeVars: () => ({}), mpThemeClass: '' }
     if (name.endsWith('/sentry')) return { captureException() {} }
     if (name.endsWith('/dialogColors')) return { DIALOG_DANGER: '#a00' }

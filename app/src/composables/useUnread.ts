@@ -13,6 +13,7 @@ import {
 } from './accountScope'
 import { fetchArchivedConversationIds } from '../api/conversationArchive'
 import { readAllAscendingKeyset } from '../api/paginatedRead'
+import { currentPageAllowsIncomingPrompts } from '../utils/incomingPrompts'
 
 /*
  * The conversation currently on screen, reported by ChatThread — which renders
@@ -362,7 +363,7 @@ export function useUnread() {
         const fromBlocked = newMsg?.sender_id && blockedIds.value.has(newMsg.sender_id)
         // Reading the thread is not the same as being interrupted about it.
         const reading = !!convId && convId === openConversationId
-        if (convId && !reading && !mutedSet.has(convId) && !fromBlocked) {
+        if (convId && !reading && !mutedSet.has(convId) && !fromBlocked && currentPageAllowsIncomingPrompts()) {
           uni.showToast({ title: t('msg.newMessage'), icon: 'none', duration: 2000 })
         }
       },

@@ -16,7 +16,19 @@ const compile = input => `data:text/javascript;base64,${Buffer.from(ts.transpile
 const input = source('utils/communityHome.ts')
   .replace("'./communityPost'", `'${compile(source('utils/communityPost.ts'))}'`)
   .replace("'./campusTime'", `'${compile(source('utils/campusTime.ts'))}'`)
-const { buildHomeSections } = await import(compile(input))
+const { boardFiller, buildHomeSections } = await import(compile(input))
+
+const messages = {}
+for (const language of ['zh', 'en']) {
+  messages[language] = (await import(compile(source(`composables/i18n/messages/${language}.ts`)))).default
+}
+const translate = (language = 'zh') => (key, params = {}) => {
+  let text = messages[language][key]
+  assert.equal(typeof text, 'string', `missing ${language}:${key}`)
+  for (const [name, value] of Object.entries(params)) text = text.replaceAll(`{${name}}`, String(value))
+  return text
+}
+const label = (message, language = 'zh') => translate(language)(message.key, message.params)
 
 const build = (posts = [], viewport = 'desktop', stock = items, events = [], clock = now) =>
   buildHomeSections(posts, stock, events, clock, viewport)
@@ -36,15 +48,15 @@ test('20-post fixture fills six desktop cards in fixed board order and collapses
   assert.equal(twenty.length, 20)
   const result = build(twenty)
   assert.deepEqual(boards(result).map(card => card.category), categories)
-  assert.deepEqual(result.cards.map(card => card.title.zh),
+  assert.deepEqual(result.cards.map(card => label(card.title)),
     ['校园日常', '落脚香槟', '学长学姐说', '找搭子', '吃喝好店', '二手好物'])
-  assert.deepEqual(result.cards.map(card => card.title.en),
-    ['Campus life', 'Settling in', 'Ask alumni', 'Find a buddy', 'Around town', 'Secondhand finds'])
+  assert.deepEqual(result.cards.map(card => label(card.title, 'en')),
+    ['Campus life', 'Settling in', 'Ask alumni', 'Find a buddy', 'Around town', 'Market'])
   assert.ok(boards(result).every(card => postRows(card).length === 4 && card.rows.length === 4))
   assert.equal(result.cards[5].items.length, 3)
   assert.equal(result.latest.mode, 'link')
   assert.equal(result.latest.rows.length, 0)
-  assert.equal(result.latest.link.zh, '查看全部 20 个讨论 ›')
+  assert.equal(label(result.latest.link), '查看全部 20 个讨论 ›')
 })
 
 test('60-post fixture caps board and latest rows separately on desktop and phone', () => {
@@ -71,10 +83,10 @@ test('empty-board fixture retains the card with exactly one mandated filler', ()
     assert.equal(result.cards.length, 6)
     assert.equal(result.cards[4].rows.length, 1)
     assert.equal(result.cards[4].rows[0].kind, 'filler')
-    assert.equal(result.cards[4].rows[0].text.zh, '适合在这里问：火锅、超市、生日蛋糕 发第一帖 ›')
+    assert.equal(boardFiller(result.cards[4].category, translate(), 'zh'), '适合在这里问：火锅、超市、生日蛋糕 发第一帖 ›')
     boards(build([], viewport)).forEach((card, i) => {
       assert.equal(card.rows.length, 1, 'one filler reserves the rest of the fixed card height')
-      assert.equal(card.rows[0].text.zh, `适合在这里问：${expected[i]} 发第一帖 ›`)
+      assert.equal(boardFiller(card.category, translate(), 'zh'), `适合在这里问：${expected[i]} 发第一帖 ›`)
     })
     const short = build([makePost('only')], viewport).cards[0]
     assert.equal(short.rows.filter(row => row.kind === 'filler').length, 1)
@@ -165,7 +177,7 @@ test('weekly labels require three recent topics, include day seven, and exclude 
   assert.equal(build(fixture).cards[0].weeklyCount, undefined)
   const result = build([...fixture, makePost('c')])
   assert.equal(result.cards[0].weeklyCount, 3)
-  assert.equal(result.cards[0].weeklyLabel.zh, '本周 3 新帖')
+  assert.equal(label(result.cards[0].weeklyLabel), '本周 3 新帖')
   assert.equal(result.cards[1].weeklyLabel, undefined)
 })
 
@@ -177,7 +189,7 @@ test('separate weekly and visible-total projections do not count duplicate feed 
   })
   assert.equal(postRows(result.cards[0]).length, 1)
   assert.equal(result.cards[0].weeklyCount, 3)
-  assert.equal(result.latest.link.zh, '查看全部 74 个讨论 ›')
+  assert.equal(label(result.latest.link), '查看全部 74 个讨论 ›')
 })
 
 test('hot needs five seven-day topics, three replies each and two distinct non-author users', () => {
@@ -246,7 +258,7 @@ test('zero counts are absent, unanswered has a 30-day cutoff, and empty sections
   assert.equal(empty.events, null)
   assert.equal(empty.hot, null)
   assert.ok(!JSON.stringify(empty).includes('0'), 'empty homepage must not render a zero count')
-  assert.equal(empty.cards[5].filler.zh, '发布第一件 ›')
+  assert.equal(label(empty.cards[5].filler), '发布第一件 ›')
   const card = build([
     makePost('zero'), makePost('positive', { comment_count: 2 }),
     makePost('thirty', { created_at: atAge(30 * day) }),
@@ -267,7 +279,7 @@ test('home shows topics only; collapsed total includes visible legacy updates', 
     makePost('hidden', { status: 'hidden' }), makePost('deleted', { status: 'deleted' }),
   ])
   assert.deepEqual(ids(allRows(result)), ['topic'])
-  assert.equal(result.latest.link.zh, '查看全部 2 个讨论 ›')
+  assert.equal(label(result.latest.link), '查看全部 2 个讨论 ›')
 })
 
 test('featured official posts use newHere once, while pinned featured posts keep their board priority', () => {
@@ -281,6 +293,24 @@ test('featured official posts use newHere once, while pinned featured posts keep
   assert.equal(new Set(ids(allRows(result))).size, allRows(result).length)
 })
 
+test('start-here rows name their kind: 守则 for the community guidelines, 指南 for any other post', () => {
+  const featured = (id, title, age) => makePost(id, {
+    title, is_official: true, is_featured: true, created_at: atAge(age),
+  })
+  const kinds = (viewport, posts) => build(posts, viewport).newHere
+    .map(row => [row.post.id, label(row.type), label(row.type, 'en')])
+  for (const viewport of ['desktop', 'phone']) {
+    assert.deepEqual(kinds(viewport, [
+      featured('checklist', '新生落脚清单：第一周要办的 8 件事', day),
+      featured('rules-zh', '社区守则（2026 年 11 月版）', 2 * day),
+      featured('rules-en', 'Community Guidelines, November 2026', 3 * day),
+    ]), [['checklist', '指南', 'Guide'], ['rules-zh', '守则', 'Rules'], ['rules-en', '守则', 'Rules']])
+    // Only the glossary's own name for the rules counts; a guide may have 守则 in its title.
+    assert.deepEqual(kinds(viewport, [featured('safety', '二手交易安全守则：当面验货再付款', day)]),
+      [['safety', '指南', 'Guide']])
+  }
+})
+
 test('market filters inactive items, sorts by time/id, caps each viewport and adds one filler when short', () => {
   const fixture = [
     ...items, ...['sold', 'reserved', 'deleted'].map(status => ({ ...items[0], id: status, status })),
@@ -289,7 +319,7 @@ test('market filters inactive items, sorts by time/id, caps each viewport and ad
   assert.deepEqual(build([], 'desktop', fixture).cards[5].items.map(i => i.id), items.slice(0, 3).map(i => i.id))
   assert.equal(build([], 'desktop', fixture).cards[5].filler, undefined)
   assert.equal(build([], 'phone', fixture).cards[5].items.length, 6)
-  assert.equal(build([], 'desktop', items.slice(0, 2)).cards[5].filler.zh, '发布第一件 ›')
+  assert.equal(label(build([], 'desktop', items.slice(0, 2)).cards[5].filler), '发布第一件 ›')
 })
 
 test('upcoming events include only visible organization sources in the next 30 days and cap at three', () => {
@@ -333,4 +363,23 @@ test('selection has explicit id tie-breakers and never mutates frozen inputs or 
   } finally {
     Date.now = realNow
   }
+})
+
+test('home labels and both board fillers render the SPEC catalog copy through translation keys', () => {
+  const result = build(makePosts(3, ['campus-life']), 'desktop', [])
+  assert.equal(label(result.cards[0].title, 'en'), 'Campus life')
+  assert.equal(label(result.cards[0].description, 'en'), 'Classes, exams, campus life')
+  assert.equal(label(result.cards[0].weeklyLabel, 'en'), '3 new this week')
+  assert.equal(label(result.latest.link, 'en'), 'See all 3 discussions ›')
+  assert.equal(label(result.cards[5].title, 'en'), 'Market')
+  assert.equal(label(build([], 'phone', []).cards[5].title, 'en'), 'New in Market')
+  assert.equal(label(result.cards[5].filler, 'en'), 'List the first item ›')
+  // SPEC 7: "Good for: {topics} · Post the first one ›", with the dot between the two halves.
+  assert.equal(boardFiller('campus-life', translate('en'), 'en'),
+    'Good for: course loads, exams, library seats · Post the first one ›')
+  assert.equal(boardFiller('campus-life', translate('zh'), 'zh'),
+    '适合在这里问：选课、考试、图书馆座位 发第一帖 ›')
+  const calls = []
+  boardFiller('local-deals', key => { calls.push(key); return key }, 'en')
+  assert.deepEqual(calls, ['home.fillPrefix', 'plaza.boardAsk.local-deals', 'home.firstPost'])
 })

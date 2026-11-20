@@ -3,7 +3,9 @@
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
+    <!-- #ifdef H5 -->
     <AppSidebar current="publish" />
+    <!-- #endif -->
 
     <!--
       Subpage header with back button — mirrors pages/profile/edit.vue
@@ -222,7 +224,9 @@ import { DIALOG_WARN } from '../../utils/dialogColors'
 import { captureException } from '../../utils/sentry'
 import type { Item, ItemCategory, ItemCondition } from '../../types'
 import type { ImageDim } from '../../types'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 import UIcon from '../../components/UIcon.vue'
 import ListingPreview from '../../components/ListingPreview.vue'

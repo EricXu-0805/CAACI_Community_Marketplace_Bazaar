@@ -194,7 +194,7 @@ test('supplement: a failed plaza comment does not replace the next draft', async
     started = true; await gate
     await route.fulfill({ status: 400, contentType: 'application/json', body: '{"code":"P0001","message":"rate_limit_comments_hour"}' })
   })
-  await page.goto('/#/pages/plaza/index')
+  await page.goto('/#/pages/plaza/index?view=all')
   await page.locator('.pa-btn[aria-label="Reply"]').first().click()
   const input = page.locator('.ci-input textarea')
   await input.fill('The earlier comment')
@@ -220,7 +220,7 @@ test('supplement: closing a comment sheet isolates its pending submission from t
     if (route.request().method() !== 'POST' || started) return route.fallback()
     started = true; await gate; await route.fallback()
   })
-  await page.goto('/#/pages/plaza/index')
+  await page.goto('/#/pages/plaza/index?view=all')
   const open = page.locator('.pa-btn[aria-label="Reply"]').first()
   await open.click()
   const input = page.locator('.ci-input textarea')

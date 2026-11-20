@@ -3,7 +3,9 @@
     <!-- #ifndef H5 -->
     <AppToast />
     <!-- #endif -->
+    <!-- #ifdef H5 -->
     <AppSidebar current="publish" />
+    <!-- #endif -->
 
     <!-- One accessible page heading across desktop and mobile layouts. -->
     <text class="sr-only" role="heading" aria-level="1">{{ t(form.listingType === 'wanted' ? 'home.publishWanted' : 'publish.title') }}</text>
@@ -243,7 +245,9 @@ import { checkContent } from '../../utils/contentSafety'
 import { DIALOG_INK, DIALOG_WARN } from '../../utils/dialogColors'
 import { captureException } from '../../utils/sentry'
 import type { ItemCategory, ItemCondition } from '../../types'
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import CustomTabBar from '../../components/CustomTabBar.vue'
 import PermissionDeniedModal from '../../components/PermissionDeniedModal.vue'
 import UIcon from '../../components/UIcon.vue'

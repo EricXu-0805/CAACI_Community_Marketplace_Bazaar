@@ -93,7 +93,7 @@ async function openBannerFixture(page: Page) {
     ) })
   })
   await page.emulateMedia({ reducedMotion: 'no-preference' })
-  await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
+  await page.goto('/#/pages/plaza/index?view=all', { waitUntil: 'networkidle' })
   await expect(page.locator('.banner-slide')).toHaveCount(3)
 }
 

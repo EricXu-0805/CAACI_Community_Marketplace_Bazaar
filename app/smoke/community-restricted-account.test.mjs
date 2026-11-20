@@ -99,6 +99,7 @@ function replyFixture(path, user, lang) {
     post: Vue.ref({ id: 'post-1', comment_count: 0 }),
     commentingPost: Vue.ref({ id: 'post-1' }),
     comments: Vue.ref([]), commentSubmitting: Vue.ref(false), submitting: Vue.ref(false),
+    replyFailed: Vue.ref(false),
     inputFocused: Vue.ref(false), commentSheetEpoch: 1,
     captureAccountRequest: () => token, isAccountRequestCurrent: candidate => candidate === token,
     uni: { showToast: toast => state.toasts.push(toast) },
@@ -117,7 +118,7 @@ function replyFixture(path, user, lang) {
 
 // Render the actual reply container using the same Vue compiler/VNode approach
 // as page-state-roots-are-one-chain.test.mjs.
-function renderedReply(path, user, lang) {
+function renderedReply(path, user, lang, extra = {}) {
   const currentUser = Vue.ref(user)
   const ast = compiler.parse(source(path), { filename: path }).descriptor.template.ast
   const containerClass = path.includes('/plaza/') ? 'comment-sheet' : 'input-wrapper'
@@ -140,6 +141,7 @@ function renderedReply(path, user, lang) {
     comments: [], commentThreads: [], commentText: 'A preserved reply',
     replyTo: { profile: { nickname: 'Bob' } }, loadingComments: false,
     commentsError: false, expandedReplies: new Set(),
+    authorBlocked: false, replyFailed: false, ...extra,
   }
   const anything = new Proxy(() => '', { get: () => anything })
   const ctx = new Proxy(state, { get: (target, key) => key in target ? target[key] : anything })
@@ -203,6 +205,43 @@ for (let level = 0; level <= 5; level++) {
         assert.equal(h.scope.replyTo.value?.id || null, level < 2 ? 'reply-target' : null)
       })
     }
+  }
+}
+
+// A reply that failed before the restriction began must not keep offering a
+// retry next to the restriction notice, and tapping it must not send anything.
+function retryFixture(user, lang) {
+  const path = 'pages/post/index.vue'
+  const h = replyFixture(path, user, lang)
+  const token = h.scope.captureAccountRequest()
+  h.reads = 0
+  h.resubmits = 0
+  Object.assign(h.scope, {
+    failedReply: { text: 'A preserved reply', typed: 'A preserved reply', token },
+    commentsError: Vue.ref(false),
+    fetchComments: async () => { h.reads++; return [] },
+    clearLocalDuplicate: () => {},
+    onSubmitComment: async () => { h.resubmits++ },
+  })
+  h.retry = bind(functionSource(path, 'retryReply'), 'retryReply', h.scope)
+  return h
+}
+
+for (let level = 0; level <= 5; level++) {
+  for (const lang of ['en', 'zh']) {
+    test(`L${level} pages/post/index.vue offers a failed-reply retry only when replying is allowed in ${lang}`, () => {
+      const rendered = renderedReply('pages/post/index.vue', profile(level), lang, { replyFailed: true })
+      assert.equal(rendered.text.includes(translate(lang)('plaza.replyFailed')), level < 2)
+      assert.equal(rendered.classes.some(c => /\breply-failed\b/.test(String(c))), level < 2)
+    })
+    test(`L${level} pages/post/index.vue retryReply sends nothing while restricted in ${lang}`, async () => {
+      const h = retryFixture(profile(level), lang)
+      await h.retry()
+      assert.equal(h.reads, level < 2 ? 1 : 0)
+      assert.equal(h.resubmits, level < 2 ? 1 : 0)
+      assert.equal(h.writes.length, 0)
+      assert.equal(h.scope.submitting.value, false)
+    })
   }
 }
 

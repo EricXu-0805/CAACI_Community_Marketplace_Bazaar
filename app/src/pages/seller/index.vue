@@ -1,6 +1,8 @@
 <template>
   <view class="page secondary-page secondary-page--seller has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <!-- #ifdef H5 -->
     <AppSidebar current="index" />
+    <!-- #endif -->
     <view class="secondary-content">
     <!-- #ifndef H5 -->
     <AppToast />
@@ -204,7 +206,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 // #ifndef H5
@@ -748,7 +752,7 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/detail/index?id=${
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .gi-price-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
-.gi-price { font-size: 15px; font-weight: 700; color: var(--text-primary); display: block; }
+.gi-price { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; display: block; }
 
 .empty { padding: 60px 16px; text-align: center; color: var(--text-subtle); font-size: 14px; }
 

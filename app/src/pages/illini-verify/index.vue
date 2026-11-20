@@ -1,6 +1,8 @@
 <template>
   <view class="page secondary-page secondary-page--form has-sidebar" :class="mpThemeClass" :style="mpChrome">
+    <!-- #ifdef H5 -->
     <AppSidebar current="profile" />
+    <!-- #endif -->
     <view class="secondary-content">
     <view class="header">
       <view class="back" role="button" :aria-label="t('a11y.back')" @click="goBack"><view class="back-arrow"></view></view>
@@ -66,7 +68,9 @@
 </template>
 
 <script setup lang="ts">
+// #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+// #endif
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 /*

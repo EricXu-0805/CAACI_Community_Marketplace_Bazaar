@@ -218,7 +218,8 @@ function toggleTheme() {
      left adornment. Group-centering left the label visibly right-of-center
      (the icon's left weight is what read as "not centered"). Width-independent. */
   .asb-post :deep(.u-icon) { margin-left: -26px; margin-right: 6px; }
-  .asb-post-label { color: #fff; }
+  /* The fill is --brand, which is the light step in dark mode: white reads 2.87:1 there. */
+  .asb-post-label { color: var(--ink-inverse); }
   .asb-me {
     display: flex; align-items: center; gap: 10px; padding: 4px;
     border-radius: 10px; cursor: pointer;

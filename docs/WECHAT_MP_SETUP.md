@@ -88,6 +88,24 @@ WXSS/运行时正确的充分证据。
 首次进入三个分包、分享直达、断网重试与返回导航仍需同版本开发工具/体验版真机验收。
 本轮未上传或发布；本地编译和静态依赖检查不能代替上述体验验收。
 
+2026-11-13（#375，D-46 第 4 项）再把 14 个非 tab 页改成非独立分包，根目录就是页面自己的
+目录，所以路径一条没变：`pages/account-link`、`pages/blocked`、`pages/following`、
+`pages/history`、`pages/illini-verify`、`pages/legal`、`pages/login`、`pages/my-items`、
+`pages/notifications`、`pages/onboarding`、`pages/reset-password`、`pages/saved-searches`、
+`pages/search`、`pages/settings`（各只有 `index` 一页）；H5 的页面列表不变。只被一个分包
+用到的四个模块跟着进了分包：`USwipeAction.vue`（history）、`useSavedSearch.ts`
+（saved-searches）、`useRatings.ts`（detail）、`recoveryPassword.ts`（reset-password）。
+分包根目录下的代码只能被该目录内引用，否则微信运行时找不到文件，而类型检查和 H5 构建
+都发现不了；`app/smoke/mini-program-subpackage-routes.test.mjs` 检查这一条和全部路径。
+
+留在主包的非 tab 页：`pages/welcome`（首次启动由 `App.onLaunch` 直接 reLaunch 过去）；
+`pages/reconsent`、`pages/suspended`、`pages/profile-recovery`（`App.vue` 的门禁自动跳转，
+并把其他跳转都改写到这里，不能再依赖一次下载）；`pages/chat`（约 2 KB，正文 `ChatThread`
+因消息 tab 留在主包）；`pages/publish/edit`、`pages/profile/edit`（与 tab 页同目录，分包
+根目录会把 tab 页一起带走）。主包由 1,502,862 降为 1,322,319 字节（CI build-mp-weixin
+环境，减少 180,543），距 1.5 MiB 预算 250,545 字节。首次进入这 14 个分包、分享或通知直达、
+断网时的失败表现与返回导航，同样需要同版本开发者工具/体验版真机验收。
+
 ## 6. 体验版验收步骤
 
 1. 首页 → 搜索/筛选 → 商品详情 → 联系卖家 → 登录 → 返回原商品/会话。

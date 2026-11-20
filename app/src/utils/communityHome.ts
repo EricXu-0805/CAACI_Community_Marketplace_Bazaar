@@ -4,6 +4,7 @@ import type { Item, Post } from '../types'
 
 export type HomeViewport = 'desktop' | 'phone'
 export interface HomeText { zh: string; en: string }
+export interface HomeMessage { key: string; params?: Record<string, string | number> }
 export type HomePost = Pick<Post,
   'id' | 'user_id' | 'title' | 'category' | 'is_pinned' | 'is_official' | 'comment_count' | 'created_at' | 'status'
 > & {
@@ -35,58 +36,42 @@ export interface HomePostRow {
   replyCount?: number
   unanswered: boolean
 }
-export interface HomeFillerRow { kind: 'filler'; text: HomeText }
+/** A start-here row also names its kind, 「守则」 or 「指南」 (SPEC 5.2 S1). */
+export interface HomeStartRow extends HomePostRow { type: HomeMessage }
+export interface HomeFillerRow { kind: 'filler' }
 export interface HomeBoardCard {
   kind: 'board'
   category: PostCategory
-  title: HomeText
-  description: HomeText
+  title: HomeMessage
+  description: HomeMessage
   weeklyCount?: number
-  weeklyLabel?: HomeText
+  weeklyLabel?: HomeMessage
   rows: (HomePostRow | HomeFillerRow)[]
 }
 export interface HomeMarketCard {
   kind: 'market'
-  title: HomeText
+  title: HomeMessage
   items: HomeItem[]
-  filler?: HomeText
+  filler?: HomeMessage
 }
 export interface HomeSections {
   cards: (HomeBoardCard | HomeMarketCard)[]
-  latest: { mode: 'list' | 'link'; rows: HomePostRow[]; link: HomeText }
-  newHere: HomePostRow[] | null
+  latest: { mode: 'list' | 'link'; rows: HomePostRow[]; link: HomeMessage }
+  newHere: HomeStartRow[] | null
   events: HomeEvent[] | null
   hot: { presentation: 'sidebar' | 'tab'; rows: HomePostRow[] } | null
   showAbout: boolean
 }
 
 const DAY = 86_400_000
-const BOARD_COPY: Record<PostCategory, { title: HomeText; description: HomeText; ask: HomeText }> = {
-  'campus-life': {
-    title: { zh: '校园日常', en: 'Campus life' },
-    description: { zh: '课程、考试、校园里的事', en: 'Classes, exams, campus life' },
-    ask: { zh: '选课、考试、图书馆座位', en: 'course loads, exams, library seats' },
-  },
-  'settling-market': {
-    title: { zh: '落脚香槟', en: 'Settling in' },
-    description: { zh: '租房、银行卡、驾照、公交', en: 'Housing, banks, licenses, buses' },
-    ask: { zh: '租房合同、银行开户、驾照', en: 'leases, bank accounts, licenses' },
-  },
-  'alumni-career': {
-    title: { zh: '学长学姐说', en: 'Ask alumni' },
-    description: { zh: '选课、实习、读研，问过来人', en: 'Courses, internships, grad school' },
-    ask: { zh: '实习、简历、读研选择', en: 'internships, résumés, grad school' },
-  },
-  'events-social': {
-    title: { zh: '找搭子', en: 'Find a buddy' },
-    description: { zh: '拼车、饭搭子、自习、看球', en: 'Rides, meals, study, games' },
-    ask: { zh: '拼车、饭搭子、一起自习', en: 'rides, meal buddies, study partners' },
-  },
-  'local-deals': {
-    title: { zh: '吃喝好店', en: 'Around town' },
-    description: { zh: '香槟附近吃喝和小店', en: 'Food and shops nearby' },
-    ask: { zh: '火锅、超市、生日蛋糕', en: 'hot pot, grocery stores, birthday cakes' },
-  },
+/**
+ * The filler uses the same catalog messages on home cards and board pages.
+ * SPEC 7 joins them differently: 「适合在这里问：{话题} 发第一帖 ›」 and
+ * "Good for: {topics} · Post the first one ›".
+ */
+export function boardFiller(category: PostCategory, t: (key: string) => string, lang: string): string {
+  const zh = lang === 'zh'
+  return `${t('home.fillPrefix')}${zh ? '' : ' '}${t(`plaza.boardAsk.${category}`)}${zh ? ' ' : ' · '}${t('home.firstPost')}`
 }
 
 // Binary string comparison avoids dependence on the host's locale.
@@ -154,8 +139,8 @@ export function buildHomeSections(
   const take = (post: HomePost) => { used.add(post.id); return row(post) }
   const rowLimit = viewport === 'desktop' ? 4 : 3
   const cards: HomeBoardCard[] = POST_CATEGORIES.map(category => ({
-    kind: 'board', category, title: { ...BOARD_COPY[category].title },
-    description: { ...BOARD_COPY[category].description }, rows: [],
+    kind: 'board', category, title: { key: `plaza.category.${category}` },
+    description: { key: `plaza.boardDesc.${category}` }, rows: [],
   }))
 
   // Reserve one pin per board before any other placement consumes a post.
@@ -164,7 +149,13 @@ export function buildHomeSections(
     if (pin) card.rows.push(take(pin))
   }
   // Featured posts have their own slot; a pinned featured post stays in its board.
-  const newHere = allowed.filter(p => p.is_official && p.is_featured && !used.has(p.id)).slice(0, 5).map(take)
+  // SPEC 2 names 社区守则 (Community guidelines), but provides no stored kind.
+  // Identify that title for now; the rules/guide metadata contract remains undecided.
+  const newHere: HomeStartRow[] = allowed.filter(p => p.is_official && p.is_featured && !used.has(p.id)).slice(0, 5)
+    .map(post => ({
+      ...take(post),
+      type: { key: /社区守则|community guidelines/i.test(post.title || '') ? 'home.typeRules' : 'home.typeGuide' },
+    }))
   for (const card of cards) {
     const authors = new Map<string, number>()
     for (const existing of card.rows) {
@@ -183,15 +174,9 @@ export function buildHomeSections(
       : topics.filter(p => p.category === card.category && inWeek(p)).length
     if (weeklyCount >= 3) {
       card.weeklyCount = weeklyCount
-      card.weeklyLabel = { zh: `本周 ${weeklyCount} 新帖`, en: `${weeklyCount} new posts this week` }
+      card.weeklyLabel = { key: 'home.weekNew', params: { n: weeklyCount } }
     }
-    if (card.rows.length < rowLimit) {
-      const ask = BOARD_COPY[card.category].ask
-      card.rows.push({
-        kind: 'filler',
-        text: { zh: `适合在这里问：${ask.zh} 发第一帖 ›`, en: `Ask here about ${ask.en}. Start the first topic ›` },
-      })
-    }
+    if (card.rows.length < rowLimit) card.rows.push({ kind: 'filler' })
   }
 
   const remaining = allowed.filter(p => !used.has(p.id))
@@ -207,10 +192,10 @@ export function buildHomeSections(
     .sort(newest).slice(0, viewport === 'desktop' ? 3 : 6)
   const market: HomeMarketCard = {
     kind: 'market',
-    title: { zh: viewport === 'desktop' ? '二手好物' : '二手新上架', en: viewport === 'desktop' ? 'Secondhand finds' : 'New on Market' },
+    title: { key: viewport === 'desktop' ? 'home.market' : 'home.marketNew' },
     items: marketItems,
     ...(marketItems.length < (viewport === 'desktop' ? 3 : 6)
-      ? { filler: { zh: '发布第一件 ›', en: 'List the first item ›' } } : {}),
+      ? { filler: { key: 'home.marketFill' } } : {}),
   }
   const upcoming = [...new Map(events.filter(e => e.source_type !== 'member' && e.availability === 'visible'
     && !e.duplicate_of && Date.parse(e.starts_at) >= nowMs && Date.parse(e.starts_at) <= nowMs + 30 * DAY)
@@ -221,8 +206,8 @@ export function buildHomeSections(
     latest: {
       mode: latestRows.length ? 'list' : 'link', rows: latestRows,
       link: total > 0
-        ? { zh: `查看全部 ${total} 个讨论 ›`, en: `View all ${total} discussions ›` }
-        : { zh: '查看全部讨论 ›', en: 'View all discussions ›' },
+        ? { key: 'home.collapsed', params: { n: total } }
+        : { key: 'home.allDiscussions' },
     },
     newHere: newHere.length ? newHere : null,
     events: upcoming.length ? upcoming : null,

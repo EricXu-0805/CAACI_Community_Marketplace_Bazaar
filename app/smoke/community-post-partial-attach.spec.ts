@@ -27,6 +27,8 @@ type State = {
   itemReplies: Reply[]
   linked: boolean
   failNextPostRead: boolean
+  /** The linked item as the topic page reads it; ITEM when unset. */
+  item?: typeof ITEM
 }
 
 async function signIn(page: Page, uid: string, pending?: { account: string; ids: string[] }) {
@@ -53,7 +55,7 @@ async function serve(page: Page, uid: string, state: State) {
     id: POST_ID, user_id: UID, title: 'Selling my desk lamp', category: 'settling-market', content: 'Works well',
     images: [], image_dimensions: null, content_i18n: null, source_lang: 'en', is_official: false, is_pinned: false,
     like_count: 0, comment_count: 0, status: 'active', created_at: '2026-11-13T00:00:00Z', updated_at: '2026-11-13T00:00:00Z',
-    profile: profile(UID), post_items: state.linked ? [{ display_order: 0, item: ITEM }] : [],
+    profile: profile(UID), post_items: state.linked ? [{ display_order: 0, item: state.item ?? ITEM }] : [],
   })
   await page.route('**/*.supabase.co/**', route => route.fulfill({
     status: 200, contentType: 'application/json', headers: { 'content-range': '0-0/1' },
@@ -101,7 +103,7 @@ async function publishWithItem(page: Page, state: State) {
   await signIn(page, UID)
   await serve(page, UID, state)
   await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
   const composer = page.locator('.composer-fullpage')
   const title = page.locator('.topic-title-input input')
   const body = page.locator('.comp-textarea textarea')
@@ -172,6 +174,117 @@ test('signing out removes the notice and its stored pending items', async ({ pag
   }, REF)
   await expect(page.locator('.attach-pending')).toHaveCount(0)
   await expect.poll(() => pendingKeys(page)).toEqual([])
+})
+
+// SPEC 6.6: what a linked item's card says on the topic page.
+async function openLinkedTopic(page: Page, uid: string, item = ITEM) {
+  const state = fresh([])
+  state.linked = true
+  state.item = item
+  await signIn(page, uid)
+  await serve(page, uid, state)
+  await page.goto(`/#/pages/post/index?id=${POST_ID}`, { waitUntil: 'networkidle' })
+  await expect(page.locator('.post-topic-title')).toHaveText('Selling my desk lamp', { timeout: 15_000 })
+  return state
+}
+
+test('a linked item card says whether the item can still be had, and marks the reader\'s own', async ({ page }) => {
+  await openLinkedTopic(page, UID)
+  const card = page.locator('.attached-item-card')
+  await expect(card.locator('.aic-price')).toHaveText('$12')
+  await expect(card.locator('.aic-tag')).toHaveText(['Available', 'Mine'])
+})
+
+for (const [status, label] of [['reserved', 'Reserved'], ['sold', 'Sold']] as const) {
+  test(`a ${status} linked item keeps its price and says ${label}; to another reader it is not Mine`, async ({ page }) => {
+    await openLinkedTopic(page, OTHER, { ...ITEM, status })
+    const card = page.locator('.attached-item-card')
+    await expect(card.locator('.aic-price')).toHaveText('$12')
+    await expect(card.locator('.aic-tag')).toHaveText([label])
+  })
+}
+
+// SPEC 6.4: a topic whose author the reader has blocked.
+test('a topic by someone the reader blocked says so, and Unblock brings the topic back', async ({ page }) => {
+  const state = fresh([])
+  let blocked = true, unblocks = 0
+  await signIn(page, OTHER)
+  await serve(page, OTHER, state)
+  await page.route('**/rest/v1/blocks**', route => {
+    if (route.request().method() === 'DELETE') {
+      unblocks += 1
+      blocked = false
+      return route.fulfill({ status: 204, body: '' })
+    }
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify(blocked ? [{ blocked_id: UID }] : []) })
+  })
+  await page.goto(`/#/pages/post/index?id=${POST_ID}`, { waitUntil: 'networkidle' })
+  await expect(page.getByText("You've blocked this user.", { exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('.post-topic-title')).toHaveCount(0)
+  await expect(page.locator('.input-bar')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Unblock', exact: true }).click()
+  await expect(page.locator('.post-topic-title')).toHaveText('Selling my desk lamp')
+  await expect(page.locator('.input-bar')).toHaveCount(1)
+  expect(unblocks).toBe(1)
+})
+
+// SPEC 6.4: a reply whose send failed stays in the box, with a line under it to send it again.
+const REPLY = 'Is it still available?'
+const replyRow = (content: string) => ({
+  id: '77777777-7777-4777-8777-777777777777', post_id: POST_ID, user_id: OTHER, content, content_i18n: null,
+  parent_comment_id: null, like_count: 0, created_at: '2026-11-13T01:00:00Z', profile: profile(OTHER),
+})
+
+/** `written` is whether the write that answers 500 reached the table anyway. */
+async function replyThatFails(page: Page, written: boolean) {
+  const thread: unknown[] = []
+  const sent = { writes: 0 }
+  await signIn(page, OTHER)
+  await serve(page, OTHER, fresh([]))
+  await page.route('**/rest/v1/post_comments**', route => {
+    const request = route.request()
+    if (request.method() === 'GET') return route.fulfill({ contentType: 'application/json', body: JSON.stringify(thread) })
+    sent.writes += 1
+    const row = replyRow(request.postDataJSON().content)
+    if (sent.writes === 1) {
+      if (written) thread.push(row)
+      return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'upstream' }) })
+    }
+    thread.push(row)
+    return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(row) })
+  })
+  await page.goto(`/#/pages/post/index?id=${POST_ID}`, { waitUntil: 'networkidle' })
+  await expect(page.locator('.post-topic-title')).toHaveText('Selling my desk lamp', { timeout: 15_000 })
+  const box = page.locator('.input-bar input')
+  const send = page.locator('.send-btn')
+  await box.fill(REPLY)
+  // uni-input reaches the model behind a throttle; the button is enabled from the model.
+  await expect(send).toHaveAttribute('aria-disabled', 'false')
+  await send.click()
+  const retry = page.getByRole('button', { name: "Didn't send. Tap to retry.", exact: true })
+  await expect(retry).toBeVisible()
+  await expect(box).toHaveValue(REPLY)
+  await expect(page.locator('.cs-content')).toHaveCount(0)
+  expect(sent.writes).toBe(1)
+  return { sent, box, retry }
+}
+
+test('a reply that did not go out stays in the box, and the line under it sends it again', async ({ page }) => {
+  const { sent, box, retry } = await replyThatFails(page, false)
+  await retry.click()
+  await expect(page.locator('.cs-content')).toHaveText([REPLY])
+  await expect(retry).toHaveCount(0)
+  await expect(box).toHaveValue('')
+  expect(sent.writes).toBe(2)
+})
+
+test('a reply whose answer was lost is found in the thread and not sent twice', async ({ page }) => {
+  const { sent, box, retry } = await replyThatFails(page, true)
+  await retry.click()
+  await expect(page.locator('.cs-content')).toHaveText([REPLY])
+  await expect(retry).toHaveCount(0)
+  await expect(box).toHaveValue('')
+  expect(sent.writes).toBe(1)
 })
 
 test('someone else opening the same link sees no notice', async ({ page }) => {

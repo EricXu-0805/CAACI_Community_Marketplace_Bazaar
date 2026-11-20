@@ -164,11 +164,13 @@ test('no page prints a stored location string straight from the record', () => {
 })
 
 test('every surface showing a profile location shows the localized one', () => {
+  // The plaza page left this list with SPEC 6.2: its following tab lists posts
+  // now, not people, so it shows no profile location. The sweep above still
+  // reads its template.
   const pages = [
     'src/pages/profile/index.vue',
     'src/pages/seller/index.vue',
     'src/pages/following/index.vue',
-    'src/pages/plaza/index.vue',
   ]
   for (const page of pages) {
     const source = read(page)

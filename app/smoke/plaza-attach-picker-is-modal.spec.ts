@@ -69,7 +69,7 @@ async function openPlazaComposer(page: Page) {
   })
 
   await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: 'New post', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'New topic', exact: true }).filter({ visible: true }).click({ timeout: 15_000 })
   await expect(page.locator('.comp-attach-btn').first()).toBeVisible({ timeout: 10_000 })
 }
 
@@ -160,7 +160,7 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { 
     await page.locator('.input-wrapper input').fill('Is this still available?')
     await resizeVisualViewport()
     await inVisibleArea('.input-wrapper')
-    await page.goto('/#/pages/plaza/index')
+    await page.goto('/#/pages/plaza/index?view=all')
     // Reload also discards the previous composer instance retained by tab navigation.
     await page.reload()
     await page.getByRole('button', { name: 'Reply', exact: true }).tap()

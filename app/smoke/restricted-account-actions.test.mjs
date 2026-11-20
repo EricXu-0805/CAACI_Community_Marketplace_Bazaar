@@ -543,12 +543,12 @@ for (const state of STATES) {
   test(`${state.name}: a transaction rating ${verb} the RPC`, async () => {
     const rt = restrictionRuntime(state.user)
     const supabase = fakeSupabase()
-    const { useRatings } = loadModule('composables/useRatings.ts', {
+    const { useRatings } = loadModule('pages/detail/useRatings.ts', {
       mocks: {
-        './useSupabase': () => ({ useSupabase: () => ({ supabase }) }),
-        './useAuth': () => ({ useAuth: () => ({ currentUser: rt.currentUser }) }),
-        './accountScope': accountScope,
-        './useRestriction': () => requireRestriction(rt),
+        '../../composables/useSupabase': () => ({ useSupabase: () => ({ supabase }) }),
+        '../../composables/useAuth': () => ({ useAuth: () => ({ currentUser: rt.currentUser }) }),
+        '../../composables/accountScope': accountScope,
+        '../../composables/useRestriction': () => requireRestriction(rt),
       },
     })
     const call = useRatings().submitRating({ rateeId: 'seller-1', itemId: 'item-1', stars: 5 })

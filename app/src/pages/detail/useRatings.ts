@@ -1,12 +1,12 @@
-import { useSupabase } from './useSupabase'
-import { useAuth } from './useAuth'
-import { assertWritesAllowed } from './useRestriction'
-import type { Rating, TransactionRatingEligibility } from '../types'
+import { useSupabase } from '../../composables/useSupabase'
+import { useAuth } from '../../composables/useAuth'
+import { assertWritesAllowed } from '../../composables/useRestriction'
+import type { Rating, TransactionRatingEligibility } from '../../types'
 import {
   captureAccountRequest,
   isAccountRequestCurrent,
   type AccountRequestToken,
-} from './accountScope'
+} from '../../composables/accountScope'
 
 const PUBLIC_PROFILE_FIELDS = 'id, nickname, avatar_url, is_illini_verified, uid'
 const RATING_FIELDS = 'id, rater_id, ratee_id, item_id, stars, comment, created_at'
