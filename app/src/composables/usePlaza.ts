@@ -465,6 +465,9 @@ export function usePlaza() {
       if (images.length > 4) throw new Error('invalid_public_media')
       assertPublicMediaWrite(images, userId, 4, extras.image_dimensions ?? [])
       assertI18nWrite(extras.content_i18n, 2000, 8000, 65_536)
+      // D-49: refuse before the first request, whatever page or sheet called this.
+      // Recovering a post created before the restriction (above) is a read and stays allowed.
+      assertWritesAllowed()
 
       if (trimmed) {
         const safety = checkContent(trimmed, { kind: 'post' })
@@ -855,6 +858,8 @@ export function usePlaza() {
     if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
     const duplicateKind = `comment:${postId}`
     if (isLocalDuplicate(accountToken, duplicateKind, trimmed)) throw new Error('duplicate_comment')
+    // D-49: refuse before the first request, whatever page or sheet called this.
+    assertWritesAllowed()
     let mutationStarted = false
     let committed = false
     const assertAccountCurrent = (afterCommit = false) => {

@@ -612,6 +612,45 @@ for (const state of STATES) {
       : ['post_likes.delete', 'post_comment_likes.delete', 'post_likes.insert', 'post_comment_likes.insert'])
   })
 
+  // D-52 item 2: createPost and createComment check the restriction themselves,
+  // not only the page or the composer that calls them. The first request a new
+  // post or reply makes is the moderation call; a refused write never gets there.
+  test(`${state.name}: creating a post or a reply ${verb} its first request`, async () => {
+    const rt = restrictionRuntime(state.user)
+    const supabase = fakeSupabase()
+    const moderated = []
+    const { usePlaza } = loadModule('composables/usePlaza.ts', {
+      mocks: {
+        './useSupabase': () => ({ useSupabase: () => ({ supabase }) }),
+        './useAuth': () => ({ useAuth: () => ({ currentUser: rt.currentUser }) }),
+        './useModeration': () => ({ useModeration: () => ({ blockedIds: { value: new Set() } }) }),
+        './useI18n': () => ({ useI18n: () => ({ t: translate('en'), lang: { value: 'en' } }) }),
+        './accountScope': accountScope,
+        '../utils/communityPost': () => loadModule('utils/communityPost.ts'),
+        '../utils/region': () => loadModule('utils/region.ts'),
+        './useRestriction': () => requireRestriction(rt),
+        '../utils/contentSafety': () => ({
+          checkContent: () => ({ ok: true }),
+          isLocalDuplicate: () => false,
+          clearLocalDuplicate: () => {},
+          // Stop each write at its first request: reaching it is what is measured.
+          remoteModerate: async text => { moderated.push(text); throw new Error('test: first request reached') },
+        }),
+        './useWechatSecCheck': () => ({ mpTextGate: async () => {} }),
+        // The real tagging, so an error thrown inside createPost keeps its message.
+        '../api/mutationCommit': () => loadModule('api/mutationCommit.ts'),
+      },
+    })
+    const plaza = usePlaza()
+    const calls = [() => plaza.createPost('A new post'), () => plaza.createComment('post-1', 'A new reply')]
+    for (const call of calls) {
+      if (state.refused) await expectRefusal(call(), state)
+      else await call().catch(() => {})
+    }
+    assert.equal(moderated.length, state.refused ? 0 : 2)
+    assert.deepEqual(supabase.log, [])
+  })
+
   test(`${state.name}: new item conversations ${verb} the INSERT; existing ones still open`, async () => {
     const rt = restrictionRuntime(state.user)
     const load = existing => {
