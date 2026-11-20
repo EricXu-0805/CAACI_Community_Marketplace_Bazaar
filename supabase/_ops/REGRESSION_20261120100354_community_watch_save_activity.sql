@@ -16,6 +16,11 @@
 --
 -- Part 2 runs the reply notices, the orderings and the five administrator
 -- actions once each through the real chain.
+--
+-- D-54 2c: the two new reply notices ship switched off. This file is where
+-- that is asserted (VERIFY only reports the value). After the assertion the
+-- switch is turned on inside this transaction, which is rolled back at the
+-- end, and one matrix case turns it off again to show that nothing is written.
 \set ON_ERROR_STOP on
 BEGIN;
 SET LOCAL lock_timeout = '5s';
@@ -45,7 +50,9 @@ BEGIN
             'admin_list_community_posts', 'admin_list_report_queue', 'community_post_state',
             'list_own_hidden_posts', 'trg_enforce_actor', 'notify_post_comment'))
        OR (n.nspname = 'private' AND p.proname IN (
-            'reject_reply_to_locked_post', 'notify_topic_reply', 'enqueue_activity_notification'))
+            'reject_reply_to_locked_post', 'validate_comment_reply_target', 'notify_topic_reply',
+            'enqueue_activity_notification'))
+       OR (n.nspname = 'moderation_private' AND p.proname IN ('current_profile_state', 'profile_content_visible'))
     ORDER BY 1
   LOOP
     RAISE NOTICE 'P3_BODY|%|%|owner=%|secdef=%|%|%',
@@ -100,6 +107,36 @@ INSERT INTO public.admin_tokens(id,token_hash,admin_id,admin_name,admin_email,ro
  (pg_temp.id(41),repeat('a',64),pg_temp.id(4),'P3 Owner','p3-4@example.invalid','owner',now()+interval '30 days',NULL,pg_temp.id(4)),
  (pg_temp.id(42),repeat('b',64),pg_temp.id(4),'P3 Operator','p3-4@example.invalid','operator',now()+interval '30 days',NULL,pg_temp.id(4));
 DELETE FROM public.notifications;
+
+-- D-54 2c: off as shipped, then on for everything below.
+DO $switch$
+BEGIN
+  IF (SELECT count(*) = 1 AND bool_and(singleton) AND NOT bool_or(enabled)
+        FROM private.community_reply_notice_config) IS NOT TRUE THEN
+    RAISE EXCEPTION 'P3 reply notice switch is not one row that is off';
+  END IF;
+  -- The seeded reply above was written with the switch off: the topic author
+  -- was told as always (deleted above with every other row), nobody else was.
+  RAISE NOTICE 'P3_SWITCH|default=off|PASS';
+END
+$switch$;
+UPDATE private.community_reply_notice_config SET enabled = true;
+
+-- One statement as a signed-in member; returns its single value as text.
+CREATE FUNCTION pg_temp.as_member(member integer, statement text) RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  answer text;
+BEGIN
+  PERFORM set_config('request.jwt.claim.sub', pg_temp.id(member)::text, true);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', pg_temp.id(member), 'role', 'authenticated')::text, true);
+  SET LOCAL ROLE authenticated;
+  EXECUTE statement INTO answer;
+  RESET ROLE;
+  PERFORM set_config('request.jwt.claim.sub', '', true);
+  PERFORM set_config('request.jwt.claims', '{}', true);
+  RETURN answer;
+END
+$$;
 
 DO $fixture$
 BEGIN
@@ -178,15 +215,36 @@ INSERT INTO p3_cases VALUES
 ($q$A06-save-an-update$q$,false,$q$WITH x AS (INSERT INTO public.post_bookmarks(user_id,post_id) VALUES(auth.uid(),pg_temp.id(28)) RETURNING 1) SELECT count(*)=1 FROM x$q$,NULL,$q$$q$,'authenticated',1,NULL,NULL),
 ($q$A07-topic-state$q$,false,$q$SELECT public.community_post_state(pg_temp.id(21))='active' AND public.community_post_state(pg_temp.id(23))='hidden'
  AND public.community_post_state(pg_temp.id(99))='missing'$q$,NULL,$q$$q$,'authenticated',1,NULL,NULL),
-($q$A08-own-hidden-topic$q$,false,$q$SELECT count(*)=1 AND min(id::text)=pg_temp.id(26)::text AND min(hidden_reason)='P3 regression reason' AND min(content)='P3 regression body six'
- FROM public.list_own_hidden_posts()$q$,NULL,$q$$q$,'authenticated',1,NULL,NULL),
+-- D-54 2e: the author reads their own text back and nothing the moderator wrote (the fixture recorded a reason).
+($q$A08-own-hidden-topic$q$,false,$q$SELECT count(*)=1 AND min(id::text)=pg_temp.id(26)::text AND min(content)='P3 regression body six'
+ AND bool_and((SELECT string_agg(k, ',' ORDER BY k COLLATE "C") FROM jsonb_object_keys(to_jsonb(t)) AS k)='category,content,created_at,id,title')
+ AND bool_and(position('P3 regression reason' IN to_jsonb(t)::text)=0)
+ FROM public.list_own_hidden_posts() AS t$q$,NULL,$q$$q$,'authenticated',1,NULL,NULL),
 ($q$A09-search-by-activity$q$,false,$q$SELECT count(*)>=3 FROM public.search_community_posts(ARRAY['P3 regression'],'active')$q$,NULL,$q$$q$,'authenticated',1,NULL,NULL),
 -- Somebody else replies; the member under test is told as a watcher in any state.
 ($q$A10-told-as-watcher$q$,false,$q$WITH x AS (INSERT INTO public.post_comments(post_id,user_id,content) VALUES(pg_temp.id(29),auth.uid(),'A reply from another member') RETURNING 1) SELECT count(*)=1 FROM x$q$,$q$SELECT count(*)=1 FROM public.notifications WHERE user_id=pg_temp.id(1) AND type='post_comment' AND body='followed_post_reply:'||pg_temp.id(29)::text$q$,$q$INSERT INTO public.post_follows(user_id,post_id) VALUES(pg_temp.id(1),pg_temp.id(29))$q$,'authenticated',3,NULL,NULL),
+-- D-54 2d: a notice follows the right to read. The member under test wrote this topic; another member
+-- replies and a third one watches. The watcher is told exactly when they can still open the topic.
+($q$A11-notice-follows-read-permission$q$,false,$q$WITH x AS (INSERT INTO public.post_comments(post_id,user_id,content) VALUES(pg_temp.id(32),auth.uid(),'A reply to a topic that may be hidden') RETURNING 1) SELECT count(*)=1 FROM x$q$,$q$SELECT (SELECT count(*) FROM public.notifications WHERE user_id=pg_temp.id(3) AND body='followed_post_reply:'||pg_temp.id(32)::text)
+ = pg_temp.as_member(3, 'SELECT count(*) FROM public.posts WHERE id=pg_temp.id(32)')::bigint$q$,$q$INSERT INTO public.posts(id,user_id,content,title,category) VALUES(pg_temp.id(32),pg_temp.id(1),'P3 regression body twelve','P3 regression topic twelve','campus-life');
+ INSERT INTO public.post_follows(user_id,post_id) VALUES(pg_temp.id(3),pg_temp.id(32))$q$,'authenticated',2,NULL,NULL),
+-- D-54 2c: with the switch off a reply writes neither new notice; the topic author is told as always.
+-- (A restriction placed on the member under test writes its own notice, so the count is of this topic's.)
+($q$A12-switch-off-writes-neither-notice$q$,false,$q$WITH x AS (INSERT INTO public.post_comments(post_id,user_id,content,parent_comment_id,reply_to_comment_id) VALUES(pg_temp.id(21),auth.uid(),'A reply while the switch is off',pg_temp.id(31),pg_temp.id(31)) RETURNING 1) SELECT count(*)=1 FROM x$q$,$q$SELECT count(*) FILTER (WHERE body LIKE 'followed_post_reply:%' OR body LIKE 'comment_reply:%')=0
+ AND count(*) FILTER (WHERE body LIKE '%:'||pg_temp.id(21)::text)=1
+ AND count(*) FILTER (WHERE user_id=pg_temp.id(2) AND body='post_comment:'||pg_temp.id(21)::text)=1 FROM public.notifications$q$,$q$UPDATE private.community_reply_notice_config SET enabled=false;
+ INSERT INTO public.post_follows(user_id,post_id) VALUES(pg_temp.id(1),pg_temp.id(21))$q$,'authenticated',5,NULL,NULL),
 -- Refused for an active level 2-5 restriction, before any other rule.
 ($q$B01-reply$q$,true,$q$WITH x AS (INSERT INTO public.post_comments(post_id,user_id,content) VALUES(pg_temp.id(29),auth.uid(),'A new reply to the topic') RETURNING 1) SELECT count(*)=1 FROM x$q$,$q$SELECT comment_count=1 AND answered_at IS NOT NULL AND last_activity_at>created_at FROM public.posts WHERE id=pg_temp.id(29)$q$,$q$$q$,'authenticated',1,NULL,NULL),
 ($q$B02-reply-to-a-reply$q$,true,$q$WITH x AS (INSERT INTO public.post_comments(post_id,user_id,content,parent_comment_id) VALUES(pg_temp.id(21),auth.uid(),'An answer to the first reply',pg_temp.id(31)) RETURNING 1) SELECT count(*)=1 FROM x$q$,$q$SELECT count(*)=1 FROM public.notifications WHERE user_id=pg_temp.id(3) AND body='comment_reply:'||pg_temp.id(21)::text$q$,$q$$q$,'authenticated',1,NULL,NULL),
 ($q$B03-reply-to-a-locked-topic$q$,true,$q$WITH x AS (INSERT INTO public.post_comments(post_id,user_id,content) VALUES(pg_temp.id(22),auth.uid(),'A reply to a closed topic') RETURNING 1) SELECT count(*)=1 FROM x$q$,NULL,$q$$q$,'authenticated',1,NULL,'P0001:post_locked'),
+-- D-54 2f: an answer to a reply inside a thread tells that reply's author (member 5), not the thread's first
+-- author (member 3, who already has one comment_reply from the reply seeded here).
+($q$B04-reply-to-a-nested-reply$q$,true,$q$WITH x AS (INSERT INTO public.post_comments(post_id,user_id,content,parent_comment_id,reply_to_comment_id) VALUES(pg_temp.id(21),auth.uid(),'An answer to the reply inside the thread',pg_temp.id(31),pg_temp.id(33)) RETURNING 1) SELECT count(*)=1 FROM x$q$,$q$SELECT (SELECT count(*) FROM public.notifications WHERE user_id=pg_temp.id(5) AND body='comment_reply:'||pg_temp.id(21)::text)=1
+ AND (SELECT count(*) FROM public.notifications WHERE user_id=pg_temp.id(3) AND body='comment_reply:'||pg_temp.id(21)::text)=1
+ AND (SELECT count(*) FROM public.post_comments WHERE user_id=pg_temp.id(1) AND reply_to_comment_id=pg_temp.id(33))=1$q$,$q$INSERT INTO public.post_comments(id,post_id,user_id,content,parent_comment_id,reply_to_comment_id) VALUES(pg_temp.id(33),pg_temp.id(21),pg_temp.id(5),'A reply inside the thread',pg_temp.id(31),pg_temp.id(31))$q$,'authenticated',1,NULL,NULL),
+-- A reply target in another topic is refused by name; a restricted account hears about its restriction first.
+($q$B05-reply-target-in-another-topic$q$,true,$q$WITH x AS (INSERT INTO public.post_comments(post_id,user_id,content,parent_comment_id,reply_to_comment_id) VALUES(pg_temp.id(21),auth.uid(),'An answer aimed at another topic',pg_temp.id(31),pg_temp.id(34)) RETURNING 1) SELECT count(*)=1 FROM x$q$,NULL,$q$INSERT INTO public.post_comments(id,post_id,user_id,content) VALUES(pg_temp.id(34),pg_temp.id(29),pg_temp.id(2),'A reply in another topic')$q$,'authenticated',1,NULL,'23514:comment_reply_target_invalid'),
 -- Refused for everyone by row security or grants, whatever the state.
 ($q$R01-watch-hidden$q$,false,$q$INSERT INTO public.post_follows(user_id,post_id) VALUES(auth.uid(),pg_temp.id(23))$q$,NULL,$q$$q$,'authenticated',1,NULL,'42501'),
 ($q$R02-watch-for-another$q$,false,$q$INSERT INTO public.post_follows(user_id,post_id) VALUES(pg_temp.id(3),pg_temp.id(21))$q$,NULL,$q$$q$,'authenticated',1,NULL,'42501'),
@@ -218,7 +276,7 @@ INSERT INTO p3_cases VALUES
  FROM unnest(ARRAY['anon','authenticated','service_role']) AS r,
       unnest(ARRAY['public.admin_execute_community_governance(text,uuid,text,text,jsonb)',
         'public.admin_execute_mutation_pre_community_governance(text,uuid,text,text,jsonb)',
-        'private.notify_topic_reply()','private.reject_reply_to_locked_post()']) AS f$q$,NULL,$q$$q$,'authenticated',1,NULL,NULL);
+        'private.notify_topic_reply()','private.reject_reply_to_locked_post()','private.validate_comment_reply_target()']) AS f$q$,NULL,$q$$q$,'authenticated',1,NULL,NULL);
 
 -- Every table a refused reply could have touched, directly or through a trigger.
 CREATE TEMP TABLE p3_watch AS
@@ -427,21 +485,7 @@ $summary$;
 -- Part 2: scenarios through the real chain. Each raises on the first wrong
 -- answer and otherwise reports one PASS line.
 -- ---------------------------------------------------------------------------
--- One statement as a signed-in member; returns its single value as text.
-CREATE FUNCTION pg_temp.as_member(member integer, statement text) RETURNS text LANGUAGE plpgsql AS $$
-DECLARE
-  answer text;
-BEGIN
-  PERFORM set_config('request.jwt.claim.sub', pg_temp.id(member)::text, true);
-  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', pg_temp.id(member), 'role', 'authenticated')::text, true);
-  SET LOCAL ROLE authenticated;
-  EXECUTE statement INTO answer;
-  RESET ROLE;
-  PERFORM set_config('request.jwt.claim.sub', '', true);
-  PERFORM set_config('request.jwt.claims', '{}', true);
-  RETURN answer;
-END
-$$;
+-- pg_temp.as_member is defined above the matrix, which uses it too.
 -- One administrator action as the Edge API sends it; the JSON answer, or
 -- 'refused:<message>' with nothing written.
 CREATE FUNCTION pg_temp.mutate(token text, request integer, action text, payload jsonb) RETURNS text LANGUAGE plpgsql AS $$
@@ -473,6 +517,8 @@ DO $notices$
 DECLARE
   first_reply uuid;
   child_reply uuid;
+  removed_reply uuid;
+  kept_reply uuid;
 BEGIN
   DELETE FROM public.notifications;
   -- Member 3 watches topic 29 (by member 2); member 7 replies.
@@ -492,6 +538,37 @@ BEGIN
   PERFORM pg_temp.expect('a reply to a reply',
     (SELECT string_agg(right(user_id::text, 1) || ':' || split_part(body, ':', 1) || ':' || split_part(source_event_key, ':', 1), ' ' ORDER BY user_id) FROM public.notifications),
     '2:post_comment:post-comment 7:comment_reply:comment-reply');
+  -- D-54 2f: member 5 answers member 3's reply inside member 7's thread. Member 3 is the person
+  -- answered; member 7 started the thread, was not answered, and is told only as a watcher.
+  DELETE FROM public.notifications;
+  PERFORM pg_temp.as_member(5, format($q$INSERT INTO public.post_comments(post_id,user_id,content,parent_comment_id,reply_to_comment_id) VALUES(pg_temp.id(29),auth.uid(),'Scenario answer inside the thread',%L,%L) RETURNING id$q$, first_reply, child_reply));
+  PERFORM pg_temp.expect('an answer to a reply inside a thread',
+    (SELECT string_agg(right(user_id::text, 1) || ':' || split_part(body, ':', 1) || ':' || split_part(source_event_key, ':', 1), ' ' ORDER BY user_id) FROM public.notifications),
+    '2:post_comment:post-comment 3:comment_reply:comment-reply 7:followed_post_reply:followed-reply');
+  -- Removing a reply keeps the answers to it: they stay, and stop naming it. The author removes it
+  -- as a member would, so every UPDATE trigger on replies gets its say about the cleared pointer.
+  removed_reply := pg_temp.as_member(5, format($q$INSERT INTO public.post_comments(post_id,user_id,content,parent_comment_id,reply_to_comment_id) VALUES(pg_temp.id(29),auth.uid(),'Scenario reply that will be removed',%L,%L) RETURNING id$q$, first_reply, first_reply))::uuid;
+  kept_reply := pg_temp.as_member(7, format($q$INSERT INTO public.post_comments(post_id,user_id,content,parent_comment_id,reply_to_comment_id) VALUES(pg_temp.id(29),auth.uid(),'Scenario answer that outlives its target',%L,%L) RETURNING id$q$, first_reply, removed_reply))::uuid;
+  PERFORM pg_temp.expect('the answer names its target',
+    (SELECT (reply_to_comment_id = removed_reply)::text FROM public.post_comments WHERE id = kept_reply), 'true');
+  PERFORM pg_temp.expect('its author removes the target',
+    pg_temp.as_member(5, format($q$WITH gone AS (DELETE FROM public.post_comments WHERE id = %L RETURNING 1) SELECT count(*) FROM gone$q$, removed_reply)), '1');
+  PERFORM pg_temp.expect('the answer stays and names nothing',
+    (SELECT count(*) || ':' || count(reply_to_comment_id) FROM public.post_comments WHERE id = kept_reply), '1:0');
+  -- D-54 2d: the topic author comes under an active level 3 restriction. The topic is now hidden from
+  -- everyone else, so the same kind of reply that told two people above tells only the author. The
+  -- restriction and what follows it are rolled back here, like a matrix case.
+  BEGIN
+    INSERT INTO public.suspensions(profile_id, level, reason, started_at) VALUES (pg_temp.id(2), 3, 'P3 scenario', now() - interval '1 day');
+    DELETE FROM public.notifications;
+    PERFORM pg_temp.expect('the watcher cannot open the topic', pg_temp.as_member(3, 'SELECT count(*) FROM public.posts WHERE id=pg_temp.id(29)'), '0');
+    PERFORM pg_temp.as_member(5, format($q$INSERT INTO public.post_comments(post_id,user_id,content,parent_comment_id,reply_to_comment_id) VALUES(pg_temp.id(29),auth.uid(),'Scenario reply to a hidden author',%L,%L) RETURNING id$q$, first_reply, child_reply));
+    PERFORM pg_temp.expect('a topic nobody else can open',
+      (SELECT coalesce(string_agg(right(user_id::text, 1) || ':' || split_part(body, ':', 1), ' ' ORDER BY user_id), '') FROM public.notifications),
+      '2:post_comment');
+    RAISE EXCEPTION USING ERRCODE = 'Z4953', MESSAGE = 'scenario rollback';
+  EXCEPTION WHEN SQLSTATE 'Z4953' THEN NULL;
+  END;
   -- 501 watchers: the first 500 by watch time are told, the last one is not.
   INSERT INTO auth.users(id,email,aud,role,raw_user_meta_data)
   SELECT pg_temp.id(10000+n),'p3-w'||n||'@example.invalid','authenticated','authenticated',jsonb_build_object('nickname','P3 watcher '||n)
@@ -566,8 +643,11 @@ BEGIN
   PERFORM pg_temp.expect('takedown through the chain',
     pg_temp.mutate(operator, 901, 'takedown_content', jsonb_build_object('target_type', 'post', 'target_id', pg_temp.id(29), 'reason', '  Scenario takedown reason  ')),
     '{"data": {"ok": true, "affected": 1}}');
-  PERFORM pg_temp.expect('the author reads the reason',
-    pg_temp.as_member(2, $q$SELECT string_agg(hidden_reason, ',') FROM public.list_own_hidden_posts(pg_temp.id(29))$q$), 'Scenario takedown reason');
+  -- D-54 2e: the author reads their own topic back, and none of what the moderator just typed.
+  PERFORM pg_temp.expect('the author does not read the moderator''s note',
+    pg_temp.as_member(2, $q$SELECT string_agg((SELECT string_agg(k, ',' ORDER BY k COLLATE "C") FROM jsonb_object_keys(to_jsonb(t)) AS k)
+      || ':' || position('Scenario takedown reason' IN to_jsonb(t)::text), ' ') FROM public.list_own_hidden_posts(pg_temp.id(29)) AS t$q$),
+    'category,content,created_at,id,title:0');
   PERFORM pg_temp.expect('others see that it is hidden',
     pg_temp.as_member(3, $q$SELECT public.community_post_state(pg_temp.id(29))$q$), 'hidden');
   PERFORM pg_temp.expect('pin through the chain',

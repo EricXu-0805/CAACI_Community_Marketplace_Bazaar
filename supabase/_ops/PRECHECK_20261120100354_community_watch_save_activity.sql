@@ -1,5 +1,6 @@
 -- Read-only deployment precheck for 20261120100354_community_watch_save_activity.sql
--- (D-53 item 4, ENGINEERING §5.0). Run as postgres right before the migration.
+-- (D-53 item 4, D-54 item 2, ENGINEERING §5.0). Run as postgres right before
+-- the migration.
 --
 -- The md5(prosrc) values are what the local L-SQL replay
 -- (docker.io/supabase/postgres:17.6.1.104, RUNBOOK §5.1) reads right after
@@ -18,10 +19,11 @@ DECLARE
   listed text;
   object_name text;
 BEGIN
-  -- 1. The six bodies the migration reissues, drops or renames, and the
-  --    helpers its new code calls: stored body, owner, security, settings,
-  --    volatility and the API roles that may execute them. 'internal' means
-  --    not executable by PUBLIC, anon or authenticated.
+  -- 1. Sixteen stored bodies: the six the migration reissues, drops or
+  --    renames, and the ten helpers its new code calls or sits beside. For
+  --    each: stored body, owner, security, settings, volatility and the API
+  --    roles that may execute it. 'internal' means not executable by PUBLIC,
+  --    anon or authenticated.
   FOR expected IN
     SELECT * FROM (VALUES
     ('public.update_post_comment_count()', 'a524f02212c525205f59103e2e1f6bdc', '085:280', true, 'v', 'search_path=public', 'internal'),
@@ -32,6 +34,7 @@ BEGIN
     ('public.admin_list_moderation_audit_log(integer,integer,text)', '2e788091d546d9fc34c908c3d7951d94', '20260720035037:1171', true, 's', 'search_path=pg_catalog', 'service_role'),
     ('private.enqueue_activity_notification(uuid,uuid,text,text,text,uuid,text)', 'fdb7928eb1930389cdd68173ea7f55eb', '20260903070000:53', true, 'v', 'search_path=pg_catalog', 'internal'),
     ('moderation_private.profile_content_visible(uuid)', 'a41223ba4e42754a12eec610e9ab03cf', '20260718160000:342', true, 's', 'search_path=pg_catalog', 'anon,authenticated,service_role'),
+    ('moderation_private.current_profile_state(uuid)', '9c0b020a7ecdaa83372062a1cc85edc6', '20260718160000:284', true, 's', 'search_path=pg_catalog', 'internal'),
     ('private.current_user_can_access_pair(uuid,uuid)', '3602822522f16a11d5b110fe20c63dc6', '20260717141822:30', true, 's', 'search_path=pg_catalog', 'authenticated'),
     ('public.admin_assert_mutation_capability(uuid,text)', '51c79ee5189f512333e2e8a3e4b47ba0', '20260718190000:74', true, 'v', 'search_path=pg_catalog', 'internal'),
     ('public.record_audit(text,uuid,uuid,jsonb)', '38cb635c4cf81051966bc563ebf6142d', '20260720035037:384', true, 'v', 'search_path=pg_catalog', 'service_role'),
@@ -75,17 +78,21 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- 2. Nothing the migration creates may exist already.
+  -- 2. Nothing the migration creates may exist already, and the search
+  --    function it drops and recreates has exactly the one signature: an
+  --    overload would survive the migration beside the new function.
   FOREACH object_name IN ARRAY ARRAY[
     'public.post_follows', 'public.post_bookmarks', 'public.post_follows_post_idx',
     'public.post_bookmarks_user_idx', 'public.post_bookmarks_post_idx',
-    'public.posts_board_activity_idx', 'public.posts_activity_idx', 'public.posts_unanswered_idx'] LOOP
+    'public.posts_board_activity_idx', 'public.posts_activity_idx', 'public.posts_unanswered_idx',
+    'private.community_reply_notice_config', 'public.post_comments_reply_to_comment_id_idx'] LOOP
     IF pg_catalog.to_regclass(object_name) IS NOT NULL THEN
       RAISE EXCEPTION 'community_watch_save_relation_already_exists:%', object_name;
     END IF;
   END LOOP;
   FOREACH object_name IN ARRAY ARRAY[
     'private.reject_reply_to_locked_post()', 'private.notify_topic_reply()',
+    'private.validate_comment_reply_target()',
     'public.admin_execute_community_governance(text,uuid,text,text,jsonb)',
     'public.admin_execute_mutation_pre_community_governance(text,uuid,text,text,jsonb)',
     'public.admin_list_community_posts(integer,integer,text)',
@@ -102,10 +109,21 @@ BEGIN
   IF listed IS NOT NULL THEN
     RAISE EXCEPTION 'community_watch_save_column_already_exists:%', listed;
   END IF;
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_attribute AS a
+              WHERE a.attrelid = 'public.post_comments'::pg_catalog.regclass AND NOT a.attisdropped
+                AND a.attname = 'reply_to_comment_id') THEN
+    RAISE EXCEPTION 'community_watch_save_column_already_exists:post_comments.reply_to_comment_id';
+  END IF;
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_trigger
               WHERE tgrelid = 'public.post_comments'::pg_catalog.regclass
-                AND tgname IN ('enforce_locked_post_reply', 'trg_notify_topic_reply')) THEN
+                AND tgname IN ('enforce_locked_post_reply', 'enforce_reply_target', 'trg_notify_topic_reply')) THEN
     RAISE EXCEPTION 'community_watch_save_trigger_already_exists';
+  END IF;
+  SELECT pg_catalog.string_agg(pg_catalog.pg_get_function_identity_arguments(p.oid), ' | ') INTO listed
+    FROM pg_catalog.pg_proc AS p
+   WHERE p.pronamespace = 'public'::pg_catalog.regnamespace AND p.proname = 'search_community_posts';
+  IF listed IS DISTINCT FROM 'terms_in text[], sort_in text, limit_in integer, offset_in integer, category_in text, region_in text' THEN
+    RAISE EXCEPTION 'community_watch_save_search_overloads:%', coalesce(listed, 'missing');
   END IF;
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_constraint
               WHERE conrelid = 'public.posts'::pg_catalog.regclass AND conname = 'posts_featured_official_only') THEN
@@ -144,7 +162,8 @@ BEGIN
   END IF;
 
   -- 4. The reply triggers the new ones sit beside, and nothing that would sort
-  --    between the restriction refusal and the new lock refusal.
+  --    between the restriction refusal and the two new refusals (the lock,
+  --    then the reply target).
   FOR expected IN
     SELECT * FROM (VALUES
     ('enforce_actor_post_comments', 'public.trg_enforce_actor()', 7),
@@ -166,9 +185,28 @@ BEGIN
    WHERE t.tgrelid = 'public.post_comments'::pg_catalog.regclass AND NOT t.tgisinternal
      AND (t.tgtype::integer & 67) = 3 AND (t.tgtype::integer & 4) <> 0
      AND t.tgname::text COLLATE "C" > 'enforce_actor_post_comments'
-     AND t.tgname::text COLLATE "C" < 'enforce_locked_post_reply';
+     AND t.tgname::text COLLATE "C" < 'enforce_reply_target';
   IF listed IS NOT NULL THEN
     RAISE EXCEPTION 'community_watch_save_trigger_order:%', listed;
+  END IF;
+
+  -- 4a. The backfill is one UPDATE of every topic's two activity columns. The
+  --     triggers that fire for it are the enabled UPDATE triggers on topics
+  --     with no column list (a column list cannot name a column that does
+  --     not exist yet). These three, all BEFORE ROW, were read on the full
+  --     replay: the payload boundary and the status guard look only at
+  --     columns the backfill leaves alone, and set_posts_updated_at moves
+  --     updated_at as it does for every reply and like. Topics are in the
+  --     realtime publication, so the backfill also sends one UPDATE per
+  --     topic. Any other trigger here must be read before the migration runs.
+  SELECT pg_catalog.string_agg(t.tgname::text || ':' || t.tgtype::text, ',' ORDER BY t.tgname::text COLLATE "C") INTO listed
+    FROM pg_catalog.pg_trigger AS t
+   WHERE t.tgrelid = 'public.posts'::pg_catalog.regclass AND NOT t.tgisinternal
+     AND t.tgenabled::text <> 'D'
+     AND (t.tgtype::integer & 16) <> 0
+     AND coalesce(pg_catalog.array_length(t.tgattr::pg_catalog.int2[], 1), 0) = 0;
+  IF listed IS DISTINCT FROM 'authoritative_public_write_boundary:23,guard_moderation_status:19,set_posts_updated_at:19' THEN
+    RAISE EXCEPTION 'community_watch_save_backfill_triggers:%', coalesce(listed, 'none');
   END IF;
 
   -- 5. What clients may read and write on topics today. VERIFY expects four
@@ -185,7 +223,15 @@ BEGIN
     ('public.posts', 'authenticated', 'UPDATE', 'content_i18n'),
     -- The client cannot read source_event_key; it finds the reply a notice is
     -- about by topic and instant instead.
-    ('public.notifications', 'authenticated', 'SELECT', 'body,conversation_id,created_at,id,is_read,item_id,title,type,user_id')
+    ('public.notifications', 'authenticated', 'SELECT', 'body,conversation_id,created_at,id,is_read,item_id,title,type,user_id'),
+    -- Replies: VERIFY expects one more column a member may set when writing
+    -- one, and nothing more readable or editable.
+    ('public.post_comments', 'anon', 'SELECT', 'content,content_i18n,created_at,id,like_count,parent_comment_id,post_id,status,user_id'),
+    ('public.post_comments', 'authenticated', 'SELECT', 'content,content_i18n,created_at,id,like_count,parent_comment_id,post_id,status,user_id'),
+    ('public.post_comments', 'anon', 'INSERT', ''),
+    ('public.post_comments', 'authenticated', 'INSERT', 'content,parent_comment_id,post_id,user_id'),
+    ('public.post_comments', 'anon', 'UPDATE', ''),
+    ('public.post_comments', 'authenticated', 'UPDATE', 'content')
     ) AS target(relation, role_name, privilege, columns)
   LOOP
     SELECT coalesce(pg_catalog.string_agg(a.attname::text, ',' ORDER BY a.attname::text COLLATE "C"), '') INTO listed

@@ -1,5 +1,7 @@
 -- Read-only verification for 20261120100354_community_watch_save_activity.sql
--- (D-53 item 4, ENGINEERING §5.0). Run as postgres right after the migration.
+-- (D-53 item 4, D-54 item 2, ENGINEERING §5.0). Run as postgres right after
+-- the migration. It may be run again later: the one thing it reports without
+-- judging is whether the reply notice switch is on.
 \set ON_ERROR_STOP on
 BEGIN;
 SET TRANSACTION READ ONLY;
@@ -12,8 +14,10 @@ DECLARE
   tally record;
   listed text;
   object_name text;
+  policy_using text;
+  policy_check text;
 BEGIN
-  -- 1. The thirteen bodies this migration issues, the previous dispatcher under
+  -- 1. The fourteen bodies this migration issues, the previous dispatcher under
   --    its new name, and the helpers left as they were: stored body, owner,
   --    security, settings, volatility, and exactly the API roles that may
   --    execute them (none means owner only; 'internal' means not PUBLIC, anon
@@ -28,14 +32,16 @@ BEGIN
     ('public.admin_execute_mutation(text,uuid,text,text,jsonb)', '64d6f1d37e03577d534ccc5e1d496499', 'this migration', true, 'v', 'search_path=pg_catalog', 'service_role'),
     ('public.admin_execute_community_governance(text,uuid,text,text,jsonb)', 'e6ddf89b765c544d9434a843478ccf42', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
     ('private.reject_reply_to_locked_post()', '3b6872071d2eb7fb20cfec67a633a1c5', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
-    ('private.notify_topic_reply()', 'f107a228866a9f5a4e696161998c6c94', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
+    ('private.validate_comment_reply_target()', '4795236eac69a88568327a0c0cd61563', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
+    ('private.notify_topic_reply()', 'aca99f42836280e42523f3e64f722908', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
     ('public.admin_list_community_posts(integer,integer,text)', '0aa2db04914b8bfc46e2b4eba003f7c8', 'this migration', true, 's', 'search_path=pg_catalog', 'service_role'),
     ('public.admin_list_report_queue(integer,integer)', '3afa8483a029388e50dd33ebba2fb1de', 'this migration', true, 's', 'search_path=pg_catalog', 'service_role'),
     ('public.community_post_state(uuid)', '48bdf464da6b44e5d669e32ad7b59a2a', 'this migration', true, 's', 'search_path=pg_catalog|statement_timeout=3s', 'anon,authenticated'),
-    ('public.list_own_hidden_posts(uuid)', '52103427ec4da7533bb880b5d56f9f6b', 'this migration', true, 's', 'search_path=pg_catalog|statement_timeout=3s', 'authenticated'),
+    ('public.list_own_hidden_posts(uuid)', 'c9f99d66e033e5d9f99429cde0508a8b', 'this migration', true, 's', 'search_path=pg_catalog|statement_timeout=3s', 'authenticated'),
     ('public.admin_execute_mutation_pre_community_governance(text,uuid,text,text,jsonb)', 'a30b6224c23ab4ebdef61b54eb37af5a', 'renamed, body unchanged', true, 'v', 'search_path=pg_catalog', ''),
     ('private.enqueue_activity_notification(uuid,uuid,text,text,text,uuid,text)', 'fdb7928eb1930389cdd68173ea7f55eb', 'unchanged', true, 'v', 'search_path=pg_catalog', 'internal'),
     ('moderation_private.profile_content_visible(uuid)', 'a41223ba4e42754a12eec610e9ab03cf', 'unchanged', true, 's', 'search_path=pg_catalog', 'anon,authenticated,service_role'),
+    ('moderation_private.current_profile_state(uuid)', '9c0b020a7ecdaa83372062a1cc85edc6', 'unchanged', true, 's', 'search_path=pg_catalog', 'internal'),
     ('private.current_user_can_access_pair(uuid,uuid)', '3602822522f16a11d5b110fe20c63dc6', 'unchanged', true, 's', 'search_path=pg_catalog', 'authenticated'),
     ('public.admin_assert_mutation_capability(uuid,text)', '51c79ee5189f512333e2e8a3e4b47ba0', 'unchanged', true, 'v', 'search_path=pg_catalog', 'internal'),
     ('public.record_audit(text,uuid,uuid,jsonb)', '38cb635c4cf81051966bc563ebf6142d', 'unchanged', true, 'v', 'search_path=pg_catalog', 'service_role'),
@@ -110,15 +116,24 @@ BEGIN
     IF listed IS DISTINCT FROM 'a:true:authenticated d:true:authenticated r:true:authenticated' THEN
       RAISE EXCEPTION 'community_watch_save_policies:%:%', object_name, listed;
     END IF;
-    -- The insert rule names the member, a visible topic and an unblocked pair.
-    SELECT coalesce(pg_catalog.pg_get_expr(p.polwithcheck, p.polrelid), '') INTO listed
+    -- Each rule in full, with whitespace folded. Reading and removing are for
+    -- the member's own rows and nothing else; adding names the member, a
+    -- visible topic and an unblocked pair. A rule loosened in place, such as
+    -- USING (true) or "... OR true", differs from this text.
+    SELECT pg_catalog.string_agg(p.polcmd::text
+             || ' USING ' || coalesce(pg_catalog.regexp_replace(pg_catalog.pg_get_expr(p.polqual, p.polrelid), '[[:space:]]+', ' ', 'g'), '-')
+             || ' CHECK ' || coalesce(pg_catalog.regexp_replace(pg_catalog.pg_get_expr(p.polwithcheck, p.polrelid), '[[:space:]]+', ' ', 'g'), '-'),
+             ' | ' ORDER BY p.polcmd::text COLLATE "C") INTO listed
       FROM pg_catalog.pg_policy AS p
-     WHERE p.polrelid = pg_catalog.to_regclass(object_name) AND p.polcmd = 'a';
-    IF pg_catalog.strpos(listed, 'uid()') = 0
-       OR pg_catalog.strpos(listed, 'status = ''active''') = 0
-       OR pg_catalog.strpos(listed, 'moderation_private.profile_content_visible(post.user_id)') = 0
-       OR pg_catalog.strpos(listed, 'private.current_user_can_access_pair(') = 0 THEN
-      RAISE EXCEPTION 'community_watch_save_insert_policy:%:%', object_name, listed;
+     WHERE p.polrelid = pg_catalog.to_regclass(object_name);
+    policy_using := '(user_id = ( SELECT auth.uid() AS uid))';
+    policy_check := pg_catalog.replace(
+      '((user_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1 FROM posts post WHERE ((post.id = %T.post_id) AND (post.status = ''active''::text) AND moderation_private.profile_content_visible(post.user_id) AND private.current_user_can_access_pair(%T.user_id, post.user_id)))))',
+      '%T', pg_catalog.split_part(object_name, '.', 2));
+    IF listed IS DISTINCT FROM 'a USING - CHECK ' || policy_check
+         || ' | d USING ' || policy_using || ' CHECK -'
+         || ' | r USING ' || policy_using || ' CHECK -' THEN
+      RAISE EXCEPTION 'community_watch_save_policy_rules:%:%', object_name, listed;
     END IF;
     FOR expected IN
       SELECT * FROM (VALUES
@@ -160,6 +175,7 @@ BEGIN
     ('public.post_follows_post_idx', '(post_id, created_at)'),
     ('public.post_bookmarks_user_idx', '(user_id, created_at DESC, post_id)'),
     ('public.post_bookmarks_post_idx', '(post_id)'),
+    ('public.post_comments_reply_to_comment_id_idx', '(reply_to_comment_id) WHERE (reply_to_comment_id IS NOT NULL)'),
     ('public.posts_board_activity_idx', '(region, category, last_activity_at DESC, id DESC) WHERE (status = ''active''::text)'),
     ('public.posts_activity_idx', '(region, last_activity_at DESC, id DESC) WHERE (status = ''active''::text)'),
     ('public.posts_unanswered_idx', '(region, created_at DESC, id DESC) WHERE ((status = ''active''::text) AND (title IS NOT NULL) AND (answered_at IS NULL))')
@@ -211,13 +227,53 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- 5. Reply triggers: the lock refusal right after the restriction refusal
-  --    and before every other BEFORE INSERT rule; the counter and both notice
-  --    triggers attached and enabled.
+  -- 4a. The reply target: one nullable column on replies that a member may
+  --     set when writing one and neither read back nor change, a key that
+  --     clears it when the reply it names is removed, and no other change to
+  --     what clients may do with replies.
+  SELECT pg_catalog.format_type(a.atttypid, a.atttypmod) || ':' || a.attnotnull::text || ':' || coalesce(pg_catalog.pg_get_expr(d.adbin, d.adrelid), '') INTO listed
+    FROM pg_catalog.pg_attribute AS a
+    LEFT JOIN pg_catalog.pg_attrdef AS d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+   WHERE a.attrelid = 'public.post_comments'::pg_catalog.regclass AND NOT a.attisdropped AND a.attname = 'reply_to_comment_id';
+  IF listed IS DISTINCT FROM 'uuid:false:' THEN
+    RAISE EXCEPTION 'community_watch_save_reply_target_column:%', coalesce(listed, 'missing');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint
+                  WHERE conrelid = 'public.post_comments'::pg_catalog.regclass AND conname = 'post_comments_reply_to_comment_id_fkey'
+                    AND contype = 'f' AND convalidated
+                    AND pg_catalog.pg_get_constraintdef(oid) = 'FOREIGN KEY (reply_to_comment_id) REFERENCES post_comments(id) ON DELETE SET NULL') THEN
+    RAISE EXCEPTION 'community_watch_save_reply_target_key';
+  END IF;
+  FOR expected IN
+    SELECT * FROM (VALUES
+    ('public.post_comments', 'anon', 'SELECT', 'content,content_i18n,created_at,id,like_count,parent_comment_id,post_id,status,user_id'),
+    ('public.post_comments', 'authenticated', 'SELECT', 'content,content_i18n,created_at,id,like_count,parent_comment_id,post_id,status,user_id'),
+    ('public.post_comments', 'anon', 'INSERT', ''),
+    ('public.post_comments', 'authenticated', 'INSERT', 'content,parent_comment_id,post_id,reply_to_comment_id,user_id'),
+    ('public.post_comments', 'anon', 'UPDATE', ''),
+    -- 20261114015420 guards this column; the reply target is not editable.
+    ('public.post_comments', 'authenticated', 'UPDATE', 'content')
+    ) AS target(relation, role_name, privilege, columns)
+  LOOP
+    SELECT coalesce(pg_catalog.string_agg(a.attname::text, ',' ORDER BY a.attname::text COLLATE "C"), '') INTO listed
+      FROM pg_catalog.pg_attribute AS a
+     WHERE a.attrelid = pg_catalog.to_regclass(expected.relation)
+       AND a.attnum > 0 AND NOT a.attisdropped
+       AND pg_catalog.has_column_privilege(expected.role_name, a.attrelid, a.attnum, expected.privilege);
+    IF listed IS DISTINCT FROM expected.columns THEN
+      RAISE EXCEPTION 'community_watch_save_column_privileges:%:%:%:%', expected.relation, expected.role_name, expected.privilege, listed;
+    END IF;
+  END LOOP;
+
+  -- 5. Reply triggers: the lock refusal right after the restriction refusal,
+  --    the reply target check right after that, and all three before every
+  --    other BEFORE INSERT rule that sorts after them; the counter and both
+  --    notice triggers attached and enabled.
   FOR expected IN
     SELECT * FROM (VALUES
     ('enforce_actor_post_comments', 'public.trg_enforce_actor()', 7),
     ('enforce_locked_post_reply', 'private.reject_reply_to_locked_post()', 7),
+    ('enforce_reply_target', 'private.validate_comment_reply_target()', 7),
     ('trg_post_comments_count', 'public.update_post_comment_count()', 13),
     ('trg_notify_post_comment', 'public.notify_post_comment()', 5),
     ('trg_notify_topic_reply', 'private.notify_topic_reply()', 5)
@@ -237,9 +293,71 @@ BEGIN
    WHERE t.tgrelid = 'public.post_comments'::pg_catalog.regclass AND NOT t.tgisinternal
      AND (t.tgtype::integer & 67) = 3 AND (t.tgtype::integer & 4) <> 0
      AND t.tgname::text COLLATE "C" > 'enforce_actor_post_comments'
-     AND t.tgname::text COLLATE "C" < 'enforce_locked_post_reply';
-  IF listed IS NOT NULL THEN
-    RAISE EXCEPTION 'community_watch_save_trigger_order:%', listed;
+     AND t.tgname::text COLLATE "C" < 'enforce_reply_target';
+  IF listed IS DISTINCT FROM 'enforce_locked_post_reply' THEN
+    RAISE EXCEPTION 'community_watch_save_trigger_order:%', coalesce(listed, 'none');
+  END IF;
+
+  -- 5a. The release switch of the two new reply notices (D-54 2c): one row,
+  --     row security on with no policy, and an access list that holds
+  --     nothing but the owner's own entry, as private.video_moderation_config
+  --     has. Whether it is on is reported below and not judged here: it
+  --     starts off (the L-SQL regression asserts that) and is turned on per
+  --     database once the P3 clients and API are released.
+  IF pg_catalog.to_regclass('private.community_reply_notice_config') IS NULL THEN
+    RAISE EXCEPTION 'community_watch_save_notice_switch_missing';
+  END IF;
+  SELECT pg_catalog.string_agg(a.attname::text || ':' || pg_catalog.format_type(a.atttypid, a.atttypmod) || ':' || a.attnotnull::text
+           || ':' || coalesce(pg_catalog.pg_get_expr(d.adbin, d.adrelid), ''), ',' ORDER BY a.attnum) INTO listed
+    FROM pg_catalog.pg_attribute AS a
+    LEFT JOIN pg_catalog.pg_attrdef AS d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+   WHERE a.attrelid = 'private.community_reply_notice_config'::pg_catalog.regclass AND a.attnum > 0 AND NOT a.attisdropped;
+  IF listed IS DISTINCT FROM 'singleton:boolean:true:true,enabled:boolean:true:false' THEN
+    RAISE EXCEPTION 'community_watch_save_notice_switch_columns:%', listed;
+  END IF;
+  SELECT pg_catalog.string_agg(c.contype::text || ':' || pg_catalog.pg_get_constraintdef(c.oid), ' | '
+           ORDER BY c.contype::text COLLATE "C" DESC) INTO listed
+    FROM pg_catalog.pg_constraint AS c
+   WHERE c.conrelid = 'private.community_reply_notice_config'::pg_catalog.regclass AND c.convalidated;
+  IF listed IS DISTINCT FROM 'p:PRIMARY KEY (singleton) | c:CHECK (singleton)' THEN
+    RAISE EXCEPTION 'community_watch_save_notice_switch_keys:%', listed;
+  END IF;
+  SELECT c.relrowsecurity::text || ':' || pg_catalog.pg_get_userbyid(c.relowner)::text
+           || ':' || (SELECT pg_catalog.count(*) FROM pg_catalog.pg_policy AS p WHERE p.polrelid = c.oid)::text
+           || ':' || (SELECT pg_catalog.count(*) FROM pg_catalog.aclexplode(c.relacl) AS entry WHERE entry.grantee <> c.relowner)::text
+           || ':' || (SELECT pg_catalog.count(*) FROM pg_catalog.pg_trigger AS t WHERE t.tgrelid = c.oid AND NOT t.tgisinternal)::text INTO listed
+    FROM pg_catalog.pg_class AS c
+   WHERE c.oid = 'private.community_reply_notice_config'::pg_catalog.regclass;
+  IF listed IS DISTINCT FROM 'true:postgres:0:0:0' THEN
+    RAISE EXCEPTION 'community_watch_save_notice_switch_closed:%', listed;
+  END IF;
+  FOREACH object_name IN ARRAY ARRAY['anon', 'authenticated', 'service_role'] LOOP
+    IF pg_catalog.has_table_privilege(object_name, 'private.community_reply_notice_config', 'SELECT')
+       OR pg_catalog.has_table_privilege(object_name, 'private.community_reply_notice_config', 'INSERT')
+       OR pg_catalog.has_table_privilege(object_name, 'private.community_reply_notice_config', 'UPDATE')
+       OR pg_catalog.has_table_privilege(object_name, 'private.community_reply_notice_config', 'DELETE')
+       OR pg_catalog.has_table_privilege(object_name, 'private.community_reply_notice_config', 'TRUNCATE') THEN
+      RAISE EXCEPTION 'community_watch_save_notice_switch_privilege:%', object_name;
+    END IF;
+  END LOOP;
+  SELECT pg_catalog.count(*)::text || ':' || coalesce(pg_catalog.bool_and(switch.singleton)::text, 'none') INTO listed
+    FROM private.community_reply_notice_config AS switch;
+  IF listed IS DISTINCT FROM '1:true' THEN
+    RAISE EXCEPTION 'community_watch_save_notice_switch_row:%', listed;
+  END IF;
+  RAISE NOTICE 'community_reply_notice_switch|enabled=%',
+    (SELECT switch.enabled FROM private.community_reply_notice_config AS switch);
+
+  -- 5b. D-54 2e: the author's own hidden topics come back as their own text
+  --     and nothing a moderator wrote. The function has no reason column and
+  --     does not read the audit log.
+  IF pg_catalog.pg_get_function_result('public.list_own_hidden_posts(uuid)'::pg_catalog.regprocedure)
+       IS DISTINCT FROM 'TABLE(id uuid, title text, category text, content text, created_at timestamp with time zone)'
+     OR (SELECT pg_catalog.strpos(p.prosrc, 'admin_audit_log') + pg_catalog.strpos(p.prosrc, 'reason')
+           FROM pg_catalog.pg_proc AS p
+          WHERE p.oid = 'public.list_own_hidden_posts(uuid)'::pg_catalog.regprocedure) <> 0 THEN
+    RAISE EXCEPTION 'community_watch_save_own_hidden_shape:%',
+      pg_catalog.pg_get_function_result('public.list_own_hidden_posts(uuid)'::pg_catalog.regprocedure);
   END IF;
 
   -- 6. Administrator vocabularies and capability rows after the migration.

@@ -326,16 +326,23 @@ test('P3.5 governance actions and P3.6 reads', { skip: SKIP }, async t => {
         WHERE oid = 'public.community_post_state(uuid)'::regprocedure`), /^s:true:search_path=pg_catalog;statement_timeout=3s$/)
     })
 
-    await t.test('an author reads their own hidden topics with the reason, and nobody else does', () => {
+    // D-54 2e: what a moderator wrote when taking a topic down is an internal note. The author reads their
+    // own text back and nothing from the audit log.
+    await t.test('an author reads their own hidden topics without the moderator\'s note, and nobody else reads them at all', () => {
       sql(`INSERT INTO public.admin_audit_log(event_kind, actor_id, target_id, details, created_at) VALUES
         ('content_takedown', '${ADMIN}', '${HIDDEN}', '{"target_type":"post","reason":"First reason","affected":1}', now() - interval '2 days'),
         ('content_takedown', '${ADMIN}', '${HIDDEN}', '{"target_type":"post","reason":"Personal information in the photo","affected":1}', now() - interval '1 day'),
         ('content_takedown', '${ADMIN}', '${HIDDEN}', '{"target_type":"comment","reason":"About something else","affected":1}', now())`)
       const own = (uid, argument = '') => JSON.parse(as(`SELECT coalesce(json_agg(to_jsonb(t)), '[]') FROM public.list_own_hidden_posts(${argument}) AS t`, 'authenticated', uid))
       const rows = own(OTHER)
-      assert.deepEqual(rows.map(row => [row.id, row.title, row.category, row.content, row.hidden_reason]),
-        [[HIDDEN, 'Hidden topic', 'campus-life', 'Hidden body', 'Personal information in the photo']])
-      assert.deepEqual(Object.keys(rows[0]).sort(), ['category', 'content', 'created_at', 'hidden_reason', 'id', 'title'])
+      assert.deepEqual(rows.map(row => [row.id, row.title, row.category, row.content]),
+        [[HIDDEN, 'Hidden topic', 'campus-life', 'Hidden body']])
+      assert.deepEqual(Object.keys(rows[0]).sort(), ['category', 'content', 'created_at', 'id', 'title'])
+      assert.doesNotMatch(JSON.stringify(rows), /reason|Personal information|About something else/i)
+      assert.equal(sql(`SELECT pg_get_function_result('public.list_own_hidden_posts(uuid)'::regprocedure)`),
+        'TABLE(id uuid, title text, category text, content text, created_at timestamp with time zone)')
+      assert.equal(sql(`SELECT strpos(prosrc, 'admin_audit_log') FROM pg_proc WHERE oid = 'public.list_own_hidden_posts(uuid)'::regprocedure`), '0',
+        'the function does not read the audit log')
       assert.deepEqual(own(OTHER, `'${HIDDEN}'`).map(row => row.id), [HIDDEN])
       assert.deepEqual(own(OTHER, `'${TOPIC_OTHER}'`), [], 'a visible topic is not listed')
       assert.deepEqual(own(AUTHOR), [])
