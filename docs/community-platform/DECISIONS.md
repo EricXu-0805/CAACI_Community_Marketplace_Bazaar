@@ -215,6 +215,57 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
   5. 顺序：第 3 项排在 D-48 第 2 项后面，同一个提交或紧接着做都行。
   6. **这一批做完就停。** Eric 2026-11-13 14:16 CT 原话「然后等你这一大轮跑完可以听一下」（语音输入，按「停一下」理解）。D-46 到 D-50 都做完或停下、FINAL「第四批（D-46）」和 STATUS 一起提交以后，结束当前目标，不再自己设新目标，也不从 BACKLOG 往下接新任务，等 Eric 或 supervisor 的下一条指示。
 
+- **D-51 第五批：修第四批核查发现的问题，重启 D-49，开一个只改 ci.yml 的草稿 PR**（2026-11-19 CT，Claude（Eric 自己账号上的 supervisor 会话）按 D-43 定并写入）：依据是 Eric 2026-11-19 17:18 CT 原话「先把号都重新登录了，后面的都给你批准你去监督跑就行了」，18:18 CT 原话「任务和之前的要求都一致」，以及他同日在弹窗里的三个选择：staging 现在应用 20261112120000（由 supervisor 做，见第 6 项）；让 OMO 开只改 ci.yml 的草稿 PR（第 4 项）；demo 里「转发 · CSSA」的虚构活动保留现状（第 7 项）。范围由 supervisor 定：第 1–7 项做完就停。第 4 项按 Eric 批准给 STOP-9a 加了一条例外，已经写进 RUNBOOK §12 第 9a 条；其余【硬】条照旧高于本条。背景：supervisor 对第四批报告做了五个独立核查（每个配一个反驳方），没有阻断项，也没有大问题；集成 412e14d 的主包 1,374,461、全量 2248 / 2247 / 0 / 1、typecheck、npm audit、117 次推送全是快进、冻结迁移逐字节一致，都在 supervisor 的机器上复现了。本条下发前又过了一轮独立审阅。下面是要补的地方。
+  1. **号池与额度（一直有效）。**
+     - 2026-11-19 18:15 CT supervisor 实查：Claude 号池里 default（admin@）、account-2（board@）、account-5（Eric 当天新加的 Claude Ultra 号）、account-4（LuciaMin@）都已登录、可用；account-3（event_manager@）Eric 近期不登，别指望它。ChatGPT 的 default、login-2 都能用。
+     - 用号顺序是 Eric 2026-11-19 18:01 CT 定的，原话「然后后面优先admin和board，然后这个号，然后chatgpt的号，然后再是Lucia的号」。Claude 号池的顺序 supervisor 已经用 account_order 设成 default → account-2 → account-5 → account-4。ChatGPT 是另一个 provider，插不进这个顺序：前三个 Claude 号都接近 60% 时，supervisor 把主线程切到 ChatGPT，ChatGPT 也用完了再切回来用 account-4。
+     - 每个号的周用量（7d）最多用到 60%。这一条取代 D-43 第 6 项的「可以全部用掉」。OMO 能做的只有两件：挑子任务类别时，某类别首模型所在的号已到 60%，就不挑这个类别；在 STATUS「阻塞」里记一笔。OMO 不改 ~/.omo，不切主线程的模型，不改号的顺序（D-42 第 7 项照旧）；这些由 supervisor 做。所有能用的号都到 60%：停下，把已完成的部分写进 STATUS 和 FINAL。
+     - supervisor 2026-11-13 18:10 那条「子任务只用 ChatGPT 打头的类别」解除。子任务因为登录或额度中断，照那条的做法记进失败子任务表，然后改派或由主线程接手。
+  2. **第四批报告和文档的更正（材料分支和 tony-ws 本机；STATUS_LOG 只追加）。**
+     - a. FINAL 第四批开头、⑦ 和 STATUS 的 next_task_id 把停止规则引成了「D-50 第 2 项」，应为第 6 项。
+     - b. 第四批 ② 的 docs_sha 一列有 13 行写的是「记录这条的提交」，不是 FINAL 第 17 行定义的「写回前的材料分支 head」（D-46.1、D-46.2、D-46.3a/3d/3c/3e/3b/3f、D-46.4、D-47.1、D-49、D-46.5、D-46.6）。按 STATUS_LOG 对应条目的 docs_sha 改，整列一个含义。
+     - c. D-47.6、D-48.5（被 D-50.1 撤销）、D-48.6、D-50.1 各补一行；标着「D-48.2 / D-50.1」的那行按实际内容改标签；③ 补一行 L71 的更正（前提只核了四个 INSERT 触发器）。
+     - d. #370 的红 run 漏列了：⑥ 少 43528915421（c4557c0）、43538315477（ed26304）、43542174637（abbd6b0）、43543108152（f20f44c）、43552639055（82b4ccf）；STATUS 除这五个外还少 43547172052（45add2a）。失败步骤都和 43493142000 一样。可以逐个补，也可以写成「f43bdd1 以后 #370 每次 run 都是同一失败，43509639602 另有一处」。
+     - e. STATUS 过时的几处：CI 节「上一次」应是 43503547193（ae058c2）；验收表 D-46 第 4 项那行和 3b、3f 两行改成当前 head 和字节数；「版本」表的「四个都是草稿」改对数目。
+     - f. ④ 里 #372 手工合并规则的 api/share-post.js 一条写窄了：412e14d 里兜底的标题和描述都取 #372（含「A post on Cornfield」和无帖时的描述），照实写。
+     - g. 「五个旧名和「示例」」实为四个旧名（Illini Market、Illini 集市、校园广场、Campus Plaza）加「示例」，改正。
+     - h. 本批约 19 次代码推送用了 `--no-verify`，STATUS_LOG 只记了 L66、L77、L90 那几次。追加一条补记：逐个列出 SHA 和推送前那次 run-checks 的日志名。以后每次 `--no-verify` 都写进「命令」字段。RUNBOOK 第 128 行说宿主机 SQL 测试「会跳过」，实际有 4 个会报 `initdb ENOENT` 失败；改成实情（#371 的 postgresBinDir 会消掉这个问题）。
+     - i. RUNBOOK §3 写着「`git worktree list` 只应列出上表里的目录」。长期用的 illini-mpbudget、illini-deps、illini-restricted、illini-d46-integration、illini-docs-brand7，以及本批第 3 项 b、第 4 项新建的目录，补进表里。下面 6 个证明用的 worktree 逐个处理，不用通配（~/.cache/illini-dev 是容器的 HOME，不是 worktree，别碰）：~/.cache/illini-d50-dialog-proof、~/.cache/illini-following-d47-proof、~/.cache/illini-home-proof-st01a1d65b、~/.cache/illini-subpackage-d48-baseline、~/.cache/illini-subpackage-d48-mutation、~/work/evidence/D50-followup/history-tree。要留的证据先存进 $EV：history-tree 有未提交的改动，把 `git diff` 的输出、`git ls-files --others --exclude-standard` 的清单和那些文件都存好。然后用不带 `--force` 的 `git worktree remove`。被拒（有改动或未跟踪文件）就留着，写进 STATUS_LOG，不另找办法删。
+     - j. run-checks 每份日志的开头加上 `git write-tree` 的结果，有 MERGE_HEAD 时一并写，这样「推送的树就是检查的树」能在日志里查到。分三步：先 `cp -p ~/work/illini-dev-env/run-checks.sh ~/work/illini-dev-env/run-checks.sh.before-D51-20261119`；再改实际脚本；同一个材料分支提交里更新 appendix/env/run-checks.sh，并记下新旧 sha256。
+     - k. 以后的 STATUS_LOG 条目都写全 9 个固定字段（L80–L89 有缺）。已写的不改，更正一律追加新条目。
+  3. **#374 和 #372 的两处代码小修。**
+     - a. #374 的 app/src/pages/post/index.vue：第 314 行 `<view v-if="replyFailed" ... @click="retryReply">`（显示 `t('plaza.replyFailed')`，中文「没发出去，点此重试」）和第 288 行的 `v-if="replyRestricted"`、第 291 行的 `v-else` 平级，受限时两条会一起出现。改成受限时不显示重试，retryReply 在受限时也直接返回。测试先在 2e0f582 上确认会红。这一行只在 #374 上（来自 c16f0a1），D-49 的分支看不到它，所以在 #374 上修。聊天的「发送失败 - 点击重试」（chat.sendFailed）归第 5 项的 D-49 客户端，不在这里改。
+     - b. 「集」字印章：CommunityHome.vue 第 108、123 行的两个 `u-thumb-ph-seal` 占位还是「集」。#374 比 #372 先上线，那时其他页面也还是「集」，所以 #374 上不改。改法：在 #372 上加一条测试，拒绝 app/src 下任何 `u-thumb-ph-seal` 占位里的「集」（#372 单独跑时照样通过）；FINAL ④ 的 #372 手工合并规则加一句「CommunityHome.vue 两处占位改成玉」；新建一个本地集成分支 `wip/d51-seal-integration`（目录 ~/work/illini-d51-seal，不推送），照 412e14d 的做法把五个 PR 再合一遍，确认这条测试改之前会红、改了以后会绿。
+  4. **只改 ci.yml 的草稿 PR（Eric 2026-11-19 弹窗批准；STOP-9a 只对这个分支、只对下面两处改动解除，已写进 RUNBOOK §12 第 9a 条）。**
+     - 新分支 `codex/config-ci-runner-20261119`（目录 ~/work/illini-ci-runner），从 origin/main 7b18f20 切出，只改 .github/workflows/ci.yml 一个文件。
+     - 改动一：`git cherry-pick c52badf`，逐字节一致。这是 Eric 2026-11-12 在 #369 上的提交，把 build-h5、public-smoke、authenticated-smoke 三个装浏览器的 job 钉到 ubuntu-24.04。只钉这三个，其余 job 照旧 ubuntu-latest。这是 #371（Playwright 1.65）合进 main 之前让 main 先变绿的临时办法，和 D-16 一致；#371 合并以后要不要回到 ubuntu-latest（P1.5 DoD ③），由 Eric 定，写进 ④。验证：对 04edaa3、2e0f582、571be45、b259105、55716ba 各跑一次 `git merge-tree`，ci.yml 要 0 冲突。
+     - 改动二：npm audit 那一步保持 moderate 门槛，只放行一条 GHSA-8g5g-mxqh-grgj，其他 moderate 及以上照样失败。命令里保留 `npm audit --audit-level=moderate` 这个子串（比如后面再加 `--json`）和现有的 `if:` 门。#320、#321 留下的行为（只对传输失败重试、180 秒封顶、用 npm 11）和 #329 加的依赖门（只有 PR 改了 app/package.json 或 package-lock.json 才审计）都不变，路径判断不改。放行条目写上复查日期 2026-12-13，过了这一天就不再放行，并输出一条 `::warning::`。注意：上游 vite 6.4.5 已经修了这个问题；仓库装的是本地重建的 6.4.4 归档（app/package.json 里的 `file:./vendor/source-builds/...`），npm 没法自动修，所以才要暂时放行。另一条路是在 6.4.5 上重建这个归档；这属于依赖变化，本批不做。PR 描述把两条路都写清楚，由 Eric 选。
+     - 两处改动都要让 scripts/ci-hook-contract-boundary.test.mjs 等现有测试原样通过。要改测试才能过，就停下，写进 ④。
+     - 验证：把 ci.yml 里审计那一步的 run 块原样抽出来，用 run-checks 的 `cmd` 在容器里跑三次，日志都进证据目录：(a) 用 7b18f20 的 lockfile，预期 exit 不是 0，失败列表里没有 GHSA-8g5g-mxqh-grgj；(b) 用只剩 vite 这一条的 lockfile（55716ba 或 412e14d），预期 exit 0；(c) 喂一份多一条 moderate 的 audit JSON，预期失败。YAML 要能解析，能跑 actionlint 就跑。PR 自己的 CI 上审计这一步显示 skipped 是预期，PR 描述里写明：放行逻辑要等合进 main 以后的 push 或每周定时任务才第一次真跑；main 上的 Boundary 要等 #371、#373 合并后才会绿。
+     - PR 保持草稿，base 是 main，描述写清改了什么、为什么、怎么看结果。它和 #369、#374、#375 上的 c52badf 逐字节一致，合并时不冲突；可以先合。
+     - 推送如果因为令牌没有 workflow 权限被拒：不换别的路子，分支留在本地，用 `git format-patch` 导出到证据目录，写进 ④。supervisor 会从 Eric 的机器上推。
+  5. **重启 D-49（分支 codex/community-restricted-20261113，base #369）。** D-49 第 1–5 项照旧有效，本项只解开上次停下的地方：
+     - 批准新增一个只给本地用的文件 `supabase/_ops/LOCAL_BOOTSTRAP_20260916211900_storage_objects_version.sql`，给本地 storage.objects 补 version 列（为了和托管的 Storage 一致，也补 owner_id）。时间戳按 D-44 第 2 项的惯例，取第一个用到这一列的迁移：20260916211900_chat_media_storage_preflight.sql 第 20 行，在 private.enforce_chat_media_upload() 里；上次真正报错的是 20260919064706 的 queue_chat_video_review()，也在这一列之后。文件头和守卫照 LOCAL_BOOTSTRAP_20260916073035_auth_users_ban_delete.sql 的写法（RUNBOOK §5.1 第 3 条）；漏了 `IS DISTINCT FROM 'lsql-replay'` 守卫，回放脚本会悄悄跳过这个文件。列的来源写 supabase/storage 某个 tag 下的迁移文件名。
+     - 强制失败验证：去掉 version 列再跑一次。这两个函数都是 plpgsql，建函数时不解析列，所以预期回放照样 181/181，报错出现在 REGRESSION（或夹具）第一条往 storage.objects 插行的语句上：`record "new" has no field "version"`。失败出在夹具，不出在迁移，这就算验证成立，不算尝试次数。两次日志都留下。
+     - 已有的文件一个都不改。两份 manifest 里已有的行不动；LOCAL_BOOTSTRAP 文件不进 manifest；D-49 的新迁移照 ENGINEERING §5.0 第 1 条往 manifest 追加一行，README 计数句和计数断言一并改。
+     - PG 查找不算阻塞：Node 回归可以像 P2.5 的 scripts/community-post-topics.test.mjs 第 8 行那样写死 PostgreSQL 17 的路径；#371 合进 main 以后，按 P1.8 改成 postgresBinDir()。
+     - 正式回放之前，先在一次回放出来的库上单独跑 REGRESSION 的夹具和目录查询，把自己 SQL 写错的地方先修掉（上次第 2 次失败的 `text || "char"` 就属于这种）。这类单独试跑不算尝试次数。新文件提交以后，完整回放重新给 3 次机会。
+     - 然后照 D-49 第 3–5 项做：迁移加 PRECHECK、VERIFY、REGRESSION，全等级回归，sha256 冻结，客户端，上线顺序，开草稿 PR（base `codex/community-topics-20261112`）。PR 描述开头加粗写明：本 PR 的迁移要先在 staging 和生产上应用并跑通 VERIFY，前端才能合。帖子回复那一行归第 3 项 a。
+     - 3 次还过不了：停下，写清停在哪条迁移、哪个夹具、还缺什么。
+  6. **staging 上的 20261112120000（supervisor 已做完，OMO 只做后续）。** Eric 2026-11-19 批准 supervisor 把它应用到 staging-smoke（hygkwxugskijadgfisji），生产不动。这次由 supervisor 代做，取代 E4 第 3–4 步的「Eric 本人执行、在 PR 留言」。D-29 / E2（书面确认 staging 只有合成数据）仍没完成，P2.6 照旧等它。
+     - 应用前：做了只读核对，台账里没有这一条；PRECHECK 去掉 `\set` 那一行后，用 execute_sql 跑，返回空、没有报错；三个运行期才解析的依赖都在，authenticated 的 INSERT / UPDATE 列和 anon 不可写都符合预期，没有长事务。
+     - 应用：2026-11-19 18:01 CT，用 apply_migration 跑了一次。name 写的是完整的 `20261112120000_community_post_topics`；发送内容只去掉了第 3 行 `BEGIN;` 和第 599 行 `COMMIT;`，sha256 e5738298d3fb3de12494ab2098d95367d20a199e78424761bd7e21c4e95461b3；迁移文件本身的 sha256 仍是 e2a85c3e…。
+     - 应用后：台账从 197 行变成 198 行，新的一行是 version 20261120000144、name `20261112120000_community_post_topics`。VERIFY 也去掉 `\set` 那一行后跑，返回空、没有报错。四个函数体的 md5 和按文件推算的完全一致：validate_post_topic e639a99441841a7d79080db62b304ad1，search_community_posts 1dfd91b93a4d7979d7f9e9dd121295b8，admin_get_report_detail acaae3fedb31e79a867e7a685ad326b5，capture_report_target_snapshot 299b759951355b171870963af375c3f8。触发器是 BEFORE INSERT OR UPDATE OF title, category，tgenabled=O；validate_post_topic 是 SECURITY DEFINER、search_path=pg_catalog、只有 postgres 能执行；posts_visible 仍带 status='active' 和 profile_content_visible 两个过滤条件。
+     - staging 另缺 3 条和本迁移无关的旧迁移（20260811140018、20260811143207、20261003175231），这次不补，写进 ④。
+     - 在 STATUS_LOG 补记三个伴随文件的 sha256（ENGINEERING §11 要求，L46 只记了迁移本身）：PRECHECK a4e6250914f7cd244d26c9852956793872b4046ed6fe56b16974943cdf6d6624，VERIFY de45bb91e09a1ebb22c8f23774994417eb84f139b105e4d6e042a777c5d277ac，REGRESSION e7d4caedc836bec780d1311b950ead706306210a3ca81f020aa324a1cd3c52f2。
+     - public sweep 不再算「等 E4 的预期失败」，D-42 第 3 项「不重跑」对它解除。按 RUNBOOK §7 的第 3 种办法在 #369 上推一个空提交，重跑一次 CI，code_sha 跟着更新。记结果时用 `gh run view <id> --log | grep -m3 'Image: ubuntu'` 一并记下 runner 镜像：停在 Install Playwright、镜像又是 26.04，就写「schema 预检已过，卡在第 4 项要修的 runner 问题」。verify-public-read-schema 通过，就在 STATUS 把 E4（staging 那一半）标成完成；没通过就照实写。P2.6、P2.13 仍然等 E2、E3、E5，不因为这一项开工。
+     - staging 上 posts_visible 的写权限是 041 建视图时的默认权限，留着没收回（视图是 security_invoker，经视图写入仍按 posts 的列权限判，不算提权）。本批任何迁移都不做这件事，写进 ④ 由 Eric 定。
+  7. **Eric 定的事和 E12 的说明。** demo 里「转发 · CSSA」的虚构活动保留现状（Eric 2026-11-19）。④ 的 E12 一行加一句：预览在真实 Chrome 里会报 1 条 CSP 错误，来源是 Vercel 给预览页注入的工具栏脚本（vercel.live），被 demo 自己的 `script-src 'self'` 拦下，不是 demo 本身的问题，生产不会注入。
+  8. **目标、顺序和报告。**
+     - 读到本条后，用 create_goal 设一个新目标：范围是本条第 1–7 项，完成线是 FINAL「第五批（D-51）」和 STATUS 在同一个提交推送。按 D-42 第 8 项重建一个 3600 秒的续跑提醒（建之前先 list，只留一个）。两件事都在 STATUS_LOG 记一笔。D-50 第 6 项「不再自己设新目标」这次不适用。
+     - 顺序：先做第 1 项。第 3 项 a 和第 4 项先做（都小）；然后是第 5 项；第 2 项、第 3 项 b、第 6 项穿插着做。同一个分支同一时间只让一个子任务推送；顺序一变，当场在 STATUS_LOG 记 [OMO自决]。每项最多试 3 次，第 5 项按它自己的次数算。
+     - 做完或停下以后，写 FINAL「第五批（D-51）」，八节格式照旧，每项单独成行，D-49 单独一节，和 STATUS 一起提交。然后结束目标，取消续跑提醒，不从 BACKLOG 往下接任务，等下一条指示。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
