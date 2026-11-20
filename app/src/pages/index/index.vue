@@ -1852,9 +1852,9 @@ async function goPublish() {
 .afb-chip {
   display: inline-flex; align-items: center;
   padding: 5px 11px; margin-right: 6px; border-radius: 14px;
-  background: rgba(199,74,47,0.08); cursor: pointer;
+  background: rgba(185,69,44,0.08); cursor: pointer;
   .afb-chip-label { font-size: 12px; color: var(--accent-action); font-weight: 500; }
-  &:active { background: rgba(199,74,47,0.16); }
+  &:active { background: rgba(185,69,44,0.16); }
 }
 .afb-clear {
   padding: 5px 10px; border-radius: 14px;

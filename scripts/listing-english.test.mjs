@@ -1,11 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {execFileSync} from 'node:child_process'
-import {existsSync,mkdtempSync,readFileSync,rmSync} from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
+import { postgresBinDir } from './_postgres-bin.mjs'
 const read=p=>readFileSync(new URL(p,import.meta.url),'utf8')
-const bin=['/opt/homebrew/opt/postgresql@17/bin','/usr/lib/postgresql/17/bin'].find(p=>existsSync(join(p,'initdb')))
+const bin=postgresBinDir()
 const q=s=>"'"+String(s).replaceAll("'","''")+"'"
 test('durable English jobs retain originals, exclude private rows, reject stale leases and retry safely',{skip:!bin&&'PostgreSQL17 unavailable'},()=>{
  const dir=mkdtempSync(join(tmpdir(),'listing-english-')),data=join(dir,'data'),port=String(50000+Math.floor(Math.random()*10000))

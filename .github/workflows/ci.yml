@@ -60,6 +60,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: app/package-lock.json
 
+      - name: Toolchain versions
+        run: |
+          node -v; npm -v
+          case "$(npm -v)" in 10.9.*) ;; *) echo "::error::npm $(npm -v) is not 10.9.x"; exit 1;; esac
+
       - name: Install (legacy-peer-deps for @sentry/vue + uni-app peer)
         working-directory: app
         run: npm ci --legacy-peer-deps

@@ -374,7 +374,7 @@ test('returning to the foreground reconciles messages and listing status without
 })
 
 test.describe('composer draft recovery', () => {
-  test.use({ viewport: { width: 1440, height: 900 }, isMobile: false, hasTouch: false })
+  test.use({ viewport: { width: 1440, height: 900 }, screen: { width: 1440, height: 900 }, isMobile: false, hasTouch: false })
 
   test('modified Enter inserts a newline and plain Enter sends exactly once', async ({ page }) => {
     const fixture = await seedMarketplace(page)
@@ -444,7 +444,7 @@ test.describe('composer draft recovery', () => {
 })
 
 test.describe('chat network recovery', () => {
-  test.use({ viewport: { width: 1440, height: 900 }, isMobile: false, hasTouch: false })
+  test.use({ viewport: { width: 1440, height: 900 }, screen: { width: 1440, height: 900 }, isMobile: false, hasTouch: false })
 
   for (const failWhileAway of [false, true]) {
     test(`a failed send survives thread navigation (${failWhileAway ? 'failure while away' : 'failure before leaving'})`, async ({ page }) => {
