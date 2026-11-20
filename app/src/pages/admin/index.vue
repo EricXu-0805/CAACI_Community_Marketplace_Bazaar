@@ -281,11 +281,12 @@
             <text v-if="e.duplicate_of" class="pill pill-count">{{ t('admin.eventDuplicate') }}</text>
             <text v-if="e.discussion_post_id" class="pill pill-count">{{ t('admin.eventHasDiscussion') }}</text>
           </view>
-          <text class="card-meta">{{ t(`events.filter.${e.source_type}`) }} · {{ e.partner?.name_zh || e.organizer_name || '' }} · {{ fmtTime(e.starts_at) }}</text>
-          <view class="card-actions">
-            <view v-if="canOpenDiscussion(e)" :class="['mini-btn', 'primary', { disabled: eventBusy(e) }]" role="button" :tabindex="eventBusy(e) ? -1 : 0" :aria-disabled="eventBusy(e) ? 'true' : 'false'" data-action="create_event_discussion" @click="onEventDiscussion(e)">{{ t('admin.openDiscussion') }}</view>
-            <view v-if="e.availability === 'hidden' && e.hidden_reason === 'admin'" :class="['mini-btn', { disabled: eventBusy(e) }]" role="button" :tabindex="eventBusy(e) ? -1 : 0" :aria-disabled="eventBusy(e) ? 'true' : 'false'" data-action="unhide_event" @click="onUnhideEvent(e)">{{ t('admin.unhideEvent') }}</view>
-            <view v-else :class="['mini-btn', { disabled: eventBusy(e) }]" role="button" :tabindex="eventBusy(e) ? -1 : 0" :aria-disabled="eventBusy(e) ? 'true' : 'false'" data-action="hide_event" @click="onHideEvent(e)">{{ t('admin.hideEvent') }}</view>
+          <text class="card-meta">{{ t(`events.filter.${e.source_type}`) }} · {{ eventConsoleOrganizer(e, lang === 'zh' ? 'zh' : 'en') }} · {{ fmtTime(e.starts_at) }}</text>
+          <!-- A button is offered only where the database would accept its action (utils/eventConsole). -->
+          <view v-if="eventActions(e).length" class="card-actions">
+            <view v-if="eventActions(e).includes('create_event_discussion')" :class="['mini-btn', 'primary', { disabled: eventBusy(e) }]" role="button" :tabindex="eventBusy(e) ? -1 : 0" :aria-disabled="eventBusy(e) ? 'true' : 'false'" data-action="create_event_discussion" @click="onEventDiscussion(e)">{{ t('admin.openDiscussion') }}</view>
+            <view v-if="eventActions(e).includes('unhide_event')" :class="['mini-btn', { disabled: eventBusy(e) }]" role="button" :tabindex="eventBusy(e) ? -1 : 0" :aria-disabled="eventBusy(e) ? 'true' : 'false'" data-action="unhide_event" @click="onUnhideEvent(e)">{{ t('admin.unhideEvent') }}</view>
+            <view v-if="eventActions(e).includes('hide_event')" :class="['mini-btn', { disabled: eventBusy(e) }]" role="button" :tabindex="eventBusy(e) ? -1 : 0" :aria-disabled="eventBusy(e) ? 'true' : 'false'" data-action="hide_event" @click="onHideEvent(e)">{{ t('admin.hideEvent') }}</view>
           </view>
         </view>
         <view v-if="listHasMore.community_events" class="load-more" role="button" :tabindex="listLoadingMore ? -1 : 0" :aria-disabled="listLoadingMore ? 'true' : 'false'" @click="loadMoreAdminList('community_events')">
@@ -882,6 +883,7 @@ import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { POST_CATEGORIES } from '../../utils/communityPost'
+import { eventConsoleActions, eventConsoleOrganizer, eventConsoleTitle } from '../../utils/eventConsole'
 import { reportWaitLevel } from '../../utils/reportWait'
 import { onHide, onUnload } from '@dcloudio/uni-app'
 import { platformFetch } from '../../composables/useSupabase'
@@ -3569,7 +3571,7 @@ function resetAdminPrivateState() {
   tabReadStates.value = {
     reports: newAdminReadState(),
     community_posts: newAdminReadState(),
-  community_events: newAdminReadState(),
+    community_events: newAdminReadState(),
     users: newAdminReadState(),
     plaza: newAdminReadState(),
     suspensions: newAdminReadState(),
@@ -4414,9 +4416,8 @@ function governTopic(p: CommunityPostRow, label: string, change: Record<string, 
 // organization's event; a member's event already has its own topic.
 const eventMutationKey = (e: CommunityEventRow) => `event:${e.id}`
 const eventBusy = (e: CommunityEventRow) => moderationMutationBusy(eventMutationKey(e))
-const eventLine = (e: CommunityEventRow) => Array.from(((e.source_type === 'member' ? e.topic?.title : e.title || e.title_en) || e.id).trim()).slice(0, 60).join('')
-const canOpenDiscussion = (e: CommunityEventRow) => canMarkOfficial.value && e.source_type !== 'member'
-  && !e.discussion_post_id && e.availability === 'visible' && !e.duplicate_of
+const eventLine = (e: CommunityEventRow) => Array.from(eventConsoleTitle(e) || e.id).slice(0, 60).join('')
+const eventActions = (e: CommunityEventRow) => eventConsoleActions(e, canMarkOfficial.value)
 function governEvent(e: CommunityEventRow, label: string, action: 'create_event_discussion' | 'hide_event' | 'unhide_event') {
   const owner = captureAdminSessionOwner()
   const mutationKey = eventMutationKey(e)
