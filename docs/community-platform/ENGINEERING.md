@@ -529,6 +529,16 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 
 ---
 
+
+#### 第八批（D-54）补记：P4 迁移相对本节新增或改变的对象（STOP-16a，L161）
+
+- 新函数 `private.community_events_moderate_text()` 与触发器 `community_events_moderate_text`（public.community_events，BEFORE INSERT OR UPDATE OF location, status_note）：四种来源的地点和状态说明都过关键词审核；链接与保留词检查只在成员守卫里，只管成员活动。
+- 新约束 `community_events_unavailable_check`；`community_events_time_order_check` 改成要求时间是有限值；合作组织行的形状约束多了 consent_ref 的格式。
+- 公开 SELECT 策略多了 180 天的条件（发起人读自己活动的策略不变）。
+- 迁移不再给 authenticated 成员活动的 EXECUTE、INSERT、UPDATE，留给 P4.6 的迁移授予（要授予的三项和列名写在迁移注释里）。
+- `hide_event`、`unhide_event` 幂等，审计 details 多一个 changed；`unhide_event` 可能恢复成 unavailable。
+- 新的拒绝：22023 `moderation_block:event_location`、`moderation_block:event_status_note`；成员路径结束时间晚于开始后 30 天（D-54 第 2 项 m）沿用 `member_event_time_out_of_range`。
+
 ## 6. 兼容矩阵与发布顺序（P2.9 ④）
 
 小程序从未提审、发布（见 [STATUS.md](STATUS.md)），没有已安装的旧版小程序，矩阵里不列。
@@ -725,7 +735,7 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 - 管理动作 `create_event_discussion {event_id}`（OWNER 角色），只用于 caaci、partner、campus 行：
   - 事件可见且 `duplicate_of is null`，否则拒绝；`availability <> 'visible'` 时返回 `event_discussion_closed`。
   - `select ... for update` 锁住事件行，已有 `discussion_post_id` 就直接返回它。
-  - 插入帖子：`user_id = COMMUNITY_OFFICIAL_PROFILE_ID`（api 层从环境变量传入；没设时返回 `official_account_unset`）、`is_official = true`、`category = 'events-social'`、`title = left(coalesce(nullif(title, ''), title_en), 120)`，正文用 SPEC 定的固定模板（不写时间地点，改期后正文不会过时）。官方帖不受 044 发帖限流（`044_rate_limit_window_buffer.sql:85-87`）。
+  - 插入帖子：`user_id = COMMUNITY_OFFICIAL_PROFILE_ID`（api 层从环境变量传入；没设时返回 `official_profile_not_configured`）、`is_official = true`、`category = 'events-social'`、`title = left(coalesce(nullif(title, ''), title_en), 120)`，正文用 SPEC 定的固定模板（不写时间地点，改期后正文不会过时）。官方帖不受 044 发帖限流（`044_rate_limit_window_buffer.sql:85-87`）。
   - 同一事务里 `update public.community_events set discussion_post_id = <新帖> where id = <事件> and discussion_post_id is null`；更新 0 行就回滚，返回已有的帖子。重复点击只产生 1 个话题。
 - `hide_event`、`unhide_event`（MODERATION 角色）写或清 `availability = 'hidden'`、`hidden_reason = 'admin'`。
 - `create_event_discussion`、`hide_event`、`unhide_event`，以及 `upsert_event_partner`、`set_event_partner_status`、`create_partner_event`、`update_partner_event`、`import_campus_event`（只在方式 A 下有）都按 §5.3 的五处同步；审计 event_kind 依次命名为 `event_discussion_created`、`event_hidden`、`event_unhidden`、`event_partner_changed`、`event_partner_status_changed`、`partner_event_created`、`partner_event_updated`、`campus_event_imported`。
@@ -751,7 +761,7 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 | `bad_json`、`bad_ics`、`schema_mismatch`、`unexpected_private_fields` | 解析失败或形状不对 | 不动；`last_outcome = 'failed'` |
 | `campus_unexpected_tz`、`campus_uid_mismatch`、`campus_too_many_occurrences`、`campus_calendar_not_allowed` | 校历数据异常或日历不在白名单 | 写入时拒绝；刷新时不动 |
 
-面向用户的错误码各对应一个 i18n key，key 与文案在 SPEC.md §11「P4 活动」：`member_event_rpc_required`、`member_event_not_eligible`、`member_event_time_out_of_range`、`member_event_active_limit`、`member_event_reserved_wording`、`member_event_link_not_allowed`、`member_event_title_too_long`、`member_event_location_invalid`、`member_event_cancel_final`、`event_discussion_closed`、`official_account_unset`。
+面向用户的错误码各对应一个 i18n key，key 与文案在 SPEC.md §11「P4 活动」：`member_event_rpc_required`、`member_event_not_eligible`、`member_event_time_out_of_range`、`member_event_active_limit`、`member_event_reserved_wording`、`member_event_link_not_allowed`、`member_event_title_too_long`、`member_event_location_invalid`、`member_event_cancel_final`、`event_discussion_closed`、`official_profile_not_configured`。
 
 ### 9.10 测试与 fixtures
 

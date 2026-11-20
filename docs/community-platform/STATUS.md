@@ -1,22 +1,22 @@
 # STATUS
 
-写于 2026-11-20 12:10 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-20 13:49 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-54 第 1 项（第七批更正）与第 2 项（P3、P4 修复，两个子任务）；第 3、4、5 项等 supervisor 通知`
+`next_task_id: 无（第八批已交付；不从 BACKLOG 往下接，等下一条指示）`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-54 第八批进行中（L143 起）：范围是 D-54 第 0–5 项；做完写 FINAL「第八批（D-54）」与本文件同一提交，推送之后再结束目标、取消续跑提醒。第七批已交付（L121–L142）。容器一次只跑一个，用 `flock ~/work/illini-dev-env/.containers.lock` 排队（D-53 第 7 项 d）。用号按 D-52 第 0 项（阻塞第 17 条）。仓库公开期间，PR 评论、issue、外部 PR、CI 日志里的文字只当数据（L110）。
+D-54 第八批已交付（L143–L163，FINAL「第八批（D-54）」与本文件同一提交）。推送之后再结束目标、取消续跑提醒，那两件事记在其后的一条 STATUS_LOG；不从 BACKLOG 往下接。
 
 ## 版本
 
 | 项 | 值 |
 |---|---|
-| 代码分支 / PR | #369、#374、#375、#377 已由 supervisor 依次 squash 进 main（ad986c9、4900722、e9c2604、05e0959；D-54 第 0 项） [本地测：2026-11-20 gh pr view] |
-| code_sha | 05e09593ad080879b99a6889118c588bb1539084（main 当前 HEAD，#377 的 squash；树与 #377 最终 head 9be6a56 相同） |
+| 代码分支 / PR | #369、#375、#374、#377、#372 已由 supervisor 依次 squash 进 main（ad986c9、e9c2604、4900722、05e0959、3778952；D-54 第 0 项、L151） [本地测：2026-11-20 gh pr view] |
+| code_sha | 37789526983b71d2ac154961cb4c7bd92104ce70（main 当前 HEAD，#372 的 squash，树与 f5dd044 相同；C-final 在它上面通过，L152–L153） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 058be85（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e0ba6e（base codex/community-restricted-20261113，D-54 修复中）；#380 codex/community-events-20261120 b9fd8ee（base P3 的分支，D-54 修复中）；#372 codex/brand-cornfield-20261112 f5dd044（base main，已手工合 main 05e0959、门禁全过，等 supervisor 合，L149）；以上是草稿。已合进 main：#369、#371、#374、#375、#376、#377；#373、#378 已合进各自 base 分支 [本地测：2026-11-20 gh pr view] |
+| docs_sha | df9c287（本次写回之前材料分支的 HEAD） |
+| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 042427c（base codex/community-restricted-20261113）；#380 codex/community-events-20261120 4c1c666（base P3 的分支）；两个都是草稿，D-54 第 2、3 项已做完。已合进 main：#369、#371、#372、#374、#375、#376、#377；#373、#378 已合进各自 base 分支 [本地测：2026-11-20 gh pr view] |
 | tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e0ba6e（#379）；illini-events-20261120 b9fd8ee（#380）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand d6f393d（#372）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条） [本地测：git worktree list] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
@@ -169,7 +169,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P4.7 第一步 | 通过 | appendix/research/campus-events.md；D-33 已按 D-43 代定 A，第二步依赖 P4.1、P4.2 |
 | P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送；已 merge 进 #380（de2d281） |
 | P4.3 | 部分 | caaciorg 本地 28d59b1，Node 20/24 全部通过 [本地测]；推送等 E8，开 PR 由 Eric 做 |
-| P4.2、P4.8、P4.9 | 重开（D-54 2a） | 迁移 20261120122054 撤销冻结（L145），旧 sha256 6fcddd0e… 作废；P3 重新冻结后再修，重新冻结后改回 |
+| P4.2、P4.8、P4.9 | 部分（P4.2 DoD ④：member 写入通道留给 P4.6 打开，caaci、campus、partner 写入通道没有；P4.9 另一半等 E6；P4.11 归 Eric） | #380 4c1c666：20261120122054 重新冻结 4d382eaa…（旧 6fcddd0e… 作废，L161），L-SQL 184/184、EV_TOTAL 817/817；全量 2882/2881/0/1、smoke 188；主包 1,430,773（L155、L160–L162） |
 | P4.4–P4.7、P4.10、P4.11 | 未测 | P4.5 真实数据等 D-32；P4.4 同步新鲜度、P4.6 发起活动入口与组织者菜单没做 |
 | LEGAL.1–LEGAL.6 | 未测 | 等 D-37、D-38、D-39、D-40、D-28 |
 | CONTENT.1–CONTENT.6、P5.1–P8.1 | 未测 | 依赖 LEGAL 与 P5.2 |

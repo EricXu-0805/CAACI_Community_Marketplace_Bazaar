@@ -2102,3 +2102,87 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
   - C-final 让行：约 17:45Z 核对 INFLIGHT.md 与 STATUS_LOG L151 后接受，此后没有起新的容器步骤，直到 ~/work/evidence/D54/CFINAL_DONE 在 18:05Z 出现；当时已在跑的 085d529 门禁（check-20261120T173728Z）按要求让它跑完，没有杀任何进程。
   - 本地清理：开发用 worktree、旧客户端 worktree、本地分支 wip/p3-d54-client（已并入 042427c）和迁移的变异副本都已删除，都没有推送过。留下的只有 ~/work/evidence/D54/p3/ 里的 PR 描述、提交说明、5 张截图（合成数据）和本文件。
   - 既有问题，这次没改：社区列表卡片的键盘菜单在 H5 上不响应（测试里改用长按打开菜单）。另有一条关于既有读策略的观察只写在子任务的最终报告里，没有写进任何会公开的地方。
+
+### L160 · 2026-11-20 13:44 CT · D-54 第 2 项 b 第 2 步、第 3 项（P4 的部分）：#380 分支两次合并 P3 的新 head
+- task_id: D-54.2b（第 2 步）、D-54.3（P4 的部分）
+- code_sha: codex/community-events-20261120 5e961a1 → 5df4bf1（合并 085d529，重新冻结后的 P3 头，含 #377 的最终 head 9be6a56）；之后是 35a694e、f7beb5c（见下一条）→ 4c1c666（合并 042427c，P3 在 085d529 之后只改客户端的那个提交）。两次都是普通 merge，没有 rebase，没有 force push。
+- docs_sha: df9c287（写草稿时材料分支的 HEAD）
+- 环境: 本地、L-SQL（容器，经 .containers.lock）
+- 命令: `git fetch origin`，`git merge 085d529b766978e1648b5cac3656d88145d04927`；manifest.sha256 的冲突照 D-42 第 3 项从磁盘重算（文件头保留，逐个文件 `shasum -a 256`，再 `shasum -a 256 -c manifest.sha256`）。合并提交先在临时 worktree 里回放：`umask 022; flock ~/work/illini-dev-env/.containers.lock ~/work/illini-dev-env/lsql-replay.sh <临时 worktree> 20261120100354 20261120122054`。最终门禁之前再 `git fetch origin`：P3 的远端头已从 085d529 走到 042427c，`git diff 085d529 042427c -- supabase` 为空，于是 `git merge 042427c7a37d9548fa758274b5fa0dc98f1c5bce`。
+- 计数: 第一次合并只有 supabase/migrations/manifest.sha256 一处冲突，迁移文件没有冲突（事后用 `git merge-tree --write-tree --name-only` 重算过冲突清单，一致）。重算后的 manifest 是 187 行、迁移 184 条，`shasum -c` 全部 OK；和 origin/main 相比只多 20261120100354、20261120122054 两行，20261112120000（e2a85c3e…）、20261114015420（0dc2ceaf…）两行没有变；20261120100354 一行是新值 aedc9152…9137（旧值 9e0a044d… 作废）。[隔离环境 L-SQL] 合并提交 5df4bf1 上 lsql-20261120T181301Z：files=184 replayed=184 errors=0 done=1；P3_TOTAL 703/703；EV_TOTAL 627/627（当时还是第七批的回归脚本）；本迁移钉的 P3 函数体 md5 全部成立，值没有变（清单在下一条）。第二次合并有三个文件冲突，都不在 supabase/ 下：scripts/verify-public-read-schema.mjs 和 scripts/public-read-schema.test.mjs（两边各加了一个探测，都保留，结果一共九项）；app/src/pages/post/index.vue（同一处 import，活动卡的留下，P3 已经不用的那个去掉）。[本地测] 第二次合并后 type-check rc=0，受影响的九个测试文件 76/76；`git diff 4c1c666^1 4c1c666 -- supabase` 为空，本迁移的 sha256 没有变。
+- ci_run_url: —（#380 的 base 不是 main）
+- 未测项: 5df4bf1、35a694e、f7beb5c 这三个中间提交没有各自跑完整门禁；完整门禁只在 4c1c666 上跑（见第三条）。
+- 下一条: 重新冻结 20261120122054（下一条）
+- 附: origin/main（3778952）不是 4c1c666 的祖先；本分支照 D-54 第 3 项只跟 P3 的分支，不直接合 main。第一次合并相对第一父提交改了 9 个文件，第二次 29 个。
+
+### L161 · 2026-11-20 13:44 CT · 重新冻结 20261120122054_community_events（D-54 第 2 项 a；撤销冻结记在 L145）：2k、2l、2m 与 mig:P4-m1–m10
+- task_id: D-54.2a（P4 的重新冻结）、D-54.2b（第 3、4 步）、D-54.2k、D-54.2l、D-54.2m（数据库部分）、D-54.2o（mig:P4-m1–m10）
+- code_sha: 35a694e（7 个文件：迁移、PRECHECK、VERIFY、REGRESSION、manifest.sha256 的一行、scripts/community-events.test.mjs、scripts/fixtures/community-events-database.mjs）；f7beb5c（两处注释：app/src/utils/eventConsole.ts、app/smoke/community-event-console.test.mjs）。都已随 4c1c666 推送。
+- docs_sha: df9c287（写草稿时材料分支的 HEAD）
+- 环境: 本地、L-SQL（容器，经 .containers.lock）；数据库测试跑在容器 pw1.65-node22-pg17 的 PostgreSQL 17 上
+- 命令: 迁移文件上有第七批冻结时加的只读位（0444）；L145 已记撤销冻结，`chmod u+w` 后原地改，重新冻结后 `chmod 444` 放回。manifest.sha256 只替换 20261120122054 一行。钉的 md5 先从 SQL 文本按回放库 `md5(prosrc)` 的口径算，再由回放里的漂移守卫、PRECHECK、VERIFY 核对。每一轮在同一把锁里跑：`umask 022; flock ~/work/illini-dev-env/.containers.lock bash -c '<先查磁盘不少于 50G、目录是 755>; ~/work/illini-dev-env/lsql-replay.sh ~/work/illini-events-20261120 20261120100354 20261120122054; env RUN_CMD="cd app && node --test --test-concurrency=2 ../scripts/community-events.test.mjs ../scripts/community-events-boundary.test.mjs" ~/work/illini-dev-env/run-checks.sh ~/work/illini-events-20261120 cmd'`。
+- 计数: **重新冻结**：`20261120122054_community_events.sql` 旧 sha256 6fcddd0e81985979843aa80eb0c828d953f232e2c2c19e972c6ca03b3fc2d993 作废；新 sha256 4d382eaa74dae57146614167a99c7d48c24ecbdce3c72aaed96d513a242efd4f，manifest 那一行已是新值。[隔离环境 L-SQL] 迁移最后一次改动在 18:18Z，之后带整套 PRECHECK、VERIFY、REGRESSION 回放：lsql-20261120T184949Z errors=1（回归脚本把两个新用例归错了类，EV_TOTAL cases=817 pass=799 fail=18；迁移没有再改）；改回归脚本后 lsql-20261120T185258Z replayed=184 errors=0 done=1，EV_TOTAL 817/817；提交后的 4c1c666 上 lsql-20261120T185842Z（门禁那把锁里跑的）和 lsql-20261120T193957Z（推送后再跑一次，留下脚本自己打印的那一行）结果相同，后一次的原行是 `LSQL head=4c1c6666cc8b27effd7c3a44a2d763f4c33dc2ca files=184 replayed=184 errors=0 done=1 rc=0`：P3_TOTAL cases=703 pass=703 fail=0，EV_CLOSED PASS，EV_FIXTURE PASS，EV_TOTAL cases=817 pass=817 fail=0（19 种状态 × 43 个用例；第七批是 33 个用例、627 条），EV_SCENARIO member-event、list、actions、rules 都是 PASS。[隔离环境] 数据库测试 check-20261120T185421Z（cmd 步骤 rc=0）：tests 21 / pass 21 / fail 0 / skipped 0；它跑的是提交前的工作树（日志头 head=5df4bf1、unstaged=yes），内容和 35a694e 相同，提交后的结果在第三条的 test 步骤里。[本地测] 换 manifest 那一行之前，宿主机全量 phaseB-host-full.tap 是 2719 / 2679 pass / 1 fail / 39 skipped：失败的一条是 manifest 校验（迁移已改、那一行还没换），跳过的是要 PostgreSQL 17 的用例。
+- ci_run_url: —（#380 的 base 不是 main）
+- 未测项: 没有连接任何托管库。VERIFY 新加的断言（表的属主、表级权限、三张表不在任何 publication 里、话题表上的触发器全集）只在回放库上跑过；托管库上话题表的触发器如果和回放不同，只读的 PRECHECK 会在应用迁移之前先报 `community_events_topic_triggers`，那时要先读多出来的触发器再决定。2k–2m 和 m 项的数据库用例与迁移是一起写的，没有先红的阶段；只有 mig:P4-m5 做了去掉实现的对照回放。「没授权时 42501」里真正调用函数的那条只在 PostgreSQL 17 的数据库测试里跑（通过）：回放镜像上以没有 EXECUTE 的角色调用函数，连接会断开（第七批的 P3、P4 回归脚本里已有这句注记，这次的探针又看到一次），所以回归脚本的 Part 0 用目录查询加两条真实的表级 42501 来断言通道是关的。
+- 下一条: 门禁与推送（下一条）
+- 附: 对照回放（mig:P4-m5）：临时副本里去掉成员守卫写入路径上那一行受限检查，lsql-20261120T185540Z 的 EV_TOTAL 是 cases=817 pass=799 fail=18，新用例 B14 在 9 种受限状态下被接受，B15 在同样 9 种状态下报了别的错；副本没有提交，改动留在 `~/work/evidence/D54/p4/mut-m5-control.diff`。探针回放两次（临时文件，没有提交）：lsql-20261120T181427Z 探针自己的 SQL 写错了，没有结论；lsql-20261120T181949Z 在改过的迁移上看到通道关着时 INSERT、UPDATE 都是 42501，探针文件留在 `~/work/evidence/D54/p4/probe-closed-channel.sql`。临时 worktree 和临时目录都已删除。
+
+钉的 md5（D-54 第 2 项 b 第 3 步）。个数：迁移里的漂移守卫 7 → 8，PRECHECK 9 → 10，VERIFY 22 → 24；REGRESSION 不钉 md5，只把回放库里的函数体 md5 打印成 EV_BODY 行。
+
+- P3 迁移（20261120100354）定义、本迁移的 PRECHECK 或 VERIFY 钉着的六个函数体，对着重新冻结后的 P3 重算，值都没有变：
+  - public.admin_execute_mutation(text,uuid,text,text,jsonb)，P3 留下的那一版（本迁移把它改名为 admin_execute_mutation_pre_community_events）：64d6f1d37e03577d534ccc5e1d496499。它在 P3 迁移里的位置从第 1129 行变成第 1257 行，PRECHECK 里的位置注记跟着改了。
+  - public.admin_execute_community_governance(text,uuid,text,text,jsonb)：e6ddf89b765c544d9434a843478ccf42
+  - public.admin_execute_mutation_pre_community_governance(text,uuid,text,text,jsonb)：a30b6224c23ab4ebdef61b54eb37af5a
+  - public.admin_list_moderation_audit_log(integer,integer,text)：42d02d7ac06498a48e2172c35d5ff517
+  - public.admin_token_authorization(text)：fc2446534ec9ec9b89aa901f9fd81ea6
+  - public.admin_token_authorization_v2(text)：37d5ed1fbb3fc8a098ba942442479110
+- 更早的迁移定义的八个，没有变：public.admin_assert_mutation_capability(uuid,text) 51c79ee5189f512333e2e8a3e4b47ba0；public.record_audit(text,uuid,uuid,jsonb) 38cb635c4cf81051966bc563ebf6142d；public.admin_moderation_reason_valid(text) 3f75864d5dfc236033a8cd232238baf2；moderation_private.profile_content_visible(uuid) a41223ba4e42754a12eec610e9ab03cf；moderation_private.assert_posting_allowed(uuid) bce717345cade3cf4d4656b20d5ae2df；public.update_updated_at() da5ac28a58c8b4bb30209bf0d3d7082c；public.trg_enforce_actor() 9f2166257b987ce4147e11eb4f441dbf；public.rl_posts_before_insert() 9a9c58f8ae22fc7785f85cead870e834。
+- 新钉的一个（2k 要读它），漂移守卫、PRECHECK、VERIFY 三处都钉：private.assert_moderated_text(text,text) bae3b8646a2fb7121a92f0ba17a90c1d（定义在 20260718230000 第 233 行）。
+- 本迁移自己的函数体：
+  - private.community_events_member_guard()：a7bf53aaabd52c243e1890fe4b0fc675 → ec91e9bd0c1be76895d1adba1227af8c
+  - public.create_member_event(uuid,text,text,jsonb)：39941fbe0625a60b0333e9683bc7fc2d → 9a22a3c4dc3326b90a29160466416887
+  - public.admin_execute_community_events(text,uuid,text,text,jsonb)：34a29a00a908315ff71d12bcf677893f → f3095aaa03fcc202ae3b5e99e1eede08
+  - private.community_events_moderate_text()：新增，c3da68f508cbcee6724a6926892300ed
+  - 没有变：private.community_events_schedule_change() e4a2e33f688e3f6d4e192a3426b0ea36；private.community_events_post_link() 2831761c52a0d5280010f9cb6a9a406e；private.community_events_follow_topic() 5f543fbda17b88b20d579d2d27023e99；public.list_community_events(text,text,text,integer) 51369430c8c82f1816a168ed8754f736；public.admin_execute_mutation(text,uuid,text,text,jsonb)（本迁移的分发函数）7fe35010e58dd31b96b0c9bc454cb2dc。
+
+mig:P4 逐条（改了，或不改的理由），都在 35a694e：
+
+- mig:P4-M1（D-54 2k）：改了。location、status_note 在 INSERT 时、UPDATE 改到它们时都过 `private.assert_moderated_text`（话题标题用的那套关键词审核），四种来源都查；新函数 `private.community_events_moderate_text()` 和触发器 `community_events_moderate_text`（BEFORE INSERT OR UPDATE OF location, status_note），被拒时是 22023 `moderation_block:event_location` 或 `moderation_block:event_status_note`。成员活动的这两个字段另由成员守卫查链接和保留词（官方、主办、official、hosted by），INSERT 和 UPDATE 都查，错误名沿用 `member_event_link_not_allowed`、`member_event_reserved_wording`。VERIFY 钉了新函数体、新触发器和 `assert_moderated_text` 的函数体。
+- mig:P4-M2（D-54 2l）：改了。迁移不再授予三项权限：`create_member_event` 的 EXECUTE、`community_events` 的 INSERT（8 列）、UPDATE（cancelled_at、status_note）；两条成员策略留着，没有授权时不起作用。VERIFY 的 2a 节断言 authenticated、anon 都没有这个函数的 EXECUTE，也没有任何列的 INSERT、UPDATE，函数那一行的期望是没有任何角色可执行。REGRESSION 的 Part 0 先断言通道是关的，然后在事务里 GRANT，原有用例和断言都保留，文件末尾 ROLLBACK。scripts/community-events.test.mjs 的夹具按事务开关通道，原断言保留，另加两组：开头「没授权时每种成员写入都是 42501」（含真正调用函数的一条），结尾「所有用例跑完后通道仍是关的」。P4.2 DoD ④ 记「member 写入通道留给 P4.6 打开」。
+- mig:P4-M3（D-54 2m，supervisor 定，待 Eric 确认）：改了。表约束 `community_events_time_order_check`：starts_at 是有限值；ends_at 为 NULL，或者是有限值且不早于 starts_at。成员路径（`create_member_event` 和成员守卫）：ends_at 不为 NULL 时 ends_at − starts_at 不超过 30 天；caaci、campus、partner 不设上限。错误名沿用 22008 `member_event_time_out_of_range`。客户端部分在阶段 A（5e961a1）。撤回办法（给 FINAL ⑧）：去掉 `create_member_event` 和成员守卫里比较 30 天的两处判断，表约束不用动。
+- mig:P4-m1：改了。`unhide_event` 对 missing_checks ≥ 2 的行恢复成 unavailable，不再恢复成 visible；新约束 `community_events_unavailable_check`（标成 unavailable 的行 missing_checks 必须 ≥ 2）。
+- mig:P4-m2：改了。取消时刻由成员守卫写成 now()，不用客户端传来的时刻。
+- mig:P4-m3：改了一半。活动行的 consent_ref 必须符合组织记录用的格式（3 到 40 位字母、数字、连字符）。没做「和组织那一行的值相同」：表级规则会把组织的同意编号冻住，或者每次换编号都要回填它名下的活动行；一致性留给 P4.5 的写入函数在写入时复制。
+- mig:P4-m4：改了。成员守卫也查标题不超过 60 字（22023 `member_event_title_too_long`）。通道关着时这条路径本来也走不到。
+- mig:P4-m5：改了，只加测试。成员守卫写入路径上的 assert_posting_allowed 现在有回归用例 B14 和数据库测试里的一条 D-49 用例走到；去掉这一行的对照回放是红的（见上面「附」）。
+- mig:P4-m6：改了。公开 SELECT 策略加上「结束时间（没有就看开始时间）不早于 180 天前」，和列表函数的窗口一致。没有加清理任务：行还在表里，只是读不到；保留期和删除不在这一批的范围里。
+- mig:P4-m7：行为不改。`create_event_discussion` 找到已有讨论帖时仍写一条审计（details.created=false）：原子通道要求每个完成的请求留一条。REGRESSION 的注释和断言现在写明这一点。
+- mig:P4-m8：改了。`hide_event`、`unhide_event` 幂等：行已经在请求的状态时返回成功，审计 details.changed=false；只有找不到 id 才是 event_not_found。
+- mig:P4-m9：不在代码仓库里，是材料文档和代码的命名不一致（ENGINEERING §9.7、§9.9 里官方账号未配置的错误名，§5.5 里 member_event_not_eligible 的含义）。子任务不改材料仓库，请主会话改。
+- mig:P4-m10：改了。VERIFY 新增：三张表的属主是 postgres；API 角色和 PUBLIC 都没有表级 INSERT、UPDATE、DELETE、TRUNCATE、REFERENCES、TRIGGER；三张表不在任何 publication 里；话题表上的触发器全集 13 个（PRECHECK 钉应用前的 12 个，多出来的一个是本迁移的 community_events_follow_topic）；community_events 上 5 个触发器。
+
+### L162 · 2026-11-20 13:44 CT · D-54 第 2 项 p：#380 完整门禁、推送、PR 描述照 2c 改写
+- task_id: D-54.2p（P4）、D-54.2a（#380 描述的部分）
+- code_sha: 4c1c666（树 e098676），`b9fd8ee..4c1c666` 已推送到 codex/community-events-20261120。#380 仍是草稿，base 仍是 codex/community-p3-20261120。
+- docs_sha: df9c287（写草稿时材料分支的 HEAD）
+- 环境: 本地、L-SQL、L-UI（容器 pw1.65-node22-pg17，经 .containers.lock；跑之前磁盘余 228G，`stat -c %a` 是 755）
+- 命令: 回放和门禁在同一把锁里跑：`umask 022; flock ~/work/illini-dev-env/.containers.lock bash -c '~/work/illini-dev-env/lsql-replay.sh ~/work/illini-events-20261120 20261120100354 20261120122054; env SMOKE_SPECS="community-post-topics.spec.ts plaza-attach-picker-is-modal.spec.ts admin-feedback-journeys.spec.ts community-board-states.spec.ts community-home.spec.ts community-reply-notices.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-watch-save.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts restricted-account-notice.spec.ts community-events.spec.ts community-event-console.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts" ~/work/illini-dev-env/run-checks.sh ~/work/illini-events-20261120 install typecheck h5 h5accept mp mpci migrations test smoke npmaudit'`。SMOKE_SPECS 是 run-checks 默认的两个、D-54 第 2 项 p 给 P3 的十个、community-events.spec.ts，再加本批新增的三个（community-event-console、community-reply-target、community-report-queue）；本批改过的五个（community-events、community-reply-notices、community-report-views、community-sort-tabs、community-watch-save）本来就在清单里。之后 `git fetch origin`（P3 的远端头仍是 042427c，是 4c1c666 的祖先），`git push --no-verify origin codex/community-events-20261120`，`gh api -X PATCH repos/<仓库>/pulls/380 --input <json>`。
+- 计数: [隔离环境] check-20261120T190013Z，日志头 head=4c1c666 tree=e098676 unstaged=no。STEP install rc=0、typecheck rc=0、h5 rc=0、h5accept rc=0、mp rc=0、mpci rc=0、migrations rc=0、test rc=0、smoke rc=0、npmaudit rc=0。`TEST tests=2882 pass=2881 fail=0 skipped=1 pg_skips=0`（阶段 A 是 2870 / 2869）；其中数据库测试 P4.2 community events 的 17 组在 PostgreSQL 17 上全过。smoke 188 passed，16 个 spec：community-post-topics 29、community-board-states 28、community-home 25、community-events 22、community-topic-row 18、community-report-views 17、community-sort-tabs 11、restricted-account-notice 8、community-watch-save 7、plaza-attach-picker-is-modal 6、community-event-console 4、community-report-queue 4、admin-feedback-journeys 3、community-reply-notices 2、community-reply-target 2、community-tab-label 2。npmaudit：found 0 vulnerabilities。主包（mpci）1,430,773 字节，上限 1,572,864，余 142,091（要求不少于 65,536）；比 P3 在 042427c 的 1,394,113 多 36,660；mp 构建的主包是 1,430,864。推送：`b9fd8ee..4c1c666  codex/community-events-20261120 -> codex/community-events-20261120`，用了 `--no-verify`，推送前的检查以 check-20261120T190013Z.log 为准。推送后远端 head 是 4c1c666；#380：OPEN、草稿、base 没变、mergeable=MERGEABLE。回放的结果在上一条。
+- ci_run_url: —（#380 的 base 不是 main；推送没有触发 workflow，`gh run list --branch codex/community-events-20261120` 为空）
+- 未测项: 小程序只构建（mp、mpci rc=0），没有在真机或开发者工具里看过。托管库没有碰。smoke 日志第 4 行有一条 dev server 的 esbuild 依赖扫描报错（说 useAppToast.ts 里没有 registerToastHost 这个导出）：导出和引用都在，本批之前各分支的门禁日志里就有这一行（b9fd8ee、P3 的 085d529 和 042427c 都有），188 条都过；没有处理，列在下面「给主会话」。
+- 下一条: 主会话把这三条和阶段 A 的一条写回 STATUS_LOG，并改 STATUS、FINAL 第八批；本子任务到此为止，不从 BACKLOG 往下接。
+- 附: #380 的描述只用 `gh api -X PATCH` 改了正文，改了两次（第二次只更正一句话：重新冻结之前回放的次数）。现在的正文写明：P3 迁移重新冻结后的 sha256、本迁移的新 sha256 和旧值作废、发布顺序（先 #379 的迁移，回复通知开关保持关闭并由 Eric 在 P3 的 H5 和小程序都发布后打开，再 PRECHECK、迁移、VERIFY，再发布客户端和 api/admin，成员写入等 P4.6）、两次合并、D-54 的改动（只引用编号）、第八批的证据表、主包字节数。改之前和改之后的正文留在 `~/work/evidence/D54/p4/pr380-body-before.md`、`pr380-body-after.md`。4c1c666 的门禁重新生成的 8 张截图和 `~/work/evidence/D54/p4/visual/P4.8/` 里的逐字节相同。
+
+---
+
+### L163 · 2026-11-20 13:49 CT · 第八批收尾：P4 写回、ENGINEERING、RUNBOOK §3、P4.8 截图、FINAL「第八批（D-54）」
+- task_id: D-54.2（写回）、D-54.6（报告）
+- code_sha: #379 042427c、#380 4c1c666（都已推送、仍是草稿、base 未动）；main 3778952
+- docs_sha: df9c287（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 主会话在远端只读核 #380 4c1c666：四个迁移 sha256 与 manifest 一致（e2a85c3e…、0dc2ceaf…、aedc9152…、4d382eaa…），ci.yml 与 main 相同，含 P3 042427c，#379、#380 都是 OPEN 草稿、base 未动；P4 子任务草稿第二阶段 3 条编号为 L160–L162（第一阶段那条已由主会话写成 L155，不重复）
+- 计数: P4 迁移 20261120122054 旧 sha256 6fcddd0e81985979843aa80eb0c828d953f232e2c2c19e972c6ca03b3fc2d993 作废 → 新 4d382eaa74dae57146614167a99c7d48c24ecbdce3c72aaed96d513a242efd4f；L-SQL 184/184 errors=0、EV_TOTAL 817/817、P3_TOTAL 703/703；全量 2882/2881/0/1、pg_skips 0、smoke 188；主包 1,430,773（余 142,091） [隔离环境 L-SQL][本地测]
+- ci_run_url: —（#379、#380 的 base 不是 main）
+- 未测项: 真机与微信开发者工具；P3、P4 迁移在托管库的应用（P3.7、P4.11，归 Eric）
+- 下一条: 推送本提交之后结束目标、取消续跑提醒，记在下一条
+- 附: ENGINEERING §5.5 补 P4 新对象（STOP-16a，见 L161），§9 里 official_account_unset 改成 official_profile_not_configured（mig:P4-m9）；RUNBOOK §3 补 worktree 行；P4.8 的 8 张截图（390、1280，只含测试夹具数据，主会话看过 390 宽 4 张）放进 appendix/visual/P4.8/（client:P4-m11）；首页截图里仍是旧品牌名，因为 P4 分支还没合 #372 的改名。第八批报告接在 FINAL.md 末尾，和 STATUS 同一提交。

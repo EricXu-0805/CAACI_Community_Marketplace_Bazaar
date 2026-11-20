@@ -743,3 +743,95 @@ E2、E3、E12 已由 supervisor 做完，E5 的合并顺序归 supervisor（D-53
 |---|---|---|---|
 | D-53 第 0 项 f（【Eric 选】，L122） | D-49 的 12 条政策问题全部按「不新增权限」定：行为类维持现在的服务端行为，措辞类沿用现有文字，代码不改 | Eric 2026-11-20 的选择，本批只照抄 | 下一批另开迁移或改文案 |
 | D-53 第 3 项（L125） | 选 vite 6.4.6，不是 6.4.5 | D-53 允许「或已发布的更新的 6.4.x 补丁版」；6.4.6 是当时最新的 6.4.x | 换回 6.4.5 要重做配方与两次构建 |
+
+## 第八批（D-54）
+
+按 DECISIONS D-54 第 0–5 项做（材料分支 9a6f3a4）。【硬】条照旧，只放开第 2 项 a 的具名例外（RUNBOOK §12 第 9c 条，只限 20261120100354 与 20261120122054）。【Eric 选】是 Eric 的选择，【supervisor 做】是 supervisor 依 Eric 2026-11-20 03:17 CT 的总批准代做或代定的事，OMO 都不做。supervisor 的核查清单只在 tony-ws 本机，本节只引编号。逐条细节在 STATUS_LOG L143–163。`latest_batch` 不变。
+
+### ① 起止与 SHA 范围
+
+- 起止：2026-11-20 10:28 CT（D-54，材料分支 9a6f3a4）至 2026-11-20 13:49 CT。
+- docs_sha：9a6f3a4 → 本节所在提交。
+- main：05e0959（#377 的 squash，树与 #377 最终 head 9be6a56 相同）；#372 由 supervisor squash 进 main 37789526983b71d2ac154961cb4c7bd92104ce70（树与 f5dd044 相同），这就是准备发布的提交。
+- 代码：#379（P3，`codex/community-p3-20261120`）4e0ba6e → e15996a（merge #377 最终 head 9be6a56）→ 085d529（迁移重新冻结）→ 042427c（客户端）；#380（P4，`codex/community-events-20261120`）b9fd8ee → 2b0abe8 → de04a67 → 5e961a1（第一阶段）→ 5df4bf1（merge P3 085d529）→ 35a694e → f7beb5c → 4c1c666（merge P3 042427c）；#372 d6f393d → f5dd044（merge main 05e0959），已由 supervisor squash 进 main 3778952。
+- 冻结迁移：20261112120000 仍是 e2a85c3e…、20261114015420 仍是 0dc2ceaf…；20261120100354 9e0a044d…（作废）→ aedc91521ca8961906a7578ae6caac52fa59f8c9bc53911eec65d46e1b619137；20261120122054 6fcddd0e…（作废）→ 4d382eaa74dae57146614167a99c7d48c24ecbdce3c72aaed96d513a242efd4f；manifest 都只换了各自那一行，主会话在远端核过与磁盘一致。
+
+### ② 完成的任务
+
+```text
+D-54.6 ｜ 通过 ｜ —（不改代码） ｜ 9a6f3a4 ｜ 本地 ｜ L143 ｜ create_goal 1 个；schedule_prompt list 为空后建 3600 秒续跑提醒 sch_3f821ab3ab68，始终只有 1 个 ｜ — ｜ — ｜ — ｜ D-54.1
+D-54.0 ｜ 通过 ｜ —（只改文档） ｜ 12259de 之前 ｜ 本地 ｜ L146、L148 ｜ 先用 gh pr view 核 #369–#380；背景照抄进 STATUS 阻塞第 1、28 条与版本表：#369、#375、#374、#377 已 squash 进 main，20261112120000、20261114015420 已在生产（后者也在 staging）应用并 VERIFY ｜ — ｜ — ｜ — ｜ D-54.1
+D-54.1a ｜ 通过 ｜ — ｜ 12259de 之前 ｜ 本地、CI ｜ L147 ｜ 追加「更正 L116、L124」：引 L116 被改前原文「#376 新 head 的 run 待完成（监视中）」，run 44715711828 的 headSha 是 f0ccd8f，属 L124；L116、L124 本身不动 ｜ CI run#44715711828 ｜ — ｜ — ｜ D-54.1b
+D-54.1b–e ｜ 通过 ｜ — ｜ 12259de 之前 ｜ 本地 ｜ L148 ｜ b set_post_featured 不依赖 E6（第七批 ④、STATUS 第 29 条）；c P3、P4 迁移的托管应用归 Eric（P3.7、P4.11），P3、P4 行改「部分」；d #376 已合，④ 删行、STATUS 第 1、20 条、⑥ 改引 run 44739894523；e report:FINAL-m1–m13 逐条处理（改或转进本批 ⑥） ｜ — ｜ — ｜ — ｜ D-54.2
+D-54.2（P3） ｜ 部分（P3.7 归 Eric、未做；P3.6 DoD ② 部分） ｜ 042427c（#379，草稿，base 未动） ｜ 822c737 ｜ 本地、L-SQL ｜ L144、L154、L156–L159 ｜ 撤销冻结后原地改 20261120100354：通知开关 private.community_reply_notice_config 默认关、关着时不写通知（mig:P3-M1，开关 SQL 与核对步骤在仓库根目录 RUNBOOK.md）；作者有效 L3+ 且话题对别人不可见时不发通知（M2）；list_own_hidden_posts 不返回理由（client:P3-M1）；新列 post_comments.reply_to_comment_id 写入时校验，通知发给被回复者（client:P3-M2）；重新冻结 9e0a044d… → aedc9152…；L-SQL 183/183、P3_TOTAL 703/703、开关默认关，两份故意改坏的副本回放都失败；客户端 client:P3-M1–M6 先红后绿；042427c 全量 2790 / 2789 / 0 / 1、smoke 162、h5accept 52、audit 0，主包 1,394,113（余 178,751）；ENGINEERING §5.3 补了新增对象 ｜ —（base 不是 main） ｜ 真机与微信开发者工具没跑；Sentry 没对真项目核 ｜ ④ P3.7 ｜ D-54.2（P4）
+D-54.2（P4） ｜ 部分（P4.2 DoD ④ member 写入通道留给 P4.6；P4.9 另一半等 E6；P4.11 归 Eric） ｜ 4c1c666（#380，草稿，base 未动） ｜ df9c287 ｜ 本地、L-SQL ｜ L145、L155、L160–L162 ｜ 第一阶段客户端 client:P4-M1（2n 全天活动）、2m 客户端、m1、m4、m6、m7、m12、m14 先红后绿；第二阶段合 P3 085d529 后重算钉的 md5（P3 定义的 6 个函数体不变，新钉 assert_moderated_text），原地改迁移：location、status_note 过审核（mig:P4-M1）、不给 authenticated 成员活动写权限，测试在事务里临时授权并加「没授权时 42501」（M2）、时间有限且成员路径 ≤ 30 天（M3），m1、m2、m4、m5、m6、m8、m10 修，m3 修一半，m7 保留；重新冻结 6fcddd0e… → 4d382eaa…；再合 P3 042427c（没碰 supabase/）；L-SQL 184/184、EV_TOTAL 817/817、P3_TOTAL 703/703；4c1c666 全量 2882 / 2881 / 0 / 1、smoke 188、audit 0，主包 1,430,773（余 142,091） ｜ —（base 不是 main） ｜ 迁移改动没有先红一步（只有 m5 的对照回放）；小程序只构建 ｜ ④ P4.11 ｜ D-54.3
+D-54.3 ｜ 通过 ｜ P3 e15996a（merge H 9be6a56，内容不变）；P4 5df4bf1（merge P3 085d529）、4c1c666（merge P3 042427c） ｜ df9c287 ｜ 本地 ｜ L154、L156–L162 ｜ 普通 merge，不 rebase；P4 第一次合并只有 manifest 冲突，按磁盘重算，迁移文件没有冲突；第二次合并的三处冲突都不在 supabase/ 下；两个 PR 的 base 都没动 ｜ — ｜ — ｜ P3.7 之后改 base（STATUS 阻塞第 12 条） ｜ —
+D-54.4 ｜ 通过（supervisor 已 squash 进 main 3778952，树与 f5dd044 相同） ｜ f5dd044（#372，草稿，base main；父提交 d6f393d、main 05e0959） ｜ e72a07d 之前 ｜ 本地 ｜ L149 ｜ 冲突 4 个文件 6 块，都按 STATUS 阻塞第 11 条：share-post.js 留 main 的标题逻辑、取 #372 的品牌兜底文案；en.ts、zh.ts 的 app.* 取 #372，suspended.sub 取 main、suspended.subPerma 取 #372；plaza/index.vue 整块取 main；CommunityHome.vue 两处「集」改「玉」；没有迁移或 manifest 冲突。全量 9 步 rc=0（含 h5accept、mpci），TEST 2663 / 2662 / 0 / 1，pg_skips 0，品牌测试 10 条全过，主包 1,381,447（余 191,417） ｜ CI run#44778423032 全绿（L150） ｜ — ｜ supervisor 合 #372 ｜ D-54.5
+D-54.5（C-final） ｜ 通过 ｜ 3778952（main，准备发布的提交） ｜ e160de8 ｜ staging、CI ｜ L151–L153 ｜ 先拿锁、确认没有 run-checks 在跑，run-checks.sh 写新文件再 mv（备份 .before-20261120T175638Z，只加 PROBES_DIR 一个变量，sha256 45e97333… → 36a984b9…）；probes-home/ 13 个文件，只有 account-switch.spec.ts 不同（进广场后点「更多」到全部视图，加 8 行）；内容判定成立（CommunityHome.vue 有 ch-more），所以用适配版；detached worktree ~/work/confirm-final-3778952（755）；restriction-state：A/B/C 都未受限；P1.11 cfinal-1 3 passed；P1.12 cfinal-1 1 passed（control_A 1 / 1，缓存窗口 4,296 ms，B 五次 inspect 与 pre / post 观察器泄漏最大值都是 0）；B 帖清理后 0 行；16 次退出 204；没有 P0001、没有第 8 项 b 清单命中，cfinal-2、cfinal-3 没用；原 probes/ 13 个文件与 appendix/env/probes/ 没动 ｜ CI run#44783052160（3778952，7 个 job success） ｜ — ｜ supervisor 受监督发布 ｜ —
+```
+
+### ③ [OMO自决] 清单
+
+| 编号 | 事项 |
+|---|---|
+| L146 | 第 2、3、4 项分给三个子任务（P3、P4、#372），各用自己的分支和目录，每个分支只由对应子任务推送；子任务不写材料分支，STATUS_LOG 草稿放证据目录，由主会话追加；P4 先做客户端，P3 重新冻结后再 merge P3 动迁移 |
+| L144、L145 | 两个迁移的「撤销冻结」在任何改动之前先记、先推送；Eric 的 PR 留言由 03:17 CT 总批准代替（D-54 第 2 项 a），OMO 没代 Eric 留言 |
+| L149 | #372 子任务四次在门禁没跑完时交回，主会话设监视看门禁；门禁全过后主会话核树与工作区，自己快进推送（子任务已停，同一分支同一时间只有主会话推送） |
+| L151 | C-final 期间 STATUS_LOG 由 C-final 子任务直接追加并推送（只提交 STATUS_LOG 与 appendix/env 的两个归档文件），主会话不写材料分支，好让 supervisor 立刻看到结果；P3、P4 正在跑的容器步骤跑完，但在 CFINAL_DONE 出现之前不起新的 |
+| L155 | 「C-final 之前不起容器」的通知，P4 子任务当成工具输出里可能被注入的文字没照做（它说那之后没起过容器）；之后给子任务的这类要求都在消息里写明是主会话直接发的 |
+| L154 | P3 迁移重新冻结后，P4 第二阶段由主会话核过远端（新 sha256 与 manifest、两个旧迁移、ci.yml、含 H）再把 P3 head 发给 P4 |
+| L156–L159 | P3 子任务的自决（mig:P3-m1、m7、m8、m9 与 client:P3-m12、m15 不改的理由，逐条在各条目里） |
+| L160–L162 | P4：关键词审核对四种来源都生效（表上触发器），链接与保留词只管成员活动；成员路径结束时间沿用 member_event_time_out_of_range；新增约束 community_events_unavailable_check；180 天条件加在公开 SELECT 策略上；重复下架、恢复返回成功并留审计（changed=false）；「没授权时 42501」的函数调用放在数据库测试里 |
+| L163 | P4.8 截图主会话看过 390 宽 4 张（1280 宽是同一批数据），只含测试夹具数据，放进 appendix/visual/P4.8/ |
+
+### ④ 等 Eric 或 supervisor 的清单
+
+| 要做的一件事 | 谁 | 解锁 |
+|---|---|---|
+| P3.7：在 staging、生产应用 20261120100354 并 VERIFY（照 E4 第 2 步核对第八批的新 sha256）；之后把 #379 的 base 改到 main 跑 CI（STATUS 阻塞第 12 条） | Eric | #379 合并 |
+| P4.11：在 staging、生产应用 20261120122054 并 VERIFY（新 sha256 见 ①） | Eric | #380 合并 |
+| E6：设 COMMUNITY_OFFICIAL_PROFILE_ID。没设之前 set_post_official 与 create_event_discussion 返回 409 `official_profile_not_configured`、不落库；set_post_featured、hide_event、unhide_event 不依赖它 | Eric | P3.5、P4.9 的另一半 |
+| 打开回复通知开关（private.community_reply_notice_config，D-54 第 2 项 c）：前提是 P3 迁移已应用、P3 的 H5 已发布、P3 版小程序也已发布；staging 与生产分开打开，各记一次；SQL 与核对步骤在仓库根目录 RUNBOOK.md | Eric（或 supervisor 在 Eric 具名批准后） | P3.3 上线 |
+| 问题 1：要不要另设给作者看的下架理由选项（现在作者只看到一句通用说明，D-54 第 2 项 e） | Eric | P3.6 DoD ② |
+| 问题 2：成员活动结束时间上限是不是 30 天（D-54 第 2 项 m，supervisor 代定） | Eric | P4.6 |
+| 问题 3：开关打开之前，旧版小程序怎么办 | Eric | 开关 |
+| 问题 4：内容下架的申诉流程还缺什么（现在作者视图只写「如有异议，请联系站务」，D-54 第 2 项 j） | Eric | P3.6 DoD ② |
+| 问题 5：community_post_state 对 anon 是否区分 hidden 和 missing（mig:P3-m4、client:P3-m4，政策问题，本批不改代码） | Eric | — |
+| mig:P3-m8：被作者自己硬删的回答不清空 answered_at；被隐藏的话题仍能收到回复（010、075 的既有策略）。要不要改，改的话下架与恢复要一起处理 | Eric | — |
+| 英文界面 360 px 宽时首页第四个标签换到第二行（每个标签完整、可点，D-54 第 2 项 h 允许换行），样子要不要确认 | Eric | — |
+
+### ⑤【硬】与【暂停推送】事件
+
+- 本批没有触发【暂停推送】。没有合并、没有转 ready、没有 force push、没有 rebase 已推送分支、没有连托管库、没有改 SPEC。20261112120000、20261114015420 一个字节没动；只有 20261120100354、20261120122054 按第 2 项 a 原地改并重新冻结，「撤销冻结」「重新冻结」都记在 STATUS_LOG。
+- 核查清单只在本机读，内容没有进仓库，只引编号。staging.env 没有被 cat 或打印。
+- C-final 的子任务直接推了一个材料分支提交 0885c8a（只改 STATUS_LOG、appendix/env/probes-home/account-switch.spec.ts、appendix/env/run-checks.sh），作者照旧是 OMO (tony-ws)；主会话核过新增行没有邮箱和 /home 路径。
+- 20261120100354、20261120122054 按第 2 项 a 撤销冻结（L144、L145）、原地改、重新冻结（L154、L161），新旧 sha256 都记了；托管库应用前照 E4 第 2 步核对新值。例外到本节推送为止。
+- 通知之前没有往 #377、#372 推送；#372 在通知之后快进推送 f5dd044。
+
+### ⑥ 未测项与风险
+
+- main 上 #369 带来的主包 1,560,392 字节，离 1,572,864 只剩约 12 KB（report:FINAL-m9）；现在 main 3778952 的树与 f5dd044 相同，主包 1,381,447（余 191,417，L149），这条风险已经解除。
+- 第七批漏写的（report:FINAL-m3，补记在 L148）：P4 迁移两个约束名与 ENGINEERING 的列法不同（STOP-16a）；community-home.spec.ts 两处断言改成不算 list_community_events；P4.8 的 8 张截图只在本机，不在 DoD ⑦ 要的 appendix/visual/P4.8/；边界测试按摘要而不是字面匹配官网项目 ref。
+- P4 客户端没修全的（client:P4，第一阶段）：m2 安全提示改成指向讨论帖上的举报，SPEC 6.7.6 第 10 行的右上角菜单、组织者卡片与私信、「来源核对于」一行没做（P4.4、P4.6）；m5 第 200 行以后的活动用深链打开仍显示为已消失，要按 id 读才能修；m8 E6 没设时站长仍看到「开讨论」按钮（控制台不改 API 约定就无从知道）；m10 审计白名单在 P3 迁移里，P4 分支改不了；m13 滚到日期、回复框聚焦留给 P4.6。m9 不改（严格重载按设计全有或全无，靠上线顺序控制）。
+- P4.8 的 8 张截图（390、1280）只含测试夹具数据，放在 appendix/visual/P4.8/（client:P4-m11）。首页截图仍是「Illini 集市」品牌，因为 P4 分支还没合进 #372 的改名，不是回退。
+- P3 没修或只修一部分的（理由在 L156–L159）：mig:P3-m1（回填会动 posts.updated_at，没有客户端读它）、m7（hot 搜索 14 天是 ENGINEERING §5.3 定的，旧客户端从第 1 步起受影响）、m8（见 ④）、m9（在已应用的旧迁移与 worker 里，要前向迁移）不改；client:P3-m8 管理端卡片只补了摘要和首图，m12 不改（首页一次读齐是 tab 切换即时的前提）、m15 没做（50 行以后才有差别）、m16 锚点仍按时间、m17 只探了 community_post_state。client:P3-m6 隐藏话题分享卡用了应用图标，不是 SPEC 6.10 说的「无图」，因为小程序没图时会截页面，作者那边截到的就是被隐藏的正文。H5 上社区列表卡的键盘菜单不起作用（既有问题，没改）。
+- P4 没修全的（理由在 L160–L162）：mig:P4-m3 只查 consent_ref 的格式，是否等于合作方那一行留给 P4.5 的写入方；m7 保留 created=false 时的审计行（通道要求每次请求一行）。结束时间不合规时报 member_event_time_out_of_range，SPEC §11 给它配的文案只说开始时间，P4.6 做表单时要补。
+- smoke 启动 dev server 时有一行 esbuild 扫描报错（registerToastHost），本批之前就有，没处理。
+
+### ⑦ 下一批
+
+按 D-54 第 6 项，本批推送后 OMO 结束目标、取消续跑提醒，不从 BACKLOG 往下接任务。下一批可做的事：
+
+- P3.7：Eric 在 staging 应用 20261120100354 并 VERIFY 后，把 #379 的 base 改到 main 跑 CI（STATUS 阻塞第 12 条），再接 #380（P4.11）。
+- 受监督发布 3778952（supervisor 做）。
+- 回复通知开关和 ④ 里的五个问题由 Eric 定。
+- OMO 不从 BACKLOG 往下接，等下一条指示。
+
+### ⑧ 代 Eric 定的事
+
+| 编号 | 选了什么 | 理由 | 怎么撤回 |
+|---|---|---|---|
+| D-54 第 2 项 a（【supervisor 做】依 Eric 03:17 CT 的原话） | 20261120100354、20261120122054 原地改、重新冻结，不另起新迁移（P3 9e0a044d… → aedc9152…，P4 6fcddd0e… → 4d382eaa…） | 两条都不在 staging、生产的账本里（supervisor 约 16:10Z 只读核过：生产 146 行、staging 199 行）；原地改比追加修复迁移少一次上线步骤 | 改走两条前向修复迁移，时间戳晚于 20261120122054，P4 的晚于 P3 的 |
+| D-54 第 2 项 e（【supervisor 定】，待 Eric 确认） | 作者看不到管理员写的下架理由原文，只看一句通用说明 | 管理员写的自由文本可能含举报人信息或内部判断 | 恢复给作者看的理由（list_own_hidden_posts 重新返回 reason，客户端显示 SPEC 6.10 的「原因：{原因}」） |
+| D-54 第 2 项 m（【supervisor 定】，待 Eric 确认） | 成员路径 ends_at − starts_at ≤ 30 天；caaci、campus、partner 不设上限 | 防止成员活动长期挂在列表里；校历多场次活动要能跨更长时间 | 去掉 create_member_event 与 member guard 上的 30 天上限 |
+| D-54 第 2 项 c（【supervisor 定】） | 两种新通知由默认关闭的开关控制 | 迁移一应用，旧客户端和摘要邮件就会显示原始键（mig:P3-M1） | 把开关打开，或在以后的迁移里去掉开关 |

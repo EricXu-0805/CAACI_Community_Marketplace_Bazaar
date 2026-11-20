@@ -124,6 +124,7 @@ rm "$T"/node-$V-linux-x64.tar.xz "$T"/SHASUMS256.txt && rmdir "$T"
 | ~/work/illini-events-20261120 | codex/community-events-20261120（PR #380，草稿，base P3 的分支） | P4.2、P4.8、P4.9（D-53 第 4 项） | `git -C ~/work/illini worktree add -b codex/community-events-20261120 ~/work/illini-events-20261120 <P3 迁移冻结后的 head>`，再 `git merge wip/P4.1` |
 | ~/work/illini-vite645 | codex/config-vite-645-20261120（#378，已由 supervisor 合进 #373 的分支） | vite 6.4.6 的重建配方（D-53 第 3 项） | `git -C ~/work/illini worktree add -b codex/config-vite-645-20261120 ~/work/illini-vite645 origin/codex/deps-crossmajor-20261113` |
 | ~/work/confirm-369-8f5fc43 | detached 8f5fc43 | C-369 确认跑（D-53 第 10 项），只跑探针，不提交 | `git -C ~/work/illini worktree add --detach ~/work/confirm-369-8f5fc43 8f5fc43` |
+| ~/work/confirm-final-3778952 | detached 3778952 | C-final 确认跑（D-53 第 10 项），只跑探针，不提交 | `git -C ~/work/illini worktree add --detach ~/work/confirm-final-3778952 3778952` |
 | ~/work/caaciorg | feat/public-events-feed；origin = fork EricXu-0805/caaciorg，upstream = a2751012962/caaciorg | P4.3 | 按 BACKLOG P4.3 的命令：E8 之前只读 clone 上游并把 remote 改名为 upstream，在本地写；E8 之后再加 fork 为 origin 并推送。git 已配置用 gh 做凭据（2026-11-12 核对） |
 | ~/work/demo-publish | 不是 git 目录 | demo 预览部署（P1.13、BRAND.7）。全机只有这里允许有 .vercel | 见 §9 |
 | ~/work/evidence/\<任务编号\> | 不是 git 目录 | BACKLOG 的 `$EV`：每个任务的原始输出 | `mkdir -p "$EV"` |
