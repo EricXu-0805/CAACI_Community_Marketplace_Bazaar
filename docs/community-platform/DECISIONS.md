@@ -385,6 +385,66 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
      - c. **去掉钉版本要带到下游。** P1.8 在 #369 上 `git revert c52badf` 以后，用 `git merge` 把 #369 新的 head 依次合进 #375、#374、#377，再从 #377 合进 P3、P4 的分支，这样各 PR 都不再带三处 ubuntu-24.04。第 5 项里「P1.8 之后先不往下游合并」对这一次合并解除。这一步也属 RUNBOOK §12 第 9a 条的同一个例外。
      - d. **容器一次只跑一个。** 第 6 项的「并行」只指改代码和推送。所有容器步骤（run-checks 各步、vite 的两次重建、L-SQL 回放、S-1 probe）照 RUNBOOK §1：同一时间最多 1 个 run-checks 类容器（vite 重建算一个）加 1 个 L-SQL 容器，用一把锁排队，比如 `flock ~/work/illini-dev-env/.containers.lock <命令>`。磁盘剩余低于 50 GB 就停下。tony-ws 是和 Tony、danny 共用的机器，STOP-13 照旧。
 
+  8. **补充（2026-11-20 06:40 CT）：P1.11、P1.12 是探针写错了，再跑；只改探针，不改应用代码。本项优先于第 6 项「每项最多试 3 次」。**
+     - a. **依据。** supervisor 在自己的 Mac 上用 7b18f20 构建 H5，用 iPhone 13 的 WebKit 跑，后端全部打桩，没连 staging；tony-ws 上没有这次复现的产物。弱点：会话列表、get_my_profile 都是假数据，staging 上的表现可能不同。
+       - P1.11：reconsent/index.vue:142 调 `uni.switchTab({ url: '/pages/index/index' })`。uni-h5 把入口页别名改成 `/`，落地 hash 是 `#/`。探针 probe-ui.ts:54 要 hash 含 `/pages/index/index`，所以永远过不了。account-switch.spec.ts:59 的正则早就两种都认。
+       - P1.12：探针从没写 localStorage 的 `welcomed`。冷启动到不在豁免名单里的路由时，App.vue:1650 会 reLaunch 到欢迎页，所以 `page.reload` 之后停在 `#/pages/welcome/index?intent=…`。`.more-btn` 只在帖子页出现，而且只给作者（post/index.vue:11）。对照组写了 `welcomed=1`，reload 后留在帖子页，`.more-btn` 可见。
+     - b. **次数和停法。**
+       - 按 RUNBOOK §12 第 14 条（STOP-14）：每次跑之前在 STATUS_LOG 写假设和改动；不加 retries，不调 timeout，不删断言，不跳测试。两项各最多再跑 2 次，连前 3 次一共 5 次。次数只数 consent-login、account-switch 两个验收 spec，p1-cleanup 不算。
+       - 代码固定在 7b18f20（`~/work/illini-main`），每次跑之前 `git rev-parse HEAD` 核一遍。RUNBOOK §3「main 前进后 checkout」那一步，等这两项收尾以后再做。
+       - 下面任何一条出现，就是应用缺陷：(1) B 的会话里任何计数大于 0；(2) c2 的界面和服务端的值对不上；(3) 落到首页后 3 秒内跳到 reconsent 或 profile-recovery；(4) `welcomedSeeded` 为真，reload 后还是离开了帖子页；(5) reload 后帖子页在、存储是 B，`.more-btn` 不出现；(6) 任何一次 inspect 读到的 user.id 不是 B，phase 记 `identity_mismatch`，为空的另记 `identity_missing`。命中就记【跳过】（应用缺陷），写进 STATUS「阻塞与等待 Eric」和第七批 ④，附 phase、计数和日志路径。不改应用代码，不开 PR，不再重跑；第 0 项 a 不满足，#369 不合，等 supervisor。
+       - 清单以外的失败（选择器、strict 模式、正向对照没出来、超时、页面加载失败）算探针或环境问题，可以用剩下的次数，先写假设再跑。第 5 次仍不过：记【跳过】，附各次日志路径和差异，第 0 项 a 不满足。
+       - P1.12 依赖 P1.11：P1.11 因为应用缺陷记【跳过】，P1.12 不跑，也记【跳过】（等 P1.11）。P1.11 因为探针问题第 5 次仍不过，P1.12 仍可以跑，但 c2 读到 A 或 B 的同意布尔值为假，就不跑。
+       - 所有容器步骤只用 `flock ~/work/illini-dev-env/.containers.lock`，不用别的锁文件。§5.2 的自检照旧，只拦 `**/api/moderate`。EV 仍用 `~/work/evidence/D53/staging/P1.11`、`P1.12`，日志按 attempt-4、attempt-5 命名。
+     - c. **P1.11 怎么改。**
+       1. 首页判定：`await expect(page).toHaveURL(/#\/(?:pages\/index\/index)?$/)`，再要 `page.getByRole('heading', { name: /^(Home|首页)$/ })` 可见（pages/index/index.vue:3）。等 3 秒再核一次，仍在首页。
+       2. 同意这一步先问服务端，再定界面该怎样。A、B、C 在第 3 次已经 record_consent 204。在 consent-login.spec.ts 里 `import { CURRENT_CONSENT_VERSION } from '../src/legal/index'`（探针在 app/.probes/ 下跑；7b18f20 上它是 '2026-09-19'），用各自 probe-data 的会话调 `rpc('get_my_profile')`，只记布尔值 `!!v && v >= CURRENT_CONSENT_VERSION`（v 是 tos_version，写法同 App.vue:163）。
+          - 为真：登录后必须落到首页，过第 1 条，这期间不能出现 reconsent。记 `already_recorded`。
+          - 为假：必须出现 reconsent，点 `.btn-primary`，record_consent 要 2xx，再过第 1 条。
+          - 界面和布尔值对不上：phase 记 `consent_mismatch`，按 b 的清单第 (2) 条处理。
+          - DoD ③ 写成「第 3 次 record_consent 204 ×3 记录了同意，本次（第 4 或第 5 次）核实同意还在」。截图 3 张、ensureScreenshotSafe、DoD ④ 的 3 passed 都照旧。
+       3. catch 里调 setContent 之前先记：phase（goto、login、consent_state_rpc、consent_decision、consent_accept、home、screenshot_safety、screenshot、ui_logout）；错误类别（timeout、strict、assertion、other）；路由布尔值（home、welcome、reconsent、recovery、login、suspended）。不记查询串。phase 名和布尔值不含账号数据，按 §5.2 第 4 条可以输出。
+     - d. **P1.12 怎么改。**
+       1. 第一次 goto 之前加 `page.addInitScript(() => { try { localStorage.setItem('welcomed', '1') } catch {} })`。仓库 42 个冒烟 spec 里 38 个这么做，它不碰账号数据。
+       2. 标记：每次由 C 新发一条带当天 CT 日期的私信，去掉 account-switch.spec.ts:31 复用旧消息的那段。私信删不掉，DoD ⑥ 允许留下。residuals.json 改成累加，消息 3a480e58（会话 158773c0，第 1 次建，第 2、3 次复用）不能从清单里掉出去。
+       3. A 的正向对照：A 进聊天之前先 switchTab 到 `/pages/messages/index`，断言某条 `.conv-preview` 含标记。会话列表存在 useMessages.ts:51 的模块级 ref 里，同一用户 30 秒内复用（:137、:301–306），换号时由 :170–173 清空；要是这次清空失效，A 的会话列表就会留给 B。然后进聊天读到标记，再按现有流程到设置页退出登录。从 A 的消息列表画出来到 B 打开消息页不超过 30 秒，实际毫秒数记进计数；超过了，在未测项写明缓存窗口没测到。
+       4. 泄漏观察：
+          - 用 `page.addInitScript` 装一个 MutationObserver，默认不记。A 退出完成（token 为 null、回到首页）以后，测试用 page.evaluate 打开它，从这时起覆盖 B 的登录和每次 navigate。
+          - reload 会清掉页面里的状态。所以 reload 之前先读出这一段的最大值，记为 pre_reload；再调一次 `page.addInitScript(() => { window.__leakArmed = true })`，让 reload 后的观察器一加载就开始记；reload 后再读一次，记为 post_reload。两段的最大值都要是 0，两段的回调次数都要大于 0，证明观察器确实装上并打开了。
+          - innerText、textContent、localStorage、sessionStorage 四项都用 `/SYN-P1-LEAK-\d{8}/g` 计数，前一天的私信也算命中。任一项最大值大于 0 都算 b 的清单第 (1) 条；只有 textContent 命中的，phase 记 `hidden_dom_hit`。
+          - 计数器自己的正向对照，两样都做：
+            - control_A：第 3 条里 A 的消息页看到标记以后，用同一个 inspect 函数和同一个观察器读数函数跑一次，要求 innerText ≥ 1、textContent ≥ 1（存储两项只记不判）。它不算 b 的清单第 (1) 条。A 退出完成时把观察器清零。
+            - 对照串：inspect 和观察器另外数 `/\[SYN-P1\.12\]/g`。广场、帖子页（reload 前后各一次）都要 ≥ 1，证明读的是画出来的文字，reload 后观察器也在工作。
+            - 正向对照不过，算探针问题，不算应用缺陷。
+       5. 每个页面量计数之前，先确认真的到了那一页、已经画出来：
+          - 消息：`toHaveURL(/#\/pages\/messages\/index$/)`，`.conv-skel` 为 0，`.conv-item` 可见（B 是 P2.11 两个会话的买家，至少有一条），`.empty[role]` 为 0；出现 `.empty[role]`，phase 记 `messages_load_failed`。
+          - 广场：`toHaveURL(/#\/pages\/plaza\/index$/)`，B 自己那条 `[SYN-P1.12] account switch public detail` 可见。这只证明页面画出来了；计数器的正向对照见第 4 条。
+          - 帖子：URL 正好是 `/#/pages/post/index?id=<postId>`，用 `.secondary-page--post .post-card`。广场页也有 `.post-card`，裸选择器会撞 strict 模式。
+       6. 刷新：reload 之前先断言 `.more-btn` 可见。reload 仍用 `waitUntil: 'networkidle'`，等待方式不变（第 3 次的日志里 reload 本身正常返回，失败出在之后）。之后：断言 URL 和 `.secondary-page--post .post-card` → inspect（计数，加存储里的 user.id 是 B）→ 等 `.more-btn` → 再 inspect 一次。两次 inspect 和观察器的最大值都要是 0。7b18f20 没有 service worker，普通重载已经清掉 JS 内存、保留存储，DoD ③ 的「硬刷新」按 page.reload 算满足；证据里写「page.reload（普通重载，WebKit）」。
+       7. 失败门：在 reconsent、recovery、login 之外，加 welcome、home、post、postCardVisible、moreBtnVisible、welcomedSeeded 和当前 phase。`.more-btn` 不出现时，先把第一次 inspect 的计数记下，再以 phase `author_control_after_reload` 失败。
+       8. B 的帖子：任何一次失败后都跑 p1-cleanup，或者下一次接着复用这个帖子。最后一次跑完，不管过没过，都删掉 B 的帖子，核实剩 0 行。
+     - e. **两项都要做的。**
+       - 会话：probe-data 的 `identity()` 每次都用密码登录、从不退出。改成 `db.auth.signOut({ scope: 'local' })`，放在所有界面步骤和清理子进程之后；记 /logout 的 HTTP 状态，不靠返回的 error 判断。consent-login 给 A、B、C 留的界面会话、account-switch 结束时 B 的界面会话、p1-cleanup 给 B 留的界面会话，都从界面上退出。界面退出放在截图和 DoD 断言之后，单独 try/catch，失败了不让测试失败：只记 phase（`ui_logout`）和 HTTP 状态，按「账号 + 会话数」列进残留。
+       - 前 3 次留下的 6 个残留 ID，抄进 STATUS_LOG 下一条记录的「未测项」（STATUS_LOG 只追加，不改 L126）：
+         - P1.12：消息 3a480e58-fd78-43dc-9d74-1cb91e64471b，会话 158773c0-56c1-4568-bc25-831b3b7db9ed。
+         - P2.11：已售商品 8aca057d-6617-4dac-9819-2572dbb65977，报价 6973bda3-06ef-4c71-9e8c-509cae9e5d5f，会话 47b757ec-053b-40c6-81a9-586e291426a9、45afcc07-8b1a-4b71-a4de-0d6fd02639e6（45afcc07 是第 2 次留下的）。
+       - 探针：写回时按 RUNBOOK §4.3 ⑤ 把 probes/ 和 probe-in-container.sh 复制到 `$DOCS/appendix/env/probes/`，sha256 记进 STATUS_LOG。仓库是公开的，复制前先扫：除 example.test、example.invalid 以外没有邮箱，没有 token、密钥，没有 /home 路径。
+     - f. **P2.11。**
+       - p2-authz-matrix.mjs 的期望改成同时看码和 message：「标题 121 字」要 22023 且 message 是 `public_write_boundary:post_title_size`（validate_post_topic 自己调 assert_text_boundary 报的，20261112120000_community_post_topics.sql:38–56）；「话题正文为空」要 22023 且 message 是 `public_write_boundary:post_content_size`（authoritative_public_write_boundary 按名字排在 validate_post_topic 之前，先报），也认 23514 `post_topic_body_required`。只认码号太宽，别的 22023 会混过去。
+       - 不重跑，因为每跑一次都会留下删不掉的行。sha256 旁边注明「已改、未执行；L126 的证据出自改之前的版本」，改之前的 sha256 也记下。
+       - ENGINEERING §5.2 的错误映射表（L228–230）在空正文那一行只列了 23514 `post_topic_body_required`，没列实际先报的 22023 `public_write_boundary:post_content_size`。§5.1 第 3 条讲的 validate_post_topic 本身和源码一致，只是正文为空时轮不到它。按 STOP-16a 在 STATUS_LOG 记一条。
+       - STATUS 的 P2.11 一行现在改成「运行通过，7/7 被拒；等 P1.12（依赖）」，STATUS_LOG 追加一条更正。P1.12 通过后改成「通过」；P1.12 记【跳过】时，P2.11 也记【跳过】（等 P1.12）。
+     - g. **之后怎么接。**
+       - P1.11、P1.12 在 7b18f20 上都过了，只证明探针对、main 基线不漏。要上线的 #369、#377 改了 App.vue、post/index.vue、useMessages.ts、messages/index.vue，所以合 #369 之前和合 #377 之前，supervisor 会另派一次确认跑：同一份探针（sha256 不变），跑在要合的 head 上，不计入 5 次。
+       - 第 0 项 a 的「先验收再上线」，P1.11、P1.12 这两项以确认跑为准。P1.8、P2.13 仍按第 7 项 a 等 #371。第七批 ④、⑥ 按最后一次的结果写。
+
+  9. **补充（2026-11-20 06:45 CT）：合并顺序改成先合 #376（supervisor 已做）。**
+     - 起因：#371 在 7c94a11 上的 CI（run 44731585297）只有 Build H5 失败。runner 是 ubuntu-26.04，WebKit 起不来，4 个 mac-webkit 测试在准备 page 时超时；其余必需检查全过。#376 在 f0ccd8f 上的 CI 全绿，它把装 Playwright 浏览器的三个任务钉在 ubuntu-24.04。
+     - supervisor 独立核过：#378 在容器里用自己下载的输入重建两次，和提交的归档逐字节相同；#376 的审计步骤过了 55 种输入和真实 registry 的测试。
+     - 已做（UTC）：11:55 #378 合进 #373 的分支（3b51e92）；11:55 #373 合进 #371 的分支（7c94a11）；12:35 #376 squash 合进 main（b4d615b）；随后把 main 合进 #371 的分支（6d481d0），CI 重跑。#371 绿了由 supervisor 合进 main。
+     - 第 7 项 a 不变：P1.8 仍看 `gh pr view 371 --json state,mergeCommit`。#376 已在 main 上，P1.8 revert c52badf 以后，#369 一线的三处 ubuntu-24.04 由 main 提供。
+     - 预期中的红：#376 进 main、#371 还没进的这段时间，main 的依赖审计会因为 intlify、follow-redirects、glob、minimatch、qs 的 6 条公告变红。#371 的 lockfile 审计是干净的，合进去就好。
+
 ## 待定
 
 ### D-28 轮值伙伴与四项职责的小时数
