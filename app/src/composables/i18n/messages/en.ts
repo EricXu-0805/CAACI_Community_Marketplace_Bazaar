@@ -723,9 +723,11 @@ const en: Record<string, string> = {
   'notif.reportDismissed': 'We reviewed your report and found no violation',
   'notif.appealDenied': 'Your appeal was reviewed; the restriction stands',
   'notif.commentReply': '{name} replied to you in "{title}…"',
-  'notif.followedReply': '{n} new replies in "{title}…", a topic you watch',
+  'notif.followedReply': '{n} new reply in "{title}…", a topic you watch|{n} new replies in "{title}…", a topic you watch',
   'notif.targetGone': 'This content is no longer available',
   // P3 notification keys: add new ones directly below this line.
+  'notif.commentReplyPlain': 'Someone replied to your reply',
+  'notif.followedReplyPlain': 'A topic you watch has new replies',
   'profile.edit': 'Edit',
   'profile.markSold': 'Mark Sold',
   // showModal button variant — wx.showModal fails outright (no dialog) when

@@ -43,27 +43,28 @@
     </view>
 
     <view v-else class="notif-list u-stagger">
+      <!-- SPEC 6.8: one line per notice, except replies in a watched topic, which are one line per topic. -->
       <view
-        v-for="n in notifications"
-        :key="n.id"
-        :class="['notif-item', { unread: !n.is_read }]"
+        v-for="line in lines"
+        :key="line.head.id"
+        :class="['notif-item', { unread: !line.head.is_read }]"
         role="button"
-        :aria-label="notificationAriaLabel(n)"
+        :aria-label="notificationAriaLabel(line)"
         aria-keyshortcuts="Shift+F10 Delete"
-        @click="onTap(n)"
-        @keydown="onNotificationKeydown($event, n.id)"
-        @longpress="onLongPress(n.id)"
+        @click="onTap(line)"
+        @keydown="onNotificationKeydown($event, line)"
+        @longpress="onLongPress(line)"
       >
-        <view :class="['notif-icon', 'ni-' + n.type]">
-          <UIcon :name="notificationIcon(n.type)" size="xs" color="currentColor" />
+        <view :class="['notif-icon', 'ni-' + line.head.type]">
+          <UIcon :name="notificationIcon(line.head.type)" size="xs" color="currentColor" />
         </view>
         <view class="notif-content">
-          <text class="notif-type">{{ t(notificationTypeLabelKey(n.type)) }}</text>
-          <text class="notif-title">{{ notificationTitleText(n, t) }}</text>
-          <text class="notif-body">{{ notificationBodyText(n, t, tc) }}</text>
-          <text class="notif-time">{{ formatTime(n.created_at) }}</text>
+          <text class="notif-type">{{ t(notificationTypeLabelKey(line.head.type)) }}</text>
+          <text class="notif-title">{{ notificationTitleText(line.head, t) }}</text>
+          <text class="notif-body">{{ lineBody(line) }}</text>
+          <text class="notif-time">{{ formatTime(line.head.created_at) }}</text>
         </view>
-        <view v-if="!n.is_read" class="notif-dot"></view>
+        <view v-if="!line.head.is_read" class="notif-dot"></view>
       </view>
     </view>
     </view>
@@ -79,19 +80,26 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, onUnmounted } from 'vue'
+import { ref, shallowRef, computed, watch, onUnmounted } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
 import {
   notificationBodyText,
-  notificationDestination,
   notificationIcon,
   notificationTitleText,
   notificationTypeLabelKey,
   useNotifications,
-  type Notification,
 } from '../../composables/useNotifications'
+import { notificationBodyKey, notificationPostTarget } from '../../api/notifications'
+import {
+  fetchReplyNoticeContext,
+  notificationLineDestination,
+  notificationLines,
+  replyNoticeKey,
+  type NotificationLine,
+  type ReplyNoticeContext,
+} from '../../composables/replyNotices'
 import { formatTime, friendlyErrorMessage, navigateBackOr } from '../../utils'
 import {
   captureActiveAccountRequest,
@@ -109,6 +117,37 @@ const markingAll = ref(false)
 let pageVisible = false
 let pageLoadEpoch = 0
 let markAllEpoch = 0
+
+// P3.3 (SPEC 6.8): replies in a watched topic are one line per topic.
+const lines = computed(() => notificationLines(notifications.value))
+// What a reply notice says beyond its own row: the topic's title and who replied.
+// It is looked up again whenever the set of notices changes, a live one included.
+const replyContext = shallowRef<ReplyNoticeContext | null>(null)
+let replyContextEpoch = 0
+watch(() => notifications.value.map(n => n.id).join(), async () => {
+  const requestEpoch = ++replyContextEpoch
+  const accountToken = captureActiveAccountRequest()
+  try {
+    const next = await fetchReplyNoticeContext(notifications.value)
+    if (requestEpoch !== replyContextEpoch || !accountToken || !isAccountRequestCurrent(accountToken)) return
+    replyContext.value = next
+  } catch {
+    // The lines keep their plain wording and a tap still opens the topic.
+  }
+}, { immediate: true })
+
+function lineBody(line: NotificationLine): string {
+  const { key, target } = notificationBodyKey(line.head.body)
+  const title = target ? replyContext.value?.titles.get(target) : undefined
+  if (title && target && key === 'followed_post_reply') {
+    return tc('notif.followedReply', line.rows.length, { n: line.rows.length, title })
+  }
+  if (title && target && key === 'comment_reply') {
+    const name = replyContext.value?.names.get(replyNoticeKey(target, line.head.created_at))
+    if (name) return t('notif.commentReply', { name, title })
+  }
+  return notificationBodyText(line.head, t, tc)
+}
 
 async function loadCurrentNotifications() {
   const requestEpoch = ++pageLoadEpoch
@@ -158,6 +197,9 @@ onHide(() => {
 const stopAccountTransitionListener = onAccountTransition(() => {
   pageLoadEpoch += 1
   markAllEpoch += 1
+  // Titles and names looked up for one account say nothing about the next one.
+  replyContextEpoch += 1
+  replyContext.value = null
   loading.value = false
   loadError.value = false
   markingAll.value = false
@@ -175,29 +217,41 @@ onUnmounted(() => {
 
 function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
 
-function notificationAriaLabel(n: Notification): string {
+function notificationAriaLabel(line: NotificationLine): string {
   // aria-label wins over content, so anything left out here is unreachable —
   // which is what happened to the unread state (a text-free .notif-dot) and
   // the timestamp.
+  const n = line.head
   return [
     n.is_read ? '' : t('a11y.unread'),
     t(notificationTypeLabelKey(n.type)),
     notificationTitleText(n, t),
-    notificationBodyText(n, t, tc),
+    lineBody(line),
     formatTime(n.created_at),
   ].filter(Boolean).join('. ')
 }
 
-function onNotificationKeydown(event: KeyboardEvent, id: string) {
+function onNotificationKeydown(event: KeyboardEvent, line: NotificationLine) {
   if (event.key !== 'Delete' && event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
   event.preventDefault()
   event.stopPropagation()
-  onLongPress(id)
+  onLongPress(line)
 }
 
-function onTap(n: Notification) {
-  if (!n.is_read) markRead(n.id).catch(() => {})
-  const destination = notificationDestination(n)
+function onTap(line: NotificationLine) {
+  // Decided before anything is marked read: an unread line opens at its earliest reply.
+  const destination = notificationLineDestination(line)
+  const target = notificationPostTarget(line.head)
+  const context = replyContext.value
+  // SPEC 6.8: the line stays, but a topic that was hidden or deleted is not opened.
+  const gone = !!target && !!context && context.checked.has(target) && !context.titles.has(target)
+  for (const row of line.rows) {
+    if (!row.is_read) markRead(row.id).catch(() => {})
+  }
+  if (gone) {
+    uni.showToast({ title: t('notif.targetGone'), icon: 'none' })
+    return
+  }
   if (destination.url === '/pages/notifications/index') return
   if (destination.switchTab) uni.switchTab({ url: destination.url })
   else uni.navigateTo({ url: destination.url })
@@ -219,10 +273,12 @@ async function onMarkAll() {
   }
 }
 
-function onLongPress(id: string) {
+function onLongPress(line: NotificationLine) {
   const accountToken = captureActiveAccountRequest()
   if (!accountToken || !isAccountRequestCurrent(accountToken)) return
   const actionEpoch = pageLoadEpoch
+  // Deleting a merged line deletes every notice it stands for.
+  const ids = line.rows.map(row => row.id)
   uni.showActionSheet({
     itemList: [t('notif.delete')],
     success: (res) => {
@@ -232,7 +288,7 @@ function onLongPress(id: string) {
         && actionEpoch === pageLoadEpoch
         && isAccountRequestCurrent(accountToken)
       ) {
-        deleteNotification(id).catch((err: any) => {
+        Promise.all(ids.map(id => deleteNotification(id))).catch((err: any) => {
           if (!pageVisible || actionEpoch !== pageLoadEpoch || !isAccountRequestCurrent(accountToken)) return
           uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
         })

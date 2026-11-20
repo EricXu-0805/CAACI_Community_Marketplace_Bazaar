@@ -392,6 +392,12 @@ const SAFE_UNROUTED_NOTIFICATION_TYPES = new Set([
   'price_drop', 'system', 'sold', 'rating', 'follow', 'post_comment', 'post_like',
 ])
 const SAFE_CONVERSATION_NOTIFICATION_TYPES = new Set(['offer', 'meetup', 'unread_message'])
+// SPEC 6.8: a reply to a reply and a reply in a watched topic are shown in the
+// app only. Both are post_comment rows, so the body key is what leaves them
+// out: in the scan, so they never use up its bounded pages, and again in the
+// unrouted allowlist, the gate every row passes right before it is mailed.
+const IN_APP_ONLY_BODY_KEYS = ['comment_reply', 'followed_post_reply']
+const IN_APP_ONLY_BODY_RE = new RegExp(`^(?:${IN_APP_ONLY_BODY_KEYS.join('|')}):`)
 
 async function supabaseError(prefix, response) {
   const body = await response.text().catch(() => '')
@@ -544,7 +550,8 @@ async function notificationConversationColumnAvailable() {
 
 async function loadPendingNotificationPage(since, conversationColumnAvailable, afterUserId) {
   const cursor = afterUserId ? `&user_id=gt.${encodeURIComponent(afterUserId)}` : ''
-  const prefix = `notifications?emailed_at=is.null&created_at=gte.${since}${cursor}`
+  const inAppOnly = IN_APP_ONLY_BODY_KEYS.map(key => `&body=not.like.${key}:*`).join('')
+  const prefix = `notifications?emailed_at=is.null&created_at=gte.${since}${cursor}${inAppOnly}`
   const suffix = `&order=user_id.asc,created_at.desc&limit=${NOTIFICATION_PAGE_SIZE}`
   const currentPath = `${prefix}&select=id,user_id,type,title,body,created_at,item_id,conversation_id${suffix}`
   const legacyPath = `${prefix}&select=id,user_id,type,title,body,created_at,item_id${suffix}`
@@ -621,6 +628,7 @@ async function loadNotificationsByIds(ids, conversationColumnAvailable) {
 
 function canEmailWithoutConversation(row) {
   return !row.conversation_id && SAFE_UNROUTED_NOTIFICATION_TYPES.has(row.type)
+    && !IN_APP_ONLY_BODY_RE.test(row.body || '')
 }
 
 function canEmailWithConversation(row) {

@@ -723,6 +723,8 @@ const zh: Record<string, string> = {
   'notif.followedReply': '你订阅的话题「{title}…」有 {n} 条新回复',
   'notif.targetGone': '这条内容已不可见',
   // P3 notification keys: add new ones directly below this line.
+  'notif.commentReplyPlain': '有人回复了你的回复',
+  'notif.followedReplyPlain': '你订阅的话题有新回复',
   'profile.edit': '编辑',
   'profile.markSold': '标记已售',
   'profile.markSoldConfirm': '标记已售',
