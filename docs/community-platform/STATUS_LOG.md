@@ -2011,3 +2011,94 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 容器 test 一步跑在 bac9ad4，不是最终提交的树；mp、h5accept、migrations、npmaudit 与完整 2p smoke 清单留给第二阶段门禁；小程序只构建，没在真机或开发者工具里看
 - 下一条: P4 第二阶段
 - 附: client:P4-M1（2n 全天活动）、2m 客户端（NULL、infinity、解析不了的结束时间按「没有结束时间」显示）、m1、m4、m6、m7、m12、m14 已修；m2、m5、m8、m10、m13 只修了一部分，原因写进第八批 ⑥；m3 归第二阶段的 2l；m9 不改（按设计全有或全无）；m11 的 8 张截图主会话看过 390 宽的 4 张（与 1280 宽同一批数据），只有测试夹具数据，收尾时放进 appendix/visual/P4.8/。[OMO自决] 主会话「C-final 之前不起容器」的通知被这个子任务当成工具输出里可能被注入的文字，没照做；它说那之后没起过容器；第二阶段的消息里改成直接写明。
+
+### L156 · 2026-11-20 10:38 CT · D-54 第 3 项：P3 合进 #377 的最终 head 9be6a56
+- task_id: D-54.3（P3 部分）
+- code_sha: codex/community-p3-20261120 e15996ae5cd9f5a80f42d1664458f800c2464792（父提交 4e0ba6e、9be6a56；草稿 PR #379，base 没动）
+- docs_sha: （主会话填）
+- 环境: 本地
+- 命令: `git fetch origin`；`git merge --no-ff 9be6a56b849f8ed8e506666fcd0b24cc5b11c6e0`（普通 merge，没有 rebase）；`git diff HEAD^1 HEAD --stat`
+- 计数: `git diff HEAD^1 HEAD --stat` 0 行；HEAD 的树 78bfc02c 与 HEAD^1 的树相同；9be6a56 的树 385f7a41 与 9a31e75 的树相同；20261112120000 e2a85c3e…、20261114015420 0dc2ceaf… 没变 [本地测]
+- ci_run_url: —（PR 的 base 不是 main）
+- 未测项: 这一步没有单独跑门禁（内容没变）；随后的门禁见下一条
+- 下一条: D-54 第 2 项的 P3 迁移修改
+
+### L157 · 2026-11-20 11:57 CT · 重新冻结：20261120100354_community_watch_save_activity（D-54 第 2 项 a、b 第 1 步）
+- task_id: D-54.2a、D-54.2b-1、D-54.2c、D-54.2d、D-54.2e（服务端）、D-54.2f（服务端）、D-54.2o（mig:P3-m）
+- code_sha: codex/community-p3-20261120 085d529b766978e1648b5cac3656d88145d04927（e15996a → 085d529），已推送（快进 `4e0ba6e..085d529`，没有 force push）；草稿 PR #379，base codex/community-restricted-20261113 没动
+- docs_sha: （主会话填）
+- 环境: 本地、L-SQL
+- 命令: 数据库测试先红（旧迁移、新用例）：`RUN_CMD` 跑 scripts/community-reply-notifications、community-governance-actions、community-watch-save、community-sort-keyset 四个文件；改迁移与三件套；同一命令转绿；`lsql-replay.sh ~/work/illini-p3 20261120100354`；manifest.sha256 只替换这一行；提交；在提交后的 head 上再跑一次 L-SQL 和全量门禁 `run-checks.sh ~/work/illini-p3 install typecheck h5 h5accept mp mpci migrations test smoke npmaudit`（SMOKE_SPECS 是默认两个加 D-54 2p 列的十个）；`git push --no-verify`（推送前日志 check-20261120T173728Z）；`gh api -X PATCH …/pulls/379` 只改 body。容器步骤都是 `umask 022; flock ~/work/illini-dev-env/.containers.lock …`，worktree 权限 755，磁盘 229G 以上
+- 计数: 旧 sha256 9e0a044dad8bd31ae7b314aee7cbe513880d10e9f08f1883fc7eb1f37b913622 作废；新 sha256 aedc91521ca8961906a7578ae6caac52fa59f8c9bc53911eec65d46e1b619137（manifest 第 186 行，其余 185 行没变）。数据库测试：红 check-20261120T165612Z tests 65 / pass 46 / fail 19；绿 check-20261120T172103Z 65/65。L-SQL：lsql-20261120T172117Z 在回归里红了一次（新加的 A12 用例数了别的通知，12/703，是用例自己的问题，迁移没问题）；改用例后 lsql-20261120T172930Z 与提交后的 lsql-20261120T173552Z 都是 `files=183 replayed=183 errors=0 done=1 rc=0`，`P3_TOTAL cases=703 pass=703 fail=0`（19 种状态 × 37 个用例），`P3_SWITCH default=off PASS`，三个场景 PASS，VERIFY 打印 `community_reply_notice_switch|enabled=f`。门禁 check-20261120T173728Z（head 085d529，tree cc4bc8a8，unstaged=no）：十步全部 rc=0，`TEST tests=2784 pass=2783 fail=0 skipped=1 pg_skips=0`，smoke 142 passed，h5accept 52 passed，npm audit 0；主包（mpci）1,392,221，余 180,643 [隔离环境 L-SQL][本地测]
+- ci_run_url: —（PR 的 base 不是 main）
+- 未测项: 没应用到任何托管库（OMO 不连托管库）；开关在托管库上打开以后的行为只在 L-SQL 和夹具库里测过；REGRESSION 只在 L-SQL 跑
+- 下一条: P3 客户端修复（见第 4 条）；P4 分支 merge P3 后重算钉的 md5（~/work/evidence/D54/p3/REFROZEN.txt）
+- 附: 逐项状态，一行一项，只写编号。
+  - mig:P3-M1 已修（085d529）：新表 private.community_reply_notice_config，默认关；关着时 notify_topic_reply 一行不写；仓库根目录 RUNBOOK.md 新增「Reply notice switch」一节；迁移头和 #379 描述的发布顺序照 2c 改写。
+  - mig:P3-M2 已修（085d529）：作者处于有效 3 级以上限制时不发通知。
+  - client:P3-M1（服务端）已修（085d529）：list_own_hidden_posts 不再返回理由，也不读审计日志；VERIFY 与 REGRESSION 都断言。
+  - client:P3-M2（服务端）已修（085d529）：新列 post_comments.reply_to_comment_id，写入时校验。
+  - mig:P3-m1 没改行为：回填会动 updated_at，并给每条话题发一次 realtime UPDATE；updated_at 本来就随每次回复、点赞变，没有客户端读它，生产只有个位数话题；迁移期间停触发器的风险更大。迁移注释里写明了，PRECHECK 新钉了回填会触发的三个触发器。
+  - mig:P3-m2 已修（085d529）：VERIFY 逐条比对六条策略的完整表达式。变异检查见第 4 条的附。
+  - mig:P3-m3 文档项，归主会话。
+  - mig:P3-m4 没改：政策问题，按要求不改代码。
+  - mig:P3-m5 已修（085d529）：注释改对。
+  - mig:P3-m6 已修（085d529）：订阅者与话题作者之间有拉黑时不再通知；订阅行本身不删，解除拉黑后恢复。
+  - mig:P3-m7 没改行为：14 天是 ENGINEERING §5.3、P3.4 DoD ① 定的；迁移头和 PR 描述里写明旧客户端的搜索从第 1 步起就受影响。
+  - mig:P3-m8 没改：answered_at 不清空是 ENGINEERING §5.3 定的；要改得同时处理下架与恢复，下架函数不在这条迁移里；隐藏话题仍能收到回复是 010/075 的既有策略，要不要拒绝是写入合同的变化，请 Eric 定。
+  - mig:P3-m9 没改：要改的是 20260905212134 的 finish_moderation_media_job 和 worker，不在这条迁移里，FINAL 已披露。
+  - mig:P3-m10 已修（085d529）：开头先按「回复 → 话题」的顺序锁 post_comments、posts。
+  - mig:P3-m11 已修（085d529）：注释改成 16 个函数体，查 search_community_posts 的重载，钉回填触发器。
+  - [OMO自决] 2f 选的做法：目标在别的话题或别的楼里 → 拒绝（23514 comment_reply_target_invalid）；目标已被删除或隐藏 → 不拒绝，字段存空，通知退回楼主（隐藏的回复不管在哪都按「不存在」处理，免得错误信息泄露它在哪）。撤回办法：另起迁移改 private.validate_comment_reply_target。
+  - VERIFY 里「表 ACL 为空」按实际写成「除属主自己那一项外没有别的授权」（relacl 只有属主一项，与 private.video_moderation_config 相同）。迁移头和 RUNBOOK.md 里不写人名，写「release owner」，与仓库 RUNBOOK 的写法一致。
+
+### L158 · 2026-11-20 11:57 CT · [OMO自决] STOP-16a：P3 迁移相对 ENGINEERING §5.3 新增的对象（供补 §5.3）
+- task_id: D-54.2c、D-54.2f（STOP-16a 记录）
+- code_sha: 085d529b766978e1648b5cac3656d88145d04927
+- docs_sha: （主会话填）
+- 环境: 本地
+- 命令: —（只记录；对象定义见 supabase/migrations/20261120100354_community_watch_save_activity.sql）
+- 计数: 新对象 6 类 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: 主会话把下面的清单补进 ENGINEERING §5.3
+- 附: ① 表 private.community_reply_notice_config（singleton boolean 主键、DEFAULT true、CHECK (singleton)；enabled boolean NOT NULL DEFAULT false；ENABLE ROW LEVEL SECURITY，没有策略；REVOKE ALL FROM PUBLIC, anon, authenticated, service_role；迁移里插入一行）。② 列 public.post_comments.reply_to_comment_id uuid，可空，外键 post_comments(id) ON DELETE SET NULL（约束名 post_comments_reply_to_comment_id_fkey）；部分索引 post_comments_reply_to_comment_id_idx (reply_to_comment_id) WHERE reply_to_comment_id IS NOT NULL；`GRANT INSERT (reply_to_comment_id) TO authenticated`，不授 SELECT、UPDATE。③ 函数 private.validate_comment_reply_target()（SECURITY DEFINER，search_path=pg_catalog，对 API 角色全部 REVOKE）与触发器 enforce_reply_target（BEFORE INSERT ON post_comments，按名字排在 enforce_actor_post_comments、enforce_locked_post_reply 之后）；新错误名 comment_reply_target_invalid（23514）。④ private.notify_topic_reply() 改了：先看开关；作者被影子隐藏时不发；comment_reply 发给 coalesce(reply_to_comment_id, parent_comment_id) 的作者；订阅者与回复者或话题作者之间有任一方向的拉黑就不发。通知表（§5.3）里 comment_reply 的接收人应改成「被回复的那条回复的作者（没指明时是楼主）」。⑤ public.list_own_hidden_posts(uuid) 的返回列是 id、title、category、content、created_at，没有 hidden_reason。⑥ 迁移开头在漂移守卫之后加了 `LOCK TABLE public.post_comments, public.posts IN ACCESS EXCLUSIVE MODE`；漂移守卫多钉了 moderation_private.current_profile_state(uuid) 9c0b020a…。函数体 md5（P4 要重算的依据）：private.notify_topic_reply() aca99f42836280e42523f3e64f722908，private.validate_comment_reply_target() 4795236eac69a88568327a0c0cd61563，public.list_own_hidden_posts(uuid) c9f99d66e033e5d9f99429cde0508a8b；其余 11 个本迁移发的函数体没变。
+
+### L159 · 2026-11-20 12:55 CT · D-54 第 2 项 e–j、o、p：P3 客户端修复，最终门禁与推送
+- task_id: D-54.2e、D-54.2f、D-54.2g、D-54.2h、D-54.2i、D-54.2j（客户端部分）、D-54.2o（client:P3-m）、D-54.2p（P3）
+- code_sha: codex/community-p3-20261120 042427c7a37d9548fa758274b5fa0dc98f1c5bce（085d529 → 042427c，已推送，快进 `085d529..042427c`，没有 force push）；tree 5af84347；29 个文件，`supabase/` 下没有改动（20261120100354 的 sha256 仍是 aedc9152…，manifest 没动，P4 钉的 md5 不受影响）；草稿 PR #379，base codex/community-restricted-20261113 没动，没有 merge、没有标 ready
+- docs_sha: （主会话填）
+- 环境: 本地、L-SQL
+- 命令: 先红：把新测试放进旧客户端（e15996a 的一次性 worktree），`run-checks.sh <旧客户端> install cmd smoke`（RUN_CMD 跑 5 个 node 测试文件，SMOKE_SPECS 是 5 个改过或新加的 spec）；首页标签和列表举报两处把测试改准以后在旧客户端上再跑一次；后台队列的新 spec 在旧客户端上跑一次（其中两条给旧客户端加了变异，见附）。转绿：本地开发 worktree 上同样的命令。提交后在 ~/work/illini-p3 上跑 `run-checks.sh ~/work/illini-p3 install typecheck h5 h5accept mp mpci migrations test smoke npmaudit`，SMOKE_SPECS 是默认两个、D-54 2p 列的十个，加 community-reply-target.spec.ts、community-report-queue.spec.ts（14 个文件都在分支上）；`lsql-replay.sh ~/work/illini-p3 20261120100354`；`git push --no-verify origin codex/community-p3-20261120`（推送前日志 check-20261120T182928Z）；`gh api -X PATCH …/pulls/379` 只改 body。容器步骤都是 `umask 022; flock ~/work/illini-dev-env/.containers.lock …`，每步之前核对 worktree 权限 755、磁盘 228G 以上
+- 计数: 先红（旧客户端、新测试）：check-20261120T173104Z node tests 57 / pass 49 / fail 8，smoke 18 failed、21 passed；check-20261120T180841Z 5 failed（首页标签 4 条、列表举报 1 条）；check-20261120T182514Z 3 failed、1 passed。转绿：check-20261120T180609Z node 79/79（那 5 个文件加 community-board-deeplink、community-sort-keyset），smoke 36 passed、3 failed，红的 3 条是测试自己等提示的写法（提示和读屏播报各有一份同样的文字），改测试后 check-20261120T181612Z smoke 39 passed；check-20261120T182552Z node 2/2、smoke 7 passed。门禁 check-20261120T182928Z（head 042427c，tree 5af84347，unstaged=no）：install、typecheck、h5、h5accept、mp、mpci、migrations、test、smoke、npmaudit 全部 rc=0；`TEST tests=2790 pass=2789 fail=0 skipped=1 pg_skips=0`；smoke 162 passed；h5accept 52 passed；npm audit 0。主包（mpci）1,394,113，余 178,751（要求 65,536）；mp 构建 1,394,204；pages/my-topics 7,192，pages/post 49,436，最大分包 pages/detail 58,523。L-SQL lsql-20261120T185128Z：`files=183 replayed=183 errors=0 done=1 rc=0`，`P3_TOTAL cases=703 pass=703 fail=0`，`P3_SWITCH default=off PASS` [隔离环境 L-SQL][本地测]
+- ci_run_url: —（PR 的 base 不是 main）
+- 未测项: 真机和微信开发者工具都没测，小程序只有两次构建和包大小核对；没连任何托管库，公开只读巡检新加的 community_post_state 探测只用桩响应测过；上报没有连真实的 Sentry 项目验证；首页标签在 360 宽、英文下第四个标签换到第二行，这个样子没有人确认过（截图在 ~/work/evidence/D54/p3/visual/）；后台话题卡的缩略图在话题被隐藏、图片挪去证据桶以后读不到，卡片上只剩一块底色，这种情况没测
+- 下一条: 主会话：BACKLOG P3.6 DoD ② 记「部分」（2e、2j）；SPEC 与实现的三处差异记进 FINAL（6.8 定位仍按 reply_at；6.10 分享卡带应用图标而不是不带图；6.11 后台话题卡还缺三项）；client:P3-m9、mig:P3-m3 两个文档项；P4 分支 merge 042427c。Eric：mig:P3-m4、client:P3-m4 两个政策问题，mig:P3-m8，以及 360 宽英文标签换行是否接受
+- 附: 逐项状态，一行一项，只写编号。
+  - client:P3-M1 已修：服务端 085d529，客户端 042427c。作者视图只有一句通用说明，客户端不读、不存、不显示理由。P3.6 DoD ② 记「部分」。
+  - client:P3-M2 已修：服务端 085d529，客户端 042427c。话题页和列表回复面板发回复时都带被回复的那条回复的 id（新 spec community-reply-target.spec.ts）。
+  - client:P3-M3 已修（042427c）：在社区列表和列表回复面板里举报话题、回复，提示与话题页相同；举报用户仍是原来那句。
+  - client:P3-M4 已修（042427c）：标题独占一行，标签在下一行、放不下就换行；测试在 360、390 × 中文、英文四种情况下量每个标签的实际位置（完整、在视口内、没被遮住），再逐个点一遍。360 宽英文时第四个标签在第二行。
+  - client:P3-M5 已修（042427c）：读话题失败时页面显示错误和重试，并上报；「已隐藏」「已删除」只在服务端明确这样回答时显示；迟到的旧请求结果按 requestEpoch 丢弃。
+  - client:P3-M6 已修（042427c）：没有申诉按钮；一句「如有异议，请联系站务」，没有 mailto、没有邮箱（测试断言没有链接）。P3.6 DoD ② 记「部分」。
+  - client:P3-m1 已修（042427c）：订阅、收藏状态读失败时两个按钮是「未知」（aria-pressed=mixed），有提示、有上报，点一下先重读再决定写什么。
+  - client:P3-m2 已修（042427c）：通知列表查话题状态失败会上报；点某一行时单独再查一次这条话题还在不在。
+  - client:P3-m3 已修（042427c）：「我的话题」换账号后，页面在前台就立刻重读，不在前台就等下次显示时读；读完之前显示加载中，不显示空状态。
+  - client:P3-m4 没改：政策问题，按要求不改代码。
+  - client:P3-m5 已修（042427c）：被隐藏话题页的灰字改用颜色，不用不透明度；对比度亮色 6.57、暗色 6.86（原来约 3）。
+  - client:P3-m6 已修（042427c）：被隐藏话题的分享卡片是关于它自己的一句说明，带应用图标，不带话题的图。SPEC 6.10 写的是不带图；小程序不给图会用页面截图，作者的截图里有被隐藏的正文，所以给了应用图标。与 SPEC 字面不同，请主会话记进差异。
+  - client:P3-m7 已修（042427c）：admin.takedownConfirmBody 的中英文文案改了，不再说后台没有恢复入口。
+  - client:P3-m8 部分（042427c）：后台话题卡显示正文前 200 字和第一张图（列表读取本来就返回）。关联商品、举报次数与原因分布、作者历史处置记录没做：都要新的服务端读取，而 P3 迁移已重新冻结，P4 钉着它的函数体。
+  - client:P3-m9 文档项，归主会话。
+  - client:P3-m10 已修（042427c）：测试头注释改成实际情况；加了置顶游标分支的用例。
+  - client:P3-m11 已修（042427c）：新 spec community-report-queue.spec.ts 在跑起来的后台里断言队列顺序、两档底色（与页面上两个 token 的实际颜色比）、标签文字、缺等待起点的行被拒绝、处理一条后重读仍保持顺序和颜色、五个治理动作各自发的请求体和「没填理由不发」。对应的源码匹配断言删掉了。community-report-queue.test.mjs 还剩两条：等待档位的纯函数，和「按名字拒绝、不锁控制台」的错误名清单；后一条仍是对源码的匹配。
+  - client:P3-m12 没改：首页一次取齐几种排序，是为了切标签不等网络；改成按需加载要给每个标签加「加载中」和「失败」两种状态，是产品行为的变化。
+  - client:P3-m13 已修（042427c）：「待回答」为空、而上面的板块卡片已经列出了待回答的话题时，显示另一句（home.unansweredAbove），不说没有待回答的话题。
+  - client:P3-m14 已修（042427c）：话题锁定后每条回复上的「回复」入口不显示；列表回复面板直接显示已锁定的说明，不等用户打完字。
+  - client:P3-m15 没改：通知列表合并行只统计已加载的 50 条；要改得按话题单独查数量，或把合并放到服务端，只在超过 50 条时才有差别。
+  - client:P3-m16 部分（042427c）：要定位的回复不在已加载的回复里时有提示，不再没有任何反应；定位仍按 reply_at，没有改成 comment=<id>（客户端读不到通知的来源键，FINAL 已披露）。
+  - client:P3-m17 部分（042427c）：巡检新增 community_post_state。post_follows、post_bookmarks、list_own_hidden_posts 只有登录成员能读，用公开 key 只能靠错误码区分「不存在」和「没权限」；这个区分不连托管 API 验证不了，写错会让每个 PR 的 staging 巡检失败，所以没加。
+  - 变异（证明测「原有行为」的新测试会红）：后台 spec 里队列颜色、治理动作两条测的是原有行为，在旧客户端上各加一处变异才红（把 24 小时那一档的底色改成 48 小时的；把「关闭回复」发的 locked 取反）；话题卡那条在旧客户端上本来就红；「缺等待起点的行被拒绝」那条没做变异，一直是绿的。迁移的变异检查（一次性副本）：lsql-20261120T181001Z 把一条读策略放宽成谁都能读，VERIFY 以 community_watch_save_policy_rules 失败（errors=1，rc=3）；lsql-20261120T181126Z 去掉「通知跟读权限一致」和「通知被回复的那条回复的作者」，REGRESSION `P3_TOTAL cases=703 pass=686 fail=17`（A11 7 条、B04 10 条，rc=3）。
+  - C-final 让行：约 17:45Z 核对 INFLIGHT.md 与 STATUS_LOG L151 后接受，此后没有起新的容器步骤，直到 ~/work/evidence/D54/CFINAL_DONE 在 18:05Z 出现；当时已在跑的 085d529 门禁（check-20261120T173728Z）按要求让它跑完，没有杀任何进程。
+  - 本地清理：开发用 worktree、旧客户端 worktree、本地分支 wip/p3-d54-client（已并入 042427c）和迁移的变异副本都已删除，都没有推送过。留下的只有 ~/work/evidence/D54/p3/ 里的 PR 描述、提交说明、5 张截图（合成数据）和本文件。
+  - 既有问题，这次没改：社区列表卡片的键盘菜单在 H5 上不响应（测试里改用长按打开菜单）。另有一条关于既有读策略的观察只写在子任务的最终报告里，没有写进任何会公开的地方。

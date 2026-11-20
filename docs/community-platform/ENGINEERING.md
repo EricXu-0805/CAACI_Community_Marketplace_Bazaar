@@ -319,6 +319,11 @@ create index posts_unanswered_idx on public.posts (region, created_at desc, id d
 
 判断：官方署名和「新来先看」只给 owner 角色（Eric），日常处置给 moderation 角色。
 
+
+#### 第八批（D-54）补记：迁移相对本节新增的对象（STOP-16a，L158）
+
+① 表 private.community_reply_notice_config（singleton boolean 主键、DEFAULT true、CHECK (singleton)；enabled boolean NOT NULL DEFAULT false；ENABLE ROW LEVEL SECURITY，没有策略；REVOKE ALL FROM PUBLIC, anon, authenticated, service_role；迁移里插入一行）。② 列 public.post_comments.reply_to_comment_id uuid，可空，外键 post_comments(id) ON DELETE SET NULL（约束名 post_comments_reply_to_comment_id_fkey）；部分索引 post_comments_reply_to_comment_id_idx (reply_to_comment_id) WHERE reply_to_comment_id IS NOT NULL；`GRANT INSERT (reply_to_comment_id) TO authenticated`，不授 SELECT、UPDATE。③ 函数 private.validate_comment_reply_target()（SECURITY DEFINER，search_path=pg_catalog，对 API 角色全部 REVOKE）与触发器 enforce_reply_target（BEFORE INSERT ON post_comments，按名字排在 enforce_actor_post_comments、enforce_locked_post_reply 之后）；新错误名 comment_reply_target_invalid（23514）。④ private.notify_topic_reply() 改了：先看开关；作者被影子隐藏时不发；comment_reply 发给 coalesce(reply_to_comment_id, parent_comment_id) 的作者；订阅者与回复者或话题作者之间有任一方向的拉黑就不发。通知表（§5.3）里 comment_reply 的接收人应改成「被回复的那条回复的作者（没指明时是楼主）」。⑤ public.list_own_hidden_posts(uuid) 的返回列是 id、title、category、content、created_at，没有 hidden_reason。⑥ 迁移开头在漂移守卫之后加了 `LOCK TABLE public.post_comments, public.posts IN ACCESS EXCLUSIVE MODE`；漂移守卫多钉了 moderation_private.current_profile_state(uuid) 9c0b020a…。函数体 md5（P4 要重算的依据）：private.notify_topic_reply() aca99f42836280e42523f3e64f722908，private.validate_comment_reply_target() 4795236eac69a88568327a0c0cd61563，public.list_own_hidden_posts(uuid) c9f99d66e033e5d9f99429cde0508a8b；其余 11 个本迁移发的函数体没变。
+
 ### 5.4 LEGAL：两个迁移
 
 **`<UTC ts>_accept_cornfield_consent_version.sql`（LEGAL.2）**：照同类迁移的写法（最新一条是 `20260919090100_accept_acquisition_privacy.sql:12-44`），把新版本号加进约束 `profiles_tos_version_release_allowlist` 和 `record_consent` 的 CASE。原因与顺序见 §10.1。
