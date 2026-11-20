@@ -1156,3 +1156,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 各号周用量 OMO 看不到实时数字，由 supervisor 调整号池顺序和切主线程；OMO 只在挑子任务类别时避开已知到 60% 的号，并在 STATUS「阻塞」里记
 - 下一条: D-51 第 3 项 a（#374）与第 4 项（ci.yml 草稿 PR），D-49（第 5 项）的数据库部分同时交给子任务
 - 附: 号池按 D-51 第 1 项：Claude default（admin）→ account-2（board）→ account-5（新加的 Ultra 号）→ account-4（Lucia），account-3 不用；ChatGPT 由 supervisor 切入；每个号周用量到 60% 停用；18:10「子任务只用 ChatGPT」解除。上一条「account-2」按 supervisor 说明是误发，不是任务。[OMO自决] 顺序：第 5 项耗时最长，把 D-49 的数据库部分在第 3 项 a、第 4 项做的同时交给子任务（不同工作树和分支；D-49 分支只由主会话推送），其余照 D-51 第 8 项。本条起 STATUS_LOG 每条写全 9 个固定字段。
+
+### L94 · 2026-11-19 18:40 CT · D-51 第 2 项 j：run-checks 日志头加上 write-tree、未暂存标记和 MERGE_HEAD
+- task_id: D-51.2j
+- code_sha: —（只改工作站脚本 ~/work/illini-dev-env/run-checks.sh 及其材料分支副本）
+- docs_sha: f6fd3446bdf668e5a89e7124acb266f5c383c065
+- 环境: 本地
+- 命令: `cp -p ~/work/illini-dev-env/run-checks.sh ~/work/illini-dev-env/run-checks.sh.before-D51-20261119`；新版本先写到 run-checks.sh.new、`bash -n` 通过后 `mv` 原子替换（正在跑的检查持有旧文件，不受影响）；`run-checks.sh --selftest`；`cp` 到 appendix/env/run-checks.sh
+- 计数: 旧 sha256 511241d0b1ad88b5542205da6780dba12662a5bbd35fd27663919a802f951751（备份与旧 appendix 副本相同）；新 sha256 45e9733314a2f86573e7d5a56528d05f96c9ca785a3f946667d0c069844d28a0（实际脚本与 appendix 副本相同）；selftest 三行都符合（skipped-2 1/1、pg-skip 1/1、good 0/0）[本地测]
+- ci_run_url: —
+- 未测项: 下一次真实检查的日志头（本条之后的第一份 check-*.log 会带 tree=…）
+- 下一条: D-51 第 3 项 a、第 4 项的检查结果
+- 附: 日志头新增 `tree=<git write-tree>`、`unstaged=yes|no`（工作树和这个 index 树是否不同），有合并进行中时加 `merge_head=<sha>`。write-tree 取的是 index 的树，所以加了 unstaged 标记：unstaged=no 时日志里的 tree 就是检查跑的那棵树。[OMO自决] unstaged 标记是 D-51 第 2 项 j 之外多加的一个字段，理由同上。

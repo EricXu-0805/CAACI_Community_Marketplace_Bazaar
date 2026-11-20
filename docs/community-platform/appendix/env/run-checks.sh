@@ -60,7 +60,12 @@ declare -A CMD=(
   [probe]="bash /dev-env/probe-in-container.sh"
   [cmd]="${RUN_CMD:-echo 'RUN_CMD is empty' >&2; false}"
 )
-echo "repo=$REPO head=$(git -C "$REPO" rev-parse HEAD) branch=$(git -C "$REPO" rev-parse --abbrev-ref HEAD) image=$IMAGE log=$LOG" | tee "$LOG"
+# D-51 2j: the index tree (git write-tree) and any MERGE_HEAD go into the header, so a log can be matched to the
+# tree that was later committed and pushed. unstaged=yes means the working tree differs from that index tree.
+TREE=$(git -C "$REPO" write-tree 2>/dev/null || echo unavailable)
+MERGE=$(git -C "$REPO" rev-parse -q --verify MERGE_HEAD 2>/dev/null || true)
+if git -C "$REPO" diff --quiet 2>/dev/null; then UNSTAGED=no; else UNSTAGED=yes; fi
+echo "repo=$REPO head=$(git -C "$REPO" rev-parse HEAD) branch=$(git -C "$REPO" rev-parse --abbrev-ref HEAD) tree=$TREE unstaged=$UNSTAGED${MERGE:+ merge_head=$MERGE} image=$IMAGE log=$LOG" | tee "$LOG"
 overall=0
 while [ $# -gt 0 ]; do
   s=$1; shift; EXTRA=(); label=$s
