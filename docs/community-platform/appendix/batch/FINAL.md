@@ -428,3 +428,133 @@ D-49 是 Eric 在 D-48 两条路里定的「先在服务端拦住写入，再放
 | D-47 第 2 项（L80） | 「守则 / 指南」按标题判断 | SPEC 没有类型字段；不新建迁移 | Eric 定字段后改 `communityHome.ts` 的判断 |
 | D-47 第 5 项（L81、L88） | 账号门禁页、冷启动无页面时不弹新的入站提示 | SPEC §6.5.1 只规定发帖入口；门禁页上弹「新消息」会把人引出门禁 | `git revert 73cde94 22d9009`（#375），#374 再 merge |
 | D-46 第 3 项 b（L70、L77） | 小程序上关闭发帖面板改用带标题的操作菜单，按钮不超过微信上限 | 「Keep draft」加权 10，超过 8 | `git revert ae058c2 3588c24`（#369），#375、#374 再 merge |
+
+## 第五批（D-51）
+
+按 DECISIONS D-51 第 1–7 项做（材料分支 eb4fc56），第 8 项的目标与续跑提醒记在 L93。八节格式同上，每项单独成行，D-49 单独一节；逐条细节在 STATUS_LOG L93–L108。`latest_batch` 不变。按 D-51 第 8 项，本批交付后结束目标、取消续跑提醒，不从 BACKLOG 往下接任务。
+
+### ① 起止与 SHA 范围
+
+- 起止：2026-11-19 18:33 CT（D-51，材料分支 eb4fc56）至 2026-11-19 21:56 CT。
+- docs_sha：eb4fc56 → 本节所在提交。
+- code_sha（都只 merge 或新提交，不 rebase，不 force push）：
+  - #369 `codex/community-topics-20261112`：04edaa3 → 8257318（空提交，树同 04edaa3，D-51 第 6 项重跑 CI）。
+  - #374 `codex/community-home-20261112`：2e0f582 → 6bdca97（D-51 第 3 项 a）。
+  - #372 `codex/brand-cornfield-20261112`：ba070e7 → d6f393d（D-51 第 3 项 b 的测试）（D-51 第 3 项 b 的测试）。
+  - #376（新开）`codex/config-ci-runner-20261119`：7b18f20 → 87e57c3（cherry-pick c52badf）、92ff5d5（审计放行）。
+  - D-49 `codex/community-restricted-20261113`：04edaa3 → 9c10a7e（服务端 12aec64、35059e1、6747b8a、13c989b、34fb770，上线检查项 de0950f，再合本地客户端分支），已推送；草稿 PR #377，base `codex/community-topics-20261112`。
+  - 本地 `wip/d51-seal-integration`：a9fa656（五个 PR 重合）、8f263f7（CommunityHome.vue 两处改「玉」），不推送。
+- 20261112120000 的 sha256 仍是 e2a85c3ec33c98e8317b764a59fc8af1434c15319794e3f64a6606be70e5a92c。
+
+### ② 完成的任务
+
+```text
+D-51.8 ｜ 通过 ｜ —（不改代码） ｜ eb4fc56 ｜ 本地 ｜ L93 ｜ create_goal 1 个；schedule_prompt 先 list（没有任务）再建 3600 秒续跑提醒 sch_4d17c07102ac，只此一个 ｜ — ｜ — ｜ — ｜ D-51.1
+D-51.1 ｜ 通过 ｜ —（不改代码） ｜ eb4fc56 ｜ 真人 ｜ L93、L95 ｜ supervisor 实查 default（admin）86%、account-2（board）92%，超过 60%；顺序改成 account-5 → account-4 → account-2 → default；OMO 不切号、不改 ~/.omo ｜ — ｜ 各号实时用量 OMO 看不到 ｜ — ｜ D-51.3a
+D-51.2a–g ｜ 通过 ｜ —（只改文档） ｜ e100966 ｜ 本地 ｜ L99 ｜ 停止规则引用 2 处改成 D-50 第 6 项；② docs_sha 一列 14 行统一；补 D-47.6、D-48.5、D-48.6、D-50.1 四行并改标签；③ 补 L71；⑥ 补 5 个红 run，STATUS 补 6 个；STATUS 过时处；④ share-post.js 规则照 412e14d 实写；四个旧名加「示例」 ｜ CI run#43503547193 ｜ — ｜ — ｜ —
+D-51.2h ｜ 通过 ｜ —（只改文档） ｜ 4537b8a ｜ 本地 ｜ L96 ｜ 第四批 19 次代码推送（#369 4、#374 8、#375 7）19 次都是 --no-verify，每次都有推送前的 run-checks 日志；RUNBOOK 第 128 行改成实情（4 条 initdb ENOENT） ｜ — ｜ — ｜ — ｜ —
+D-51.2i ｜ 部分（按规则停下） ｜ —（只改文档） ｜ 4537b8a ｜ 本地 ｜ L97 ｜ RUNBOOK §3 表补 7 个目录和证明 worktree 一行；6 个证明 worktree 先把 HEAD、diff、未跟踪文件存进 ~/work/evidence/D51/worktrees/，再不带 --force 逐个 remove：删掉 1 个，5 个有改动或未跟踪文件被拒，按规则留着 ｜ — ｜ — ｜ ④ ｜ —
+D-51.2j ｜ 通过 ｜ —（只改工作站脚本） ｜ f6fd344 ｜ 本地 ｜ L94 ｜ run-checks.sh 先 cp -p 备份，再原子替换；旧 sha256 511241d0b1ad88b5542205da6780dba12662a5bbd35fd27663919a802f951751，新 45e9733314a2f86573e7d5a56528d05f96c9ca785a3f946667d0c069844d28a0（appendix/env 同步）；selftest 3/3 ｜ — ｜ — ｜ — ｜ —
+D-51.2k ｜ 通过 ｜ —（只改文档） ｜ eb4fc56 ｜ 本地 ｜ L93 起 ｜ 本批 STATUS_LOG 每条都写了 9 个固定字段，更正一律追加新条目；L93 的「环境」写成「tony-ws 主会话」，不在格式列出的取值里，在 L107 追加更正为「本地」 ｜ — ｜ — ｜ — ｜ —
+D-51.3a ｜ 通过 ｜ 6bdca97（#374） ｜ e100966 ｜ 本地 ｜ L98 ｜ 改前在 2e0f582 上 116 / 100 / 16 / 0（正好 L2–L5 × 中英 × 2 组新用例）；改后全量 2265 / 2264 / 0 / 1，pg_skips=0，typecheck、h5、mpci rc=0，smoke 35 passed；主包 1,373,060 不变 ｜ — ｜ 真机 ｜ — ｜ —
+D-51.3b ｜ 通过 ｜ d6f393d（#372）；本地 wip/d51-seal-integration a9fa656 → 8f263f7（不推送） ｜ 609f032 ｜ 本地 ｜ L101 ｜ 集成改前 3 / 2 / 1 / 0，命中 CommunityHome.vue 第 108、123 行两处「集」；改成「玉」后 3 / 3；集成全量 2273 / 2271 / 1 / 1（唯一失败是既有的 supervised-host 偶发超时，单独连跑 5 次 23 / 23）；#372 单独全量 1992 / 1991 / 0 / 1 ｜ — ｜ supervised-host 偶发超时的根因 ｜ — ｜ —
+D-51.4 ｜ 通过 ｜ 87e57c3（cherry-pick c52badf）、92ff5d5（审计放行），#376 草稿，base main ｜ c6542a0 ｜ 本地、CI ｜ L100、L104 ｜ ci.yml 与 c52badf 的 blob 相同；审计五个用例：main 锁文件 exit 1 且失败列表里没有 GHSA-8g5g-mxqh-grgj，55716ba exit 0，多一条 moderate exit 1，只有 vite exit 0，过期 ::warning:: 后 exit 1；Bun YAML 与 PyYAML 都能解析；现有测试 1989 / 1988 / 0 / 1，没改测试；merge-tree 7 个 head 0 冲突；PR 的 CI 5 个 success，审计步骤按依赖门 skipped ｜ CI run#44649596522 ｜ 放行逻辑要等合进 main 后才在 GitHub 上真跑；工作站没有 actionlint ｜ ④ ｜ —
+D-51.5（D-49） ｜ 通过（等 Eric 先应用迁移） ｜ 9c10a7e（#377 草稿，base #369 的分支） ｜ 7dda6cb ｜ L-SQL、本地 ｜ L103、L105、L106 ｜ 强制失败验证成立；计数回放第 1 次 182 / 182 rc 0；全等级回归改前 948 失败、改后 3,390 / 0；两个 API 改前红、改后绿；客户端新测试在 04edaa3 上 134 条失败；合并后全量 2536 / 2535 / 0 / 1，smoke 35，主包 1,567,476；迁移 sha256 0dc2ceaf… 冻结 ｜ — ｜ Storage 走 HTTP；真机；托管库；没有 ROLLBACK ｜ ④ 第 2、3、5 项 ｜ —
+D-51.6 ｜ 通过 ｜ 8257318（#369 空提交，树同 04edaa3） ｜ c4997a4 ｜ CI ｜ L102 ｜ 三个伴随文件 sha256 与 D-51 第 6 项一致；run 44647478789 5 个 success；schema 预检五项 200；public sweep 472 passed；runner 镜像 Boundary ubuntu-26.04（20261116.202.1），public sweep ubuntu-24.04（20261116.133.1），Build H5 ubuntu-24.04（20261111.370.1）；E4 staging 那一半标完成 ｜ CI run#44647478789 ｜ P2.6、P2.13 仍等 E2、E3、E5 ｜ E2 ｜ —
+D-51.7 ｜ 通过 ｜ —（只改文档） ｜ 7dda6cb ｜ 本地 ｜ 本节 ④ ｜ ④ 的 E12 一行加上 vercel.live 工具栏 CSP 报错的说明；「转发 · CSSA」的虚构活动按 Eric 2026-11-19 的选择保留，没改 ｜ — ｜ — ｜ E12 ｜ —
+```
+
+### D-49（单独一节）
+
+D-51 第 5 项解开了第四批停下的地方：批准新增一个只给本地用的 Storage bootstrap，并重新给 3 次完整回放的机会。这次第 1 次计数回放就通过，没用到第 2、3 次。服务端和客户端各交给一个子任务，各用自己的工作树（L103），合并、推送和开 PR 由主会话做。
+
+**分支与提交**（`codex/community-restricted-20261113`，base `codex/community-topics-20261112`）
+- 服务端：12aec64（本地 bootstrap）、35059e1（meetup-notify、wechat-login）、6747b8a（迁移 20261114015420 与 PRECHECK / VERIFY / REGRESSION、Node PG17 测试、manifest 一行、README 与计数断言）、13c989b（改常量名）、34fb770（修 ops 文件；6747b8a 里 REGRESSION 有一处 `$` 被替换坏了，最后一次单独试跑抓到，计数回放之前已修）。
+- 上线检查项：de0950f（仓库 RUNBOOK「Schema-coupled release order」补 D-49 一条）。
+- 客户端（本地 local/d49-client-20261120）：2166200（先写的测试）、f92015b（实现）、7129364（提示条挪到左下角，原先在顶部会挡住广场的「发帖」）、174e7a3、b965df7（只改提示条 spec）。
+- 合并：9c10a7e（`supabase/` 与 34fb770 相同，`app/` 与 b965df7 相同，`api/` 与服务端相同）。推送：9c10a7e（`git push --no-verify -u`，推送前日志 check-20261120T034510Z）。PR：#377（草稿）。
+
+**本地 bootstrap 与强制失败验证**
+- `supabase/_ops/LOCAL_BOOTSTRAP_20260916211900_storage_objects_version.sql`：给本地 storage.objects 补 `version text NULL`、`owner_id text NULL`，来源 supabase/storage v1.98.2（645343a）的 `migrations/tenant/0016-add-version.sql`、`0018-add_owner_id_column_deprecate_owner.sql`；文件头和 `IS DISTINCT FROM 'lsql-replay'` 守卫照 LOCAL_BOOTSTRAP_20260916073035 的写法；不进 manifest。
+- 去掉 version 列：files=181 replayed=181 errors=1 rc=3，停在夹具第一条 storage.objects 插入，报 `record "new" has no field "version"`；补回后 errors=0 rc=0。两次日志在 ~/work/evidence/D49/restart/forced-failure/。不算尝试次数。
+
+**迁移、回放与全等级回归**
+- 计数回放第 1 次：LSQL head=34fb770 files=182 replayed=182 errors=0 done=1 rc=0（lsql-20261120T015111Z），顺序 PRECHECK → 迁移 → VERIFY → REGRESSION。
+- 全等级回归 30 种状态 × 113 例：改前 2,442 通过 / 948 失败（每个有效受限状态 55 条：46 条禁止的写入被接受、7 条报错不对、2 条允许的操作被误拒；每个不受限状态 1 条是直接会话规则读了缓存列），改后 3,390 / 0；被拒的写入没有改动 32 张被监视的表（含通知、邮件偏好、任务队列）。
+- Node PG17（`scripts/restricted-account-writes.test.mjs`，按 P2.5 的做法写死 PG17 路径）：改前 33 / 1 / 32，改后 33 / 33。
+- 改了 8 个已有函数、新增 3 个，改前改后的函数体 MD5 记在 ~/work/evidence/D49/restart/；每个都核对过 main 7b18f20 上没有更晚的定义。
+- 已有的文件一个没改；manifest 只追加一行。
+
+**API**：meetup-notify 47 条测试改前 34 条失败（邮件发出去了），改后全过；wechat-login 两个文件 40 条，改前 11 条失败，改后全过；api/ 目录 655 / 655。
+
+**客户端**：只有有效 L5 还进 pages/suspended，L2–L4 可浏览；提示条「账号受限 · 解除时间 …」（用现有的 suspended.badge、endsAt、endsPerma，没加新 key），点开进 pages/suspended，有回首页按钮；被拒入口在打开表单或选择器前先拦，composable 发请求前再查一次；图片批量上传遇到受限整批停下并清理；Sentry 只跳过 `suspension_active:<2–5>:<…>` 这一种消息；聊天被拒不显示「点击重试」。新测试在 04edaa3 上 134 条失败（对照都过），子任务自己的全量 2452 / 2451 / 0 / 1，smoke 35 / 35；改了 3 个现有测试（都是把「L2–L4 进受限页」改成新行为），另外 7 个测试只给新模块加了空的 mock、断言没动。小程序主包 1,567,476（比 04edaa3 多 7,084，余 5,388）。截图 ~/work/evidence/D49/client/screenshots/（390 与 1280、浅色与深色），看过。
+
+**合并后的全量**：check-20261120T034510Z（日志头 tree 352d66b、unstaged=no，等于推送的树）：install、typecheck、h5、mpci、smoke、migrations 都是 rc=0；测试 2536 / 2535 / 0 / 1，pg_skips=0；smoke 35 passed；小程序主包 1,567,476（CI build-mp-weixin 环境），余 5,388。
+
+**sha256 冻结**：迁移 `0dc2ceaf177c44fc48a28b9525dc405c12ecd0c63bf22ef64e225ca64caed5d3`（manifest 第 185 行），PRECHECK `a679b40a4929c7e76b93faeae230193e2e26f5adc6fbf01f9ed6b3f610ccd680`，VERIFY `0cc4307921b50d6aaf9605d3fafc1b5a5213b429d45aae4106f2dbecbc984805`，REGRESSION `1a41dd65ecb9e3971922710d3beee9d2e116a430539cc88a657f75bd3deb767f`，本地 bootstrap `0fdfacbd6ee53f26ddb9ada7b83a7c2db4f2fa40f1ac4061cd83ede86a5b7dd7`。L106 起冻结：不再改、不改名，后续变更另起迁移；应用到 staging 与生产归 Eric。
+
+**没做的与待定的**
+- Storage 走 HTTP 的行为（可续传、预签名上传、预检与完成之间才生效的限制）没验证；没有 ROLLBACK 文件。
+- 本地镜像 supabase/postgres 17.6.1.104 上，authenticated 调用没有 EXECUTE 权限的函数会让后端 SIGSEGV、整库重启（复现于旧的 make_offer(uuid,numeric,text) 和 is_posting_allowed(uuid)）；因此删掉了一条调旧重载的回归用例，改由 VERIFY 从目录里查；托管上是否一样写进 ④。
+- 只靠服务端拒绝、客户端没先拦的：双语补写（updatePostI18n）、post_items 重试挂接、引导页显示字段、聊天媒体上传的错误归一。
+- 管理员在 App 打开时解除限制，要等下次回前台或受限页每分钟的检查才生效。
+- 真机与微信开发者工具里提示条的安全区位置没看。
+- 12 条待定政策问题，服务端一律没新增权限：保留商品是否算下架；清空资料字段是否算删除自己的内容；受限账号能否绑定新的微信身份；打字、在线状态与广播；街区核验回执与微信媒体审核；限制前已排队的通知和邮件；L5 能到哪些清理页面；非发帖操作、提示条、回首页的措辞；有限期 L5 与无限期 L2–L4 的措辞；跟受限的人开新会话（现按规范状态拒绝）；Storage 走 HTTP 的错误文字；请求中途生效的管理员操作。
+
+### ③ [OMO自决] 清单
+
+| 编号 | 事项 |
+|---|---|
+| L93 | D-49 耗时最长，把它的服务端部分在第 3 项 a、第 4 项做的同时交给子任务（不同工作树和分支；D-49 分支只由主会话推送） |
+| L94 | run-checks 日志头除了 write-tree 和 MERGE_HEAD，多加一个 `unstaged=yes|no`：write-tree 取的是 index 的树，有未暂存改动时这个标记会说明 |
+| L100 | 审计验证在 (a)(b)(c) 之外多跑了「只有 vite」的对照和「过了复查日期」两条；过期用例用 PATH 里的假 `date`，没改 ci.yml |
+| L103 | D-49 的客户端原定在服务端通过以后再做，为省时间提前在单独的工作树（本地 local/d49-client-20261120）并行开工；服务端回放和全等级回归通过之前不合进 D-49 分支 |
+| L105 | D-49 服务端子任务的三处取舍照收：四个既有 actor 触发器没改名（改名要在四张忙表上拿排他锁，代价是受限账号发非法内容时可能先看到内容错误）；帖子与回复的守卫列出全部作者列；PRECHECK 多查 VERIFY 要的现有对象 |
+
+### ④ 等 Eric 的清单（新增，按解锁的任务数从多到少）
+
+| 要 Eric 做的一件事 | 解锁 |
+|---|---|
+| 在生产应用 20261112120000 并跑 VERIFY（staging 已由 supervisor 做完，L102），然后按 #369 → #375 → #374 合；#372 最后手工合（规则见 STATUS 第 11 条，含 CommunityHome.vue 两处占位改「玉」） | #369、#375、#374、#372 上线 |
+| D-49 迁移 20261114015420：先在 staging、再在生产跑 PRECHECK、应用、跑 VERIFY（都应返回空、不报错），然后才合 D-49 的前端 PR（仓库 RUNBOOK「Schema-coupled release order」已补这一条） | 受限账号 L2–L4 可浏览 |
+| 判断托管库上会不会出现本地镜像的崩溃：supabase/postgres 17.6.1.104 上，authenticated 身份调用一个没有 EXECUTE 权限的函数，后端 SIGSEGV、整个库重启（L105；OMO 没碰任何托管库） | 安全与可用性风险的判断 |
+| #376：vite 那条公告选 A（本 PR 暂时放行到 2026-12-13）还是 B（在 vite 6.4.5 上重建 vendor 归档）；#371 合并以后 build-h5、public-smoke、authenticated-smoke 三个 job 要不要回到 ubuntu-latest（P1.5 DoD ③）。#376 和 #369 等分支上的 c52badf 逐字节一致，可以先合 | main 的 Build H5 与 public sweep 变绿 |
+| D-49 的 12 条待定政策问题（见 D-49 一节）；服务端都按「不新增权限」处理 | D-49 后续 |
+| E12：在 Vercel 上 promote BRAND.7 的预览（dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y，回退用 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6）。预览在真实 Chrome 里会报 1 条 CSP 错误，来源是 Vercel 给预览页注入的工具栏脚本（vercel.live），被 demo 自己的 `script-src 'self'` 拦下，不是 demo 本身的问题，生产不会注入 | demo 上线 |
+| E2（D-29）：书面确认 staging 只有合成数据 | P2.6、P2.13 |
+| staging 上 posts_visible 的写权限是 041 建视图时的默认权限，没收回（视图是 security_invoker，经视图写入仍按 posts 的列权限判，不算提权）；要不要收回由 Eric 定，本批迁移都不做 | — |
+| staging 另缺 3 条和 20261112120000 无关的旧迁移：20260811140018、20260811143207、20261003175231，这次不补 | staging 与生产对齐 |
+| 5 个留下的证明 worktree（~/.cache/illini-d50-dialog-proof、~/.cache/illini-following-d47-proof、~/.cache/illini-home-proof-st01a1d65b、~/.cache/illini-subpackage-d48-baseline、~/work/evidence/D50-followup/history-tree）要删得用 --force，RUNBOOK §3 不许 OMO 这样做；改动和未跟踪文件已存进 ~/work/evidence/D51/worktrees/ | 清理 |
+
+### ⑤【硬】与【暂停推送】事件
+
+- 本批没有触发【暂停推送】。没有合并、没有转 ready、没有 force push、没有 rebase 已推送分支、没有改 SPEC、没有应用托管迁移；20261112120000 没动。`.github/workflows` 只在 #376 的分支上按 D-51 第 4 项改了 ci.yml 两处（RUNBOOK §12 第 9a 条的例外）。
+- 本批的代码推送都用了 `git push --no-verify`（宿主机 pre-push 跑不了 PG 测试，RUNBOOK §3），每次都在 STATUS_LOG 的「命令」字段写了推送前那次 run-checks 的日志名：#369 8257318（L102）、#374 6bdca97（L98）、#372 d6f393d（L101）、#376 87e57c3..92ff5d5（L100）、#377 9c10a7e（L106）。
+- 本批没有改写任何已推送分支；20261112120000 的 sha256 收尾时再核一次：e2a85c3ec33c98e8317b764a59fc8af1434c15319794e3f64a6606be70e5a92c，#369、#374、#375、#372 和 D-49 分支上都一样；#369–#377 九个 PR 都是草稿、OPEN；main 仍是 7b18f20。
+
+### ⑥ 未测项与风险
+
+- scripts/ci-first-release-supervised-host.test.mjs:133 在全量并发下偶发 `supervised_operation_timeout`（seal 集成全量 1 次，#370 CI 43509639602 1 次），单独连跑 5 次都过；没查根因，不在 D-51 范围。
+- #375、#374 的 smoke 日志里 vite 依赖扫描报 `No matching export ... registerToastHost`：useAppToast.ts 里这个导出在 `#ifndef H5` 里，扫描器没按条件编译处理；早于本批，不影响构建和 smoke 结果，没改。
+- D-49：Storage 走 HTTP 时的行为（可续传、预签名上传、预检与完成之间才生效的限制）没有验证；没有 ROLLBACK 文件，托管上删 storage.objects 的两条新策略要用 Dashboard。
+- 审计放行（#376）在 GitHub 上第一次真跑要等合进 main 以后。
+- 真机：3a 的回帖区、D-49 的受限提示条与入口拦截都只在 H5 浏览器和单测里看过。
+- D-49 在 #369 基线上主包只剩 5,388 字节；#375 合进来以后余量会大很多，再往 #377 加东西前要先量。
+- 合并 D-49 客户端时第一次用了 `git merge --trailer`，git 不认这个参数，合并没发生，而门禁已经在未合并的树上启动；当场停掉、确认没有残留容器后重新合并（L106）。
+
+### ⑦ 下一批
+
+按 D-51 第 8 项，本批交付后 OMO 停下等下一条指示，不从 BACKLOG 往下接任务。下面只列下一批可做的事：
+
+- Eric 做完 ④ 第 1、2 项以后：#369 → #375 → #374 → #372 依次合并上线，D-49 的前端 PR 在其迁移应用并 VERIFY 通过后再合。
+- E2 完成后：P2.6、P2.13。
+- D-49 的 12 条政策问题有了答复以后，再开后续迁移（每条一个新迁移，照 ENGINEERING §5.0）。
+
+### ⑧ 代 Eric 定的事（新增）
+
+| 编号 | 选了什么 | 理由 | 怎么撤回 |
+|---|---|---|---|
+| D-51 第 4 项（L100） | 审计放行写成 ci.yml 里内联的 node 脚本（只改 ci.yml 一个文件），按 GHSA 编号和到期日判断；到期后照样失败并输出 `::warning::` | D-51 第 4 项只许改 ci.yml；判断依据是公告编号，不是包名，换版本不会误放 | 关闭 #376，或在 #376 上 `git revert 92ff5d5` |
+| D-51 第 2 项 j（L94） | run-checks 日志头加 `unstaged=yes|no` | 见 ③ | 恢复 run-checks.sh.before-D51-20261119 |
+| L103 | D-49 客户端提前并行（见 ③） | 省时间；合入时机不变，仍在服务端证明拦截之后 | 不合并本地分支 local/d49-client-20261120 |
+| L105 | D-49 待定政策问题一律不新增权限，按现有行为或拒绝处理 | D-49 第 3 项列的允许清单以外不放开 | 后续迁移按 Eric 的答复调整 |

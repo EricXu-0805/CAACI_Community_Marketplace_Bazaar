@@ -1,22 +1,22 @@
 # STATUS
 
-写于 2026-11-19 18:47 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-19 21:56 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-51 第 4 项（ci.yml 草稿 PR）；第 5 项 D-49 在子任务里，第 3 项 b、第 6 项穿插`
+`next_task_id: —（D-51 第 1–7 项做完；按 D-51 第 8 项结束目标、取消续跑提醒，不从 BACKLOG 往下接，等下一条指示）`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-51 第五批进行中（L93）：范围是 D-51 第 1–7 项，做完写 FINAL「第五批（D-51）」与本文件同一提交，然后结束目标、取消续跑提醒，不从 BACKLOG 往下接。号池按 D-51 第 1 项，每个号周用量到 60% 停用。
+D-51 第五批已交付（L93–L108，FINAL「第五批（D-51）」与本文件同一提交）。号池按 D-51 第 1 项，每个号周用量到 60% 停用。
 
 ## 版本
 
 | 项 | 值 |
 |---|---|
 | 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN），远端04edaa3 [本地测：2026-11-13 push回执] |
-| code_sha | 04edaa36a6edd717c069d78dc4afad57ac1f196c（#369 最终 head；D-50 补充已传播到 #375 571be45、#374 2e0f582） |
+| code_sha | 8257318a95cba86bee6ae4c5b8fbb2578f377dcc（#369 当前 head，空提交，树同 04edaa3；D-51 第 6 项） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | e1009661bf0c253e6eb2fc3325dc042e8a89acb9（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #374 codex/community-home-20261112 6bdca97（含 #369 04edaa3、#375 571be45；D-51 3a）。#376 codex/config-ci-runner-20261119 92ff5d5（base main，只改 ci.yml）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 d6f393d；#371 b259105。这六个都是草稿；另有 #369、#370 也是草稿 [本地测：2026-11-20 gh pr view] |
+| docs_sha | 7dda6cbd573be021258f308c6df57a4506226dd3（本次写回之前材料分支的 HEAD） |
+| 其余代码分支（远端 head） | #374 codex/community-home-20261112 6bdca97（含 #369 04edaa3、#375 571be45；D-51 3a）。#376 codex/config-ci-runner-20261119 92ff5d5（base main，只改 ci.yml）。#377 codex/community-restricted-20261113 9c10a7e（base #369，D-49）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 d6f393d；#371 b259105。这七个都是草稿；另有 #369、#370 也是草稿 [本地测：2026-11-20 gh pr view] |
 | tony-ws worktree | illini 04edaa3；illini-home 2e0f582；illini-mpbudget 571be45，三者已推送且干净。illini-d46-integration 为本地 local/d46-final-integration-20261114 412e14d（五 PR 集成，不推送）。illini-restricted 为本地 codex/community-restricted-20261113，HEAD 04edaa3，只有 2 份未提交 _ops 草稿，未推送、无 PR。illini-docs-brand7 local/brand7-20261113 15aa47e（已合进材料分支 779c07f，干净）。illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events 本地 5f62ddd 不推；illini-main 只读 7b18f20；caaciorg 本地 28d59b1 不推；材料 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，仍是 V4 原型（grep 玉米地 0），回退 id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 [生产：2026-11-14 curl、vercel inspect 只读]。BRAND.7 预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app（dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y）返回 200，等 Eric promote（E12）[本地测] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
@@ -139,7 +139,12 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-46 第 4 项 | 通过 | 当前 head：#375 571be45 主包 1,324,735、余 248,129；#374 6bdca97 主包 1,373,060、余 199,804；五个 PR 本地集成 412e14d 主包 1,374,461、余 198,403（L90、L98）。最终六条测试在 3d24a8e 上 6/4/2/0，真实 history→detail 导入变异 6/5/1/0（L84） |
 | D-46 第 5 项 | 通过 | 本地 412e14d（#374 2e0f582 + #373 + #372，不推送）：test 2248/2247/0/1、pg_skips=0，smoke 12 份 204 passed，typecheck/h5/mpci/migrations rc=0，npm audit 只剩 vite moderate；五 PR 主包 1,374,461、余 198,403（L90）[本地测] |
 | D-46 第 6 项 | 通过（DoD ④ 等 Eric promote） | 见 BRAND.7 行（L91） |
-| D-49 | 【跳过】按停止条件收束 | 只读盘点完成；st_01a1d7cb三次L-SQL基线均回放181条，分别停在夹具owner_id、tgenabled转text、实际缺失storage.objects.version。最终errors=1/done=0/SQLrc3；行为用例0、有效红测0、绿测0。仅PRECHECK/REGRESSION草稿；无迁移/VERIFY/Node测试/manifest修改/客户端或API实现，无草稿PR。PG helper在#371，尚未进入#369基线。保留L2–L5全局门禁；后续须先解决本地平台与helper依赖（L89） |
+| D-49（D-51 第 5 项重启） | 通过（等 Eric 先应用迁移） | #377 草稿 9c10a7e：本地 bootstrap 强制失败验证成立；计数回放第 1 次 182 / 182 rc 0；全等级回归 3,390 / 0（改前 948 失败）；两个 API 改前红、改后绿；客户端 L2–L4 可浏览、提示条、入口先拦；合并后全量 2536 / 2535 / 0 / 1、smoke 35、主包 1,567,476；迁移 sha256 0dc2ceaf… 冻结（L105、L106） |
+| D-51 第 2 项 | 通过（i 按规则留下 5 个 worktree） | L94、L96、L97、L99 |
+| D-51 第 3 项 a | 通过 | #374 6bdca97（L98） |
+| D-51 第 3 项 b | 通过 | #372 d6f393d；本地集成改前红、改后绿（L101） |
+| D-51 第 4 项 | 通过 | #376 草稿 92ff5d5，CI 全绿，审计步骤按依赖门 skipped（L100、L104） |
+| D-51 第 6 项 | 通过 | #369 8257318 CI 全绿，E4 staging 那一半完成（L102） |
 | D-47 第 1 项 | 通过 | 见L72；后续状态按各次写回继续更新 |
 | D-47 第 2 项 | 通过 | 885603e：2190/2189/0/1，132条浏览器通过，四张标签截图已看；类型字段歧义见第16条（L80） |
 | D-47 第 3 项 | 通过 | c7b0634：旧代码8条中3红；新版8条全过，三类真实源码变异均被抓到；2234/2233/0/1、132条浏览器通过（L82） |
@@ -181,7 +186,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 12. 删 #369 的分支之前，先把 #374、#375 的 base 都改成 main；删 #371 的分支之前，先把 #373 的 base 改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）。#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main。
 13. 首页、新页头、板块页、全部讨论已编进小程序。#374 2e0f582（含#369 04edaa3、#375 571be45）CI 环境主包 1,373,060、余 199,804；五个 PR 本地集成（再加 #373、#372）1,374,461、余 198,403（L90），满足 64 KiB 目标。微信开发者工具/真机仍须验证渲染、胶囊、路由、操作菜单标题、空栈提示抑制、首次分包下载/离线失败与返回栈。没有preloadRule，login/search/notifications/settings/legal等首次进入要下载；本批不加预加载规则。首页6+inbox 2+notifications 2=10，onShow资料读取可到11；D-47.3只限首页。按supervisor核查，基础库3.8.10起超并发请求才排队，更老版本可能直接失败；manifest未设最低基础库，需Eric实测并定最低版本。小程序构建须有VITE_BASE_URL。showModal加权规则只核验3.15.0–3.15.2；showActionSheet只检查itemList不超过6项，title/alertText和条目文字不限长，更早版本未核。
 
-14. D-49服务端路线已定，但本轮在L-SQL基线阶段停止：本地Storage管理面缺version，PG17 helper未在#369基线（可在#371找到）。未实现任何新权限限制、未创建迁移、未放开L2–L4浏览、未开PR；回复重试/Sentry/提示条等客户端部分也未做。若以后继续，先解决这些本地前置并重新证明矩阵；新迁移须Eric在生产应用且VERIFY通过后才能合前端。此处是本地模拟面缺口，不等于已查出托管库缺字段。证据见L89与evidence/D49/sql/BLOCKED.md。
+14. D-49（#377，草稿）：先在 staging、再在生产跑 PRECHECK_20261114015420 → 应用迁移 → VERIFY（都返回空、不报错），然后才合 #377；没有 ROLLBACK 文件，删两条新的 storage.objects 策略要用 Dashboard。12 条待定政策问题见 FINAL 第五批 D-49 一节（L106）。
 
 15. D-50撤销生产按钮超长误报；本次再补MP/VUE3条件与pages内非注册组件的扫描盲区，英文注释明确非Latin-1的每个UTF-16单元计2（单个非BMP emoji计4）。showActionSheet只查itemList≤6、文字不限长（已核基础库3.15.0–3.15.2）。所有正式FINAL④/⑥的新增内容在本轮收尾同提交真正写入；内部草稿不算正式报告。D-46到D-50完成或按规定停下后结束目标、取消续跑，不续接BACKLOG。
 
@@ -189,4 +194,9 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 17. [supervisor 指示，2026-11-13 18:10 CT] anthropic-subscription的default、account-2、account-3登录过期，须Eric本人重新登录；OMO不尝试登录。account-4已到Eric设定的60%总周上限，不再派活。剩余子任务只用首模型为ChatGPT订阅的deep-high/ultrabrain/deep-low或主线程；旧st_01a1d6e8已释放，不再恢复。BRAND.7 已由 st_01a1d67e 本地提交原型（15aa47e），主会话合进材料分支并做了预览部署（L91）。
 
-18. BRAND.7（E12）：看预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app 后由 Eric promote；先在 Vercel 记下当前 production deployment id（OMO 用 vercel inspect 读到 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6），promote 后 `curl -s https://illini-community-demo.vercel.app/ | grep -c 玉米地` 应不小于 1。
+18. BRAND.7（E12）：看预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app 后由 Eric promote；先在 Vercel 记下当前 production deployment id（OMO 用 vercel inspect 读到 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6），promote 后 `curl -s https://illini-community-demo.vercel.app/ | grep -c 玉米地` 应不小于 1。 预览在真实 Chrome 里会报 1 条 CSP 错误，来源是 Vercel 给预览页注入的工具栏脚本（vercel.live），被 demo 自己的 `script-src 'self'` 拦下，不是 demo 本身的问题，生产不会注入（D-51 第 7 项）。「转发 · CSSA」的虚构活动按 Eric 2026-11-19 的选择保留。
+19. 本地镜像 supabase/postgres 17.6.1.104 上，authenticated 调用没有 EXECUTE 权限的函数会让后端 SIGSEGV、整库重启（L105）；托管库上是否一样请 Eric 判断，OMO 没碰任何托管库。
+20. #376：vite 那条公告选 A（暂时放行到 2026-12-13）还是 B（在 vite 6.4.5 上重建 vendor 归档）；#371 合并以后三个浏览器 job 要不要回到 ubuntu-latest（P1.5 DoD ③）。#376 可以先合。
+21. staging 上 posts_visible 的写权限是 041 建视图时的默认权限，没收回（security_invoker，不算提权）；要不要收回由 Eric 定。
+22. staging 另缺 3 条和 20261112120000 无关的旧迁移：20260811140018、20260811143207、20261003175231，这次不补。
+23. 5 个留下的证明 worktree 要删得用 --force（RUNBOOK §3 不许 OMO 做）；改动和未跟踪文件已存进 ~/work/evidence/D51/worktrees/（L97）。

@@ -1319,3 +1319,39 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: Storage 走 HTTP 时的行为（只证明了行触发器和策略拒插入）；没有 ROLLBACK 文件（托管上 postgres 不能删 storage.objects 的策略）；迁移 sha256 待客户端合入、全量通过后再冻结。候选 sha256 0dc2ceaf177c44fc48a28b9525dc405c12ecd0c63bf22ef64e225ca64caed5d3；20261112120000 仍是 e2a85c3e…
 - 下一条: 等客户端子任务 st_01a1f688，合并后全量、冻结、开草稿 PR
 - 附: 子任务报告了一个本地镜像现象：supabase/postgres 17.6.1.104 上，在 supabase_admin 会话里 `SET LOCAL ROLE authenticated` 后调用一个没有 EXECUTE 权限的函数，后端进程 SIGSEGV、整个库重启（复现于旧的 make_offer(uuid,numeric,text) 和 is_posting_allowed(uuid)）。没查原因，也没碰任何托管库；写进第五批 ④ 请 Eric 判断托管上是否一样。和设计不同的三处选择（四个既有 actor 触发器没改名、帖子与回复的守卫列出全部作者列、PRECHECK 多查了 VERIFY 要的现有对象）和 12 条待定政策问题照子任务报告写进第五批 D-49 一节。
+
+### L106 · 2026-11-19 21:56 CT · D-51 第 5 项：D-49 客户端合进服务端分支，全量通过，20261114015420 冻结，草稿 PR #377
+- task_id: D-51.5（合并、冻结、PR）
+- code_sha: 9c10a7ea7752d733fcc8fc8e901ee99a31fa3daa（合并 local/d49-client-20261120 b965df7 进 codex/community-restricted-20261113 de0950f，树 352d66b），已推送；草稿 PR #377，base codex/community-topics-20261112
+- docs_sha: 7dda6cb（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 客户端子任务 st_01a1f688（unspecified-high，Claude Opus 5.5）在 ~/work/illini-restricted-client 完成；第一次 `git merge --no-ff ... --trailer ...` 被 git 拒（merge 不认 --trailer），合并没发生，而同一 cell 里的门禁已在未合并的树上启动，当场 kill_bash 停掉（check-20261120T034438Z 只到 install，作废），确认没有残留容器、没有半截合并；改用第二段 -m 重新 `git merge --no-ff`，核对 supabase/ 与 34fb770、app/ 与 b965df7、api/ 与 de0950f 的树都相同；`run-checks.sh ~/work/illini-restricted install typecheck test h5 mpci smoke migrations`（check-20261120T034510Z，tree 352d66b、unstaged=no）；`git push --no-verify -u origin codex/community-restricted-20261113`（宿主机 pre-push 的 PG 环境问题，RUNBOOK §3；推送前日志 check-20261120T034510Z）；`gh api -X POST .../pulls`（draft:true）
+- 计数: 合并后 install、typecheck、h5、mpci、smoke、migrations rc=0；测试 2536 / 2535 / 0 / 1，pg_skips=0；smoke 35 passed；主包 1,567,476（余 5,388）。客户端子任务：新测试在 04edaa3 上 134 条失败（L0、L1、过期对照都过），b965df7 上 2452 / 2451 / 0 / 1，提示条 spec 8 / 8。sha256：迁移 `0dc2ceaf177c44fc48a28b9525dc405c12ecd0c63bf22ef64e225ca64caed5d3`（manifest 第 185 行），PRECHECK `a679b40a4929c7e76b93faeae230193e2e26f5adc6fbf01f9ed6b3f610ccd680`，VERIFY `0cc4307921b50d6aaf9605d3fafc1b5a5213b429d45aae4106f2dbecbc984805`，REGRESSION `1a41dd65ecb9e3971922710d3beee9d2e116a430539cc88a657f75bd3deb767f`，本地 bootstrap `0fdfacbd6ee53f26ddb9ada7b83a7c2db4f2fa40f1ac4061cd83ede86a5b7dd7`。L106 起冻结：不再改、不改名，后续变更另起迁移；应用到 staging 与生产归 Eric。 [隔离环境 L-SQL][本地测]
+- ci_run_url: —（#377 的 base 不是 main）
+- 未测项: Storage 走 HTTP 的行为；真机与微信开发者工具里提示条的安全区位置；托管库；没有 ROLLBACK 文件
+- 下一条: 第五批报告（L108）
+- 附: 客户端子任务改了 3 个现有测试，都是把「L2–L4 一律进受限页」改成 D-49 的新行为（community-restricted-account.test.mjs、auth-recovery-page-lifecycle.test.mjs、community-post-topics.spec.ts），另 7 个测试只给新模块加了空 mock、断言没动。提示条原先放顶部，smoke 抓到它挡住广场的「发帖」，改到左下角。只靠服务端拒绝、客户端没先拦的 4 处和 12 条待定政策问题写进第五批 D-49 一节。
+
+### L107 · 2026-11-19 21:56 CT · 更正 L93：「环境」字段
+- task_id: D-51.2k
+- code_sha: —
+- docs_sha: 7dda6cb
+- 环境: 本地
+- 命令: 对照 STATUS_LOG 格式一节的取值核 L93–L106
+- 计数: L93 的「环境」写成「tony-ws 主会话」，不在格式列出的取值里，应为「本地」；L94–L106 都是列出的取值 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: L108
+- 附: 只追加，L93 原文不改。
+
+### L108 · 2026-11-19 21:56 CT · D-51 第五批报告与 STATUS，结束目标
+- task_id: D-51.8（收尾）、D-51.7
+- code_sha: #369 8257318、#374 6bdca97、#372 d6f393d、#376 92ff5d5、#377 9c10a7e（都是草稿）
+- docs_sha: 7dda6cb
+- 环境: 本地
+- 命令: FINAL「第五批（D-51）」追加到 appendix/batch/FINAL.md，STATUS 改写，与本条同一提交；推送前核 20261112120000 的 sha256、`gh pr list`、`git ls-remote origin main`；推送后 schedule_prompt cancel sch_4d17c07102ac，update_goal complete
+- 计数: 20261112120000 仍是 e2a85c3ec33c98e8317b764a59fc8af1434c15319794e3f64a6606be70e5a92c；#369–#377 九个 PR 都是草稿、OPEN；main 仍是 7b18f20 [本地测]
+- ci_run_url: —
+- 未测项: 见第五批 ⑥
+- 下一条: —（按 D-51 第 8 项停下，等下一条指示）
+- 附: D-51 第 7 项：④ 的 E12 一行（STATUS 第 18 条、第五批 ④）加了 vercel.live 工具栏 CSP 报错的说明；「转发 · CSSA」保留，没改。
