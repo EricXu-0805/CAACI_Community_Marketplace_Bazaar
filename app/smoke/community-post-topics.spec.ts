@@ -333,7 +333,8 @@ for (const [lang, width] of [['en', 390], ['en', 1280], ['zh', 390]] as const) {
         // D-49: active L2-L4 browse; the composer stops before it opens.
         await expect(page).toHaveURL(/pages\/plaza\/index/)
         await expect(page.getByRole('heading', { name: TOPIC.title, exact: true })).toBeVisible()
-        await page.getByRole('button', { name: lang === 'zh' ? '发布新帖' : 'New post', exact: true }).filter({ visible: true }).click()
+        // #374 renamed the plaza composer entry to New topic / 发话题 (same as the L0-L1 path below).
+        await page.getByRole('button', { name: lang === 'zh' ? '发话题' : 'New topic', exact: true }).filter({ visible: true }).click()
         const date = await page.evaluate(lang => new Date('2100-12-03T12:34:56Z').toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US'), lang)
         await expect(page.locator('uni-toast')).toContainText(lang === 'zh'
           ? `账号受限期间不能发帖，${date} 恢复`
