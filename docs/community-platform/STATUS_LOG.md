@@ -1729,3 +1729,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 合 #369、#377 之前 supervisor 在要合的 head 上做 P1.11、P1.12 确认跑（D-53 第 8 项 g）；#377 的 base 改成 main 之前没有 CI
 - 下一条: D-53 第 7 项 c 的后半：#377 9a31e75 合进 P3、再合进 P4（由 P3/P4 子任务 st_01a1f859 做，同一分支只它推送）
 - 附: P2.13 DoD：① #369 描述列出已完成的任务编号和 STATUS 链接；② run 44743800313 的 headSha 等于 code_sha 8f5fc43，非 skipped 的 job 都是 success；③ isDraft 仍为 true；④ next_task_id 指向不依赖合并的任务（第七批收尾）。P2.13 要 Eric（现由 supervisor 代）审阅，OMO 不转 ready、不合并。
+
+### L137 · 2026-11-20 08:15 CT · [supervisor 指示] D-53 第 10 项：确认跑改成 C-369 与 C-final
+- task_id: D-53.10
+- code_sha: —（本条不改代码）
+- docs_sha: 376b191（本次写回之前材料分支的 HEAD，已 git pull 到 376b191 之后）
+- 环境: 真人
+- 命令: 读 DECISIONS D-53 第 10 项（替换第 8 项 g 的第一条）
+- 计数: —
+- ci_run_url: —
+- 未测项: —
+- 下一条: C-369（#369 8f5fc43 上的确认跑），交给 staging 子任务 st_01a1f85a
+- 附: supervisor 独立核过 P1.11、P1.12 第 4 次（L130、L132、L133 与原始日志一致，探针与 db13cbd 归档逐字节相同），7b18f20 上的验收算通过，也看了 L136。确认跑分两次：C-369 现在在 #369 当前 head 8f5fc43 上跑，13 个探针一个字节不改，单独的 detached worktree ~/work/confirm-369-8f5fc43，证据分 confirm-369/P1.11 与 confirm-369/P1.12，run-context.json 新写（attempt c369-1 起），residuals.json 从 P1.12 复制并核清单，顺序 restriction-state → consent-login → account-switch → p1-cleanup，都在同一把锁里；新写只读探针 restriction-state.mjs，只输出每个账号受限与否的布尔值，跑前有人受限就照 RUNBOOK §5.2 停下交给 Eric，跑时 A、B、C 写入报 P0001 就记【跳过】交给 supervisor、不重跑。C-final 由 supervisor 在所有合并之后另派，在要发布的 main 提交上跑；适配（第 10 项 c 的 probes-home/ 与 run-checks.sh 的 PROBES_DIR）留给 C-final。C-369 的结果写进第七批 ④。另提醒：#369 主包 1,560,392 字节，离 1,572,864 只剩约 12 KB，写进第七批 ④。[OMO自决] run-checks.sh 的 PROBES_DIR 这次不先改：P3/P4 子任务正在用这个脚本跑门禁，bash 边读边执行，改动正在运行的脚本可能打断它；第 10 项说这次不用做，留到 supervisor 派 C-final 时再做（先做 .before-* 备份，diff 记进 STATUS_LOG）。
