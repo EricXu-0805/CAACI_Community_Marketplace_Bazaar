@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { postgresBinDir } from '../_postgres-bin.mjs'
 
 /*
  * One throwaway PostgreSQL 17 cluster for the P3 migration tests.
@@ -16,7 +17,7 @@ import { tmpdir } from 'node:os'
  */
 
 export const MIGRATION = '20261120100354_community_watch_save_activity.sql'
-export const bin = ['/opt/homebrew/opt/postgresql@17/bin', '/usr/lib/postgresql/17/bin'].find(p => existsSync(join(p, 'initdb')))
+export const bin = postgresBinDir()
 export const SKIP = !bin && 'local PostgreSQL unavailable'
 export const readMigration = name => readFileSync(new URL(`../../supabase/migrations/${name}`, import.meta.url), 'utf8')
 export const readOps = name => readFileSync(new URL(`../../supabase/_ops/${name}`, import.meta.url), 'utf8')
