@@ -83,6 +83,7 @@ import { ref, computed, onUnmounted, nextTick, watch } from 'vue'
 import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../composables/useI18n'
+import { stopIfRestricted } from '../../composables/useRestriction'
 import { useTheme } from '../../composables/useTheme'
 import { useItems, type UploadAccountToken } from '../../composables/useItems'
 import { useCampusSpots, type CampusSpot } from '../../composables/useCampusSpots'
@@ -200,6 +201,8 @@ async function prepareProfileEditPage() {
   ) return
   if (!requireAuth(undefined, 'redirectTo')) return
   if (!currentUser.value) return
+  // Public profile edits are refused while restricted; never open the form.
+  if (stopIfRestricted()) { goBack(); return }
   const accountToken = captureAccountRequest(currentUser.value.id)
   if (!isAccountRequestCurrent(accountToken)) return
   pageAccountToken = accountToken
@@ -246,6 +249,7 @@ onUnmounted(destroyProfileEditPage)
 function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
 
 function onChangeAvatar() {
+  if (stopIfRestricted()) return
   const pickerAccountToken = pageAccountToken
   if (
     !profileEditReady.value
@@ -303,6 +307,7 @@ async function handleUploadedAvatarFailure(
 }
 
 async function onSave() {
+  if (stopIfRestricted()) return
   if (saveEntryLocked) return
   saveEntryLocked = true
   const operationEpoch = ++saveOperationEpoch

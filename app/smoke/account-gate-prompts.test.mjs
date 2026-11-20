@@ -215,15 +215,17 @@ for (const platform of ['MP-WEIXIN', 'H5']) {
     })
   }
   for (let level = 0; level <= 5; level++) {
-    test(`${platform} active L${level} follows the D-48 gate and keeps listener state live`, async () => {
+    // D-49: only an active L5 is gated; L2-L4 browse and keep their prompts
+    // (reads stay allowed). On pages/suspended itself no prompt (D-47 item 5).
+    test(`${platform} active L${level} follows the D-49 gate and keeps listener state live`, async () => {
       const h = harness(platform, level)
       const target = h.requiredGatePath()
-      assert.equal(target, level >= 2 ? '/pages/suspended/index' : null)
+      assert.equal(target, level === 5 ? '/pages/suspended/index' : null)
       h.state.route = target?.slice(1) || NORMAL_PAGE
       await h.start()
       await h.deliver('level')
       h.assertState(1)
-      h.assertPrompts(level < 2)
+      h.assertPrompts(level < 5)
     })
   }
   for (const level of [2, 3, 4, 5]) {

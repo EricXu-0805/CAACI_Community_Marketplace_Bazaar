@@ -9,6 +9,7 @@ import { BASE_URL } from '../config/runtime'
 import type { Meetup } from '../types'
 import { readBoundedText } from '../api/responseBody'
 import { subscribeToSnapshotChanges } from './useRealtimeFallback'
+import { assertWritesAllowed } from './useRestriction'
 
 /*
  * Structured meetup scheduling (migration 052). Mirrors useOffers: all writes
@@ -121,6 +122,7 @@ export function useMeetups() {
     meetAt: string,
     note?: string,
   ): Promise<Meetup> {
+    assertWritesAllowed()
     const accountToken = captureActiveAccountRequest()
     if (!accountToken) throw new Error('Not authenticated')
     const { data, error } = await supabase.rpc('propose_meetup', {
@@ -143,6 +145,7 @@ export function useMeetups() {
     newMeetAt?: string,
     newNote?: string,
   ): Promise<Meetup> {
+    assertWritesAllowed()
     const accountToken = captureActiveAccountRequest()
     if (!accountToken) throw new Error('Not authenticated')
     const { data, error } = await supabase.rpc('respond_to_meetup', {
@@ -172,6 +175,7 @@ export function useMeetups() {
     meetAt: string,
     note?: string,
   ): Promise<Meetup> {
+    assertWritesAllowed()
     const accountToken = captureActiveAccountRequest()
     if (!accountToken) throw new Error('Not authenticated')
     const { data, error } = await supabase.rpc('reschedule_accepted_meetup', {

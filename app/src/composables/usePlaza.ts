@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { useAuth } from './useAuth'
 import { useModeration } from './useModeration'
+import { assertWritesAllowed } from './useRestriction'
 import { useI18n } from './useI18n'
 import type { Post, PostComment } from '../types'
 import { normalizePostTopic, type PostCategory } from '../utils/communityPost'
@@ -464,6 +465,9 @@ export function usePlaza() {
       if (images.length > 4) throw new Error('invalid_public_media')
       assertPublicMediaWrite(images, userId, 4, extras.image_dimensions ?? [])
       assertI18nWrite(extras.content_i18n, 2000, 8000, 65_536)
+      // D-49: refuse before the first request, whatever page or sheet called this.
+      // Recovering a post created before the restriction (above) is a read and stays allowed.
+      assertWritesAllowed()
 
       if (trimmed) {
         const safety = checkContent(trimmed, { kind: 'post' })
@@ -739,6 +743,8 @@ export function usePlaza() {
         post.liked_by_me = false
         post.like_count = Math.max(0, post.like_count - 1)
       } else {
+        // Unlike stays available to a restricted account; a new like does not.
+        assertWritesAllowed()
         const { error } = await supabase
           .from('post_likes')
           .insert({ post_id: post.id, user_id: uid })
@@ -777,6 +783,7 @@ export function usePlaza() {
         comment.liked_by_me = false
         comment.like_count = Math.max(0, (comment.like_count ?? 0) - 1)
       } else {
+        assertWritesAllowed()
         const { error } = await supabase
           .from('post_comment_likes')
           .insert({ comment_id: comment.id, user_id: uid })
@@ -851,6 +858,8 @@ export function usePlaza() {
     if (!safety.ok) throw new Error(`moderation_block:${safety.category}:${safety.reason || ''}`)
     const duplicateKind = `comment:${postId}`
     if (isLocalDuplicate(accountToken, duplicateKind, trimmed)) throw new Error('duplicate_comment')
+    // D-49: refuse before the first request, whatever page or sheet called this.
+    assertWritesAllowed()
     let mutationStarted = false
     let committed = false
     const assertAccountCurrent = (afterCommit = false) => {

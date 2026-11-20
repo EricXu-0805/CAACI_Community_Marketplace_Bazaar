@@ -1,5 +1,6 @@
 import { useSupabase } from '../../composables/useSupabase'
 import { useAuth } from '../../composables/useAuth'
+import { assertWritesAllowed } from '../../composables/useRestriction'
 import type { Rating, TransactionRatingEligibility } from '../../types'
 import {
   captureAccountRequest,
@@ -21,6 +22,7 @@ export function useRatings() {
     comment?: string
     accountToken?: AccountRequestToken
   }): Promise<Rating> {
+    assertWritesAllowed()
     const userId = currentUser.value?.id
     if (!userId) throw new Error('Not authenticated')
     const accountToken = input.accountToken || captureAccountRequest(userId)

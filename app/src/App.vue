@@ -14,6 +14,7 @@ import { startAcquisition, attributeNewAccount } from './api/acquisition'
 // #endif
 import { captureException } from './utils/sentry'
 import { isSuspensionActive } from './utils/suspension'
+import { startRestrictionNotice } from './composables/useRestriction'
 import { platformFetch } from './composables/useSupabase'
 import { readBoundedText } from './api/responseBody'
 import {
@@ -103,7 +104,9 @@ const oauthCallbackInFlight = ref(false)
  *
  * Runs whenever the logged-in profile changes (login, signup, page
  * refresh). Decides in order:
- *   1. If user is suspended (level >= 2, not expired) → /pages/suspended/index.
+ *   1. If user is permanently suspended (active L5) → /pages/suspended/index.
+ *      Active L2-L4 browse (D-49): the server refuses their writes, the
+ *      client stops each write early and shows a notice (useRestriction).
  *   2. Else if profile.tos_version < CURRENT_CONSENT_VERSION → /pages/reconsent/index.
  *   3. Else let the user through.
  *
@@ -163,7 +166,7 @@ function requiredGatePath(): string | null {
   }
   const u = currentUser.value
   if (!u) return null
-  if (isSuspensionActive(u)) {
+  if (isSuspensionActive(u) && (u.suspension_level || 0) >= 5) {
     return '/pages/suspended/index'
   }
   // O1 (2026-05-20): onboarding branch removed. New users (tos_version='0'
@@ -224,6 +227,7 @@ function queueGateNavigation() {
 }
 
 watch([currentUser, authState, profileLoadState], queueGateNavigation)
+startRestrictionNotice()
 uni.$on('auth:resume-profile-recovery', queueGateNavigation)
 onUnmounted(() => {
   uni.$off('auth:resume-profile-recovery', queueGateNavigation)

@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useSupabase } from './useSupabase'
 import { captureActiveAccountRequest, isAccountRequestCurrent } from './accountScope'
 import { subscribeToSnapshotChanges } from './useRealtimeFallback'
+import { assertWritesAllowed } from './useRestriction'
 import type { Offer } from '../types'
 
 /*
@@ -63,6 +64,7 @@ export function useOffers() {
   }
 
   async function makeOffer(conversationId: string, price: number, note?: string): Promise<Offer> {
+    assertWritesAllowed()
     const accountToken = captureActiveAccountRequest()
     if (!accountToken) throw new Error('Not authenticated')
     const { data, error } = await supabase.rpc('make_offer', {
@@ -82,6 +84,8 @@ export function useOffers() {
     counterPrice?: number,
     counterNote?: string,
   ): Promise<Offer> {
+    // Accept, decline and counter are all refused for an active restriction.
+    assertWritesAllowed()
     const accountToken = captureActiveAccountRequest()
     if (!accountToken) throw new Error('Not authenticated')
     const { data, error } = await supabase.rpc('respond_to_offer', {

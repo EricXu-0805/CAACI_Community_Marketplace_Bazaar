@@ -1,5 +1,7 @@
 import type { ItemCategory } from '../types'
 import { safeItemMediaUrl } from './publicResource'
+import { parseSuspensionRefusal } from './suspension'
+import { messages } from '../composables/i18n/messages'
 // #ifdef H5
 import { useI18n } from '../composables/useI18n'
 import { addBreadcrumb, captureException } from './sentry'
@@ -303,11 +305,15 @@ export function friendlyErrorMessage(err: any, lang: 'en' | 'zh' = 'en'): string
   }
 
   if (raw.startsWith('suspension_active:')) {
-    const parts = rawMessage.split(':')
-    const lvl = parts[1] || '?'
-    return lang === 'zh'
-      ? `账号已被限制（L${lvl}），请查看协议详情`
-      : `Your account is suspended (L${lvl}). See Terms for details.`
+    // 「账号受限」 plus the restore date, from the suspended.* catalog keys; the
+    // catalog is imported directly so the mini-program needs no useI18n here.
+    const m = messages[lang] || {}
+    const refusal = parseSuspensionRefusal(err)
+    if (!refusal) return m['suspended.badge']
+    const ends = refusal.until
+      ? new Date(refusal.until).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US')
+      : m['suspended.endsPerma']
+    return `${m['suspended.badge']} · ${m['suspended.endsAt']} ${ends}`
   }
 
   if (raw.startsWith('moderation_block:')) {

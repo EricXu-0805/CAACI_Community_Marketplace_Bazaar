@@ -142,6 +142,8 @@ async function loadWithRuntime(relativePath, replacements, runtime, transform = 
   for (const [from, to] of replacements) input = input.replace(from, to.replaceAll('__RUNTIME_KEY__', runtimeKey))
   input = input.replaceAll('__RUNTIME_KEY__', runtimeKey)
   input = input.replace("import { validChatMediaPath } from '../utils/chatMedia'", () => source('src/utils/chatMedia.ts'))
+  // D-49 write backstop; these tests exercise unrestricted accounts.
+  input = input.replace("import { assertWritesAllowed } from './useRestriction'", 'const assertWritesAllowed = () => {}')
   input = input.replace("import { currentPageAllowsIncomingPrompts } from '../utils/incomingPrompts'", () =>
     `const { getCurrentPages } = globalThis.${runtimeKey}\n${source('src/utils/incomingPrompts.ts')}`)
   const compiled = ts.transpileModule(input, {

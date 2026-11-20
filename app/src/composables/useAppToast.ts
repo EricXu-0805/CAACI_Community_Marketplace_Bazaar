@@ -43,7 +43,9 @@ let seq = 0
 
 // #ifdef H5
 let mounted = false
-function ensureMounted() {
+/* Also called for the persistent restriction notice (useRestriction), which
+   must appear without any toast; one host serves both. */
+export function ensureToastHost() {
   if (mounted || typeof document === 'undefined') return
   mounted = true
   import('../components/AppToast.vue')
@@ -83,7 +85,7 @@ export function pushToast(item: ToastInput): void {
   const id = `toast-${++seq}`
   toasts.value = [{ ...item, id }, ...toasts.value].slice(0, MAX_VISIBLE)
   // #ifdef H5
-  ensureMounted()
+  ensureToastHost()
   // #endif
   // #ifndef H5
   /* Backstop expiry: the component's timers die with the page on navigation;

@@ -9,8 +9,11 @@ const compile = input => ts.transpileModule(input, {
 }).outputText
 function load(path) {
   const module = { exports: {} }
+  // utils/index.ts formats restriction refusals with the suspension parser and
+  // the message catalog (D-49); every other import keeps the inert stub.
   new Function('module', 'exports', 'require', compile(source(path)))(
-    module, module.exports, () => ({ captureException() {} }),
+    module, module.exports, spec => spec === './suspension' ? load('utils/suspension.ts')
+      : spec === '../composables/i18n/messages' ? { messages } : { captureException() {} },
   )
   return module.exports
 }
@@ -95,6 +98,9 @@ function uploadFixture({ failedFile, heicFile } = {}) {
     PUBLIC_IMAGE_MAX_LONG_EDGE: 1600,
     IMAGE_UPLOAD_TIMEOUT_MS: 30_000,
     getActiveAccountId: () => token.userId,
+    // D-49: an unrestricted account; a recognized refusal stops the batch.
+    assertWritesAllowed: () => {},
+    parseSuspensionRefusal: load('utils/suspension.ts').parseSuspensionRefusal,
     captureAccountRequest: () => token,
     isAccountRequestCurrent: candidate => candidate === token,
     assertAccountCurrent: candidate => assert.equal(candidate, token),

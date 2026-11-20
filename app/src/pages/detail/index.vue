@@ -412,6 +412,7 @@ import { useAuth } from '../../composables/useAuth'
 import { useMessages } from '../../composables/useMessages'
 import { useFavorites } from '../../composables/useFavorites'
 import { useI18n } from '../../composables/useI18n'
+import { stopIfRestricted } from '../../composables/useRestriction'
 import { useModeration } from '../../composables/useModeration'
 import { useTheme } from '../../composables/useTheme'
 import type { Item, Rating } from '../../types'
@@ -699,7 +700,7 @@ const displayedReviews = computed(() => sellerReviews.value.slice(0, REVIEW_PREV
 
 async function openRating() {
   await awaitAuthReady()
-  if (!requireAuth()) return
+  if (!requireAuth() || stopIfRestricted()) return
   if (!item.value || !currentUser.value || !canRate.value || !ratingTargetId.value) return
   if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
     ratingReturnFocus = document.activeElement
@@ -1126,7 +1127,7 @@ async function onReport() {
 }
 
 function goEdit() {
-  if (!item.value) return
+  if (!item.value || stopIfRestricted()) return
   uni.navigateTo({ url: `/pages/publish/edit?id=${item.value.id}` })
 }
 

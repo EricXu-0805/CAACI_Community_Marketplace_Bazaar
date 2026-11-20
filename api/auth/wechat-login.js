@@ -552,6 +552,24 @@ function profileHasBoundIdentity(profile, openid, unionid) {
     && (!unionid || profile.wechat_unionid === unionid)
 }
 
+// Service-only canonical posting gate (public.is_posting_allowed). Only an
+// explicit yes counts; an unreadable answer is reported and treated as no, so
+// an outage can cost the optional nickname but never the sign-in.
+async function postingAllowed(userId) {
+  let decision = null
+  try {
+    const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/is_posting_allowed`, {
+      method: 'POST',
+      headers: supabaseHeaders(SUPABASE_SERVICE, '', { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ profile_id_in: userId }),
+    })
+    if (response.ok) decision = await response.json().catch(() => null)
+  } catch {}
+  if (decision === true || decision === false) return decision
+  console.warn('[wechat-login] nickname seed skipped', { code: 'posting_gate_unavailable' })
+  return false
+}
+
 async function bindWechatIdentityOnProfile(userId, openid, unionid, nickname) {
   const before = await readProfileForBinding(userId)
   ensureIdentityCompatible(before, openid, unionid)
@@ -561,9 +579,15 @@ async function bindWechatIdentityOnProfile(userId, openid, unionid, nickname) {
   if (unionid && before.wechat_unionid == null) patch.wechat_unionid = unionid
 
   // WeChat login is an identity operation, not an alternate profile editor.
-  // Only seed optional display fields during the first identity bind.
+  // Only seed optional display fields during the first identity bind. The
+  // nickname is public content written with the service key, so an account
+  // under a posting restriction keeps its current one (D-49); the identity
+  // bind and the sign-in go ahead either way.
   if (before.wechat_openid == null) {
-    if (nickname && (!before.nickname || before.nickname === '用户')) patch.nickname = nickname
+    if (
+      nickname && (!before.nickname || before.nickname === '用户')
+      && await postingAllowed(userId)
+    ) patch.nickname = nickname
   }
   if (Object.keys(patch).length === 0) return
 
@@ -705,12 +729,14 @@ async function serviceJson(path, init = {}) {
 }
 
 async function boundAccount(identity) {
-  const rows = await serviceJson(`/rest/v1/profiles?wechat_openid=eq.${encodeURIComponent(identity.openid)}&select=id,wechat_openid,wechat_unionid,suspension_level,suspended_until&limit=2`)
+  // Signing in is not a public write, so a posting restriction does not refuse
+  // an established binding (D-49). The Auth ban, verified second factor and
+  // pending-deletion checks in accountEmail() still do.
+  const rows = await serviceJson(`/rest/v1/profiles?wechat_openid=eq.${encodeURIComponent(identity.openid)}&select=id,wechat_openid,wechat_unionid&limit=2`)
   if (!Array.isArray(rows) || rows.length > 1) throw endpointError('link_unavailable','account_link',503)
   if (!rows.length) return null
   if (!validUserId(rows[0]?.id) || rows[0]?.wechat_openid !== identity.openid
     || !Object.hasOwn(rows[0], 'wechat_unionid')) throw endpointError('link_unavailable','account_link',503)
-  if (rows[0].suspension_level >= 2 && (!rows[0].suspended_until || !(Date.parse(rows[0].suspended_until) <= Date.now()))) throw endpointError('account_changed','account_link',409)
   ensureIdentityCompatible(rows[0],identity.openid,identity.unionid)
   return rows[0]
 }

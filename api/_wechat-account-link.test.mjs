@@ -110,6 +110,32 @@ test('website/WeChat account linking API rejects unproved identity and preserves
     assert.equal((await res.json()).user.id,UID)
     assert.equal(calls.find(c=>c.url.pathname.endsWith('generate_link')).body.email,EMAIL)
   })
+  // D-49: signing in is not a public write. An established binding must not be
+  // refused because of the cached profiles.suspension_level column, which can be
+  // stale in either direction. Auth-level and deletion guards stay in force.
+  await t.test('bound login is not refused on the cached public suspension columns',async()=>{
+    const handler=await load({WECHAT_ACCOUNT_LINK_ENABLED:'false'})
+    const soon=new Date(Date.now()+86_400_000).toISOString()
+    for(const cached of [{suspension_level:2,suspended_until:soon},{suspension_level:3,suspended_until:null},
+      {suspension_level:4,suspended_until:soon},{suspension_level:5,suspended_until:'infinity'},{suspension_level:5,suspended_until:null}]){
+      const calls=mock({override:url=>url.pathname==='/rest/v1/profiles'?json([{id:UID,wechat_openid:OPENID,wechat_unionid:UNIONID,nickname:'Existing member',...cached}]):null})
+      const res=await handler(request({js_code:'returning-code',nickname:'New name'}))
+      assert.equal(res.status,200,`cached level ${cached.suspension_level} refused an established sign-in`)
+      assert.equal((await res.json()).user.id,UID)
+      assert.equal(calls.find(c=>c.url.pathname.endsWith('generate_link')).body.email,EMAIL)
+      assert.equal(calls.some(c=>c.init.method==='PATCH'),false,'an established sign-in must not write the profile')
+    }
+  })
+  await t.test('bound login is still refused for an Auth ban, a verified second factor or a pending deletion',async()=>{
+    const handler=await load({WECHAT_ACCOUNT_LINK_ENABLED:'false'})
+    const authUser=extra=>url=>url.pathname===`/auth/v1/admin/users/${UID}`?json({id:UID,email:EMAIL,email_confirmed_at:'2026-01-01T00:00:00Z',...extra}):null
+    for(const override of [authUser({banned_until:new Date(Date.now()+86_400_000).toISOString()}),authUser({deleted_at:'2026-01-02T00:00:00Z'}),
+      authUser({factors:[{status:'verified'}]}),url=>url.pathname==='/rest/v1/account_deletion_jobs'?json([{user_id:UID}]):null]){
+      const calls=mock({override});const res=await handler(request({js_code:'returning-code'}))
+      assert.equal(res.status,409);assert.equal((await res.json()).error,'account_changed')
+      assert.equal(calls.some(c=>c.url.pathname.endsWith('generate_link')),false)
+    }
+  })
   await t.test('short, oversized and whitespace-bearing refresh tokens fail closed',async()=>{
     const handler=await load()
     for(const refresh_token of [undefined,'a'.repeat(11),'a'.repeat(16385),'abc123def45\n','abc123 def456','abc123def45\u0000']){
