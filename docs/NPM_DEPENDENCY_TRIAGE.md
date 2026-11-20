@@ -1,8 +1,29 @@
 # npm audit triage
 
-Refreshed 2026-10-05 UTC using Node 22.23.3 and npm 11.21.0.
+Refreshed 2026-10-05 UTC using Node 22.23.3 and npm 11.21.0. The status below
+is dated 2026-11-20; the 2026-10-05 snapshot after it is historical.
 
-## Current candidate
+## Status 2026-11-20
+
+- The app installs a locally rebuilt vite 6.4.4
+  (`app/vendor/source-builds/vite-6.4.4-local.8dafccdc5cd1a5ac.tgz`, through
+  `file:` in `app/package.json`). It is official 6.4.4 source with the bounded
+  braces 3.0.3 backport described below; see the
+  [maintenance contract](../app/build-compat/source-builds/README.md).
+- npm audit reports GHSA-8g5g-mxqh-grgj (vite `server.fs.deny` bypass,
+  moderate) against it. CI lets that one advisory through until 2026-12-13
+  (UTC), only on the `vite` package and only at moderate or below; after that
+  date it fails again with a warning. Every other moderate-or-worse advisory
+  still fails the audit step, and so does a failed audit that reports nothing
+  this rule lets through.
+- Upstream fixed the advisory in vite 6.4.5. The way out (route B) is to redo
+  the braces 3.0.3 backport on vite 6.4.5 or 6.4.6 and rebuild the local
+  archive. Installing 6.4.5 straight from the registry would turn the audit
+  green but silently drop the braces backport, so the copy of braces bundled
+  inside vite would be exposed to GHSA-vfj7-8cjw-p6xm again.
+- The 2026-10-05 snapshot below predates vite 6.4.4 and this advisory.
+
+## Historical 2026-10-05 snapshot
 
 | Audit view | Low | Moderate | High | Critical | Total |
 |---|---:|---:|---:|---:|---:|

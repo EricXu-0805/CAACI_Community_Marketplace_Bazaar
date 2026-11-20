@@ -179,7 +179,10 @@ jobs:
       # archive (file:./vendor/source-builds/...), so npm cannot move to the fix
       # on its own; rebuilding that archive on 6.4.5 is the other way out. Every
       # other moderate-or-worse advisory still fails this step, and after the
-      # review date this one does again, with a warning saying so.
+      # review date this one does again, with a warning saying so. It is let
+      # through only on the vite package and only at moderate or below; a failed
+      # audit that matched nothing let through, or a report that is not a normal
+      # advisory map, fails.
       - name: Audit production and build dependencies
         if: steps.deps.outputs.changed == 'true'
         working-directory: app
@@ -199,35 +202,54 @@ jobs:
                 *)
                   AUDIT_TODAY=$(date -u +%Y-%m-%d) node - "$tmp/audit.json" <<'JS'
           const fs = require('fs')
-          // Advisory id -> last day (UTC) it is let through.
-          const allowed = { 'GHSA-8g5g-mxqh-grgj': '2026-12-13' }
+          // Advisory id -> the one package, the highest severity and the last
+          // day (UTC) it is let through on.
+          const allowed = { 'GHSA-8g5g-mxqh-grgj': { pkg: 'vite', severity: 'moderate', until: '2026-12-13' } }
           const rank = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 }
           const today = process.env.AUDIT_TODAY
           let report = null
           try { report = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')) } catch {}
-          if (!report || typeof report.vulnerabilities !== 'object' || !today) {
-            console.log('::error::npm audit did not produce a readable report')
+          const vulns = report && report.vulnerabilities
+          if (!report || report.error || !vulns || typeof vulns !== 'object' || Array.isArray(vulns) || !today) {
+            console.log('::error::npm audit did not produce a readable advisory report')
             process.exit(1)
           }
           const blocking = []
-          for (const [pkg, entry] of Object.entries(report.vulnerabilities)) {
-            for (const via of entry.via || []) {
+          let letThrough = 0
+          for (const [pkg, entry] of Object.entries(vulns)) {
+            const via = entry && Array.isArray(entry.via) ? entry.via : null
+            if (!via) {
+              blocking.push(`${pkg}: unreadable advisory entry`)
+              continue
+            }
+            const paths = (Array.isArray(entry.nodes) && entry.nodes.length ? entry.nodes : [pkg]).join(', ')
+            for (const v of via) {
               // A name here points at another entry; its advisory is judged there.
-              if (typeof via !== 'object') continue
-              if ((rank[via.severity] ?? rank.critical) < rank.moderate) continue
-              const id = (String(via.url || '').match(/GHSA(-[0-9a-z]{4}){3}/i) || [''])[0]
-              const line = `${pkg} ${via.severity} ${id || via.source} ${via.title || ''}`
-              const until = allowed[id]
-              if (until && today <= until) {
-                console.log(`allowed until ${until}: ${line}`)
+              if (typeof v !== 'object' || !v) continue
+              const level = rank[v.severity] ?? rank.critical
+              if (level < rank.moderate) continue
+              const id = (String(v.url || '').match(/GHSA(-[0-9a-z]{4}){3}/i) || [''])[0]
+              const line = `${pkg} ${v.severity} ${id || v.source} ${v.title || ''}`
+              const rule = allowed[id]
+              const fits = rule && pkg === rule.pkg && (v.name || pkg) === rule.pkg && level <= rank[rule.severity]
+              if (fits && today <= rule.until) {
+                console.log(`allowed until ${rule.until}: ${line}`)
+                letThrough++
                 continue
               }
-              if (until) console.log(`::warning::${id} was allowed until ${until}; it fails the audit again. Review it.`)
-              blocking.push(line)
+              if (fits) console.log(`::warning::${id} was allowed until ${rule.until}; it fails the audit again. Review it.`)
+              else if (rule) console.log(`::warning::${id} is only let through on ${rule.pkg} at ${rule.severity} or below; here it is ${pkg} at ${v.severity}.`)
+              blocking.push(`${line} (path: ${paths})`)
             }
           }
           for (const line of blocking) console.log(`::error::${line}`)
-          process.exit(blocking.length ? 1 : 0)
+          if (blocking.length) process.exit(1)
+          // npm failed the audit, so something must explain it.
+          if (!letThrough) {
+            console.log('::error::npm audit failed but reported no advisory this step lets through')
+            process.exit(1)
+          }
+          process.exit(0)
           JS
                   exit $? ;;
               esac
