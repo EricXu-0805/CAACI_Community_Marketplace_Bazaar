@@ -1523,3 +1523,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: D-53 第 2–5 项（子任务）
 - 附: 更正 L117：截图共 6 张，社区首页 2 张、二手首页 4 张。补记：#370 的 run 44698816891、44703187712 失败在 Build H5「Install browsers for compiled admin acceptance」和 public sweep「Install Playwright (webkit + chromium)」，是 #370 分支上 ubuntu-26.04 的老问题，不是付款问题。确认：第六批的目标在 2026-11-20T08:31:28Z 结束，续跑提醒 sch_a410e1ce2a1f 已取消。#377 描述里政策问题一节从「待定」改成「已定（D-53）」。
+
+### L123 · 2026-11-20 04:03 CT · [supervisor 指示] D-53 第 7 项：容器一次只跑一个，#371 的新核法，后备与下游合并
+- task_id: D-53.7
+- code_sha: —（本条不改代码）
+- docs_sha: 5ce489f（本次写回之前材料分支的 HEAD，已 git pull 到 5ce489f 之后）
+- 环境: 本地
+- 命令: 读 DECISIONS D-53 第 7 项；`ln -s ~/work/evidence/.container.lock ~/work/illini-dev-env/.containers.lock`，`stat -L` 两个路径 inode 相同，正在跑的容器占着锁时 `flock -n ~/work/illini-dev-env/.containers.lock true` 拿不到；`df -BG /home`；task_send 给四个子任务；schedule_prompt list → cancel sch_88a74d279638 → create sch_ed550a449f65（3600 秒，提示词按第 7 项 a、d 改）
+- 计数: 读到时只有 1 个本项目容器在跑（vite 分支的全量），另有 1 条 staging 自检在同一把锁后排队；磁盘剩余 236 GB；续跑提醒仍只有 1 个 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-53 第 2–5 项（子任务）
+- 附: 第 7 项四件事。a：P1.8 的开工条件改成 `gh pr view 371 --json state,mergeCommit` 为 MERGED 且 mergeCommit 是 origin/main 的祖先（#371 只能 squash 合并，b259105 永远不会进 main）；#371 没合时目标继续开着，每次续跑提醒重核，直到 #371 合并、supervisor 通知「E5 延后」或到 2026-11-21 12:00 CT，后两种才把 P1.8、P2.13 记【跳过】。b：vite 那项若记【跳过】，supervisor 先合 #376 再合 #371。c：P1.8 在 #369 上 revert c52badf 以后，用 git merge 把 #369 新 head 依次合进 #375、#374、#377，再从 #377 合进 P3、P4（属 RUNBOOK §12 第 9a 条同一例外）。d：容器一次只跑一个，用一把锁排队，磁盘低于 50 GB 停；tony-ws 与 Tony、danny 共用（STOP-13）。[OMO自决] 新路径做成指向现有锁的符号链接，已经排在旧路径上的任务和新任务排在同一把锁上，不用停掉任何正在写文件的任务；L-SQL 回放也走这把锁，所以同一时间最多 1 个容器，比第 7 项 d 允许的「1 个 run-checks 类加 1 个 L-SQL」更严。四个子任务已收到这条规则；第 3 项子任务提前交回过一次，已让它接着做完。
