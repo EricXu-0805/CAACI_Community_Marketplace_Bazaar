@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { postgresBinDir } from './_postgres-bin.mjs'
 
 /**
  * Reporting something and appealing a suspension were both one-way. The admin
@@ -27,17 +28,7 @@ const MIGRATION = new URL(
 )
 
 function pgBin() {
-  const candidates = [
-    '/opt/homebrew/opt/postgresql@17/bin',
-    '/opt/homebrew/opt/postgresql@16/bin',
-    '/usr/local/opt/postgresql@17/bin',
-    '/usr/lib/postgresql/17/bin',
-    '/usr/lib/postgresql/16/bin',
-  ]
-  for (const dir of candidates) if (existsSync(join(dir, 'initdb'))) return dir
-  try {
-    return execFileSync('sh', ['-c', 'dirname "$(command -v initdb)"'], { encoding: 'utf8' }).trim()
-  } catch { return null }
+  return postgresBinDir()
 }
 
 const REPORTER = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
