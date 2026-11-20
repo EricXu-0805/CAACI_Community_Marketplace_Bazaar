@@ -1259,3 +1259,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: 放行逻辑在 GitHub 上第一次真跑要等合进 main 后的 push 或每周定时任务（本 PR 没改依赖文件，依赖门会让审计步骤 skipped）
 - 下一条: D-51 第 3 项 b 收尾、第 6 项、第 5 项
 - 附: 推送没有因 workflow 权限被拒，所以没用 format-patch。PR 描述写了两条路（A 本 PR 暂时放行；B 在 vite 6.4.5 上重建 vendor 归档），由 Eric 选；#371 合并以后要不要回到 ubuntu-latest 也由 Eric 定，写进第五批 ④。[OMO自决] 用例里加了「只有 vite」的对照和「过期」两条，过期用例用 PATH 里的假 date 实现，没改 ci.yml。
+
+### L101 · 2026-11-19 19:10 CT · D-51 第 3 项 b：#372 拒绝「集」字占位印章的测试，五个 PR 的本地重合改前红、改后绿
+- task_id: D-51.3b
+- code_sha: #372 d6f393d872a5f6298fcaa22cac2c0d3e84341f68（已推送，树 9e9849b）；本地 wip/d51-seal-integration（~/work/illini-d51-seal，不推送）a9fa656395add3b1248c32eb0221a3272bc639be（合并）→ 8f263f77f40301cdfc65e06e5c8ba7e0dd03679d（CommunityHome.vue 两处改「玉」，树 237cc95）
+- docs_sha: 609f032（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 在 #372 的 scripts/brand-name-boundary.test.mjs 加一条：用 `git grep` 找 app/src 下所有 `u-thumb-ph-seal` 占位，要求至少找到一个「玉」（正向对照，防搜索失效），且没有一个是「集」；宿主机先跑一次（3 / 3）；从 #374 6bdca97 建 wip/d51-seal-integration，合 #373 55716ba（无冲突），再合 #372 d6f393d，四个冲突文件取 412e14d 的解法（`git checkout 412e14d -- <四个文件>`），合并结果和 412e14d 只差 3a 的两个文件和这条新测试；`run-checks.sh ~/work/illini-d51-seal cmd` 跑 brand-name-boundary（check-20261120T005408Z）；改 CommunityHome.vue 两处后 `cmd install test`（check-20261120T005652Z）；把 ci-first-release-supervised-host.test.mjs 单独连跑 5 次（check-20261120T010950Z）；#372 推送前 `run-checks.sh ~/work/illini-brand cmd install test`（check-20261120T010255Z，日志头 tree 9e9849b、unstaged=no，等于推送的树），`git push --no-verify`（宿主机 pre-push 的 PG 环境问题，RUNBOOK §3）
+- 计数: 改前 3 / 2 / 1 / 0，失败的正好是 CommunityHome.vue 第 108、123 行两处「集」；改后 3 / 3。集成全量 2273 / 2271 / 1 / 1，pg_skips=0，唯一失败是 scripts/ci-first-release-supervised-host.test.mjs:133（unhandledRejection supervised_operation_timeout，和 #370 CI 43509639602 是同一处）；同一棵树上单独连跑这个文件 5 次都是 23 / 23。#372 单独全量 1992 / 1991 / 0 / 1 [本地测]
+- ci_run_url: —（#372 的 CI 等 E5；集成分支不推送）
+- 未测项: supervised-host 那条在全量并发下偶发超时，没查根因（不在 D-51 范围），写进第五批 ⑥
+- 下一条: D-51 第 6 项（等 #369 CI）、第 5 项（D-49 子任务）
+- 附: #374 上 CommunityHome.vue 不改（#374 比 #372 先上线，那时其他页面也还是「集」）。合并规则加一句：合 #372 时 CommunityHome.vue 两处占位改成「玉」，写进 STATUS 第 11 条和第五批 ④。

@@ -16,7 +16,7 @@ D-51 第五批进行中（L93）：范围是 D-51 第 1–7 项，做完写 FINA
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
 | docs_sha | e1009661bf0c253e6eb2fc3325dc042e8a89acb9（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #374 codex/community-home-20261112 6bdca97（含 #369 04edaa3、#375 571be45；D-51 3a）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 ba070e7；#371 b259105。这五个都是草稿；另有 #369、#370 也是草稿 [本地测：2026-11-20 gh pr view] |
+| 其余代码分支（远端 head） | #374 codex/community-home-20261112 6bdca97（含 #369 04edaa3、#375 571be45；D-51 3a）。#376 codex/config-ci-runner-20261119 92ff5d5（base main，只改 ci.yml）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 d6f393d；#371 b259105。这六个都是草稿；另有 #369、#370 也是草稿 [本地测：2026-11-20 gh pr view] |
 | tony-ws worktree | illini 04edaa3；illini-home 2e0f582；illini-mpbudget 571be45，三者已推送且干净。illini-d46-integration 为本地 local/d46-final-integration-20261114 412e14d（五 PR 集成，不推送）。illini-restricted 为本地 codex/community-restricted-20261113，HEAD 04edaa3，只有 2 份未提交 _ops 草稿，未推送、无 PR。illini-docs-brand7 local/brand7-20261113 15aa47e（已合进材料分支 779c07f，干净）。illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events 本地 5f62ddd 不推；illini-main 只读 7b18f20；caaciorg 本地 28d59b1 不推；材料 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，仍是 V4 原型（grep 玉米地 0），回退 id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 [生产：2026-11-14 curl、vercel inspect 只读]。BRAND.7 预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app（dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y）返回 200，等 Eric promote（E12）[本地测] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
@@ -166,7 +166,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 8. D-37（董事会同意）挡住 LEGAL.1–LEGAL.3；D-28（轮值伙伴）挡住 LEGAL.6 与 P5；D-36 已按 D-43 代定 D（延后），BRAND.6 等内测之后，P5.1 前 Eric 要重新答复。
 9. E6（官方账号 profile id）在 P3.5 与 P4.9 前需要；D-32、D-33、D-38、D-39、D-40 的截止任务见 [DECISIONS.md](DECISIONS.md)。
 10. BRAND（#372）生产发布后：Eric 在 STATUS_LOG 记发布日；「原 Illini Market」（app.formerly，登录页与 /about）在发布日 + 90 天移除；同时做 E10（邮件模板、生产 DIGEST_FROM）。
-11. #372 要手工合：与 #369 冲突在 api/share-post.js、en.ts、zh.ts（#374 另有 app.name / app.desc / app.tagline / app.formerly 一块）；保留 #369 的 P2.9 topicTitle / headline 逻辑与 P2.2「回复 / reply」措辞；api/share-post.js 兜底的标题和描述都取 #372（无帖时标题「玉米地 · 社区」，没有正文时描述「A post on Cornfield」，无帖时描述取 #372 的双语一句），412e14d 就是这样合的。#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突：c16f0a1 删了「关注的人」名单，#372 的 BRAND.3 徽章改的正是那段；保留 #374 的删除，这块的徽章改动丢弃（名单在 pages/following，那一页照 #372）。
+11. #372 要手工合：与 #369 冲突在 api/share-post.js、en.ts、zh.ts（#374 另有 app.name / app.desc / app.tagline / app.formerly 一块）；保留 #369 的 P2.9 topicTitle / headline 逻辑与 P2.2「回复 / reply」措辞；api/share-post.js 兜底的标题和描述都取 #372（无帖时标题「玉米地 · 社区」，没有正文时描述「A post on Cornfield」，无帖时描述取 #372 的双语一句），412e14d 就是这样合的。#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突：c16f0a1 删了「关注的人」名单，#372 的 BRAND.3 徽章改的正是那段；保留 #374 的删除，这块的徽章改动丢弃（名单在 pages/following，那一页照 #372）。合 #372 时 app/src/components/CommunityHome.vue 两处 u-thumb-ph-seal 占位（第 108、123 行）的「集」改成「玉」，#372 d6f393d 的测试会拦住漏改（L101）。
 
    #369 → #374 冲突图（D-48.3，实合 ae058c2）：
 
