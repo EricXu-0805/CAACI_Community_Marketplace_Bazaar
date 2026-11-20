@@ -440,7 +440,7 @@ D-49 是 Eric 在 D-48 两条路里定的「先在服务端拦住写入，再放
 - code_sha（都只 merge 或新提交，不 rebase，不 force push）：
   - #369 `codex/community-topics-20261112`：04edaa3 → 8257318（空提交，树同 04edaa3，D-51 第 6 项重跑 CI）。
   - #374 `codex/community-home-20261112`：2e0f582 → 6bdca97（D-51 第 3 项 a）。
-  - #372 `codex/brand-cornfield-20261112`：ba070e7 → d6f393d（D-51 第 3 项 b 的测试）（D-51 第 3 项 b 的测试）。
+  - #372 `codex/brand-cornfield-20261112`：ba070e7 → d6f393d（D-51 第 3 项 b 的测试）。
   - #376（新开）`codex/config-ci-runner-20261119`：7b18f20 → 87e57c3（cherry-pick c52badf）、92ff5d5（审计放行）。
   - D-49 `codex/community-restricted-20261113`：04edaa3 → 9c10a7e（服务端 12aec64、35059e1、6747b8a、13c989b、34fb770，上线检查项 de0950f，再合本地客户端分支），已推送；草稿 PR #377，base `codex/community-topics-20261112`。
   - 本地 `wip/d51-seal-integration`：a9fa656（五个 PR 重合）、8f263f7（CommunityHome.vue 两处改「玉」），不推送。
@@ -450,7 +450,7 @@ D-49 是 Eric 在 D-48 两条路里定的「先在服务端拦住写入，再放
 
 ```text
 D-51.8 ｜ 通过 ｜ —（不改代码） ｜ eb4fc56 ｜ 本地 ｜ L93 ｜ create_goal 1 个；schedule_prompt 先 list（没有任务）再建 3600 秒续跑提醒 sch_4d17c07102ac，只此一个 ｜ — ｜ — ｜ — ｜ D-51.1
-D-51.1 ｜ 通过 ｜ —（不改代码） ｜ eb4fc56 ｜ 真人 ｜ L93、L95 ｜ supervisor 实查 default（admin）86%、account-2（board）92%，超过 60%；顺序改成 account-5 → account-4 → account-2 → default；OMO 不切号、不改 ~/.omo ｜ — ｜ 各号实时用量 OMO 看不到 ｜ — ｜ D-51.3a
+D-51.1 ｜ 部分（第 1 项要求在 STATUS「阻塞」记用号情况，没写；D-52 第 4 项 e 更正） ｜ —（不改代码） ｜ eb4fc56 ｜ 真人 ｜ L93、L95 ｜ supervisor 实查 default（admin）86%、account-2（board）92%，超过 60%；顺序改成 account-5 → account-4 → account-2 → default；OMO 不切号、不改 ~/.omo ｜ — ｜ 各号实时用量 OMO 看不到 ｜ — ｜ D-51.3a
 D-51.2a–g ｜ 通过 ｜ —（只改文档） ｜ e100966 ｜ 本地 ｜ L99 ｜ 停止规则引用 2 处改成 D-50 第 6 项；② docs_sha 一列 14 行统一；补 D-47.6、D-48.5、D-48.6、D-50.1 四行并改标签；③ 补 L71；⑥ 补 5 个红 run，STATUS 补 6 个；STATUS 过时处；④ share-post.js 规则照 412e14d 实写；四个旧名加「示例」 ｜ CI run#43503547193 ｜ — ｜ — ｜ —
 D-51.2h ｜ 通过 ｜ —（只改文档） ｜ 4537b8a ｜ 本地 ｜ L96 ｜ 第四批 19 次代码推送（#369 4、#374 8、#375 7）19 次都是 --no-verify，每次都有推送前的 run-checks 日志；RUNBOOK 第 128 行改成实情（4 条 initdb ENOENT） ｜ — ｜ — ｜ — ｜ —
 D-51.2i ｜ 部分（按规则停下） ｜ —（只改文档） ｜ 4537b8a ｜ 本地 ｜ L97 ｜ RUNBOOK §3 表补 7 个目录和证明 worktree 一行；6 个证明 worktree 先把 HEAD、diff、未跟踪文件存进 ~/work/evidence/D51/worktrees/，再不带 --force 逐个 remove：删掉 1 个，5 个有改动或未跟踪文件被拒，按规则留着 ｜ — ｜ — ｜ ④ ｜ —
@@ -459,7 +459,7 @@ D-51.2k ｜ 通过 ｜ —（只改文档） ｜ eb4fc56 ｜ 本地 ｜ L93 起 
 D-51.3a ｜ 通过 ｜ 6bdca97（#374） ｜ e100966 ｜ 本地 ｜ L98 ｜ 改前在 2e0f582 上 116 / 100 / 16 / 0（正好 L2–L5 × 中英 × 2 组新用例）；改后全量 2265 / 2264 / 0 / 1，pg_skips=0，typecheck、h5、mpci rc=0，smoke 35 passed；主包 1,373,060 不变 ｜ — ｜ 真机 ｜ — ｜ —
 D-51.3b ｜ 通过 ｜ d6f393d（#372）；本地 wip/d51-seal-integration a9fa656 → 8f263f7（不推送） ｜ 609f032 ｜ 本地 ｜ L101 ｜ 集成改前 3 / 2 / 1 / 0，命中 CommunityHome.vue 第 108、123 行两处「集」；改成「玉」后 3 / 3；集成全量 2273 / 2271 / 1 / 1（唯一失败是既有的 supervised-host 偶发超时，单独连跑 5 次 23 / 23）；#372 单独全量 1992 / 1991 / 0 / 1 ｜ — ｜ supervised-host 偶发超时的根因 ｜ — ｜ —
 D-51.4 ｜ 通过 ｜ 87e57c3（cherry-pick c52badf）、92ff5d5（审计放行），#376 草稿，base main ｜ c6542a0 ｜ 本地、CI ｜ L100、L104 ｜ ci.yml 与 c52badf 的 blob 相同；审计五个用例：main 锁文件 exit 1 且失败列表里没有 GHSA-8g5g-mxqh-grgj，55716ba exit 0，多一条 moderate exit 1，只有 vite exit 0，过期 ::warning:: 后 exit 1；Bun YAML 与 PyYAML 都能解析；现有测试 1989 / 1988 / 0 / 1，没改测试；merge-tree 7 个 head 0 冲突；PR 的 CI 5 个 success，审计步骤按依赖门 skipped ｜ CI run#44649596522 ｜ 放行逻辑要等合进 main 后才在 GitHub 上真跑；工作站没有 actionlint ｜ ④ ｜ —
-D-51.5（D-49） ｜ 通过（等 Eric 先应用迁移） ｜ 9c10a7e（#377 草稿，base #369 的分支） ｜ 7dda6cb ｜ L-SQL、本地 ｜ L103、L105、L106 ｜ 强制失败验证成立；计数回放第 1 次 182 / 182 rc 0；全等级回归改前 948 失败、改后 3,390 / 0；两个 API 改前红、改后绿；客户端新测试在 04edaa3 上 134 条失败；合并后全量 2536 / 2535 / 0 / 1，smoke 35，主包 1,567,476；迁移 sha256 0dc2ceaf… 冻结 ｜ — ｜ Storage 走 HTTP；真机；托管库；没有 ROLLBACK ｜ ④ 第 2、3、5 项 ｜ —
+D-51.5（D-49） ｜ 部分（没按 D-49 第 2 项改 #377 的 base；D-52 第 4 项 e 更正，D-52 第 1 项改到 #374 的分支） ｜ 9c10a7e（#377 草稿，base #369 的分支） ｜ 7dda6cb ｜ L-SQL、本地 ｜ L103、L105、L106 ｜ 强制失败验证成立；计数回放第 1 次 182 / 182 rc 0；全等级回归改前 948 失败、改后 3,390 / 0；两个 API 改前红、改后绿；客户端新测试在 04edaa3 上 134 条失败；合并后全量 2536 / 2535 / 0 / 1，smoke 35，主包 1,567,476；迁移 sha256 0dc2ceaf… 冻结 ｜ — ｜ Storage 走 HTTP；真机；托管库；没有 ROLLBACK ｜ ④ 第 2、3、5 项 ｜ —
 D-51.6 ｜ 通过 ｜ 8257318（#369 空提交，树同 04edaa3） ｜ c4997a4 ｜ CI ｜ L102 ｜ 三个伴随文件 sha256 与 D-51 第 6 项一致；run 44647478789 5 个 success；schema 预检五项 200；public sweep 472 passed；runner 镜像 Boundary ubuntu-26.04（20261116.202.1），public sweep ubuntu-24.04（20261116.133.1），Build H5 ubuntu-24.04（20261111.370.1）；E4 staging 那一半标完成 ｜ CI run#44647478789 ｜ P2.6、P2.13 仍等 E2、E3、E5 ｜ E2 ｜ —
 D-51.7 ｜ 通过 ｜ —（只改文档） ｜ 7dda6cb ｜ 本地 ｜ 本节 ④ ｜ ④ 的 E12 一行加上 vercel.live 工具栏 CSP 报错的说明；「转发 · CSSA」的虚构活动按 Eric 2026-11-19 的选择保留，没改 ｜ — ｜ — ｜ E12 ｜ —
 ```
@@ -530,7 +530,7 @@ D-51 第 5 项解开了第四批停下的地方：批准新增一个只给本地
 
 - 本批没有触发【暂停推送】。没有合并、没有转 ready、没有 force push、没有 rebase 已推送分支、没有改 SPEC、没有应用托管迁移；20261112120000 没动。`.github/workflows` 只在 #376 的分支上按 D-51 第 4 项改了 ci.yml 两处（RUNBOOK §12 第 9a 条的例外）。
 - 本批的代码推送都用了 `git push --no-verify`（宿主机 pre-push 跑不了 PG 测试，RUNBOOK §3），每次都在 STATUS_LOG 的「命令」字段写了推送前那次 run-checks 的日志名：#369 8257318（L102）、#374 6bdca97（L98）、#372 d6f393d（L101）、#376 87e57c3..92ff5d5（L100）、#377 9c10a7e（L106）。
-- 本批没有改写任何已推送分支；20261112120000 的 sha256 收尾时再核一次：e2a85c3ec33c98e8317b764a59fc8af1434c15319794e3f64a6606be70e5a92c，#369、#374、#375、#372 和 D-49 分支上都一样；#369–#377 九个 PR 都是草稿、OPEN；main 仍是 7b18f20。
+- 本批没有改写任何已推送分支；20261112120000 的 sha256 收尾时再核一次：e2a85c3ec33c98e8317b764a59fc8af1434c15319794e3f64a6606be70e5a92c，#369、#374、#375 和 D-49 分支上都一样（#372 上没有这个文件；D-52 第 4 项 d 更正）；#369–#377 九个 PR 都是草稿、OPEN；main 仍是 7b18f20。
 
 ### ⑥ 未测项与风险
 

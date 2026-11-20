@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-20 01:35 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-20 01:57 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: D-52 第 1 项（#377 merge 6bdca97 并修 16 条失败）；第 3 项（#376）与第 4 项穿插`
 `latest_batch: appendix/batch/FINAL.md`
@@ -15,13 +15,15 @@ D-52 第六批进行中（L109）：范围是 D-52 第 0–4 项，做完写 FIN
 | code_sha | 8257318a95cba86bee6ae4c5b8fbb2578f377dcc（#369 当前 head，空提交，树同 04edaa3；D-51 第 6 项） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 3ec3cb9（本次写回之前材料分支的 HEAD） |
+| docs_sha | ea66373（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #374 codex/community-home-20261112 6bdca97（含 #369 04edaa3、#375 571be45；D-51 3a）。#376 codex/config-ci-runner-20261119 92ff5d5（base main，只改 ci.yml）。#377 codex/community-restricted-20261113 9c10a7e（base #369，D-49）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 d6f393d；#371 b259105。这七个都是草稿；另有 #369、#370 也是草稿 [本地测：2026-11-20 gh pr view] |
 | tony-ws worktree | illini 04edaa3；illini-home 2e0f582；illini-mpbudget 571be45，三者已推送且干净。illini-d46-integration 为本地 local/d46-final-integration-20261114 412e14d（五 PR 集成，不推送）。illini-restricted 为本地 codex/community-restricted-20261113，HEAD 04edaa3，只有 2 份未提交 _ops 草稿，未推送、无 PR。illini-docs-brand7 local/brand7-20261113 15aa47e（已合进材料分支 779c07f，干净）。illini-deps 55716ba；illini-brand ba070e7；illini-config b259105；illini-events 本地 5f62ddd 不推；illini-main 只读 7b18f20；caaciorg 本地 28d59b1 不推；材料 codex/community-plan-v5 [本地测] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，仍是 V4 原型（grep 玉米地 0），回退 id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 [生产：2026-11-14 curl、vercel inspect 只读]。BRAND.7 预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app（dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y）返回 200，等 Eric promote（E12）[本地测] |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
 ## CI
+
+**GitHub Actions 停过一段（D-52 第 4 项 a）。** 2026-11-20 约 01:25Z 起，#370 的 run 44653535391（f86ada1）、44660742581（7dda6cb）、44671115623（0c95cc4）都在 4–5 秒内结束，每个 job 0 个步骤，注解原话是「The job was not started because recent account payments have failed or your spending limit needs to be increased.」Eric 2026-11-20 01:16 CT 把仓库改成公开，07:15Z 起是 PUBLIC。本批第一次推送（材料分支 ea66373）触发的 run 44696137300：每个启动的 job 都有步骤（Type-check 8、Build mp-weixin 10、Boundary 13、public sweep 12、Build H5 13；protected staging 与 release readiness 按条件 skipped），没有付款注解，按 D-52 的标准 CI 已恢复（L110）。这个 run 的 Build H5、public sweep 失败在装浏览器那一步，是 #370 分支没有 c52badf、ubuntu-26.04 的老问题。#372 d6f393d 的 run 44651530274 也一样：Type-check、Boundary、Build mp-weixin 成功，Build H5「Install browsers for compiled admin acceptance」和 public sweep「Install Playwright (webkit + chromium)」失败 [CI run#44696137300][CI run#44651530274]。
 
 #369 当前 head 8257318（空提交，树同 04edaa3）的 run 44647478789：5 个 job 全部 success，public sweep 的 schema 预检五项都是 200、浏览器巡检 472 passed；protected staging 与 release readiness 2 个 skipped（L102）。
 
@@ -161,17 +163,17 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 ## 阻塞与等待 Eric
 
-1. 合 #369 进 main 就是把前端发布到 illinimarket.com 生产：之前必须先在生产应用 20261112120000 并跑它的 VERIFY（ENGINEERING §6；P2.5 DoD ④ 生产那一半由 Eric 核；应用后 VERIFY_20260718_reconcile_app_table_acl_boundaries 报 posts 列漂移属预期，见 L46），BACKLOG 还要求合并前 P2.13 通过。
+1. 合并与迁移的完整顺序（写给 Eric，OMO 不执行；托管库的事属于 STOP-2/3，D-52 第 4 项 b）：① #376 随时可以合；#371 → #373。② 在生产应用 20261112120000 并跑它的 VERIFY（staging 已做，L102；ENGINEERING §6；应用后 VERIFY_20260718_reconcile_app_table_acl_boundaries 报 posts 列漂移属预期，见 L46），并且 P2.13 通过以后，依次合 #369 → #375 → #374。合 #369 进 main 就是把前端发布到 illinimarket.com 生产。③ #372 在 #374 之后任何时候手工合，规则见第 11 条。④ #377 最后合：前提是 staging 和生产上都已应用并 VERIFY 了 20261112120000，再 PRECHECK、应用、VERIFY 了 20261114015420（生产上必须先有前一条，否则 D-49 的 PRECHECK 会报 restricted_account_writes_column_missing），见第 14 条。⑤ 删分支之前先改 base，见第 12 条。
 2. D-29 → E2、E3：staging-smoke 只有合成数据的书面确认与 A/B/C 账号。挡住 P1.11、P1.12、P2.6、P2.11。
 3. E4：staging 那一半已完成——supervisor 按 Eric 2026-11-19 批准把 20261112120000 应用到 staging-smoke 并 VERIFY 通过（D-51 第 6 项），#369 的 public sweep 已过（L102）。P2.6、P2.13 仍等 E2（D-29）、E3、E5。
-4. P1.6 跨大版本已按 D-44 做成草稿 PR #373（base #371）：合不合由 Eric 定；合之前请在带 SENTRY_AUTH_TOKEN 的发布构建里确认 source map 上传。#373 不触发 CI（ci.yml 只认 base=main）。两者都合并后 Boundary 仍红：ci.yml 第 182 行的 `npm audit --audit-level=moderate` 没有例外清单，vite 6.4.4 的 moderate 还在；让 CI 认例外清单要改 workflow，归 Eric。
+4. P1.6 跨大版本已按 D-44 做成草稿 PR #373（base #371）：合不合由 Eric 定；合之前请在带 SENTRY_AUTH_TOKEN 的发布构建里确认 source map 上传。#373 不触发 CI（ci.yml 只认 base=main）。vite 6.4.4 那条 moderate 的 CI 例外已由 #376 提供（只放行 vite 包上的 GHSA-8g5g-mxqh-grgj、严重程度不高于 moderate、到 2026-12-13，见第 20 条）；#376、#371、#373 都合并后 main 上的 Boundary 才会绿。
 5. E5：合并 P1.7 的 PR（#371）。挡住 P1.8（进而 P2.13），以及 BRAND.2 ⑦ 的 Build H5。
 6. D-35 已定（A 纸本书院），HOME.4、P2.12、BRAND.7 只剩各自的任务依赖；D-34 已按 D-43 代定（B 的单字「玉」），BRAND.4 ② 由 OMO 做。
 7. D-30（E7，微信后台核对）挡住 BRAND.5、P5.2；D-31 已定（A），E8（fork 与令牌权限）还没做，P4.3 只在本地写。D-40 已定（A，请律师审 LEGAL.2、LEGAL.4），LEGAL 组仍等 D-37。
 8. D-37（董事会同意）挡住 LEGAL.1–LEGAL.3；D-28（轮值伙伴）挡住 LEGAL.6 与 P5；D-36 已按 D-43 代定 D（延后），BRAND.6 等内测之后，P5.1 前 Eric 要重新答复。
 9. E6（官方账号 profile id）在 P3.5 与 P4.9 前需要；D-32、D-33、D-38、D-39、D-40 的截止任务见 [DECISIONS.md](DECISIONS.md)。
 10. BRAND（#372）生产发布后：Eric 在 STATUS_LOG 记发布日；「原 Illini Market」（app.formerly，登录页与 /about）在发布日 + 90 天移除；同时做 E10（邮件模板、生产 DIGEST_FROM）。
-11. #372 要手工合：与 #369 冲突在 api/share-post.js、en.ts、zh.ts（#374 另有 app.name / app.desc / app.tagline / app.formerly 一块）；保留 #369 的 P2.9 topicTitle / headline 逻辑与 P2.2「回复 / reply」措辞；api/share-post.js 兜底的标题和描述都取 #372（无帖时标题「玉米地 · 社区」，没有正文时描述「A post on Cornfield」，无帖时描述取 #372 的双语一句），412e14d 就是这样合的。#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突：c16f0a1 删了「关注的人」名单，#372 的 BRAND.3 徽章改的正是那段；保留 #374 的删除，这块的徽章改动丢弃（名单在 pages/following，那一页照 #372）。合 #372 时 app/src/components/CommunityHome.vue 两处 u-thumb-ph-seal 占位（第 108、123 行）的「集」改成「玉」，#372 d6f393d 的测试会拦住漏改（L101）。
+11. #372 要手工合：与 #369 冲突在 api/share-post.js、en.ts、zh.ts（#374 另有 app.name / app.desc / app.tagline / app.formerly 一块）；保留 #369 的 P2.9 topicTitle / headline 逻辑与 P2.2「回复 / reply」措辞；api/share-post.js 兜底的标题和描述都取 #372（无帖时标题「玉米地 · 社区」，没有正文时描述「A post on Cornfield」，无帖时描述取 #372 的双语一句），412e14d 就是这样合的。#374 与 #372 还在 app/src/pages/plaza/index.vue 冲突：c16f0a1 删了「关注的人」名单，#372 的 BRAND.3 徽章改的正是那段；保留 #374 的删除，这块的徽章改动丢弃（名单在 pages/following，那一页照 #372）。合 #372 时 app/src/components/CommunityHome.vue 两处 u-thumb-ph-seal 占位（第 108、123 行）的「集」改成「玉」，#372 d6f393d 的测试会拦住漏改（L101）。顺序上 #372 在 #374 之后任何时候合（第 1 条）。
 
    #369 → #374 冲突图（D-48.3，实合 ae058c2）：
 
@@ -183,8 +185,8 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
    | app/smoke/community-post-topics.spec.ts | 保留 view=all 和 New topic/发话题；加入 L2–L5 门禁与 options.open；正常账号夹具同时提供话题与旧式动态，保留两种回复入口验证 |
    | app/src/composables/i18n/messages/en.ts、zh.ts | 自动合并会各留两份 plaza.restrictedReply，手工去重为每语言一份；未改变值 |
 
-12. 删 #369 的分支之前，先把 #374、#375 的 base 都改成 main；删 #371 的分支之前，先把 #373 的 base 改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）。#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main。
-13. 首页、新页头、板块页、全部讨论已编进小程序。#374 2e0f582（含#369 04edaa3、#375 571be45）CI 环境主包 1,373,060、余 199,804；五个 PR 本地集成（再加 #373、#372）1,374,461、余 198,403（L90），满足 64 KiB 目标。微信开发者工具/真机仍须验证渲染、胶囊、路由、操作菜单标题、空栈提示抑制、首次分包下载/离线失败与返回栈。没有preloadRule，login/search/notifications/settings/legal等首次进入要下载；本批不加预加载规则。首页6+inbox 2+notifications 2=10，onShow资料读取可到11；D-47.3只限首页。按supervisor核查，基础库3.8.10起超并发请求才排队，更老版本可能直接失败；manifest未设最低基础库，需Eric实测并定最低版本。小程序构建须有VITE_BASE_URL。showModal加权规则只核验3.15.0–3.15.2；showActionSheet只检查itemList不超过6项，title/alertText和条目文字不限长，更早版本未核。
+12. 删 #369 的分支之前，先把 #374、#375 的 base 都改成 main；删 #371 的分支之前，先把 #373 的 base 改成 main；删 #374 的分支之前，先把 #377 的 base 改成 main（删 base 分支会关闭依赖它的 PR，且不能重开）。#369 若 squash 合并，改完 base 后 #374、#375 要再 merge 一次 origin/main；#374 若 squash 合并，#377 改完 base 后也要再 merge 一次 origin/main。#377 的 base 改成 main 之前没有 CI（ci.yml 只认 base=main）。
+13. 首页、新页头、板块页、全部讨论已编进小程序。#374 6bdca97（含 #369 04edaa3、#375 571be45）CI 环境主包 1,373,060、余 199,804；五个 PR 本地集成（再加 #373、#372）1,374,461、余 198,403（L90），满足 64 KiB 目标。微信开发者工具/真机仍须验证渲染、胶囊、路由、操作菜单标题、空栈提示抑制、首次分包下载/离线失败与返回栈。没有preloadRule，login/search/notifications/settings/legal等首次进入要下载；本批不加预加载规则。首页6+inbox 2+notifications 2=10，onShow资料读取可到11；D-47.3只限首页。按supervisor核查，基础库3.8.10起超并发请求才排队，更老版本可能直接失败；manifest未设最低基础库，需Eric实测并定最低版本。小程序构建须有VITE_BASE_URL。showModal加权规则只核验3.15.0–3.15.2；showActionSheet只检查itemList不超过6项，title/alertText和条目文字不限长，更早版本未核。
 
 14. D-49（#377，草稿）：先在 staging、再在生产跑 PRECHECK_20261114015420 → 应用迁移 → VERIFY（都返回空、不报错），然后才合 #377；没有 ROLLBACK 文件，删两条新的 storage.objects 策略要用 Dashboard。12 条待定政策问题见 FINAL 第五批 D-49 一节（L106）。
 
@@ -192,11 +194,12 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 16. D-47.2：SPEC只给了“守则/指南”标签和社区守则名称，未定义帖子类型字段。当前按官方精选帖标题中的“社区守则/Community guidelines”识别守则，其他显示指南；这不是稳定元数据规则，标题改名/其他守则文档如何分类仍需明确。近期活动的两个key继续等P4.8，不提前实现。
 
-17. [supervisor 指示，2026-11-13 18:10 CT] anthropic-subscription的default、account-2、account-3登录过期，须Eric本人重新登录；OMO不尝试登录。account-4已到Eric设定的60%总周上限，不再派活。剩余子任务只用首模型为ChatGPT订阅的deep-high/ultrabrain/deep-low或主线程；旧st_01a1d6e8已释放，不再恢复。BRAND.7 已由 st_01a1d67e 本地提交原型（15aa47e），主会话合进材料分支并做了预览部署（L91）。
+17. 用号按 D-52 第 0 项（2026-11-13 18:10「子任务只用 ChatGPT 打头的类别」那条已由 D-51 第 1 项解除，L95「admin、board 不用」由 D-52 第 0 项作废）：default（admin）、account-2（board）不设 60% 上限，用到额度耗尽；account-5、account-4 和 ChatGPT 两个号仍按 60%；顺序 default → account-2 → account-5 → account-4，切 ChatGPT 由 supervisor 做，OMO 不改顺序、不切模型。停下条件：default、account-2 都用尽，其余号也都到 60%。
 
 18. BRAND.7（E12）：看预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app 后由 Eric promote；先在 Vercel 记下当前 production deployment id（OMO 用 vercel inspect 读到 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6），promote 后 `curl -s https://illini-community-demo.vercel.app/ | grep -c 玉米地` 应不小于 1。 预览在真实 Chrome 里会报 1 条 CSP 错误，来源是 Vercel 给预览页注入的工具栏脚本（vercel.live），被 demo 自己的 `script-src 'self'` 拦下，不是 demo 本身的问题，生产不会注入（D-51 第 7 项）。「转发 · CSSA」的虚构活动按 Eric 2026-11-19 的选择保留。
-19. 本地镜像 supabase/postgres 17.6.1.104 上，authenticated 调用没有 EXECUTE 权限的函数会让后端 SIGSEGV、整库重启（L105）；托管库上是否一样请 Eric 判断，OMO 没碰任何托管库。
-20. #376：vite 那条公告选 A（暂时放行到 2026-12-13）还是 B（在 vite 6.4.5 上重建 vendor 归档）；#371 合并以后三个浏览器 job 要不要回到 ubuntu-latest（P1.5 DoD ③）。#376 可以先合。
+19. 给运维的提醒（D-52 第 4 项 g，更正 L105 的说法）：本地镜像 supabase/postgres 17.6.1.104（和生产的数据库版本一样）上，用 postgres 或 supabase_admin 登录，再 `SET ROLE` 到 anon、authenticated 或 service_role 去调用没有 EXECUTE 权限的函数，后端会 SIGSEGV、整库重启；以 authenticator 登录（也就是走 PostgREST）是正常的 42501。所以 App 用户大概率触发不了，运维会话会。托管库上的 supautils 和 PostgREST 版本可能和本地不同，这一点没核；OMO 没碰任何托管库。可选的镜像版本 17.6.1.167：核查方在这个版本上没复现崩溃。
+20. #376：vite 那条公告选 A（暂时放行到 2026-12-13，只认 vite 包、严重程度不高于 moderate）还是 B（把 braces 3.0.3 的回补在 vite 6.4.5 或 6.4.6 上重做、重建本地归档；直接装 registry 上的 6.4.5 能让审计变绿，却会悄悄丢掉这个回补）；#371 合并以后三个浏览器 job 要不要回到 ubuntu-latest（P1.5 DoD ③）。#376 可以先合。
 21. staging 上 posts_visible 的写权限是 041 建视图时的默认权限，没收回（security_invoker，不算提权）；要不要收回由 Eric 定。
 22. staging 另缺 3 条和 20261112120000 无关的旧迁移：20260811140018、20260811143207、20261003175231，这次不补。
 23. 5 个留下的证明 worktree 要删得用 --force（RUNBOOK §3 不许 OMO 做）；改动和未跟踪文件已存进 ~/work/evidence/D51/worktrees/（L97）。
+24. 仓库 2026-11-20 07:15Z 起公开（D-52 第 4 项 a2）：材料分支、DECISIONS（含 D-51 里的账号邮箱缩写）和几个 PR 描述里已经有账号邮箱和工作站路径，现在任何人都能看到。OMO 不改写历史去删它们，要不要处理由 Eric 定。本批起不再往仓库加原始日志、带真实数据的截图、账号邮箱、凭据和 /home 开头的绝对路径。
