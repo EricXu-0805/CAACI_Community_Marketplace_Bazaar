@@ -1911,3 +1911,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: #372 由 supervisor 合进 main；C-final 等 supervisor 通知合并后的 main SHA
 - 下一条: D-54 第 2 项（P3、P4 子任务）；第 5 项等通知
 - 附: 冲突逐块记录在 ~/work/evidence/D54/p372/CONFLICTS.md。[OMO自决] 子任务四次在门禁没跑完时交回，主会话设监视看门禁，门禁全过后由主会话推送（子任务已停，同一分支同一时间只有主会话推送）。新 head f5dd044 报给 supervisor。
+
+### L150 · 2026-11-20 11:23 CT · #372 f5dd044 的 CI（补 L149 的 ci_run_url）
+- task_id: D-54.4
+- code_sha: f5dd04408062c32ea6ed4a25a53d4aae4d1dd331（#372）
+- docs_sha: e72a07d（本次写回之前材料分支的 HEAD）
+- 环境: CI
+- 命令: 监视 `gh run list --workflow ci.yml --commit f5dd044…`，结束后 `gh run view 44778423032 --json headSha,jobs`
+- 计数: head=f5dd044 Boundary regressions=success; Smoke (public page sweep)=success; Build H5=success; Type-check=success; Build mp-weixin=success; Smoke (protected staging account)=skipped; Production release readiness=skipped [CI run#44778423032]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44778423032
+- 未测项: —
+- 下一条: D-54 第 2 项（P3、P4 子任务）；第 5 项等 supervisor 通知 #372 合进 main 后的 SHA
+- 附: L149 的 ci_run_url 写的是「待完成（监视中）」，结果补在这里，L149 不改。#372 可以由 supervisor 合进 main。
