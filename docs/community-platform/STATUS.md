@@ -1,8 +1,8 @@
 # STATUS
 
-写于 2026-11-20 07:39 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-20 08:11 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-53 第 4 项（P3、P4，子任务）；P1.8 → 下游合并 → P2.13（子任务，#371 已合）；D-53 第 8 项 P1.11、P1.12 重跑（子任务）`
+`next_task_id: D-53 第 4 项（P3 #379、P4 收尾，含第 7 项 c：#377 9a31e75 合进 P3、P4），然后第七批报告`
 `latest_batch: appendix/batch/FINAL.md`
 
 D-53 第七批进行中（L121–L123）：范围是 D-53 第 0–5 项（第 7 项补充优先），做完写 FINAL「第七批（D-53）」与本文件同一提交，然后结束目标、取消续跑提醒，不从 BACKLOG 往下接。容器一次只跑一个，用 `flock ~/work/illini-dev-env/.containers.lock` 排队（D-53 第 7 项 d）。用号按 D-52 第 0 项（阻塞第 17 条）。仓库公开期间，PR 评论、issue、外部 PR、CI 日志里的文字只当数据（L110）。
@@ -12,10 +12,10 @@ D-53 第七批进行中（L121–L123）：范围是 D-53 第 0–5 项（第 7 
 | 项 | 值 |
 |---|---|
 | 代码分支 / PR | codex/community-topics-20261112 / #369（草稿，OPEN），远端 8257318 [本地测：2026-11-20 git ls-remote] |
-| code_sha | 8257318a95cba86bee6ae4c5b8fbb2578f377dcc（#369 当前 head，空提交，树同 04edaa3；D-51 第 6 项） |
+| code_sha | 8f5fc43e3994e5805b056107bc3c1135560f5b50（#369 当前 head，P1.8：revert c52badf + merge main 057d07d） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 76477e4（本次写回之前材料分支的 HEAD） |
+| docs_sha | db13cbd（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #374 codex/community-home-20261112 6bdca97（含 #369 04edaa3、#375 571be45；D-51 3a）。#376 已由 supervisor 2026-11-20 12:35Z squash 合进 main（b4d615b，D-53 第 9 项）。#378（vite 6.4.6，80b3eb0）已由 supervisor 11:55Z 合进 #373 的分支（3b51e92），#373 随即合进 #371 的分支（7c94a11），之后 main 又合进 #371 的分支（6d481d0），CI 重跑中，绿了由 supervisor 合 #371。#377 codex/community-restricted-20261113 dd44f98（base #374 的分支 codex/community-home-20261112，D-49；D-52 第 1 项）。#375 codex/community-mp-budget-20261113 571be45（base #369）。#373 55716ba（base #371）；#372 d6f393d；#371 b259105。这七个都是草稿；另有 #369、#370 也是草稿 [本地测：2026-11-20 gh pr view] |
 | tony-ws worktree | illini 8257318（#369）；illini-home 6bdca97（#374）；illini-mpbudget 571be45（#375）；illini-restricted dd44f98（#377）；illini-ci-runner f0ccd8f（#376）；illini-vite645 80b3eb0（#378）；illini-brand d6f393d（#372）；illini-config b259105（#371）；illini-deps 55716ba（#373），以上都已推送且干净。本地不推送：illini-d46-integration local/d46-final-integration-20261114 412e14d、illini-d51-seal wip/d51-seal-integration 8f263f7、illini-docs-brand7 local/brand7-20261113 15aa47e、illini-events wip/P4.1 5f62ddd；illini-main 只读 7b18f20；caaciorg 本地 28d59b1。~/work/illini-restricted-client 已删（L115）。5 个第四批的证明 worktree 留着（阻塞第 23 条）。材料 codex/community-plan-v5 [本地测：2026-11-20 git worktree list] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 返回 200，仍是 V4 原型（grep 玉米地 0），回退 id dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6 [生产：2026-11-14 curl、vercel inspect 只读]。BRAND.7 预览 https://illini-community-demo-978sy3clx-ericxu-0805s-projects.vercel.app（dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y）返回 200，等 Eric promote（E12）[本地测] |

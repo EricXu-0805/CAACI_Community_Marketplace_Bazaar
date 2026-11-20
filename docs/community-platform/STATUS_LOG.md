@@ -1717,3 +1717,15 @@ install、typecheck rc=0，test 2044/2043/0/1 pg_skips=0，smoke 20 passed（che
 - 未测项: —
 - 下一条: P1.8 子任务结果
 - 附: D-53 第 7 项 a 的开工条件满足。[OMO自决] P1.8 先 `git revert c52badf` 再 `git merge origin/main`：main 已经带着 #376 的三处 ubuntu-24.04，如果先 merge 再 revert，会把 main 提供的钉版本也删掉；按这个顺序，#369 的 ci.yml 与 main 逐字节相同（D-53 第 9 项「由 main 提供」，优先于 BACKLOG P1.8 DoD ②「ci.yml 里没有 ubuntu-24.04」）。下游：#375 合 #369 新 head，#374 合 #375 新 head，#377 合 #374 新 head；P3、P4 的分支此刻由 st_01a1f859 推送，等它收尾后再从 #377 合进去（同一分支同一时间只让一个任务推送）。第 8 项（P1.11、P1.12 重跑）照常，代码仍固定在 7b18f20。[OMO自决] 这一条在 P1.11、P1.12 重跑期间写成，那段时间 STATUS_LOG 由重跑子任务独占追加，所以本条等它交回后再按顺序插入，时间戳是实际写成的时间。
+
+### L136 · 2026-11-20 08:11 CT · D-53 第 5 项、第 7 项 c：P1.8 去掉钉版本并合进 main，级联到 #375、#374、#377；P2.13
+- task_id: P1.8、P2.13（D-53.5、D-53.7c）
+- code_sha: #369 8f5fc43e3994e5805b056107bc3c1135560f5b50（先单独 revert c52badf 为 a37667b，再 merge origin/main 057d07d，topic 测试改用 postgresBinDir()）；#375 dfa1aa0；#374 75a3447；#377 9a31e75（依次 merge 上一个新 head，四次都无冲突），都已推送、快进、仍是草稿
+- docs_sha: db13cbd（本次写回之前材料分支的 HEAD）
+- 环境: 本地、CI
+- 命令: 子任务 st_01a1f90a（deep-high）；开工前主会话核 `gh pr view 371 --json state,mergeCommit` 为 MERGED 057d07d 且是 origin/main 的祖先；各分支 `run-checks.sh`（#369 check-20261120T130413Z 与 131333Z 两份，第一份在 H5 验收后因磁盘检查包装脚本丢了执行位而中断，恢复权限后只补跑被挡住的步骤，树未变；#375 132400Z；#374 133439Z；#377 135325Z；都是 unstaged=no），容器都经 `flock ~/work/illini-dev-env/.containers.lock`，起容器前查磁盘（最低 234G）；`git push --no-verify`（宿主机 pre-push 的 PG 环境问题，推送前日志即上列）；`gh api -X PATCH` 只传 body 改四个 PR 的描述
+- 计数: 测试 #369 2161/2160/0/1、#375 2213/2212/0/1、#374 2270/2269/0/1、#377 2660/2659/0/1，pg_skips 都是 0；smoke 各 35 passed；#369 的 H5 验收 52 passed。主包（CI 环境）#369 1,560,392、#375 1,324,735、#374 1,373,060、#377 1,380,046。四个分支的 ci.yml 与 origin/main 057d07d 完全相同（三处 ubuntu-24.04 由 #376 在 main 上提供）；写死 PG 路径在 #369、#375、#374 上只剩 scripts/_postgres-bin.mjs，#377 另有 scripts/restricted-account-writes.test.mjs:20 一处（D-49 时写的，未改）。20261112120000 仍是 e2a85c3e…，20261114015420 仍是 0dc2ceaf…。#369 CI run 44743800313 在 8f5fc43 上 success：Type-check、Boundary、Build H5、Build mp-weixin、public sweep 5 个 success，protected staging 与 release readiness skipped [CI run#44743800313][本地测]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44743800313
+- 未测项: 合 #369、#377 之前 supervisor 在要合的 head 上做 P1.11、P1.12 确认跑（D-53 第 8 项 g）；#377 的 base 改成 main 之前没有 CI
+- 下一条: D-53 第 7 项 c 的后半：#377 9a31e75 合进 P3、再合进 P4（由 P3/P4 子任务 st_01a1f859 做，同一分支只它推送）
+- 附: P2.13 DoD：① #369 描述列出已完成的任务编号和 STATUS 链接；② run 44743800313 的 headSha 等于 code_sha 8f5fc43，非 skipped 的 job 都是 success；③ isDraft 仍为 true；④ next_task_id 指向不依赖合并的任务（第七批收尾）。P2.13 要 Eric（现由 supervisor 代）审阅，OMO 不转 ready、不合并。
