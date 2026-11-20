@@ -75,7 +75,7 @@ test('a takedown is offered for a row readers are shown, and its undo only for a
   assert.deepEqual(moderation(row('campus', { availability: 'hidden', hidden_reason: 'admin' })), ['unhide_event'])
   // An event hidden with its topic comes back with the topic.
   assert.deepEqual(moderation(row('member', { availability: 'hidden', hidden_reason: 'post_removed' })), [])
-  // What its source withdrew stays as the source left it: a takedown and its undo would list it again.
+  // What its source withdrew is not shown to readers, so there is nothing to take down.
   for (const source of ['caaci', 'campus']) assert.deepEqual(moderation(row(source, { availability: 'unavailable' })), [], source)
   // The owner's row carries both buttons, the discussion first.
   assert.deepEqual(eventConsoleActions(row('caaci'), true), ['create_event_discussion', 'hide_event'])

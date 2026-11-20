@@ -43,7 +43,7 @@ export function eventConsoleOrganizer(row: EventConsoleRow, lang: Language): str
 export function eventConsoleActions(row: EventConsoleRow, owner: boolean): EventConsoleAction[] {
   // Only a takedown by an administrator is undone here; an event hidden with its topic comes back with the topic.
   if (row.availability === 'hidden') return row.hidden_reason === 'admin' ? ['unhide_event'] : []
-  // What its source withdrew stays as the source left it: a takedown and its undo would list it again.
+  // What its source withdrew is not shown to readers, so there is nothing here to take down.
   if (row.availability === 'unavailable') return []
   const actions: EventConsoleAction[] = []
   // One discussion topic per organization's event; a member's event has its own. The action is refused for a
