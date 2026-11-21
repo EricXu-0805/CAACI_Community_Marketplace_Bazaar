@@ -607,3 +607,41 @@ test('P4.2 community events', { skip: SKIP }, async t => {
     db.stop()
   }
 })
+
+/*
+ * Once this migration is applied the P3 VERIFY stops, by design, so the runbook has VERIFY_reply_notice_switch.sql
+ * run before the reply notice switch is turned on. That file repeats pinned values of the P3 VERIFY, and the two
+ * must not drift apart. No database is needed to see that. The names of their errors differ and are not compared.
+ */
+test('the reply notice switch check repeats the P3 VERIFY, value for value', () => {
+  const p3 = readOps('VERIFY_20261120100354_community_watch_save_activity.sql')
+  const check = readOps('VERIFY_reply_notice_switch.sql')
+  const functions = [
+    'public.update_post_comment_count()', 'private.reject_reply_to_locked_post()', 'private.validate_comment_reply_target()',
+    'private.notify_topic_reply()', 'private.enqueue_activity_notification(uuid,uuid,text,text,text,uuid,text)',
+    'moderation_private.current_profile_state(uuid)',
+  ]
+  // The stored bodies: these six functions and no other, each with the md5 the P3 VERIFY pins.
+  assert.deepEqual([...pinned(check).keys()], functions)
+  for (const signature of functions) assert.equal(pinned(check).get(signature), pinned(p3).get(signature), signature)
+
+  // The rows of a VALUES list as they are written, found by the line that closes the list. The comma after a row
+  // is not part of it: the last row of a list has none.
+  const rows = (source, alias) => {
+    const end = source.indexOf(`\n    ) AS ${alias}\n`)
+    assert.notEqual(end, -1, alias)
+    return source.slice(source.lastIndexOf('(VALUES\n', end) + '(VALUES\n'.length, end).split('\n').map(row => row.replace(/,$/, ''))
+  }
+  // Each function row whole: with the body, its security, volatility, settings and the roles that may execute it.
+  const known = 'known(signature, body_md5, note, definer, volatility, settings, api_roles)'
+  assert.deepEqual(rows(check, known), rows(p3, known).filter(row => functions.some(signature => row.startsWith(`    ('${signature}', `))))
+  // The reply triggers: name, function and kind.
+  const triggers = 'target(trigger_name, routine, kind)'
+  assert.equal(rows(check, triggers).length, 6)
+  assert.deepEqual(rows(check, triggers), rows(p3, triggers))
+  // What the order of the triggers and the switch table are compared with: sections 5 and 5a of the P3 VERIFY.
+  const expectedStrings = source => [...source.matchAll(/IS DISTINCT FROM '([^']*)'/g)].map(match => match[1])
+  const copied = p3.slice(p3.indexOf('\n  -- 5. '), p3.indexOf('\n  -- 5b. '))
+  assert.equal(expectedStrings(copied).length, 5)
+  assert.deepEqual(expectedStrings(check), expectedStrings(copied))
+})
