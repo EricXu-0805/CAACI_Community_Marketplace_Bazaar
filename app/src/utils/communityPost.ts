@@ -9,13 +9,17 @@ export const POST_TITLE_MAX = 120
  * SPEC 6.10: a hidden topic is shared as a notice about itself. The card opens the topic's own page,
  * where the same notice is shown, and carries the app's icon: none of the topic's images, and not a
  * screenshot of the page, which for the author would show the hidden text.
+ *
+ * Only the Mini Program sends this card, and its imageUrl is a path inside the code package. So the
+ * icon has to be a PNG the WeChat build keeps (app/mini-program-assets.mjs deletes the web-only ones)
+ * and small enough for the main package: the 192 px icon, not the 512 px one.
  */
 export function hiddenTopicShare(postId: string, t: (key: string) => string) {
   return {
     title: `${t('plaza.hidden')} · ${t('app.name')}`,
     path: `/pages/post/index?id=${postId}`,
     query: `id=${postId}`,
-    imageUrl: '/static/app-icon-512.png',
+    imageUrl: '/static/app-icon-192.png',
   }
 }
 

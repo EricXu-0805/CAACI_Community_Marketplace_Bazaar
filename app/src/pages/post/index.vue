@@ -895,6 +895,8 @@ async function retryComments() {
     const rows = await fetchComments(requestPostId)
     if (!isCurrent()) return
     comments.value = rows
+    // A notification link whose first read failed still names its reply.
+    applyReplyAnchor()
   } catch (err: any) {
     if (!isCurrent()) return
     commentsError.value = true

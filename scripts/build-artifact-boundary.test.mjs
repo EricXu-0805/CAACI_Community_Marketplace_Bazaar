@@ -95,6 +95,11 @@ test('mini-program validation requires component lazy loading', async () => {
   await assert.rejects(verifyBuildArtifact(root), /requires component lazy loading/)
 })
 
+test('mini-program validation requires the image a share card points at', async () => {
+  const root = await miniArtifact()
+  await assert.rejects(verifyBuildArtifact(root), /mini-program share image static\/app-icon-192\.png is missing/)
+})
+
 test('mini-program validation rejects tab pages moved into subpackages', async () => {
   const root = await miniArtifact()
   await writeFile(path.join(root, 'app.json'), JSON.stringify({

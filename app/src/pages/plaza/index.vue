@@ -456,7 +456,7 @@
                 <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                 <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
               </view>
-              <text v-if="!commentingPost.locked_at" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
+              <text v-if="!commentingPost.locked_at && !isPendingComment(thread.parent)" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
             </view>
           </view>
         </view>
@@ -495,7 +495,7 @@
                   <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                   <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
                 </view>
-                <text v-if="!commentingPost.locked_at" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
+                <text v-if="!commentingPost.locked_at && !isPendingComment(child)" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
               </view>
             </view>
           </view>
@@ -1482,6 +1482,10 @@ const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
 const commentSubmitting = ref(false)
 let commentSheetEpoch = 0
+// A reply is in the list from the moment it is sent, under an id made up here ('temp-…'), until
+// the server's row replaces it. That id names nothing the server knows, so such a reply cannot be
+// answered yet: no reply button, no reply in its menu, and a tap that still arrives is ignored.
+const isPendingComment = (c: PostComment) => c.id.startsWith('temp-')
 // Sheet 打开时 input 不应自动 focus（避免键盘挡评论列表）。
 // inputFocused 由用户显式动作驱动：tap 输入框 / tap 评论 / tap "回复" / tap 长按菜单"回复"。
 // 关闭 sheet / 切评论 reset 回 false，保证下次打开时键盘不会自动起。
@@ -2355,7 +2359,7 @@ async function onSubmitComment() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
-  if (replyRestricted.value || commentingPost.value?.locked_at) return
+  if (replyRestricted.value || commentingPost.value?.locked_at || isPendingComment(c)) return
   replyTo.value = c
   inputFocused.value = true
 }
@@ -2422,9 +2426,10 @@ async function onCommentLongPress(c: PostComment) {
       }
     },
   })
-  // A closed update takes no replies, so its menu does not offer one.
+  // A closed update takes no replies, and a reply still being sent cannot be answered yet, so
+  // neither menu offers one.
   const actions: Array<{ label: string; run: () => void }> = [
-    ...(commentingPost.value?.locked_at ? [] : [{ label: t('plaza.reply'), run: reply }]),
+    ...(commentingPost.value?.locked_at || isPendingComment(c) ? [] : [{ label: t('plaza.reply'), run: reply }]),
     ...(isMine
       ? [{ label: t('plaza.delete'), run: confirmDelete }]
       : [
