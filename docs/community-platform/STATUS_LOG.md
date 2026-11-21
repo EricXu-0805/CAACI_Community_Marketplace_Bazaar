@@ -2306,3 +2306,15 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: —
 - 下一条: 三个分支的门禁按本条对照
 - 附: main 上失败的 4 条（用例标题原文）：smoke/pages.smoke.spec.ts:196:7 › page sweep [light] › pages/index/index loads clean；smoke/pages.smoke.spec.ts:196:7 › page sweep [light] › pages/plaza/index loads clean；smoke/pages.smoke.spec.ts:196:7 › page sweep [dark] › pages/index/index loads clean；smoke/pages.smoke.spec.ts:196:7 › page sweep [dark] › pages/plaza/index loads clean。它们的控制台错误只有三种，反复出现：「Error resolving “00000000000000000000.supabase.co”: Name or service not known」「pageerror: Fetch API cannot load https: /00000000000000000000.supabase.co/rest/v1/…」（首页请求 items，广场请求 posts）「Failed to load resource: Error resolving “00000000000000000000.supabase.co”: Name or service not known」，原因是容器里解析不了 stub 的 supabase 地址。按 D-55 第 5 项：分支上标题相同的失败记「main 上同样失败，见 L173」，不修，不按 BACKLOG §14 第 3 行停；main 上没有的路由（pages/my-topics/index、pages/events/index、pages/event/detail/index）只出现这三种错误的，记成同一类，不修、不改 IGNORE、不加 stub。主包 1,381,447 是第 4 项 f 的基线。
+
+### L174 · 2026-11-20 23:23 CT · [OMO自决] 印章分支门禁被调用方超时中途终止，留下孤儿容器；主会话停掉孤儿、改在后台会话重跑
+- task_id: D-55.1、D-55.5（容器一次只跑一个，D-53 第 7 项 d）
+- code_sha: codex/community-brand-seal-20261121 c1cacb6（本地，未推送）
+- docs_sha: 2e2ff07（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 核 check-20261121T050239Z 的日志与 smoke 日志、ps、podman inspect（容器 thirsty_nightingale 挂载 illini-seal，05:10:30Z 起，run-checks 父进程已不在）；`podman stop -t 15 thirsty_nightingale`；之后在后台会话里重新排队：`umask 022; flock ~/work/illini-dev-env/.containers.lock env SMOKE_SPECS=…（47 个 spec）run-checks.sh ~/work/illini-seal install typecheck h5 mpci migrations test smoke npmaudit`
+- 计数: 第一次门禁 install、typecheck、h5、mpci、migrations、test 都 rc=0（TEST 2664/2663/0/1，pg_skips 0）；smoke 跑到第 212 条时 run-checks 在 05:21:57Z 收到 SIGTERM，podman 转发信号失败，容器继续跑但输出已没人接；锁随父进程释放，另一个门禁的容器 hopeful_dewdney 随即启动，两个容器同时在跑约 1 分钟，主会话停掉孤儿后只剩一个 [本地测]
+- ci_run_url: —
+- 未测项: 第一次门禁的 smoke 与 npmaudit 没有结果，不算数；第二次门禁的结果写进下一条
+- 下一条: 印章分支第二次门禁
+- 附: 原因（假设，与时刻吻合）：子任务把门禁放在前台 tool.bash 里、超时 1800 秒，排锁的时间也算在里面，到点后整棵进程树被终止。这次违反了「容器一次只跑一个」约 1 分钟，不是有意并行。处理：只停了 OMO 自己的孤儿容器（输出已经没人接，留着只会占资源、违反一次一个），没有动别人的容器；[OMO自决] 给 P3、P4 子任务发了同一条规则：run-checks、lsql-replay 一律用后台会话起，另用只轮询的阻塞循环等，门禁本身不放进带超时的前台调用。印章子任务三次在门禁没跑完时交回，第二次门禁由主会话在后台会话里跑。
