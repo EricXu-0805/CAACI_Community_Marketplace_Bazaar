@@ -1337,6 +1337,7 @@ $RC ~/work/illini-events install test
 - ④ 发起人可以取消，卡片显示「发起人已取消」；被举报隐藏后，卡片和话题一起隐藏。
 - ⑤ PG 测试覆盖 ②–④ 的每一条，全部通过；删号断言按 ENGINEERING §13 缺口 12。
 - ⑥ H5 和 mp-weixin 两个构建各走一遍发起和取消；小程序端走过 wechat-seccheck。
+- ⑦ 成员活动的地点去空白要覆盖 Unicode 空白（制表符、换行、U+3000、U+00A0），函数和表约束一致，配测试（D-56 4i）。
 
 **证据**：test 日志、两个构建的截图。标签 [隔离环境 L-SQL]
 **回退**：默认。
@@ -1362,6 +1363,7 @@ $RC ~/work/illini-events install test
 - ③ 只有抓 HTML 才拿得到数据时，停这条，不写代码。
 - ④ campus 行的撤下判断和 unhide 用同一个条件：missing_checks ≥ 2 且 missing_since 早于 12 小时前（D-55 3f）。
 - ⑤ 没有 DTEND 的全天活动，结束时间是开始日期的下一个香槟本地 00:00，不是 +24 小时；配一个 2027-03-14 的夹具（D-55 3f）。
+- ⑥ DTEND;VALUE=DATE 等于 DTSTART 的全天活动按没有 DTEND 处理，结束是下一个香槟本地 00:00；全天活动的结束必须落在香槟本地 00:00，由导入函数保证并有测试；接 UIUC 源之前先查源里有没有这种写法（D-56 4i）。
 
 **证据**：`campus-events.md`、test 日志。标签 [源码 SHA]（第二步为 [本地测]）
 **回退**：默认。

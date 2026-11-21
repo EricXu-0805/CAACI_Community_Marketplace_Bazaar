@@ -701,7 +701,7 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 - 允许的日历写成常量 `CAMPUS_CALENDARS = [{ id, name_zh, name_en, exclude_patterns }]`（`api/_community-events.js`）。D-33 之前它为空，所有学校活动的写入都返回 `campus_calendar_not_allowed`。
 - 解析 `api/_campus-ics.js`：先展开折行（CRLF 后跟空格或 tab），再反转义 `\\`、`\;`、`\,`、`\n`；只读 UID、SUMMARY、DTSTART、DTEND、LOCATION、LAST-MODIFIED 和 TZID 属性；DESCRIPTION、ORGANIZER、CONTACT、URL 丢弃，不进返回对象。TZID 不是 America/Chicago → `campus_unexpected_tz`；场次超过 400 → `campus_too_many_occurrences`。
 - 墙钟时间转 UTC 用 `api/_campus-time.js`（复制 `campusWallClockToInstant`）。对照值 [本地测 2026-11-12：Node 25.9.0 `--experimental-strip-types` 直接运行 7b18f20 的 `campusTime.ts`]：`2026-11-01 01:30 → 2026-11-01T07:30:00Z`（重复的那一小时取 CST）、`2027-03-14 02:30 → 2027-03-14T07:30:00Z`、`2026-11-20 11:30 → 2026-11-20T17:30:00Z`。
-- 全天活动（`VALUE=DATE`）：`all_day = true`，开始取当地 00:00，`ends_at` 取 DTEND 的当地 00:00；没有 DTEND 时取开始日期的下一个香槟本地 00:00，不是 +24 小时（2027-03-14 夏令时开始那天两者不同，配这一天的夹具；D-55 3f）。多场次：同一 UID 基础编号合成一行，`occurrence_count = N`，`starts_at` 取第一场未结束场次，`ends_at` 取最后一场的结束。
+- 全天活动（`VALUE=DATE`）：`all_day = true`，开始取当地 00:00，`ends_at` 取 DTEND 的当地 00:00；没有 DTEND 时取开始日期的下一个香槟本地 00:00，不是 +24 小时（2027-03-14 夏令时开始那天两者不同，配这一天的夹具；D-55 3f）。DTEND 等于 DTSTART 的全天活动按没有 DTEND 处理；全天活动的结束必须落在香槟本地 00:00，由导入函数保证（D-56 4i）。多场次：同一 UID 基础编号合成一行，`occurrence_count = N`，`starts_at` 取第一场未结束场次，`ends_at` 取最后一场的结束。
 - 映射：`source_key = '<日历 id>/<活动 id>'`，`title_en ← SUMMARY`（trim 后 ≤160），`location ← LOCATION`，`source_updated_at ← LAST-MODIFIED`；`content_hash` 对标题、开始、结束、地点、场次数求 sha256。标题匹配 `^(cancel+ed|postponed)\b`（不分大小写）时写 `review_flag = 'title_says_cancelled'`，系统不自动改状态，由管理员决定是否 `hide_event`。
 
 方式 A 逐条收录（管理端 `preview_campus_event` 只读预览 → `import_campus_event` 写入）：
@@ -727,7 +727,7 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 
 `create_member_event(post_id_in uuid, title_in text, content_in text, event_in jsonb) returns jsonb`，SECURITY INVOKER：
 1. 调用前，客户端按发话题的同一路径用 `remoteModerate` 审标题、正文、地点；小程序另走 `wechat-seccheck`。
-2. 函数内先校验标题 ≤60 字（`member_event_title_too_long`）、地点 1–80 字（`member_event_location_invalid`），再插 `posts`（`id = post_id_in`，`category = 'events-social'`，作者是调用者，受 posts 现有 RLS 和触发器约束，含 044 的发帖限流），然后插 `community_events`（`source_key = post_id_in::text`，`discussion_post_id = post_id_in`）。两步在同一事务里；§5.5 的守卫再查一遍资格、时间、限额、保留词和链接。
+2. 函数内先校验标题 ≤60 字（`member_event_title_too_long`）、地点 1–80 字（`member_event_location_invalid`；去空白要覆盖 Unicode 空白，制表符、换行、U+3000、U+00A0，函数和表约束一致，D-56 4i），再插 `posts`（`id = post_id_in`，`category = 'events-social'`，作者是调用者，受 posts 现有 RLS 和触发器约束，含 044 的发帖限流），然后插 `community_events`（`source_key = post_id_in::text`，`discussion_post_id = post_id_in`）。两步在同一事务里；§5.5 的守卫再查一遍资格、时间、限额、保留词和链接。
 3. 遇到 `23505`，且已有帖子属于本人、id 相同时，按重试成功处理，返回已有的 `{ post_id, event_id }`。`post_id_in` 由 `createClientMessageId()` 在打开表单时生成，结果未知时用同一个 id 重试；草稿 key 见 §5.2。
 
 取消：客户端直接 `from('community_events').update({ cancelled_at: new Date().toISOString(), status_note }).eq('id', id)`，受 §5.5 的列权限、策略和守卫约束；`status_note` 可空。取消后不能恢复，话题保留。

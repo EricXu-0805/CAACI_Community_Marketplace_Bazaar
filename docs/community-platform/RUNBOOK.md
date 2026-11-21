@@ -126,6 +126,7 @@ rm "$T"/node-$V-linux-x64.tar.xz "$T"/SHASUMS256.txt && rmdir "$T"
 | ~/work/confirm-369-8f5fc43 | detached 8f5fc43 | C-369 确认跑（D-53 第 10 项），只跑探针，不提交 | `git -C ~/work/illini worktree add --detach ~/work/confirm-369-8f5fc43 8f5fc43` |
 | ~/work/confirm-final-3778952 | detached 3778952 | C-final 确认跑（D-53 第 10 项），只跑探针，不提交 | `git -C ~/work/illini worktree add --detach ~/work/confirm-final-3778952 3778952` |
 | ~/work/illini-seal | codex/community-brand-seal-20261121（从 3778952 起） | D-55 第 1 项：邮件印章「集」改「玉」，草稿 PR base main | `git -C ~/work/illini worktree add -b codex/community-brand-seal-20261121 ~/work/illini-seal 3778952` |
+| ~/work/illini-viewport | codex/community-viewport-20261121（从 66e14a45 起） | D-56 第 1 项：聊天页视口 inset，草稿 PR base main | `git -C ~/work/illini worktree add -b codex/community-viewport-20261121 ~/work/illini-viewport 66e14a45` |
 | ~/work/caaciorg | feat/public-events-feed；origin = fork EricXu-0805/caaciorg，upstream = a2751012962/caaciorg | P4.3 | 按 BACKLOG P4.3 的命令：E8 之前只读 clone 上游并把 remote 改名为 upstream，在本地写；E8 之后再加 fork 为 origin 并推送。git 已配置用 gh 做凭据（2026-11-12 核对） |
 | ~/work/demo-publish | 不是 git 目录 | demo 预览部署（P1.13、BRAND.7）。全机只有这里允许有 .vercel | 见 §9 |
 | ~/work/evidence/\<任务编号\> | 不是 git 目录 | BACKLOG 的 `$EV`：每个任务的原始输出 | `mkdir -p "$EV"` |
