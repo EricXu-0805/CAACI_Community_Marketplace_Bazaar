@@ -2198,3 +2198,51 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: —
 - 下一条: 无。不从 BACKLOG 往下接，等下一条指示
 - 附: 这两件事都在 FINAL 第八批推送之后才做，也是在做完之后才写进这里（第七批 L142 在推送前就写成已做，report:FINAL-m12）。
+
+### L165 · 2026-11-20 22:20 CT · [supervisor 指示] D-55 第九批开工：新目标、续跑提醒
+- task_id: D-55.6（开工）
+- code_sha: —
+- docs_sha: f0e7bb8（本次写回之前材料分支的 HEAD）
+- 环境: 真人
+- 命令: git pull 材料分支到 f0e7bb8，读 DECISIONS D-55（第 563–640 行）与 RUNBOOK §12 第 9c 条的改动；只读看了本机 ~/omo-ctl/review-b8-findings.md 的编号（内容不进仓库）；create_goal（范围 D-55 第 0–5 项，完成线 FINAL「第九批（D-55）」与 STATUS 同一提交推送）；schedule_prompt list（没有任务）后 create 3600 秒续跑提醒 sch_fcd80faa62c5
+- 计数: 目标 1 个；续跑提醒 1 个；核查清单 30 条：改进前必修 6 条（test:B8-1、client:P3-B8-1、B8-2、mig:P3-B8-1、mig:P4-B8-4 等）、潜在、小，另有 gates:B8-1–3 与「另记」
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-55 第 1、2 项与第 3 项 f、g（子任务），第 0、4 项（主会话）
+- 附: supervisor 已独立核完第八批，没有阻断项。3778952 已在 2026-11-21 01:16Z 按受监督发布上了生产 H5；认证邮件模板与发件人名已在 Supabase 后台改好，邮件印章仍是「集」，第 1 项在新分支上改，合并、发布、重贴模板由 supervisor 做。第 2 项 b 的具名例外只给 20261120100354（P3 分支）与 20261120122054（P4 分支），到 FINAL 第九批推送为止。门禁 smoke 这次跑 app/smoke 下全部 spec（去掉两个由 h5accept 跑的），main 对照只在 ~/work/confirm-final-3778952 跑一次。截止 2026-11-22 12:00 CT。不转 ready、不改 base、不合并；推送 FINAL 第九批之后再结束目标、取消提醒。
+
+### L166 · 2026-11-20 22:20 CT · [supervisor 指示] 更正上一条 D-55 开工消息：一律以 f0e7bb87 里 D-55 原文为准
+- task_id: D-55.2a、D-55.3a、D-55.5
+- code_sha: —
+- docs_sha: f0e7bb8（本次写回之前材料分支的 HEAD）
+- 环境: 真人
+- 命令: 核对：这条更正夹在第一次读材料分支的工具结果末尾送到；它只要求照 D-55 原文做，主会话读了 D-55 第 2 项 a、第 3 项 a、第 5 项，与它一致
+- 计数: —
+- ci_run_url: —
+- 未测项: —
+- 下一条: P3 子任务照 D-55 第 2 项 a 步骤 0–5 合 main
+- 附: 要点：P3 不直接 git merge origin/main（会在 manifest、README、计数测试三处冲突），而是先核 HEAD 042427c7、两棵树 385f7a41、9be6a56 是祖先，再 git merge -s ours 05e09593，再 git merge --no-ff --no-commit 3778952，提交前核 supabase/migrations、supabase/_ops 没变、文件清单 42 个；2a 不能用 git revert -m 1 撤。P4 的 3f、3g 现在做，3a–e、h 按第 3 项 a 的时点，P4 合 P3 两次。门禁照第 5 项：SMOKE_SPECS 写在 $RC 前面同一条命令里，main 对照只在 ~/work/confirm-final-3778952 跑一次，失败按用例标题对照。收到这条时还没有开始任何合并，不需要 abort 或停下。
+
+### L167 · 2026-11-20 22:20 CT · 撤销冻结：20261120100354_community_watch_save_activity（D-55 第 2 项 b）
+- task_id: D-55.2b（P3.1）
+- code_sha: codex/community-p3-20261120 fatal:（#379，草稿）
+- docs_sha: f0e7bb8（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: —（只记录；做法照 D-54 第 2 项 a，Eric 的 PR 留言由 Eric 2026-11-20 03:17 CT 的总批准代替）
+- 计数: 当前冻结值 aedc91521ca8961906a7578ae6caac52fa59f8c9bc53911eec65d46e1b619137（L154/L157 的重新冻结）在重新冻结后作废；FINAL 第八批不改
+- ci_run_url: —
+- 未测项: —
+- 下一条: P3 子任务：2a 合 main 之后按 2c、2d、2e 原地改，L-SQL 回放通过后重新冻结、推送
+- 附: 原因：mig:P3-B8-1（restore_content 恢复回复时不补 answered_at、last_activity_at，改进前必修）、mig:P3-B8-2（迁移头说明）、mig:P3-B8-3（锁顺序注释）。条件：supervisor 2026-11-21 03:36Z 只读核过，生产 146 行、staging 199 行都没有这个迁移。撤销冻结期间 P3 分支不推送，客户端修复先提交在本地，和重新冻结一起推。L-SQL 照 STOP-14 共 5 次仍不过，或到截止还没重新冻结：git revert 恢复到 aedc9152…，2c–2e 记【跳过】。STATUS 的 P3.1 在重新冻结之前写「重开（D-55 2b）」。P4 迁移 20261120122054 这次还没撤销冻结：第 3 项 g 在冻结状态下做、可以单独推送；P4 合了 P3 的新 head、要改迁移之前再记。
+
+### L168 · 2026-11-20 22:20 CT · [OMO自决] gates:B8-1、B8-2、B8-3 不改，写明理由（D-55 第 5 项）
+- task_id: D-55.5（gates:B8-1–3）
+- code_sha: —
+- docs_sha: f0e7bb8（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: —（不改 run-checks.sh，也不改 scripts/admin-token-mint.test.mjs）
+- 计数: —
+- ci_run_url: —
+- 未测项: —
+- 下一条: —
+- 附: gates:B8-1（LOG_DIR）与 gates:B8-2（日志头记 umask 与仓库根目录权限）：这一批三个代码分支和 main 对照要在同一份 run-checks.sh 下跑，中途换脚本得等所有排队的门禁都停下（D-54 第 5 项要求 pgrep 无输出），同一批的证据会出自两个版本的脚本；日志文件名带时间戳、日志头已经记了 repo= 和 head=，能分清是哪个仓库的门禁；umask 与 755 由每次门禁的同一条命令里先 umask 022 再 stat -c %a 核，结果写进各自的 STATUS_LOG 条目。留到下次改 run-checks.sh 时一起加。gates:B8-3：门禁环境本来就要求 umask 022（RUNBOOK §1），这条测试在 022、仓库根目录 755 时成立；这一批每次门禁前都核 755，所以 scripts/admin-token-mint.test.mjs 不改。
