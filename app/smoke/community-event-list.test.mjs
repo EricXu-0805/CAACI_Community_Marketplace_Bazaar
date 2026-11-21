@@ -181,6 +181,14 @@ test('the date block names the first day, and says when an event runs on', () =>
   }
 })
 
+test('an evening that ends at midnight does not run on into the next day', () => {
+  // Friday 20:00 to Saturday 00:00 in Champaign: the end is the first moment the event is no longer on.
+  const evening = ends_at => eventDateBlock(event('caaci', 0, { starts_at: '2026-11-21T02:00:00Z', ends_at }), 'zh')
+  assert.deepEqual(evening('2026-11-21T06:00:00Z'), { month: '11月', day: '20', runsOn: false })
+  // One that goes on past midnight does.
+  assert.equal(evening('2026-11-21T06:01:00Z').runsOn, true)
+})
+
 test('an all-day event occupies its own days only (ENGINEERING 9.3)', () => {
   // A calendar gives it from 00:00 of its first day to 00:00 of the day after its last, in Champaign.
   const allDay = (starts_at, ends_at) => eventDateBlock(event('campus', 0, { all_day: true, starts_at, ends_at }), 'zh')

@@ -4,6 +4,8 @@
  * is not sent into a refusal; the rules are the ones the three event actions
  * apply (ENGINEERING 9.7).
  */
+import { formatEventPreviousTime } from './eventTime'
+
 type Language = 'zh' | 'en'
 export type EventConsoleAction = 'create_event_discussion' | 'hide_event' | 'unhide_event'
 /** The fields of a row of the events list that the decisions below read. */
@@ -12,6 +14,7 @@ export interface EventConsoleRow {
   title: string | null
   title_en: string | null
   organizer_name: string | null
+  starts_at: string
   availability: 'visible' | 'unavailable' | 'hidden'
   hidden_reason: 'admin' | 'post_removed' | null
   duplicate_of: string | null
@@ -37,6 +40,15 @@ export function eventConsoleOrganizer(row: EventConsoleRow, lang: Language): str
   const partner = row.partner
   if (partner) return (lang === 'zh' ? partner.name_zh || partner.name_en : partner.name_en || partner.name_zh) || ''
   return row.organizer_name || ''
+}
+
+/**
+ * The line under a row's title: its source, its organizer and when it starts. A part the row does not have is
+ * left out with its separator. The start is in Champaign time whatever the administrator's device is set to,
+ * and says so (SPEC 6.7.8).
+ */
+export function eventConsoleMeta(row: EventConsoleRow, lang: Language, source: string): string {
+  return [source, eventConsoleOrganizer(row, lang), formatEventPreviousTime(row.starts_at, lang)].filter(Boolean).join(' · ')
 }
 
 /** The buttons of a row, in the order they are shown. `owner` is whether the administrator may open discussions. */

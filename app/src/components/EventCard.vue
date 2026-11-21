@@ -53,10 +53,13 @@ const when = computed(() => {
   const clock = props.event.all_day ? `${time.split(' ')[0]} ${t('events.allDay')}` : time
   return props.event.location ? `${clock} · ${props.event.location}` : clock
 })
-// The card is one button, so its name carries what it shows; the date is worded the way it is read aloud.
-const label = computed(() => [title.value,
-  language.value === 'zh' ? `${block.value.month}${block.value.day}日` : `${block.value.month} ${block.value.day}`,
-  when.value, source.value, stateKey.value ? t(stateKey.value) : ''].filter(Boolean).join(' · '))
+// The card is one button, so its name carries what it shows. The date is worded the way it is read aloud, and
+// says in a word that the event runs past that day: the mark in the date block is not read out.
+const label = computed(() => {
+  const date = language.value === 'zh' ? `${block.value.month}${block.value.day}日` : `${block.value.month} ${block.value.day}`
+  return [title.value, block.value.runsOn ? t('events.runsOnSpoken', { date }) : date,
+    when.value, source.value, stateKey.value ? t(stateKey.value) : ''].filter(Boolean).join(' · ')
+})
 </script>
 
 <style lang="scss" scoped>

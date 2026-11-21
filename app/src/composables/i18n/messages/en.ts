@@ -1099,6 +1099,7 @@ const en: Record<string, string> = {
   'events.tomorrow': 'Tomorrow',
   'events.allDay': 'All day',
   'events.runsOn': '+',
+  'events.runsOnSpoken': '{date} onward',
   'events.replies': '{n} reply|{n} replies',
   'events.organizer': 'Organizer: {name}',
   'events.moreLive': '{n} more happening now ›',

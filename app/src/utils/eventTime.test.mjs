@@ -68,9 +68,20 @@ test('event time utilities run offline, use Central time without Intl, and share
       const day = parts => `${parts.year}-${parts.month}-${parts.day}`
       assert.equal(day(time.eventLastDay(one)), '2026-11-23')
       assert.equal(day(time.eventLastDay(two)), '2026-11-21')
-      // A timed event ends on the day its end falls on.
+      // A timed event that goes on past midnight is on that day too.
       assert.equal(day(time.eventLastDay({ starts_at: '2026-11-22T02:00:00Z', ends_at: '2026-11-22T08:00:00Z' })), '2026-11-22')
       assert.equal(day(time.eventLastDay({ starts_at: '2026-11-22T02:00:00Z', ends_at: null })), '2026-11-21')
+    })
+    await t.test('an end is the first moment an event is no longer on: one at midnight belongs to the day before', () => {
+      const day = parts => `${parts.year}-${parts.month}-${parts.day}`
+      // Friday 20:00 to midnight in Champaign: the event is on Friday only, all day or not.
+      const evening = { starts_at: '2026-11-21T02:00:00Z', ends_at: '2026-11-21T06:00:00Z' }
+      assert.equal(day(time.eventLastDay(evening)), '2026-11-20')
+      // A minute short of midnight is still Friday; a minute past it is Saturday.
+      assert.equal(day(time.eventLastDay({ ...evening, ends_at: '2026-11-21T05:59:00Z' })), '2026-11-20')
+      assert.equal(day(time.eventLastDay({ ...evening, ends_at: '2026-11-21T06:01:00Z' })), '2026-11-21')
+      // The page of the event still gives the end as the time it is.
+      assert.equal(time.formatEventDetailTime(evening), '11月20日（周五）20:00 – 11月21日 00:00（美国中部时间）')
     })
     await t.test('an end that is missing, infinite or not a time reads as no end time', () => {
       const starts_at = '2026-11-20T17:30:00Z'

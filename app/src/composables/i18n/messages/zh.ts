@@ -1091,6 +1091,7 @@ const zh: Record<string, string> = {
   'events.tomorrow': '明天',
   'events.allDay': '全天',
   'events.runsOn': '起',
+  'events.runsOnSpoken': '{date}起',
   'events.replies': '{n} 条回复',
   'events.organizer': '发起人：{name}',
   'events.moreLive': '还有 {n} 场进行中 ›',

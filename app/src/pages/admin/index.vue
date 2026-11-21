@@ -285,7 +285,7 @@
             <text v-if="e.duplicate_of" class="pill pill-count">{{ t('admin.eventDuplicate') }}</text>
             <text v-if="e.discussion_post_id" class="pill pill-count">{{ t('admin.eventHasDiscussion') }}</text>
           </view>
-          <text class="card-meta">{{ t(`events.filter.${e.source_type}`) }} · {{ eventConsoleOrganizer(e, lang === 'zh' ? 'zh' : 'en') }} · {{ fmtTime(e.starts_at) }}</text>
+          <text class="card-meta">{{ eventConsoleMeta(e, lang === 'zh' ? 'zh' : 'en', t(`events.filter.${e.source_type}`)) }}</text>
           <!-- A button is offered only where the database would accept its action (utils/eventConsole). -->
           <view v-if="eventActions(e).length" class="card-actions">
             <view v-if="eventActions(e).includes('create_event_discussion')" :class="['mini-btn', 'primary', { disabled: eventBusy(e) }]" role="button" :tabindex="eventBusy(e) ? -1 : 0" :aria-disabled="eventBusy(e) ? 'true' : 'false'" data-action="create_event_discussion" @click="onEventDiscussion(e)">{{ t('admin.openDiscussion') }}</view>
@@ -887,7 +887,7 @@ import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { POST_CATEGORIES } from '../../utils/communityPost'
-import { eventConsoleActions, eventConsoleOrganizer, eventConsoleTitle } from '../../utils/eventConsole'
+import { eventConsoleActions, eventConsoleMeta, eventConsoleTitle } from '../../utils/eventConsole'
 import { reportWaitLevel } from '../../utils/reportWait'
 import { onHide, onUnload } from '@dcloudio/uni-app'
 import { platformFetch } from '../../composables/useSupabase'

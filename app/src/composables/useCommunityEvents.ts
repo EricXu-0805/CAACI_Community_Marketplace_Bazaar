@@ -41,6 +41,8 @@ export function keepCommunityEvents(window: EventWindow, rows: CommunityEvent[])
   return kept
 }
 
+// How far ahead "upcoming" reaches in list_community_events (ENGINEERING 9.6).
+const UPCOMING_MS = 180 * 86_400_000
 // What the reference card on a topic page shows (SPEC 6.4 row 6): the date, the title, when, where and the source.
 const TOPIC_EVENT_FIELDS = 'id, source_type, region, title, title_en, starts_at, ends_at, all_day, location, availability, cancelled_at, '
   + 'previous_starts_at, schedule_changed_at, revision, discussion_post_id, partner:community_event_partners(name_zh, name_en)'
@@ -94,13 +96,15 @@ export function useCommunityEvents() {
   }
 
   /**
-   * The event a topic is the discussion of, if readers are shown one (ENGINEERING 9.7): visible and not a
-   * duplicate, as in the list. Row security alone would also return an organizer's own event after a takedown.
+   * The event a topic is the discussion of, if readers are shown one (ENGINEERING 9.7): visible, not a
+   * duplicate, and starting no further ahead than the list reaches, so that the card opens a page. Row security
+   * alone would also return an organizer's own event after a takedown, and one that starts later than that.
    * A member's event is titled by its topic.
    */
   async function findTopicEvent(postId: string, topicTitle: string | null): Promise<CommunityEvent | null> {
     const { data, error } = await supabase.from('community_events').select(TOPIC_EVENT_FIELDS)
-      .eq('discussion_post_id', postId).eq('availability', 'visible').is('duplicate_of', null).limit(1)
+      .eq('discussion_post_id', postId).eq('availability', 'visible').is('duplicate_of', null)
+      .lte('starts_at', new Date(Date.now() + UPCOMING_MS).toISOString()).limit(1)
     if (error) throw error
     const row = ((data || []) as unknown as TopicEventRow[])[0]
     if (!row) return null

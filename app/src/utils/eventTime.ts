@@ -37,15 +37,17 @@ export function eventTimeParts(value: string | Date): Parts {
 }
 
 /**
- * The last Champaign day an event is on. An all-day event is stored the way
- * its calendar gives it (ENGINEERING 9.3): from 00:00 of its first day to
- * 00:00 of the day after its last, so its end belongs to the day before the
- * instant it names. With no end later than the start, that is the first day.
+ * The last Champaign day an event is on. An end is the first moment an event
+ * is no longer on, so it belongs to the day before the instant it names: an
+ * all-day event is stored the way its calendar gives it (ENGINEERING 9.3),
+ * from 00:00 of its first day to 00:00 of the day after its last, and an
+ * evening that ends at midnight is on that evening only. With no end later
+ * than the start, that is the first day.
  */
 export function eventLastDay(event: EventTime): Parts {
   const end = eventEnd(event)
   if (!end || Date.parse(end) <= Date.parse(event.starts_at)) return eventTimeParts(event.starts_at)
-  return eventTimeParts(new Date(Date.parse(end) - (event.all_day ? 1 : 0)))
+  return eventTimeParts(new Date(Date.parse(end) - 1))
 }
 
 const WEEK_ZH = ['日', '一', '二', '三', '四', '五', '六']

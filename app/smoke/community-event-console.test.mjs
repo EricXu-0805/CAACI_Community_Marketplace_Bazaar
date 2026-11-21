@@ -11,12 +11,16 @@ import ts from 'typescript'
  * buttons in a browser.
  */
 const page = readFileSync(new URL('../src/pages/admin/index.vue', import.meta.url), 'utf8')
-const { eventConsoleActions, eventConsoleOrganizer, eventConsoleTitle } = await import(`data:text/javascript;base64,${Buffer.from(
-  ts.transpileModule(readFileSync(new URL('../src/utils/eventConsole.ts', import.meta.url), 'utf8'), {
-    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
-  }).outputText).toString('base64')}`)
+const source = path => readFileSync(new URL(`../src/utils/${path}`, import.meta.url), 'utf8')
+const compile = input => `data:text/javascript;base64,${Buffer.from(ts.transpileModule(input, {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
+}).outputText).toString('base64')}`
+// The console words a start with the same Champaign arithmetic as the events pages.
+const { eventConsoleActions, eventConsoleMeta, eventConsoleOrganizer, eventConsoleTitle } = await import(
+  compile(source('eventConsole.ts').replace("'./eventTime'", `'${compile(source('eventTime.ts'))}'`)))
 const row = (source_type, extra = {}) => ({
   id: 'event-1', source_type, title: source_type === 'campus' ? null : '迎新晚会', title_en: 'Welcome night', organizer_name: null,
+  starts_at: '2026-11-21T16:00:00Z',
   availability: 'visible', hidden_reason: null, duplicate_of: null, discussion_post_id: null,
   partner: source_type === 'partner' ? { name_zh: '国际象棋社', name_en: 'Chess Club', status: 'active' } : null,
   topic: source_type === 'member' ? { title: '周六羽毛球', status: 'active' } : null,
@@ -93,6 +97,38 @@ test('a row is named by its title and its organizer, in the language of the cons
   assert.equal(eventConsoleOrganizer(row('partner', { partner: { name_zh: '国际象棋社', name_en: '', status: 'active' } }), 'en'), '国际象棋社')
   assert.equal(eventConsoleOrganizer(row('campus', { organizer_name: 'University Library' }), 'zh'), 'University Library')
   assert.equal(eventConsoleOrganizer(row('caaci'), 'en'), '')
+})
+
+test('a title of line breaks or tabs alone is still a title to the database, and the English one is not taken for it', () => {
+  // btrim takes spaces only. create_event_discussion reads such a title as one, makes a single line of it, is left
+  // with nothing to give the topic and refuses: no button here, and no title borrowed from the English.
+  for (const title of ['\n', '\t', ' \n ', '\r\n']) {
+    const item = row('campus', { title, title_en: 'Research workshop' })
+    assert.equal(eventConsoleTitle(item), '', JSON.stringify(title))
+    assert.equal(eventConsoleActions(item, true).includes('create_event_discussion'), false, JSON.stringify(title))
+  }
+  // Spaces alone are no title, to the database either: the English one is taken.
+  assert.equal(eventConsoleTitle(row('campus', { title: '   ', title_en: 'Research workshop' })), 'Research workshop')
+})
+
+test('the line under a title gives the source, the organizer and the start in Champaign time, without a part the row lacks', () => {
+  // 16:00 UTC is 10:00 on Saturday in Champaign. The administrator's device is not asked (SPEC 6.7.8).
+  assert.equal(eventConsoleMeta(row('partner'), 'zh', '合作组织'), '合作组织 · 国际象棋社 · 11月21日 周六 10:00 CT')
+  assert.equal(eventConsoleMeta(row('partner'), 'en', 'Partners'), 'Partners · Chess Club · Sat, Nov 21, 2026 10:00 AM CT')
+  assert.equal(eventConsoleMeta(row('campus', { organizer_name: 'University Library' }), 'en', 'Campus'),
+    'Campus · University Library · Sat, Nov 21, 2026 10:00 AM CT')
+  // A member's event names no organizer, and a CAACI row need not: the separator goes with the part.
+  assert.equal(eventConsoleMeta(row('member'), 'zh', '网友发起'), '网友发起 · 11月21日 周六 10:00 CT')
+  assert.equal(eventConsoleMeta(row('caaci'), 'en', 'CAACI'), 'CAACI · Sat, Nov 21, 2026 10:00 AM CT')
+  // In daylight time 15:00 UTC is 10:00 there.
+  assert.equal(eventConsoleMeta(row('caaci', { starts_at: '2027-07-10T15:00:00Z' }), 'en', 'CAACI'), 'CAACI · Sat, Jul 10, 2027 10:00 AM CT')
+})
+
+test('no time in the events tab is worded by the clock of the device', () => {
+  const tab = page.slice(page.indexOf("activeTab === 'community_events'"), page.indexOf("activeTab === 'users'"))
+  // Control: this is the tab, with the line under each title.
+  assert.match(tab, /class="card-meta"/)
+  assert.doesNotMatch(tab, /fmtTime|toLocale/)
 })
 
 test('the two refusals the API names before anything is written release the request key', () => {

@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { installTopicFixture } from './community-topic-fixture'
 import { visualAudit } from './visual-audit'
 import zh from '../src/composables/i18n/messages/zh'
+import en from '../src/composables/i18n/messages/en'
 
 /*
  * P4.8 (SPEC 6.7.4-6.7.9, 6.7.12; 5.2 S2; 5.3 ⑤) and the reference card of
@@ -398,6 +399,26 @@ test.describe('events for an English reader', () => {
     await expect(page.locator('.ed')).toHaveAttribute('data-event-id', LIVE.id)
     await expect(page.locator('[data-test="event-banner"] .ed-banner-t')).toHaveText('Happening now')
   })
+
+  test('a card that runs past its first day says so in a word, not with the mark of its date block', async ({ page }) => {
+    const fair = event('campus', 0, {
+      title_en: 'Book fair', organizer_name: 'University Library', location: 'Main Library', all_day: true,
+      starts_at: '2026-11-24T06:00:00Z', ends_at: '2026-11-27T06:00:00Z',
+    })
+    await serve(page, { upcoming: [fair] })
+    await page.addInitScript(() => localStorage.setItem('lang', 'en'))
+    await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+    const copy = en as Record<string, string>
+    const named = (date: string) => `Book fair · ${date} · Tue ${copy['events.allDay']} · Main Library · ${copy['events.source.campus']}`
+    const card = page.locator(`.evc[data-event-id="${fair.id}"]`)
+    await expect(card.locator('.evc-on')).toHaveText(copy['events.runsOn'])
+    // The date block is not read out, so the name of the card is not the one a single day would have.
+    await expect(card).not.toHaveAttribute('aria-label', named('Nov 24'))
+    const spoken = copy['events.runsOnSpoken'].replace('{date}', 'Nov 24')
+    await expect(card).toHaveAttribute('aria-label', named(spoken))
+    // The mark itself would be read out as "plus".
+    expect(spoken).not.toContain(copy['events.runsOn'])
+  })
 })
 
 test.describe('event times, for a reader whose device is not on Champaign time', () => {
@@ -418,6 +439,11 @@ test.describe('event times, for a reader whose device is not on Champaign time',
   const ENDLESS = event('member', 0, {
     title: '周末徒步', location: 'Allerton Park', registration_mode: 'discussion', organizer_nickname: '小林',
     starts_at: '2026-11-21T17:30:00Z', ends_at: 'infinity', discussion_post_id: '71000000-0000-4000-8000-000000000004',
+  })
+  // Tuesday 20:00 to midnight in Champaign: its end is the first moment of Wednesday.
+  const EVENING = event('caaci', 0, {
+    title: '晚间放映', title_en: 'Evening screening', location: 'Illini Union',
+    starts_at: '2026-11-25T02:00:00Z', ends_at: '2026-11-25T06:00:00Z',
   })
 
   test('an all-day event shows its own days and no time of the reader\'s own', async ({ page }) => {
@@ -470,6 +496,34 @@ test.describe('event times, for a reader whose device is not on Champaign time',
     await expect(page.locator('[data-test="event-banner"] .ed-banner-t')).toHaveText('活动已结束')
     expect(errors).toEqual([])
   })
+
+  test('the name of a card says in words when an event runs past its first day', async ({ page }) => {
+    await serve(page, { upcoming: [ONE_DAY, THREE_DAYS] })
+    await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+    const named = (title: string, date: string, weekday: string, place: string) =>
+      `${title} · ${date} · ${weekday} ${text('events.allDay')} · ${place} · ${text('events.source.campus')}`
+    // One day: the title, the date, when and where, and the source.
+    await expect(page.locator(`.evc[data-event-id="${ONE_DAY.id}"]`)).toHaveAttribute('aria-label', named('Quad Day', '11月23日', '周一', 'Main Quad'))
+    // Several days: the mark in the date block is not read out, so the name carries it as a word with the date.
+    const several = page.locator(`.evc[data-event-id="${THREE_DAYS.id}"]`)
+    await expect(several.locator('.evc-on')).toHaveText(text('events.runsOn'))
+    await expect(several).not.toHaveAttribute('aria-label', named('Book fair', '11月24日', '周二', 'Main Library'))
+    await expect(several).toHaveAttribute('aria-label', named('Book fair', text('events.runsOnSpoken', { date: '11月24日' }), '周二', 'Main Library'))
+  })
+
+  test('an evening that ends at midnight is on that evening only: its card has no multi-day mark', async ({ page }) => {
+    await serve(page, { upcoming: [EVENING] })
+    await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+    const card = page.locator(`.evc[data-event-id="${EVENING.id}"]`)
+    await expect(card.locator('.evc-day')).toHaveText('24')
+    await expect(card.locator('.evc-when')).toHaveText('周二 20:00 · Illini Union')
+    await expect(card.locator('.evc-on')).toHaveCount(0)
+    await expect(card).toHaveAttribute('aria-label', `晚间放映 · 11月24日 · 周二 20:00 · Illini Union · ${text('events.source.caaci')}`)
+    // Its page still gives the end as the time it is.
+    await card.click()
+    await expect(page.locator('.ed')).toHaveAttribute('data-event-id', EVENING.id)
+    await expect(page.locator('[data-test="event-time"]')).toHaveText('11月24日（周二）20:00 – 11月25日 00:00（美国中部时间）')
+  })
 })
 
 test.describe('events from the desktop header and on a topic page', () => {
@@ -515,6 +569,8 @@ test.describe('events from the desktop header and on a topic page', () => {
     expect(asked[0].searchParams.get('availability')).toBe('eq.visible')
     expect(asked[0].searchParams.get('duplicate_of')).toBe('is.null')
     expect(asked[0].searchParams.get('limit')).toBe('1')
+    // Only an event its page can open: the list reaches 180 days ahead (ENGINEERING 9.6).
+    expect(asked[0].searchParams.get('starts_at')).toBe(`lte.${new Date(NOW + 180 * DAY).toISOString()}`)
     expect(asked[0].searchParams.get('select')).not.toMatch(/consent_ref|hidden_reason|content_hash|\*/)
     await card.click()
     await expect(page).toHaveURL(new RegExp(`/pages/event/detail/index\\?id=${CAACI.id}`))

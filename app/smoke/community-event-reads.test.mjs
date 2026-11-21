@@ -71,6 +71,7 @@ async function world(t) {
         select(fields) { query.fields = fields; return query },
         eq(column, value) { filters.push(row => String(row[column]) === String(value)); return query },
         is(column, value) { filters.push(row => (row[column] ?? null) === value); return query },
+        lte(column, value) { filters.push(row => Date.parse(row[column]) <= Date.parse(value)); return query },
         limit(count) { query.count = count; return query },
         then(resolve, reject) {
           state.reads.push({ table, fields: query.fields })
@@ -245,4 +246,20 @@ test('the card on a topic is for an event readers are shown: not a hidden one it
   // One table, and a projection that names nothing private.
   assert.deepEqual([...new Set(state.reads.map(read => read.table))], ['community_events'])
   for (const { fields } of state.reads) assert.doesNotMatch(fields, /consent_ref|hidden_reason|content_hash|created_by|\*/)
+})
+
+test('the card on a topic is for an event its page can open: none that starts more than 180 days from now', async t => {
+  const { state, events } = await world(t)
+  const topic = 'topic-1'
+  const DAY = 86_400_000
+  const startsIn = ms => [{ ...event('caaci', { discussion_post_id: topic, starts_at: new Date(NOW + ms).toISOString() }), partner: null }]
+  // The page of an event reads the list, and "upcoming" reaches 180 days ahead, that moment included (ENGINEERING 9.6).
+  state.table = startsIn(180 * DAY)
+  assert.equal((await events.findTopicEvent(topic, null)).id, state.table[0].id)
+  // Row security has no such bound, so a card for anything later would open on "no longer listed".
+  state.table = startsIn(180 * DAY + 1)
+  assert.equal(await events.findTopicEvent(topic, null), null)
+  // What has started already is within it.
+  state.table = startsIn(-30 * DAY)
+  assert.equal((await events.findTopicEvent(topic, null)).id, state.table[0].id)
 })

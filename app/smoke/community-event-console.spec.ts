@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import en from '../src/composables/i18n/messages/en'
+import zh from '../src/composables/i18n/messages/zh'
 
 /*
  * P4.9: the console's events tab, in a browser. The API is answered from the
@@ -12,6 +13,7 @@ const NOW = Date.parse('2026-11-20T16:00:00Z')
 const TOKEN = `iam_admin_${'a'.repeat(43)}`
 const TOPIC = '74000000-0000-4000-8000-000000000001'
 const copy = en as Record<string, string>
+const copyZh = zh as Record<string, string>
 
 type Row = Record<string, unknown> & { id: string }
 let serial = 0
@@ -158,4 +160,23 @@ test('a refused discussion is told by name, and the same button works once the c
   await expect.poll(() => offered(page, CAACI)).toEqual(['hide_event'])
   expect(api.writes.map(write => write.action)).toEqual(['create_event_discussion', 'create_event_discussion', 'create_event_discussion'])
   expect(api.writes.at(-1)).toEqual({ action: 'create_event_discussion', event_id: CAACI.id, reason: 'Synthetic discussion' })
+})
+
+test.describe('for an administrator whose device is not on Champaign time', () => {
+  test.use({ timezoneId: 'Asia/Shanghai' })
+
+  test('a row gives its start in Champaign time and says so, and keeps no separator for an organizer it does not name', async ({ page }) => {
+    await unlock(page, 'owner')
+    // SPEC 6.7.8. The first row starts on Saturday at 10:00 in Champaign, which is Sunday 00:00 on this device.
+    await expect(card(page, CAACI).locator('.card-meta')).toHaveText(`${copy['events.filter.caaci']} · Sat, Nov 21, 2026 10:00 AM CT`)
+    await expect(card(page, PARTNER).locator('.card-meta')).toHaveText(`${copy['events.filter.partner']} · Chess Club · Sun, Nov 22, 2026 10:00 AM CT`)
+    // A member's event names no organizer.
+    await expect(card(page, MEMBER).locator('.card-meta')).toHaveText(`${copy['events.filter.member']} · Fri, Nov 27, 2026 10:00 AM CT`)
+  })
+
+  test('a Chinese console words the same start the Chinese way', async ({ page }) => {
+    await unlock(page, 'operator', 'zh')
+    await expect(card(page, PARTNER).locator('.card-meta')).toHaveText(`${copyZh['events.filter.partner']} · 国际象棋社 · 11月22日 周日 10:00 CT`)
+    await expect(card(page, MEMBER).locator('.card-meta')).toHaveText(`${copyZh['events.filter.member']} · 11月27日 周五 10:00 CT`)
+  })
 })
