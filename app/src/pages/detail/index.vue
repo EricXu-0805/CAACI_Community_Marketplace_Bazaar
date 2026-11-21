@@ -57,7 +57,7 @@
         </swiper-item>
         <swiper-item v-if="imgs.length === 0">
           <view class="u-thumb-ph u-thumb-ph--fill det-noimg">
-            <text class="u-thumb-ph-seal">集</text>
+            <text class="u-thumb-ph-seal">玉</text>
             <text class="det-noimg-cap">{{ t('detail.noPhotos') }}</text>
           </view>
         </swiper-item>
@@ -160,7 +160,7 @@
         <view class="seller-info">
           <view class="seller-name-row">
             <text class="seller-name">{{ item.profile.nickname }}</text>
-            <UBadge v-if="item.profile.is_illini_verified" variant="illini" :title="t('profile.illiniVerified')" label="Illini" />
+            <UBadge v-if="item.profile.is_illini_verified" variant="illini" :title="t('profile.illiniVerified')" :label="t('profile.illiniVerified')" />
           </view>
           <view v-if="soldCount > 0 || reviewCount > 0 || showReplyRate" class="seller-proof">
             <text v-if="soldCount > 0" class="sp-item"><text class="sp-strong">{{ soldCount }}</text> {{ t('detail.soldCount') }}</text>
@@ -201,7 +201,7 @@
           <view class="rv-body">
             <view class="rv-head">
               <text class="rv-nick">{{ r.rater?.nickname || t('app.user') }}</text>
-              <UBadge v-if="r.rater?.is_illini_verified" variant="illini" label="Illini" />
+              <UBadge v-if="r.rater?.is_illini_verified" variant="illini" :title="t('profile.illiniVerified')" :aria-label="t('profile.illiniVerified')" :label="t('profile.verifiedShort')" />
               <text class="rv-stars">{{ r.stars }}/5</text>
               <text class="rv-time">· {{ formatTime(r.created_at) }}</text>
             </view>
@@ -233,7 +233,7 @@
         <view class="more-list u-stagger">
           <view v-for="si in sellerOtherItems" :key="si.id" class="more-card" role="button" :aria-label="localize(si.title_i18n, si.title)" @click="goToOtherItem(si.id)">
             <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="localize(si.title_i18n, si.title)" class="mc-img" mode="aspectFill" lazy-load />
-            <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+            <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
             <view class="mc-price-row">
               <text v-if="si.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
               <text :class="['mc-price', { free: si.listing_type !== 'wanted' && (!si.price || si.price === 0) }]">{{ listingPriceLabel(si, t) }}</text>
@@ -250,7 +250,7 @@
         <view class="more-list u-stagger">
           <view v-for="si in similarItems" :key="si.id" class="more-card" role="button" :aria-label="localize(si.title_i18n, si.title)" @click="goToOtherItem(si.id)">
             <image v-if="thumbUrl(si.images?.[0], 'list')" :src="thumbUrl(si.images?.[0], 'list')" :alt="localize(si.title_i18n, si.title)" class="mc-img" mode="aspectFill" lazy-load />
-            <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+            <view v-else class="mc-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
             <view class="mc-price-row">
               <text v-if="si.listing_type === 'wanted'" class="u-wanted-tag">{{ t('item.wanted') }}</text>
               <text :class="['mc-price', { free: si.listing_type !== 'wanted' && (!si.price || si.price === 0) }]">{{ listingPriceLabel(si, t) }}</text>
@@ -1075,7 +1075,7 @@ function onShare() {
   // #ifdef H5
   const shareUrl = `${window.location.origin}/share/${item.value.id}${lang.value === 'zh' ? '?lang=zh' : ''}`
   if (navigator.share) {
-    navigator.share({ title: `${displayTitle.value} · Illini Market`, text: `${listingPriceLabel(item.value, t)} · ${displayTitle.value}`, url: shareUrl })
+    navigator.share({ title: `${displayTitle.value} · ${t('app.name')}`, text: `${listingPriceLabel(item.value, t)} · ${displayTitle.value}`, url: shareUrl })
       .catch((err: any) => {
         if (err?.name !== 'AbortError') console.warn('[share] failed')
       })

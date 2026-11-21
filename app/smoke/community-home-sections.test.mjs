@@ -260,7 +260,7 @@ test('zero counts are absent, unanswered has a 30-day cutoff, and empty sections
   assert.ok(!JSON.stringify(empty).includes('0'), 'empty homepage must not render a zero count')
   assert.equal(label(empty.cards[5].filler), '发布第一件 ›')
   const card = build([
-    makePost('zero'), makePost('positive', { comment_count: 2 }),
+    makePost('zero'), makePost('positive', { comment_count: 2, answered_at: atAge(60_000) }),
     makePost('thirty', { created_at: atAge(30 * day) }),
     makePost('older', { created_at: atAge(30 * day + 1) }),
   ]).cards[0]
@@ -271,6 +271,85 @@ test('zero counts are absent, unanswered has a 30-day cutoff, and empty sections
   assert.equal(rows.get('positive').unanswered, false)
   assert.equal(rows.get('thirty').unanswered, true)
   assert.equal(rows.get('older').unanswered, false)
+})
+
+// P3.4 (SPEC 5.2 ④): the latest list has three orders, chosen by its tabs.
+test('latest follows the chosen order: last activity, newest first, or unanswered only', () => {
+  // One board: its card takes the four newest, the other eight are left for the latest list.
+  const posts = makePosts(12, ['campus-life']).map((post, index) => ({
+    ...post,
+    // The oldest topic was answered a moment ago.
+    ...(index === 11 ? { comment_count: 2, last_activity_at: atAge(1000), answered_at: atAge(2000) } : {}),
+    // Another old one has a reply, but only from its own author.
+    ...(index === 9 ? { comment_count: 1, last_activity_at: atAge(30_000) } : {}),
+  }))
+  const latest = sort => buildHomeSections(posts, items, [], now, 'desktop', sort).latest
+  const rest = ['post-004', 'post-005', 'post-006', 'post-007', 'post-008', 'post-009', 'post-010', 'post-011']
+  assert.deepEqual(ids(latest('recent').rows), rest)
+  assert.deepEqual(ids(latest(undefined).rows), rest, 'a caller that names no order keeps newest first')
+  assert.deepEqual(ids(latest('active').rows),
+    ['post-011', 'post-009', 'post-004', 'post-005', 'post-006', 'post-007', 'post-008', 'post-010'])
+  assert.deepEqual(ids(latest('unanswered').rows), rest.filter(id => id !== 'post-011'))
+  // The board card is the same four rows whichever order the list below it uses.
+  for (const sort of ['active', 'recent', 'unanswered']) {
+    const card = buildHomeSections(posts, items, [], now, 'desktop', sort).cards[0]
+    assert.deepEqual(ids(postRows(card)), ['post-000', 'post-001', 'post-002', 'post-003'])
+  }
+  // SPEC 5.5 from P3.4: unanswered means nobody but the author has replied.
+  const rows = new Map(latest('recent').rows.map(row => [row.post.id, row]))
+  assert.deepEqual([rows.get('post-009').unanswered, rows.get('post-009').replyCount], [true, 1])
+  assert.deepEqual([rows.get('post-011').unanswered, rows.get('post-011').replyCount], [false, 2])
+})
+
+test('an unanswered list with nothing in it keeps the block, so its tabs stay reachable', () => {
+  const answered = makePosts(12, ['campus-life']).map(post => ({ ...post, comment_count: 1, answered_at: post.created_at }))
+  const result = buildHomeSections(answered, items, [], now, 'desktop', 'unanswered')
+  assert.equal(result.latest.mode, 'list')
+  assert.deepEqual(result.latest.rows, [])
+  // Fewer than five left after the cards is still one link, whichever order was asked for.
+  assert.equal(buildHomeSections(makePosts(8, ['campus-life']), items, [], now, 'desktop', 'unanswered').latest.mode, 'link')
+})
+
+// A topic is drawn once, so the unanswered list holds only what the board cards did not take.
+// When it is empty the line under the tabs has to say which of the two things happened.
+test('an empty unanswered list says whether every topic is answered or the open ones are in the cards above', () => {
+  const empty = posts => buildHomeSections(posts, items, [], now, 'desktop', 'unanswered').latest
+  const answered = makePosts(12, ['campus-life']).map(post => ({ ...post, comment_count: 1, answered_at: post.created_at }))
+  assert.deepEqual(empty(answered).rows, [])
+  assert.deepEqual(empty(answered).empty, { key: 'plaza.emptyUnanswered' })
+
+  // The four newest are unanswered and the board card shows all four; the eight left over are answered.
+  const above = answered.map((post, index) => (index < 4 ? { ...post, comment_count: 0, answered_at: null } : post))
+  const latest = empty(above)
+  assert.deepEqual(latest.rows, [])
+  assert.equal(latest.mode, 'list')
+  assert.deepEqual(latest.empty, { key: 'home.unansweredAbove' })
+  // Both catalogs have the line, and it is not the one that claims every topic was answered.
+  assert.notEqual(label(latest.empty), label(empty(answered).empty))
+  assert.notEqual(label(latest.empty, 'en'), label(empty(answered).empty, 'en'))
+
+  // One the cards did not take is listed, and then nothing needs explaining.
+  const listed = empty(answered.map((post, index) => (index === 11 ? { ...post, comment_count: 0, answered_at: null } : post)))
+  assert.deepEqual(ids(listed.rows), ['post-011'])
+  assert.equal(listed.empty, undefined)
+  // The other two orders never come up empty while the block is a list.
+  for (const sort of ['active', 'recent']) {
+    assert.equal(buildHomeSections(above, items, [], now, 'desktop', sort).latest.empty, undefined, sort)
+  }
+})
+
+test('hot never repeats a row of the latest list, whichever order that list is in', () => {
+  // Twenty busy topics from this week in one board; the oldest got its replies last.
+  const busy = makePosts(20, ['campus-life']).map((post, index) => hotPost(post.id, {
+    ...post, comment_count: 3 + index, answered_at: post.created_at,
+    last_activity_at: atAge((20 - index) * 1000),
+  }))
+  for (const sort of ['active', 'recent', 'unanswered']) {
+    const result = buildHomeSections(busy, items, [], now, 'desktop', sort)
+    const shown = new Set(ids(result.latest.rows))
+    assert.ok(result.hot && result.hot.rows.length > 0, `${sort}: hot has rows`)
+    assert.ok(result.hot.rows.every(row => !shown.has(row.post.id)), `${sort}: a hot row repeats the latest list`)
+  }
 })
 
 test('home shows topics only; collapsed total includes visible legacy updates', () => {

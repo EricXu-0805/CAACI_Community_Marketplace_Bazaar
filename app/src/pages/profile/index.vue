@@ -71,7 +71,7 @@
           <view class="user-info">
             <view class="name-row">
               <text class="nickname">{{ currentUser?.nickname }}</text>
-              <UBadge v-if="currentUser?.is_illini_verified" variant="illini" :aria-label="t('profile.illiniVerified')" label="Illini" />
+              <UBadge v-if="currentUser?.is_illini_verified" variant="illini" :aria-label="t('profile.illiniVerified')" :label="t('profile.illiniVerified')" />
             </view>
             <view class="user-meta-row">
               <view v-if="currentUser?.uid" class="uid-row" role="button" :aria-label="t('profile.uid')" @click.stop="copyUid">
@@ -131,37 +131,15 @@
         <UIcon class="vp-arrow" name="chevron-right" size="xs" color="campus-blue" aria-hidden="true" />
       </view>
 
-      <!-- Quick actions grid —
-           tints picked from the 米白书院 pottery-glaze palette. All
-           four sit within ~8% of paper so the circles read as
-           "washed" instead of candy. -->
+      <!-- SPEC 6.9, from P3.2 on: 通知 → 我的物品 → 我的话题 → 我的收藏 → 订阅的话题 →
+           关注的人 → 最近浏览 → 订阅的搜索 → 设置. -->
       <view class="section-block">
-        <text class="block-title">{{ t('profile.quickActions') }}</text>
-        <view class="action-grid">
-          <view class="action-item" role="button" :aria-label="t('notif.title')" @click="goNotifications">
-            <view class="action-icon action-icon--brand">
-              <UIcon name="bell" color="brand" />
-            </view>
-            <text class="action-label">{{ t('notif.title') }}</text>
-            <view v-if="unreadNotifCount > 0" class="action-badge">{{ unreadNotifCount }}</view>
-          </view>
-          <view class="action-item" role="button" :aria-label="t('profile.history')" @click="goHistory">
-            <view class="action-icon action-icon--lavender">
-              <UIcon name="history" color="campus-blue" />
-            </view>
-            <text class="action-label">{{ t('profile.history') }}</text>
-          </view>
-          <view class="action-item" role="button" :aria-label="t('nav.following')" @click="goFollowing">
-            <view class="action-icon action-icon--sage">
-              <UIcon name="heart" color="success" />
-            </view>
-            <text class="action-label">{{ t('nav.following') }}</text>
-          </view>
-          <view class="action-item" role="button" :aria-label="t('savedSearch.title')" @click="goSavedSearches">
-            <view class="action-icon action-icon--amber">
-              <UIcon name="search" color="warning" />
-            </view>
-            <text class="action-label">{{ t('savedSearch.title') }}</text>
+        <view class="list-menu list-menu--first">
+          <view class="menu-row" role="button" :aria-label="t('notif.title')" @click="goNotifications">
+            <UIcon name="bell" size="sm" color="ink-soft" />
+            <text class="menu-row-text">{{ t('notif.title') }}</text>
+            <view v-if="unreadNotifCount > 0" class="menu-badge">{{ unreadNotifCount }}</view>
+            <UIcon name="chevron-right" size="sm" color="text-faint" />
           </view>
         </view>
       </view>
@@ -256,7 +234,7 @@
                 mode="aspectFill"
                 lazy-load
               />
-              <view v-else class="horz-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
+              <view v-else class="horz-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">玉</text></view>
               <view class="horz-info">
                 <text class="horz-title">{{ localize(item.title_i18n, item.title) }}</text>
                 <view class="horz-price-row">
@@ -270,6 +248,16 @@
             </view>
           </view>
         </scroll-view>
+      </view>
+
+      <view class="section-block">
+        <view class="list-menu list-menu--first">
+          <view class="menu-row" role="button" :aria-label="t('profile.myTopics')" data-test="my-topics" @click="goTopics('mine')">
+            <UIcon name="messages" size="sm" color="ink-soft" />
+            <text class="menu-row-text">{{ t('profile.myTopics') }}</text>
+            <UIcon name="chevron-right" size="sm" color="text-faint" />
+          </view>
+        </view>
       </view>
 
       <!-- 我收藏的 -->
@@ -286,6 +274,12 @@
             <text class="block-count">{{ savedItems.length }}</text>
             <UIcon name="chevron-right" size="xs" color="text-faint" />
           </view>
+        </view>
+        <!-- 商品｜话题: saved listings are shown here, saved topics on their own page. -->
+        <view class="saved-kinds" role="tablist" :aria-label="t('profile.savedSection')">
+          <text class="saved-kind active" role="tab" aria-selected="true">{{ t('profile.savedItems') }}</text>
+          <text class="saved-kind" role="tab" tabindex="0" aria-selected="false" data-test="saved-topics"
+            @click="goTopics('saved')" @keydown.enter.prevent="goTopics('saved')" @keydown.space.prevent="goTopics('saved')">{{ t('profile.savedTopics') }}</text>
         </view>
         <view v-if="savedLoading || !savedReady" class="empty-mini" aria-busy="true">
           <text class="empty-mini-text">{{ t('home.loading') }}</text>
@@ -316,7 +310,7 @@
                 mode="aspectFill"
                 lazy-load
               />
-              <view v-else class="fav-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
+              <view v-else class="fav-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">玉</text></view>
             </view>
             <view class="fav-body">
               <text class="fav-title">{{ localize(item.title_i18n, item.title) }}</text>
@@ -328,6 +322,31 @@
                 <text v-else-if="item.profile" class="fav-seller">{{ item.profile.nickname }}</text>
               </view>
             </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="section-block">
+        <view class="list-menu list-menu--first">
+          <view class="menu-row" role="button" :aria-label="t('profile.watchedTopics')" data-test="watched-topics" @click="goTopics('watched')">
+            <UIcon name="bell" size="sm" color="ink-soft" />
+            <text class="menu-row-text">{{ t('profile.watchedTopics') }}</text>
+            <UIcon name="chevron-right" size="sm" color="text-faint" />
+          </view>
+          <view class="menu-row" role="button" :aria-label="t('nav.following')" @click="goFollowing">
+            <UIcon name="heart" size="sm" color="ink-soft" />
+            <text class="menu-row-text">{{ t('nav.following') }}</text>
+            <UIcon name="chevron-right" size="sm" color="text-faint" />
+          </view>
+          <view class="menu-row" role="button" :aria-label="t('profile.history')" @click="goHistory">
+            <UIcon name="history" size="sm" color="ink-soft" />
+            <text class="menu-row-text">{{ t('profile.history') }}</text>
+            <UIcon name="chevron-right" size="sm" color="text-faint" />
+          </view>
+          <view class="menu-row" role="button" :aria-label="t('savedSearch.title')" @click="goSavedSearches">
+            <UIcon name="search" size="sm" color="ink-soft" />
+            <text class="menu-row-text">{{ t('savedSearch.title') }}</text>
+            <UIcon name="chevron-right" size="sm" color="text-faint" />
           </view>
         </view>
       </view>
@@ -735,6 +754,7 @@ function goMyItems(tab: 'listed' | 'sold' | 'saved') {
   uni.navigateTo({ url: `/pages/my-items/index?tab=${tab}` })
 }
 function goFollowing() { uni.navigateTo({ url: '/pages/following/index' }) }
+function goTopics(view: 'mine' | 'watched' | 'saved') { uni.navigateTo({ url: `/pages/my-topics/index?view=${view}` }) }
 function goSavedSearches() { uni.navigateTo({ url: '/pages/saved-searches/index' }) }
 
 function copyUid() {
@@ -1273,49 +1293,18 @@ function onDeleteItem(id: string, actionRequest: AccountPageRequest) {
 }
 .my-tab.active .my-tab-count { background: rgba(255, 255, 255, 0.22); color: var(--ink-inverse); }
 
-/* ===== Quick actions grid (4-col colored icon buttons) ===== */
-.action-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-top: 12px;
-}
-.action-item {
-  position: relative;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 4px 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  &:active { opacity: 0.6; }
-}
-.action-icon {
-  width: 48px; height: 48px; border-radius: 14px;
+/* ===== Menu rows (SPEC 6.9 order) ===== */
+.list-menu--first { margin-top: 0; }
+.menu-badge {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; box-sizing: border-box;
+  background: var(--accent-danger); color: var(--ink-inverse); font-size: 12px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
-  border: 0.5px solid rgba(31, 29, 27, 0.04);
 }
-/*
- * Pottery-glaze variants. Each tint stays within ~8% of paper so the
- * tiles read as washed ceramic rather than the old candy palette.
- * Brand/amber/sage/lavender give enough hue separation that users
- * can still pattern-match by color after 1-2 visits.
- */
-.action-icon--brand    { background: var(--brand-soft); }
-.action-icon--amber    { background: var(--warning-soft); }
-.action-icon--sage     { background: var(--success-soft); }
-.action-icon--lavender { background: var(--campus-blue-soft); }
-/* QA6 r5: text-align center so the 2-line labels (Recently Viewed / Saved
-   Searches) center each line under their icon instead of going flush-left
-   (uni <text> defaults to text-align:start → looked misaligned vs the 1-line
-   Notifications / Following). */
-.action-label { font-size: 12px; color: var(--ink-soft); line-height: 1.2; text-align: center; }
-.action-badge {
-  position: absolute;
-  top: -2px; right: calc(50% - 28px);
-  min-width: 16px; height: 16px; padding: 0 4px;
-  border-radius: 8px;
-  background: var(--accent-danger);
-  color: var(--ink-inverse); font-size: 10px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
+.saved-kinds { display: flex; gap: 8px; margin-top: 10px; }
+.saved-kind {
+  min-height: 28px; padding: 0 12px; border-radius: 14px; font-size: 13px; line-height: 28px;
+  background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer;
+  &.active { background: var(--accent-primary); color: var(--ink-inverse); }
 }
 
 /* ===== Horizontal scroll card (我发布的 / 已售) ===== */

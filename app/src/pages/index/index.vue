@@ -406,7 +406,7 @@
                 :style="dimsToAspectStyle(null, 0, '3/2')"
                 aria-hidden="true"
               >
-                <text class="u-thumb-ph-seal">集</text>
+                <text class="u-thumb-ph-seal">玉</text>
               </view>
               <view v-if="item.status === 'sold'" class="sold-overlay">
                 <text class="sold-overlay-label">{{ t('status.sold') }}</text>
@@ -453,7 +453,7 @@
                     lazy
                   />
                   <text class="seller-nick">{{ item.profile?.nickname || t('app.user') }}</text>
-                  <UBadge v-if="item.profile?.is_illini_verified" variant="illini" class="card-illini" :title="t('profile.illiniVerified')" label="Illini" />
+                  <UBadge v-if="item.profile?.is_illini_verified" variant="illini" class="card-illini" :title="t('profile.illiniVerified')" :aria-label="t('profile.illiniVerified')" :label="t('profile.verifiedShort')" />
                 </view>
                 <view class="card-fav">
                   <text class="card-time">{{ formatTime(item.created_at) }}</text>
@@ -1289,7 +1289,7 @@ async function onCardLongPress(item: Item) {
         // #ifdef H5
         const url = `${window.location.origin}/share/${item.id}${lang.value === 'zh' ? '?lang=zh' : ''}`
         if (navigator.share) {
-          navigator.share({ title: `${localize(item.title_i18n, item.title)} · Illini Market`, text: `${listingPriceLabel(item, t)} · ${localize(item.title_i18n, item.title)}`, url })
+          navigator.share({ title: `${localize(item.title_i18n, item.title)} · ${t('app.name')}`, text: `${listingPriceLabel(item, t)} · ${localize(item.title_i18n, item.title)}`, url })
             .catch((err: any) => {
               if (err?.name !== 'AbortError') console.warn('[share] failed')
             })

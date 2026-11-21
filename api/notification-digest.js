@@ -24,7 +24,7 @@ export const config = { runtime: 'edge' }
  * SUPABASE_SERVICE_ROLE_KEY remains a rolling fallback),
  * RESEND_API_KEY, CRON_SECRET, DIGEST_TEST_EMAIL (test), DIGEST_LIVE ('true' to
  * go live), DIGEST_FROM (sender on the Resend-verified illinimarket.com domain;
- * defaults to "Illini Market <noreply@send.illinimarket.com>").
+ * defaults to "玉米地 Cornfield <noreply@send.illinimarket.com>").
  */
 
 function env(name, fallback = '') { return process.env[name] || fallback }
@@ -56,7 +56,7 @@ const VERCEL_ENV = env('VERCEL_ENV').toLowerCase()
 const VERCEL_URL = env('VERCEL_URL').toLowerCase()
 // Resend requires the From address to be on a domain verified in Resend.
 // Eric verifies the send.illinimarket.com subdomain; override via DIGEST_FROM.
-const FROM = env('DIGEST_FROM', 'Illini Market <noreply@send.illinimarket.com>')
+const FROM = env('DIGEST_FROM', '玉米地 Cornfield <noreply@send.illinimarket.com>')
 const WINDOW_DAYS = 7
 const MAX_ROWS = 40
 const NOTIFICATION_PAGE_SIZE = MAX_ROWS * 5
@@ -337,10 +337,10 @@ function copyFor(lang) {
           : `${n} update${n === 1 ? '' : 's'} · 你有 ${n} 条新动态`
     ),
     sample: zh ? '示例' : en ? 'Sample' : 'Sample · 示例',
-    open: zh ? '打开集市' : en ? 'Open Illini Market' : 'Open Illini Market · 打开集市',
-    tagline: zh ? 'UIUC 校园二手集市 · Champaign-Urbana, IL'
-      : en ? 'UIUC campus marketplace · Champaign-Urbana, IL'
-        : 'UIUC campus marketplace / 校园二手集市 · Champaign-Urbana, IL',
+    open: zh ? '打开玉米地' : en ? 'Open Cornfield' : 'Open Cornfield · 打开玉米地',
+    tagline: zh ? '伊利诺伊华人论坛，现开放香槟地区'
+      : en ? 'Chinese community in Illinois, now open in Champaign-Urbana'
+        : 'Chinese community in Illinois, now open in Champaign-Urbana / 伊利诺伊华人论坛，现开放香槟地区',
     unsubPrompt: zh ? '不想再收到邮件提醒？' : en ? 'No longer want these emails? ' : 'No longer want these emails? / 不想再收到邮件提醒？ ',
     unsubLink: zh ? '一键退订' : en ? 'Unsubscribe' : 'Unsubscribe · 一键退订',
     samplePreview: zh ? '示例预览' : en ? 'Sample preview' : 'Sample preview · 示例预览',
@@ -358,8 +358,8 @@ function digestHtml(rows, isSample, unsubToken, lang = null) {
     <div style="text-align:center;margin-bottom:8px">
       <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;background:#C74A2F;color:#fff;font-weight:700;font-size:20px">集</span>
     </div>
-    <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">Illini Market</h1>
-    <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center"><span lang="zh">Illini 集市</span></p>
+    <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">Cornfield</h1>
+    <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center"><span lang="zh">玉米地</span></p>
     <p style="text-align:center;color:#8B8478;font-size:13px;margin:0 0 20px">${c.updates(rows.length)}${isSample ? ` · ${c.sample}` : ''}</p>
     <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:16px;padding:4px 16px" cellpadding="0" cellspacing="0">
       <tbody><tr><td style="padding:4px 16px"><table style="width:100%;border-collapse:collapse" cellpadding="0" cellspacing="0"><tbody>${items}</tbody></table></td></tr></tbody>
@@ -368,7 +368,7 @@ function digestHtml(rows, isSample, unsubToken, lang = null) {
       <a href="${esc(APP_URL)}" style="display:inline-block;background:#C74A2F;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-weight:600;font-size:15px">${c.open}</a>
     </div>
     <p style="text-align:center;color:#A39A8C;font-size:11px;line-height:1.6;margin-top:24px">
-      Illini Market · <span lang="zh">Illini 集市</span><br>
+      Cornfield · <span lang="zh">玉米地</span><br>
       ${c.tagline}<br>
       <a href="${esc(APP_URL)}" style="color:#A39A8C;text-decoration:none">illinimarket.com</a><br>
       ${unsub}
@@ -392,6 +392,12 @@ const SAFE_UNROUTED_NOTIFICATION_TYPES = new Set([
   'price_drop', 'system', 'sold', 'rating', 'follow', 'post_comment', 'post_like',
 ])
 const SAFE_CONVERSATION_NOTIFICATION_TYPES = new Set(['offer', 'meetup', 'unread_message'])
+// SPEC 6.8: a reply to a reply and a reply in a watched topic are shown in the
+// app only. Both are post_comment rows, so the body key is what leaves them
+// out: in the scan, so they never use up its bounded pages, and again in the
+// unrouted allowlist, the gate every row passes right before it is mailed.
+const IN_APP_ONLY_BODY_KEYS = ['comment_reply', 'followed_post_reply']
+const IN_APP_ONLY_BODY_RE = new RegExp(`^(?:${IN_APP_ONLY_BODY_KEYS.join('|')}):`)
 
 async function supabaseError(prefix, response) {
   const body = await response.text().catch(() => '')
@@ -544,7 +550,8 @@ async function notificationConversationColumnAvailable() {
 
 async function loadPendingNotificationPage(since, conversationColumnAvailable, afterUserId) {
   const cursor = afterUserId ? `&user_id=gt.${encodeURIComponent(afterUserId)}` : ''
-  const prefix = `notifications?emailed_at=is.null&created_at=gte.${since}${cursor}`
+  const inAppOnly = IN_APP_ONLY_BODY_KEYS.map(key => `&body=not.like.${key}:*`).join('')
+  const prefix = `notifications?emailed_at=is.null&created_at=gte.${since}${cursor}${inAppOnly}`
   const suffix = `&order=user_id.asc,created_at.desc&limit=${NOTIFICATION_PAGE_SIZE}`
   const currentPath = `${prefix}&select=id,user_id,type,title,body,created_at,item_id,conversation_id${suffix}`
   const legacyPath = `${prefix}&select=id,user_id,type,title,body,created_at,item_id${suffix}`
@@ -621,6 +628,7 @@ async function loadNotificationsByIds(ids, conversationColumnAvailable) {
 
 function canEmailWithoutConversation(row) {
   return !row.conversation_id && SAFE_UNROUTED_NOTIFICATION_TYPES.has(row.type)
+    && !IN_APP_ONLY_BODY_RE.test(row.body || '')
 }
 
 function canEmailWithConversation(row) {
@@ -951,7 +959,7 @@ async function handleRequest(req) {
 
         const began = await beginNotificationEmailDelivery(deliveryClaim)
         if (began !== claimedRows.length) throw new Error('delivery claim expired')
-        // No brand prefix: FROM already renders as "Illini Market" in the
+        // No brand prefix: FROM already renders as "玉米地 Cornfield" in the
         // recipient's inbox, and a phone truncates the subject around 35-40
         // characters, so the prefix was spending that budget on a name the
         // reader can already see instead of on what actually happened.

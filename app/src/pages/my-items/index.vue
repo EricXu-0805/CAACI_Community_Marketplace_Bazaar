@@ -31,6 +31,17 @@
       </view>
     </view>
 
+    <!-- SPEC 6.9: 我的收藏 has two kinds. Saved topics are the page next door. -->
+    <view v-if="tab === 'saved'" class="tabs saved-kinds" role="tablist" :aria-label="t('profile.savedSection')">
+      <view class="tab active" role="tab" tabindex="0" aria-selected="true">
+        <text>{{ t('profile.savedItems') }}</text>
+      </view>
+      <view class="tab" role="tab" tabindex="0" aria-selected="false" data-test="saved-topics"
+        @click="goSavedTopics" @keydown.enter.prevent="goSavedTopics" @keydown.space.prevent="goSavedTopics">
+        <text>{{ t('profile.savedTopics') }}</text>
+      </view>
+    </view>
+
     <view v-if="!currentReady || currentLoading" id="my-items-panel" class="grid" role="tabpanel" aria-busy="true">
       <view v-for="n in 4" :key="n" class="card">
         <view class="card-img-wrap u-sk"></view>
@@ -69,7 +80,7 @@
             mode="aspectFill"
             lazy-load
           />
-          <view v-else class="card-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
+          <view v-else class="card-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">玉</text></view>
         </view>
         <view class="card-body">
           <text class="card-title">{{ localize(item.title_i18n, item.title) }}</text>
@@ -193,6 +204,7 @@ onLoad((query) => {
 })
 
 onShow(() => { void load() })
+function goSavedTopics() { uni.redirectTo({ url: '/pages/my-topics/index?view=saved' }) }
 onUnload(() => { pageScope.dispose() })
 
 async function load() {

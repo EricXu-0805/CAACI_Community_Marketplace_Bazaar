@@ -97,8 +97,7 @@ const TOPICS: Topic[] = [
   [3, '春季想组队参加黑客松，还缺一个做前端的', 4, 6 * DAY],
   [4, '周末带爸妈吃饭，Champaign 哪家中餐适合', 12, 6 * DAY + HOUR],
   [0, 'CS 128 和 ECE 220 同一学期修会不会太累', 6, 6 * DAY + 3 * HOUR],
-  // Official and featured: the "start here" list. The page does not ask for
-  // is_featured yet (the column arrives with P3.1), so only this mock supplies it.
+  // Official and featured: the "start here" list (set_post_featured, P3.5).
   [1, '新生落脚清单：第一周要办的 8 件事', 23, 5 * DAY + 12 * HOUR, { is_official: true, is_featured: true }],
   [0, '社区守则（2026 年 11 月版）', 4, 30 * DAY, { is_official: true, is_featured: true }],
 ]
@@ -391,7 +390,9 @@ for (const size of [PHONE, DESKTOP]) {
         const latest = page.locator('.ch [data-block="latest"]')
         await expect(latest.locator('.ch-sec-t')).toHaveText('全站最新')
         await expect(latest.locator('.ch-lr')).toHaveCount(10)
-        await expect(latest.locator('[role="tab"]')).toHaveCount(0)
+        // From P3.4 the list has three orders, and a phone adds the week's busiest as a last tab.
+        await expect(latest.locator('[role="tab"]')).toHaveText(['最新回复', '新发布', '待回答', '本周热议'])
+        await expect(latest.locator('[role="tab"]').first()).toHaveAttribute('aria-selected', 'true')
         await expect(latest.locator('.ch-more')).toHaveText('查看全部讨论')
 
         // Top to bottom, in the order SPEC 5.3 gives.
@@ -579,8 +580,9 @@ for (const size of [PHONE, DESKTOP]) {
 
         const latest = page.locator('.ch [data-block="latest"]')
         await expect(latest.locator('.ch-lr')).toHaveCount(15)
-        // Until P3.4 there is one order, so no tab row.
-        await expect(latest.locator('[role="tab"]')).toHaveCount(0)
+        // From P3.4 the list has three orders; the week's busiest stay in the sidebar here.
+        await expect(latest.locator('[role="tab"]')).toHaveText(['最新回复', '新发布', '待回答'])
+        await expect(latest.locator('[role="tab"]').first()).toHaveAttribute('aria-selected', 'true')
         await expect(latest.locator('.ch-more')).toHaveText('查看更多 ›')
         const first = latest.locator('.ch-lr').first()
         await expect(first.locator('.ch-lr-t')).toHaveText('12 月去芝加哥看圣诞灯展，求拼车，2 个人')

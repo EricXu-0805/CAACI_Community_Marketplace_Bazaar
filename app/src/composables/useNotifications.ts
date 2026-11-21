@@ -45,6 +45,10 @@ const BODY_SENTINEL_KEYS: Record<string, string> = {
   post_comment: 'notif.postComment',
   post_like: 'notif.postLike',
   post_comment_like: 'notif.commentLike',
+  // P3.3. The list fills in the name, the title and the count; this is what a
+  // toast, or a line whose topic can no longer be read, says instead.
+  comment_reply: 'notif.commentReplyPlain',
+  followed_post_reply: 'notif.followedReplyPlain',
   report_outcome_resolved: 'notif.reportResolved',
   report_outcome_dismissed: 'notif.reportDismissed',
   appeal_outcome_denied: 'notif.appealDenied',

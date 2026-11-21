@@ -1,4 +1,4 @@
-# Illini Market — a hash-routed SPA with no server-rendered public content
+# Cornfield (玉米地) — a hash-routed SPA with no server-rendered public content
 # worth indexing (listings/posts live behind the client app + auth). Allow
 # crawlers to fetch the shell + share endpoints (which serve real OG meta),
 # disallow the API surface.

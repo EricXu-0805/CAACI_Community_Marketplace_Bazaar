@@ -55,6 +55,15 @@ function replyState(path, currentUser) {
     ),
   }
 }
+// The page's own test for a reply that is in the list but not saved yet; only the reply sheet has one.
+function pendingState(path) {
+  const ast = ts.createSourceFile(path, script(path), ts.ScriptTarget.Latest, true)
+  const declaration = ast.statements.filter(ts.isVariableStatement)
+    .flatMap(node => [...node.declarationList.declarations])
+    .find(node => node.name.getText(ast) === 'isPendingComment')
+  if (!declaration) return {}
+  return { isPendingComment: new Function(`${compile(`const value = ${declaration.initializer.getText(ast)}`)}\nreturn value`)() }
+}
 function gate(user, extra = {}) {
   return bind(functionSource('App.vue', 'requiredGatePath'), 'requiredGatePath', {
     ...suspension,
@@ -92,7 +101,7 @@ function replyFixture(path, user, lang) {
   const token = { userId: user?.id, generation: 1 }
   const state = { writes: [], toasts: [] }
   const scope = {
-    ...suspension, ...replyState(path, currentUser),
+    ...suspension, ...replyState(path, currentUser), ...pendingState(path),
     currentUser, lang: Vue.ref(lang), t: translate(lang),
     awaitAuthReady: async () => {}, requireAuth: () => !!user,
     commentText: Vue.ref('A preserved reply'), replyTo: Vue.ref(null),
@@ -207,6 +216,24 @@ for (let level = 0; level <= 5; level++) {
     }
   }
 }
+
+// The reply sheet lists a reply as soon as it is sent, under an id of its own making ('temp-…').
+// Tapping "Reply" on it selects nothing, so what is sent next names no reply by that id.
+test('pages/plaza/index.vue: a reply that is still being sent cannot be answered, and no temporary id is sent', async () => {
+  const h = replyFixture('pages/plaza/index.vue', profile(0), 'en')
+  await h.select({ id: 'temp-1763700000000-ab12', parent_comment_id: null })
+  assert.equal(h.scope.replyTo.value, null)
+  assert.equal(h.scope.inputFocused.value, false)
+  await h.submit()
+  assert.deepEqual(h.writes.map(([, , parentId, replyToId]) => [parentId, replyToId]), [[undefined, undefined]])
+
+  // A saved reply is selected as before, and its own id is what is sent.
+  h.scope.commentText.value = 'An answer'
+  await h.select({ id: 'reply-target', parent_comment_id: 'thread-head' })
+  assert.equal(h.scope.replyTo.value?.id, 'reply-target')
+  await h.submit()
+  assert.deepEqual(h.writes[1].slice(2), ['thread-head', 'reply-target'])
+})
 
 // A reply that failed before the restriction began must not keep offering a
 // retry next to the restriction notice, and tapping it must not send anything.

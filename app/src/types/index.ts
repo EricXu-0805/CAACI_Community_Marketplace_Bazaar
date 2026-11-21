@@ -140,6 +140,14 @@ export interface Post {
   status: 'active' | 'deleted' | 'hidden'
   created_at: string
   updated_at: string
+  /** Time of the latest reply, or of the post itself (P3.1). */
+  last_activity_at?: string
+  /** First reply from somebody other than the author; null while unanswered. */
+  answered_at?: string | null
+  /** Shown in "Start here"; official posts only. */
+  is_featured?: boolean
+  /** Set while replies are closed. */
+  locked_at?: string | null
   profile?: Profile
   liked_by_me?: boolean
   post_items?: Array<{

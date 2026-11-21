@@ -58,7 +58,7 @@ test('language selection updates labels and title and survives a reload', async 
   await expect.poll(() => docLang(page), { timeout: 20_000 }).toBe('zh')
 
   // .mh-lang is the header toggle on Home, wired straight to toggleLang.
-  await expect(page).toHaveTitle('首页 · Illini 集市')
+  await expect(page).toHaveTitle('首页 · 玉米地')
   const toggle = page.locator('.mh-lang').first()
   await expect(toggle).toBeVisible({ timeout: 15_000 })
   await toggle.click()
@@ -67,12 +67,12 @@ test('language selection updates labels and title and survives a reload', async 
     message: 'the declaration did not follow the switch the reader just made',
     timeout: 20_000,
   }).toBe('en')
-  await expect(page).toHaveTitle('Home · Illini Market')
+  await expect(page).toHaveTitle('Home · Cornfield')
   await page.reload()
   await expect.poll(() => docLang(page)).toBe('en')
-  await expect(page).toHaveTitle('Home · Illini Market')
+  await expect(page).toHaveTitle('Home · Cornfield')
   await toggle.click()
-  await expect(page).toHaveTitle('首页 · Illini 集市')
+  await expect(page).toHaveTitle('首页 · 玉米地')
 })
 
 for (const [device, viewport] of [
@@ -89,10 +89,10 @@ for (const [device, viewport] of [
     const language = page.locator('.language-choice')
     await language.getByRole('button', { name: 'Switch to Chinese' }).click()
     await expect.poll(() => docLang(page)).toBe('zh')
-    await expect(page).toHaveTitle('Illini 集市')
+    await expect(page).toHaveTitle('玉米地')
     await page.goto('/#/pages/login/index', { waitUntil: 'domcontentloaded' })
     await language.getByRole('button', { name: '切换到英文' }).click()
-    await expect(page).toHaveTitle('Sign In · Illini Market')
+    await expect(page).toHaveTitle('Sign In · Cornfield')
     await expect(page.locator('.tab-bar')).toContainText('Sign In')
     await page.reload()
     await expect.poll(() => docLang(page)).toBe('en')

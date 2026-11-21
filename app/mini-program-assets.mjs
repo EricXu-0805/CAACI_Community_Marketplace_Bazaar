@@ -4,9 +4,10 @@ import path from 'node:path'
 // Uni copies every shared static asset, even those only used by the web/PWA
 // entry or old banner examples. Keep their web URLs intact, but do not ship
 // them in the WeChat package. Runtime logos, empty states and onboarding
-// illustrations are deliberately not on this list.
+// illustrations are deliberately not on this list. Neither is
+// app-icon-192.png: the share card of a hidden topic points at it
+// (src/utils/communityPost.ts).
 export const MINI_UNUSED_WEB_ASSETS = Object.freeze([
-  'static/app-icon-192.png',
   'static/app-icon-512.png',
   'static/banner-publish.png',
   'static/banner-safety.png',

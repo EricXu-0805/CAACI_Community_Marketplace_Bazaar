@@ -9,6 +9,11 @@ const PACKAGE_LIMIT = 2 * 1024 * 1024
 const SOURCE_BUDGET = Math.floor(1.6 * 1024 * 1024)
 // Keep the startup package below the DevTools performance recommendation.
 const MAIN_SOURCE_BUDGET = 1.5 * 1024 * 1024
+// A share card's imageUrl is a path inside the code package, and WeChat takes a
+// PNG or JPEG there, not an SVG. The card for a hidden topic (SPEC 6.10,
+// app/src/utils/communityPost.ts) uses this file; without it the card has no
+// image of its own.
+export const MINI_SHARE_IMAGES = Object.freeze(['static/app-icon-192.png'])
 
 export async function verifyMiniProgram(root, files) {
   const app = JSON.parse(await readFile(path.join(root, 'app.json'), 'utf8'))
@@ -49,6 +54,9 @@ export async function verifyMiniProgram(root, files) {
     }
   }
   if (pages.includes('pages/admin/index')) throw new Error('build_artifact_invalid: H5 admin route included in mini-program')
+  for (const image of MINI_SHARE_IMAGES) {
+    if (!files.includes(image)) throw new Error(`build_artifact_invalid: mini-program share image ${image} is missing`)
+  }
   const entry = await readFile(path.join(root, 'app.js'), 'utf8')
   if (entry.includes('rescueUnknownHashRoute')) throw new Error('build_artifact_invalid: H5 hash route recovery included in mini-program')
   await verifyMpRuntime(root)

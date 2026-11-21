@@ -35,6 +35,17 @@ const loading = ref(false)
 const hasMore = ref(true)
 const fetchError = ref('')
 const PAGE_SIZE = 20
+/*
+ * P3.4. 最新回复 is ordered by last_activity_at; 新发布 and 待回答 by created_at.
+ * All three page by a keyset, so a topic that is posted or answered between
+ * two pages is neither repeated nor skipped. 热门 ranks by counts and a search
+ * by relevance, which a keyset cannot name, so those two keep their offset.
+ */
+export type PlazaSort = 'active' | 'recent' | 'unanswered' | 'hot'
+const HOT_WINDOW_MS = 14 * 86_400_000
+const UNANSWERED_WINDOW_MS = 30 * 86_400_000
+// Where the next keyset page starts: the last row the previous page returned.
+let feedCursor: { pinned: boolean; at: string; id: string } | null = null
 // In-flight guard for like/unlike toggles (keyed by post or comment id). A
 // rapid double-tap would otherwise double-apply the optimistic count and
 // desync from the DB. Mirrors the useFavorites loading guard.
@@ -139,7 +150,7 @@ const POST_COMMENT_FIELDS = 'id, post_id, user_id, content, content_i18n, parent
 // shipping down the wire even when no UI consumes it. This enumerates
 // all current posts columns; add here when a new read dependency lands.
 const POST_COLUMNS =
-  'id, user_id, title, category, content, images, image_dimensions, content_i18n, source_lang, is_official, is_pinned, like_count, comment_count, status, created_at, updated_at'
+  'id, user_id, title, category, content, images, image_dimensions, content_i18n, source_lang, is_official, is_pinned, like_count, comment_count, status, created_at, updated_at, last_activity_at, answered_at, is_featured, locked_at'
 // post_items is mig 041's join table; replaces the single posts.attached_item_id
 // column. Display order is enforced by the .order(..., { foreignTable: 'post_items' })
 // clause on every SELECT below — Supabase doesn't sort nested relations otherwise.
@@ -241,9 +252,13 @@ export function usePlaza() {
    * (SPEC 6.2) passes the people the reader follows. An empty list is an empty
    * feed, not a query. The search RPC has no such filter, so a search ignores it.
    */
-  async function fetchPosts(options: { page?: number; reset?: boolean; search?: string; category?: PostCategory; sort?: 'recent' | 'hot'; authors?: string[] } = {}) {
+  async function fetchPosts(options: { page?: number; reset?: boolean; search?: string; category?: PostCategory; sort?: PlazaSort; authors?: string[] } = {}) {
     const { page = 0, reset = false, search, category, sort = 'recent', authors } = options
     const requestId = ++latestRequestId
+    const searching = !!(search && search.trim())
+    const keysetColumn = searching || sort === 'hot' ? null : sort === 'active' ? 'last_activity_at' : 'created_at'
+    const cursor = page > 0 ? feedCursor : null
+    if (page === 0) feedCursor = null
     if (reset) {
       posts.value = []
       hasMore.value = true
@@ -260,6 +275,11 @@ export function usePlaza() {
       const visibleAuthors = authors?.filter(id => !moderation.blockedIds.value.has(id))
 
       let data: any, error: any
+      if (keysetColumn && page > 0 && !cursor) {
+        // There is no first page to continue from, so there is nothing after it.
+        hasMore.value = false
+        return true
+      }
       if (search && search.trim()) {
         // Community search includes titles and applies the board before paging.
         // The legacy search_posts_fuzzy RPC remains for older clients. Match content OR
@@ -286,35 +306,55 @@ export function usePlaza() {
         data = []; error = null
       } else {
         // Pinned posts (CAACI 官方 announcements) always lead. Within that,
-        // 热门 ranks by engagement (likes → comments → recency); 最新 is
-        // chronological. PostgREST can't order by an expression, so 热门 is a
-        // likes→comments→recency tie-break ladder — close enough at campus scale.
+        // 热门 ranks by engagement (likes → comments → recency) among the last 14
+        // days' posts; the other sorts are chronological. PostgREST can't order
+        // by an expression, so 热门 is a likes→comments→recency tie-break ladder —
+        // close enough at campus scale.
         let q = supabase
           .from('posts')
           .select(POST_SELECT)
           .eq('status', 'active')
           .eq('region', ACTIVE_REGION)
-          .order('is_pinned', { ascending: false })
         if (category) q = q.eq('category', category)
         if (visibleAuthors) q = q.in('user_id', visibleAuthors)
-        if (sort === 'hot') {
+        if (sort === 'unanswered') {
+          // SPEC 5.5: a topic nobody but its author has replied to, posted within 30 days.
+          q = q.not('title', 'is', null).is('answered_at', null)
+            .gte('created_at', new Date(Date.now() - UNANSWERED_WINDOW_MS).toISOString())
+        }
+        if (sort === 'hot') q = q.gte('created_at', new Date(Date.now() - HOT_WINDOW_MS).toISOString())
+        if (keysetColumn && cursor) {
+          const after = `${keysetColumn}.lt.${cursor.at},and(${keysetColumn}.eq.${cursor.at},id.lt.${cursor.id})`
+          // Pinned rows lead the list. After an unpinned row only unpinned rows remain;
+          // after a pinned one come the pinned rows behind it, then every unpinned row.
+          q = cursor.pinned
+            ? q.or(`and(is_pinned.eq.true,or(${after})),is_pinned.eq.false`)
+            : q.eq('is_pinned', false).or(after)
+        }
+        q = q.order('is_pinned', { ascending: false })
+        if (keysetColumn) {
+          q = q.order(keysetColumn, { ascending: false })
+        } else {
           q = q
             .order('like_count', { ascending: false })
             .order('comment_count', { ascending: false })
             .order('created_at', { ascending: false })
-        } else {
-          q = q.order('created_at', { ascending: false })
         }
         q = q
           .order('id', { ascending: false })
           .order('display_order', { foreignTable: 'post_items', ascending: true })
-          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
-        const res = await q
+        const res = await (keysetColumn ? q.limit(PAGE_SIZE) : q.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1))
         data = res.data; error = res.error
       }
       if (requestId !== latestRequestId) return
 
       if (error) throw error
+
+      if (keysetColumn) {
+        // The cursor is the last row the server returned, before anything is filtered out here.
+        const last = (data || [])[(data || []).length - 1]
+        feedCursor = last ? { pinned: !!last.is_pinned, at: last[keysetColumn], id: last.id } : null
+      }
 
       let result = ((data || []) as unknown as Post[])
         .map(sanitizePostResources)
@@ -847,7 +887,12 @@ export function usePlaza() {
     return result
   }
 
-  async function createComment(postId: string, content: string, parentId?: string): Promise<PostComment> {
+  /*
+   * parentId is the reply a thread hangs under (threads are one level deep). replyToId is the reply
+   * that was actually answered, in that thread or at its head: the server tells its author
+   * (SPEC 6.8) and never returns the column, so it is written here and read nowhere.
+   */
+  async function createComment(postId: string, content: string, parentId?: string, replyToId?: string): Promise<PostComment> {
     if (!currentUser.value) throw new Error('Not authenticated')
     const userId = currentUser.value.id
     const accountToken = captureAccountRequest(userId)
@@ -888,6 +933,7 @@ export function usePlaza() {
             user_id: userId,
             content: trimmed,
             parent_comment_id: parentId || null,
+            reply_to_comment_id: replyToId || null,
           })
           .select(`${POST_COMMENT_FIELDS}, profile:profiles!post_comments_user_id_fkey(${PUBLIC_PROFILE_FIELDS})`)
           .single()

@@ -1,7 +1,7 @@
 {
-  "name": "Illini Market",
-  "short_name": "Illini Market",
-  "description": "UIUC peer-to-peer marketplace & plaza",
+  "name": "玉米地 · 伊利诺伊华人论坛",
+  "short_name": "玉米地",
+  "description": "伊利诺伊华人论坛，现开放香槟地区 / Chinese community in Illinois, now open in Champaign-Urbana",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
