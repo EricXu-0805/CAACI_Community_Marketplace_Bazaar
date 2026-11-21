@@ -2528,3 +2528,15 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: 微信里分享卡在真机上的样子；三种死锁情形没有在本地复现
 - 下一条: P4 第二阶段
 - 附: [OMO自决]（P3 子任务）最终门禁没有在推送后重跑，因为 check-20261121T061456Z 跑的就是推送的 head 和树，head 之后没动；加锁顺序不改，因为把两张后台表提前会在回填和建索引期间挡住后台登录检查，任何顺序都去不掉删话题那一种情形，所以改正注释、在仓库 RUNBOOK 写明可以原样重跑；2c 的「再跑一遍 VERIFY」用的是 VERIFY 第 8 节自己的查询（夹具库的表结构跑不了整份文件）；2i 原来就是对的，红灯来自去掉一行的对照。遗留：一次性 worktree ~/work/evidence/D55/p3/red-e67481c（约 391M，有未提交的改动，不用 --force 删不掉），按规矩不强删，留着，记在这里。
+
+### L190 · 2026-11-21 01:30 CT · D-55 第 1 项：邮件印章「集」改「玉」，门禁通过，推送，草稿 PR #381（base main）
+- task_id: D-55.1
+- code_sha: codex/community-brand-seal-20261121 c1cacb6e8201d04bb60d4b978780ec017b9d879f（从 3778952 起，一个提交），已推送
+- docs_sha: bdbf251（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 子任务 st_01a1fc56：`umask 022; git -C ~/work/illini worktree add -b codex/community-brand-seal-20261121 ~/work/illini-seal 3778952`（755）；先在 scripts/brand-name-boundary.test.mjs 加断言（api/ 与 supabase/email-templates/ 下 >集< 0 次、>玉< 正好 7 次，搜不到 7 处就报「搜索不再匹配印章标记」），跑红（证据 ~/work/evidence/D55/seal/brand-boundary-red.log），再改 6 个文件 7 处印章与 send-illini-code.js:226 的注释，跑绿（brand-boundary-green.log）。门禁：主会话在后台会话里重跑 `umask 022; flock … env SMOKE_SPECS=…（47 个 spec）run-checks.sh ~/work/illini-seal install typecheck h5 mpci migrations test smoke npmaudit`（check-20261121T065555Z，head c1cacb6、树 c24824a、unstaged=no；第一次门禁被中途终止，见 L174）；主会话 `git push --no-verify -u origin codex/community-brand-seal-20261121`（推送前日志即这次门禁），`gh pr create --draft --base main`
+- 计数: 改动 api/auth/send-illini-code.js（印章与 :226 注释）、api/meetup-notify.js、api/notification-digest.js、api/unsubscribe.js（两处）、supabase/email-templates/confirm-signup.html、reset-password.html，外加测试；门禁 install、typecheck、h5、mpci、migrations、test、npmaudit 都 rc=0，TEST 2664/2663/0/1，pg_skips 0；smoke Running 563 tests，558 passed、4 failed、1 skipped（27.1 分钟），4 条失败的标题与 L173 main 上的 4 条完全相同，没有别的失败；主包 1,381,447（与 main 相同）[本地测]
+- ci_run_url: #381 新 head 的 run 待完成（监视中，结果写进下一条）
+- 未测项: 邮件在真实客户端里的样子（重贴两个模板归 supervisor）
+- 下一条: P4 第二阶段
+- 附: 按 D-55 第 5 项判「通过（另有 4 条 main 上同样失败，见 L173）」。别的「集」没动，法律正文归 LEGAL.2。合并、发布、在 Supabase 后台重贴 confirm-signup、reset-password 两个模板由 supervisor 做。[OMO自决] 印章子任务三次在门禁没跑完时交回，第二次门禁、推送、开 PR 都由主会话做（子任务已停，同一分支同一时间只有主会话推送）。
