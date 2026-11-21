@@ -6,7 +6,8 @@
 -- 20261120100354_community_watch_save_activity.sql. Beside each value is the
 -- migration and line that holds the latest definition. A different value
 -- means the hosted function was changed outside this repository, and what the
--- migration renames, wraps, calls or relies on must be reviewed against it.
+-- migration renames, wraps, reissues, calls or relies on must be reviewed
+-- against it.
 \set ON_ERROR_STOP on
 BEGIN;
 SET TRANSACTION READ ONLY;
@@ -17,9 +18,11 @@ DECLARE
   listed text;
   object_name text;
 BEGIN
-  -- 1. The dispatcher the migration renames and wraps, the helpers its new
-  --    code calls (the keyword filter of a topic's title among them, which
-  --    the place and the note of an event now pass: D-54 2k), and two
+  -- 1. The dispatcher the migration renames and wraps, the audit list of the
+  --    moderation role, which it issues again with two more kinds (D-55 3b),
+  --    the helpers its new code calls (the keyword filter of a topic's title
+  --    among them, which the place and the note of an event now pass: D-54
+  --    2k), and two
   --    triggers on topics it relies on: trg_enforce_actor
   --    refuses a restricted account's topic (D-49), and rl_posts_before_insert
   --    lets an official topic through and names a repeated text
@@ -29,7 +32,8 @@ BEGIN
   --    authenticated).
   FOR expected IN
     SELECT * FROM (VALUES
-    ('public.admin_execute_mutation(text,uuid,text,text,jsonb)', '64d6f1d37e03577d534ccc5e1d496499', '20261120100354:1257', true, 'v', 'search_path=pg_catalog', 'service_role'),
+    ('public.admin_execute_mutation(text,uuid,text,text,jsonb)', '64d6f1d37e03577d534ccc5e1d496499', '20261120100354:1280', true, 'v', 'search_path=pg_catalog', 'service_role'),
+    ('public.admin_list_moderation_audit_log(integer,integer,text)', '42d02d7ac06498a48e2172c35d5ff517', '20261120100354:1329', true, 's', 'search_path=pg_catalog', 'service_role'),
     ('public.admin_assert_mutation_capability(uuid,text)', '51c79ee5189f512333e2e8a3e4b47ba0', '20260718190000:74', true, 'v', 'search_path=pg_catalog', 'internal'),
     ('public.record_audit(text,uuid,uuid,jsonb)', '38cb635c4cf81051966bc563ebf6142d', '20260720035037:384', true, 'v', 'search_path=pg_catalog', 'service_role'),
     ('public.admin_moderation_reason_valid(text)', '3f75864d5dfc236033a8cd232238baf2', '20260720035037:22', false, 'i', 'search_path=pg_catalog', 'internal'),

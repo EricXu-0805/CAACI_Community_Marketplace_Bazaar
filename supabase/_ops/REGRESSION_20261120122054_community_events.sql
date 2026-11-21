@@ -105,7 +105,7 @@ BEGIN
     WHERE (n.nspname = 'public' AND p.proname IN (
             'admin_execute_mutation', 'admin_execute_mutation_pre_community_events', 'admin_execute_community_events',
             'create_member_event', 'list_community_events', 'admin_token_authorization', 'admin_token_authorization_v2',
-            'trg_enforce_actor', 'rl_posts_before_insert', 'update_updated_at'))
+            'trg_enforce_actor', 'rl_posts_before_insert', 'update_updated_at', 'admin_list_moderation_audit_log'))
        OR (n.nspname = 'private' AND (p.proname LIKE 'community_events_%' OR p.proname = 'assert_moderated_text'))
        OR (n.nspname = 'moderation_private' AND p.proname = 'assert_posting_allowed')
     ORDER BY 1
@@ -321,6 +321,12 @@ INSERT INTO ev_cases VALUES
 -- restricted state it is the guard's own assertion that refuses the event.
 ($q$B14-topic-then-event-in-one-transaction$q$,true,$q$INSERT INTO public.community_events(source_type,source_key,organizer_user_id,discussion_post_id,starts_at,location,registration_mode) VALUES('member',pg_temp.id(81)::text,auth.uid(),pg_temp.id(81),now()+interval '1 day','EV field sixteen','discussion')$q$,$q$SELECT count(*)=1 FROM public.community_events WHERE source_key=pg_temp.id(81)::text AND organizer_user_id=pg_temp.id(1) AND availability='visible'$q$,$q$SELECT pg_temp.as_member(1,'INSERT INTO public.posts(id,user_id,content,title,category) VALUES(pg_temp.id(81),auth.uid(),''EV regression body sixteen: written directly.'',''EV regression topic sixteen'',''events-social'') RETURNING id')$q$,'authenticated',1,1,NULL),
 ($q$B15-a-long-title-around-the-function$q$,true,$q$INSERT INTO public.community_events(source_type,source_key,organizer_user_id,discussion_post_id,starts_at,location,registration_mode) VALUES('member',pg_temp.id(82)::text,auth.uid(),pg_temp.id(82),now()+interval '1 day','EV field seventeen','discussion')$q$,NULL,$q$SELECT pg_temp.as_member(1,'INSERT INTO public.posts(id,user_id,content,title,category) VALUES(pg_temp.id(82),auth.uid(),''EV regression body seventeen: a long title.'',repeat(''x'',61),''events-social'') RETURNING id')$q$,'authenticated',1,1,'22023:member_event_title_too_long'),
+-- D-55 3c: the same way round the function with no place to meet at. The
+-- table refuses a blank place and a missing one by name, so what the guard
+-- promises holds for the place as well. In a restricted state the guard's own
+-- assertion still answers first.
+($q$B16-a-blank-place-around-the-function$q$,true,$q$INSERT INTO public.community_events(source_type,source_key,organizer_user_id,discussion_post_id,starts_at,location,registration_mode) VALUES('member',pg_temp.id(83)::text,auth.uid(),pg_temp.id(83),now()+interval '1 day','   ','discussion')$q$,NULL,$q$SELECT pg_temp.as_member(1,'INSERT INTO public.posts(id,user_id,content,title,category) VALUES(pg_temp.id(83),auth.uid(),''EV regression body eighteen: a blank place.'',''EV regression topic eighteen'',''events-social'') RETURNING id')$q$,'authenticated',1,1,'23514:new row for relation "community_events" violates check constraint "community_events_member_shape"'),
+($q$B17-no-place-around-the-function$q$,true,$q$INSERT INTO public.community_events(source_type,source_key,organizer_user_id,discussion_post_id,starts_at,location,registration_mode) VALUES('member',pg_temp.id(84)::text,auth.uid(),pg_temp.id(84),now()+interval '1 day',NULL,'discussion')$q$,NULL,$q$SELECT pg_temp.as_member(1,'INSERT INTO public.posts(id,user_id,content,title,category) VALUES(pg_temp.id(84),auth.uid(),''EV regression body nineteen: no place.'',''EV regression topic nineteen'',''events-social'') RETURNING id')$q$,'authenticated',1,1,'23514:new row for relation "community_events" violates check constraint "community_events_member_shape"'),
 -- Refused for everyone, whatever the state.
 ($q$R01-around-the-function$q$,false,$q$INSERT INTO public.community_events(source_type,source_key,organizer_user_id,discussion_post_id,starts_at,location,registration_mode) VALUES('member',pg_temp.id(61)::text,auth.uid(),pg_temp.id(61),now()+interval '1 day','EV','discussion')$q$,NULL,$q$$q$,'authenticated',1,NULL,'42501:member_event_rpc_required'),
 ($q$R02-an-organization-row$q$,false,$q$INSERT INTO public.community_events(source_type,source_key,starts_at,registration_mode) VALUES('caaci',pg_temp.id(9009)::text,now(),'info_only')$q$,NULL,$q$$q$,'authenticated',1,NULL,'42501'),
@@ -869,6 +875,18 @@ BEGIN
     (SELECT string_agg(event_kind || ':' || right(target_id::text, 2) || ':' || coalesce(details ->> 'created', details ->> 'changed'), ',' ORDER BY id)
        FROM public.admin_audit_log WHERE id > seeded_audit AND actor_id = pg_temp.id(4)),
     'event_discussion_created:51:true,event_discussion_created:51:false,event_hidden:52:true,event_hidden:52:false,event_unhidden:52:true,event_unhidden:52:false,event_hidden:55:true,event_unhidden:55:true');
+  -- The moderation role's own list, read as the console reads it for an
+  -- operator. It carries each takedown and each undoing, and not the owner's
+  -- opening of a discussion, which stays in the owner's list (D-55 3b).
+  SET LOCAL ROLE service_role;
+  PERFORM pg_temp.expect('the moderation list',
+    (SELECT string_agg(listed.event_kind || ':' || right(listed.target_id::text, 2), ',' ORDER BY listed.id)
+       FROM public.admin_list_moderation_audit_log(500, 0, NULL) AS listed
+      WHERE listed.id > seeded_audit AND listed.actor_id = pg_temp.id(4)),
+    'event_hidden:52,event_hidden:52,event_unhidden:52,event_unhidden:52,event_hidden:55,event_unhidden:55');
+  PERFORM pg_temp.expect('the moderation list, asked for the owner''s kind',
+    (SELECT count(*)::text FROM public.admin_list_moderation_audit_log(500, 0, 'event_discussion_created')), '0');
+  RESET ROLE;
   -- An earlier action still goes where it went, through the new router.
   PERFORM pg_temp.expect('an earlier action',
     pg_temp.mutate(operator, 916, 'set_post_locked', jsonb_build_object('post_id', topic, 'locked', true, 'reason', 'EV scenario lock')), '{"success": true}');
@@ -928,6 +946,29 @@ BEGIN
       PERFORM pg_temp.expect(bad, violated, 'community_events_time_order_check');
     END;
   END LOOP;
+  -- D-55 3d: an all-day event is on from the start of its first day to the
+  -- start of the day after its last, so it has an end, later than its start.
+  -- No end and an end at the start are refused by name; one day in Champaign
+  -- is written, and cannot lose its end afterwards.
+  FOREACH bad IN ARRAY ARRAY['NULL', $q$timestamptz '2026-11-23 00:00 America/Chicago'$q$] LOOP
+    BEGIN
+      EXECUTE format($q$INSERT INTO public.community_events(source_type,source_key,organizer_name,title_en,starts_at,ends_at,all_day,page_url,registration_mode)
+        VALUES ('campus','7/990007','University Library','EV all day',timestamptz '2026-11-23 00:00 America/Chicago',%s,true,'https://calendars.illinois.edu/detail/7/990007','calendar_page')$q$, bad);
+      RAISE EXCEPTION 'EV scenario: an all-day event was written with the end %', bad;
+    EXCEPTION WHEN check_violation THEN
+      GET STACKED DIAGNOSTICS violated = CONSTRAINT_NAME;
+      PERFORM pg_temp.expect('an all-day event ending ' || bad, violated, 'community_events_all_day_end_check');
+    END;
+  END LOOP;
+  INSERT INTO public.community_events(source_type,source_key,organizer_name,title_en,starts_at,ends_at,all_day,page_url,registration_mode)
+  VALUES ('campus','7/990007','University Library','EV all day',timestamptz '2026-11-23 00:00 America/Chicago',timestamptz '2026-11-24 00:00 America/Chicago',true,'https://calendars.illinois.edu/detail/7/990007','calendar_page');
+  BEGIN
+    UPDATE public.community_events SET ends_at = NULL WHERE source_key = '7/990007';
+    RAISE EXCEPTION 'EV scenario: an all-day event lost its end';
+  EXCEPTION WHEN check_violation THEN
+    GET STACKED DIAGNOSTICS violated = CONSTRAINT_NAME;
+    PERFORM pg_temp.expect('an all-day event keeps its end', violated, 'community_events_all_day_end_check');
+  END;
   -- Only a member's event has to end within 30 days of its start. That rule
   -- holds for whoever writes a member's row.
   UPDATE public.community_events SET ends_at = starts_at + interval '90 days' WHERE id = pg_temp.id(53);

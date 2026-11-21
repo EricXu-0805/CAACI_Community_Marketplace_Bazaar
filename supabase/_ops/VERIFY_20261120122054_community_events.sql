@@ -11,8 +11,10 @@ DECLARE
   routine record;
   listed text;
 BEGIN
-  -- 1. The nine bodies this migration issues, the previous dispatcher under
-  --    its new name, the helpers and topic triggers left as they were, and
+  -- 1. The ten bodies this migration issues (the audit list of the moderation
+  --    role among them, with two more kinds: D-55 3b), the previous
+  --    dispatcher under its new name, the helpers and topic triggers left as
+  --    they were, and
   --    the functions that report the administrator vocabulary to the deployed
   --    API, which must not have changed: stored body, owner, security,
   --    settings, volatility, and exactly the API roles that may execute them
@@ -42,8 +44,8 @@ BEGIN
     ('public.rl_posts_before_insert()', '9a9c58f8ae22fc7785f85cead870e834', 'unchanged', true, 'v', 'search_path=public', 'internal'),
     ('public.admin_token_authorization(text)', 'fc2446534ec9ec9b89aa901f9fd81ea6', 'unchanged', true, 'v', 'search_path=pg_catalog', 'service_role'),
     ('public.admin_token_authorization_v2(text)', '37d5ed1fbb3fc8a098ba942442479110', 'unchanged', true, 'v', 'search_path=pg_catalog', 'service_role'),
-    ('public.admin_list_moderation_audit_log(integer,integer,text)', '42d02d7ac06498a48e2172c35d5ff517', 'unchanged', true, 's', 'search_path=pg_catalog', 'service_role'),
-    ('public.admin_execute_community_governance(text,uuid,text,text,jsonb)', 'e6ddf89b765c544d9434a843478ccf42', 'unchanged', true, 'v', 'search_path=pg_catalog', ''),
+    ('public.admin_list_moderation_audit_log(integer,integer,text)', '720fe81c9d72c7729ce2d184a8a8fd36', 'this migration', true, 's', 'search_path=pg_catalog', 'service_role'),
+    ('public.admin_execute_community_governance(text,uuid,text,text,jsonb)', 'fedabd431c829a5b2303e4a46961a855', 'unchanged', true, 'v', 'search_path=pg_catalog', ''),
     ('public.admin_execute_mutation_pre_community_governance(text,uuid,text,text,jsonb)', 'a30b6224c23ab4ebdef61b54eb37af5a', 'unchanged', true, 'v', 'search_path=pg_catalog', '')
     ) AS known(signature, body_md5, note, definer, volatility, settings, api_roles)
   LOOP
@@ -140,6 +142,7 @@ BEGIN
     ('public.community_event_partners', 'community_event_partners_slug_check', 'c', $d$CHECK ((slug ~ '^[a-z0-9-]{2,32}$'::text))$d$),
     ('public.community_event_partners', 'community_event_partners_slug_key', 'u', $d$UNIQUE (slug)$d$),
     ('public.community_event_partners', 'community_event_partners_status_check', 'c', $d$CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'revoked'::text])))$d$),
+    ('public.community_events', 'community_events_all_day_end_check', 'c', $d$CHECK (((NOT all_day) OR ((ends_at IS NOT NULL) AND (ends_at > starts_at))))$d$),
     ('public.community_events', 'community_events_availability_check', 'c', $d$CHECK ((availability = ANY (ARRAY['visible'::text, 'unavailable'::text, 'hidden'::text])))$d$),
     ('public.community_events', 'community_events_caaci_shape', 'c', $d$CHECK (((source_type <> 'caaci'::text) OR ((source_key ~ '^[0-9a-f-]{36}$'::text) AND (page_url ~ '^https://caaciorg[.]com/events/#[A-Za-z0-9-]+$'::text) AND ((register_url IS NULL) OR (register_url ~ '^https://caaciorg[.]com/events/[a-z0-9-]+/register/$'::text)) AND (registration_mode = ANY (ARRAY['caaci_site'::text, 'info_only'::text])) AND (partner_id IS NULL) AND (organizer_user_id IS NULL))))$d$),
     ('public.community_events', 'community_events_campus_shape', 'c', $d$CHECK (((source_type <> 'campus'::text) OR ((source_key ~ '^[0-9]{1,6}/[0-9]{1,12}$'::text) AND (page_url = ('https://calendars.illinois.edu/detail/'::text || source_key)) AND (register_url IS NULL) AND (registration_mode = 'calendar_page'::text) AND (organizer_name IS NOT NULL) AND (COALESCE(title_en, ''::text) <> ''::text) AND (partner_id IS NULL) AND (organizer_user_id IS NULL))))$d$),
@@ -153,7 +156,7 @@ BEGIN
     ('public.community_events', 'community_events_hidden_pair_check', 'c', $d$CHECK (((availability = 'hidden'::text) = (hidden_reason IS NOT NULL)))$d$),
     ('public.community_events', 'community_events_hidden_reason_check', 'c', $d$CHECK ((hidden_reason = ANY (ARRAY['admin'::text, 'post_removed'::text])))$d$),
     ('public.community_events', 'community_events_location_check', 'c', $d$CHECK ((char_length(location) <= 160))$d$),
-    ('public.community_events', 'community_events_member_shape', 'c', $d$CHECK (((source_type <> 'member'::text) OR ((organizer_user_id IS NOT NULL) AND (source_key ~ '^[0-9a-f-]{36}$'::text) AND (page_url IS NULL) AND (register_url IS NULL) AND (registration_mode = 'discussion'::text) AND (title IS NULL) AND (title_en IS NULL) AND (occurrence_count = 1) AND ((char_length(location) >= 1) AND (char_length(location) <= 80)))))$d$),
+    ('public.community_events', 'community_events_member_shape', 'c', $d$CHECK (((source_type <> 'member'::text) OR ((organizer_user_id IS NOT NULL) AND (source_key ~ '^[0-9a-f-]{36}$'::text) AND (page_url IS NULL) AND (register_url IS NULL) AND (registration_mode = 'discussion'::text) AND (title IS NULL) AND (title_en IS NULL) AND (occurrence_count = 1) AND (location IS NOT NULL) AND (location = btrim(location)) AND ((char_length(location) >= 1) AND (char_length(location) <= 80)))))$d$),
     ('public.community_events', 'community_events_occurrence_count_check', 'c', $d$CHECK (((occurrence_count >= 1) AND (occurrence_count <= 400)))$d$),
     ('public.community_events', 'community_events_organizer_name_check', 'c', $d$CHECK (((char_length(organizer_name) >= 2) AND (char_length(organizer_name) <= 80)))$d$),
     ('public.community_events', 'community_events_organizer_user_id_fkey', 'f', $d$FOREIGN KEY (organizer_user_id) REFERENCES profiles(id) ON DELETE CASCADE$d$),
@@ -193,7 +196,7 @@ BEGIN
   FOR expected IN
     SELECT * FROM (VALUES
     ('public.community_event_partners', 10, 1),
-    ('public.community_events', 36, 4),
+    ('public.community_events', 37, 4),
     ('public.community_event_sync_state', 4, 1)
     ) AS known(relation, constraints, policies)
   LOOP

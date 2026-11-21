@@ -52,15 +52,22 @@
 -- Times (D-54 2m): starts_at and ends_at are instants, never 'infinity', and
 -- an event does not end before it starts (table constraint). A member's
 -- event also ends within 30 days of its start; that limit is on the member
--- path only (create_member_event and the member guard).
+-- path only (create_member_event and the member guard). An all-day event
+-- always has an end, later than its start (D-55 3d).
+--
+-- The audit list of the moderation role (D-55 3b):
+-- admin_list_moderation_audit_log is issued again with the two kinds that
+-- role produces here, event_hidden and event_unhidden, so an operator can
+-- read back a takedown. event_discussion_created is the owner's and stays in
+-- the owner's list, as 20261120100354 keeps every owner decision.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
 
--- Wrap only what the local full replay measured (PRECHECK repeats this for
--- the hosted database). A different body or vocabulary means the object was
--- changed outside this repository and the edits below must be reviewed
--- against it.
+-- Wrap and reissue only what the local full replay measured (PRECHECK repeats
+-- this for the hosted database). A different body or vocabulary means the
+-- object was changed outside this repository and the edits below must be
+-- reviewed against it.
 DO $guard$
 DECLARE
   expected record;
@@ -69,6 +76,7 @@ BEGIN
   FOR expected IN
     SELECT * FROM (VALUES
     ('public.admin_execute_mutation(text,uuid,text,text,jsonb)', '64d6f1d37e03577d534ccc5e1d496499'),
+    ('public.admin_list_moderation_audit_log(integer,integer,text)', '42d02d7ac06498a48e2172c35d5ff517'),
     ('public.admin_assert_mutation_capability(uuid,text)', '51c79ee5189f512333e2e8a3e4b47ba0'),
     ('public.record_audit(text,uuid,uuid,jsonb)', '38cb635c4cf81051966bc563ebf6142d'),
     ('public.admin_moderation_reason_valid(text)', '3f75864d5dfc236033a8cd232238baf2'),
@@ -186,6 +194,11 @@ CREATE TABLE public.community_events (
   -- Both ends of an event are instants: 'infinity' is not a time a page can show.
   CONSTRAINT community_events_time_order_check CHECK (
     isfinite(starts_at) AND (ends_at IS NULL OR (isfinite(ends_at) AND ends_at >= starts_at))),
+  -- An all-day event is on from the start of its first day to the start of the
+  -- day after its last (ENGINEERING 9.3), so it has an end, later than its
+  -- start. IS NOT NULL is spelled out: a CHECK holds for an unknown end.
+  CONSTRAINT community_events_all_day_end_check CHECK (
+    NOT all_day OR (ends_at IS NOT NULL AND ends_at > starts_at)),
   CONSTRAINT community_events_duplicate_check CHECK (duplicate_of IS NULL OR duplicate_of <> id),
   CONSTRAINT community_events_hidden_pair_check CHECK ((availability = 'hidden') = (hidden_reason IS NOT NULL)),
   -- A row is withdrawn only on its source's own evidence: two checks in a row
@@ -217,7 +230,11 @@ CREATE TABLE public.community_events (
     organizer_user_id IS NOT NULL AND source_key ~ '^[0-9a-f-]{36}$'
     AND page_url IS NULL AND register_url IS NULL
     AND registration_mode = 'discussion' AND title IS NULL AND title_en IS NULL
-    AND occurrence_count = 1 AND char_length(location) BETWEEN 1 AND 80))
+    AND occurrence_count = 1
+    -- A place, with no space at either end, as create_member_event stores it.
+    -- IS NOT NULL is spelled out: a CHECK holds for an unknown place.
+    AND location IS NOT NULL AND location = pg_catalog.btrim(location)
+    AND char_length(location) BETWEEN 1 AND 80))
 );
 
 CREATE INDEX community_events_list_idx ON public.community_events (region, starts_at, id)
@@ -1324,6 +1341,149 @@ REVOKE ALL ON FUNCTION public.admin_execute_mutation(
 GRANT EXECUTE ON FUNCTION public.admin_execute_mutation(
   text, uuid, text, text, jsonb
 ) TO service_role;
+
+-- ---------------------------------------------------------------------------
+-- The audit list of the moderation role
+-- ---------------------------------------------------------------------------
+-- The list gains the two events that role produces here: taking an event
+-- down, and undoing that. Opening a discussion is the owner's action and
+-- stays in the owner's list only, by the rule 20261120100354 states for this
+-- function. Only the list of kinds differs from that migration's text: the
+-- columns, the security, the settings and the grants are as it left them.
+-- The guard at the top and PRECHECK pin the body this replaces.
+CREATE OR REPLACE FUNCTION public.admin_list_moderation_audit_log(
+  limit_in integer DEFAULT 100,
+  offset_in integer DEFAULT 0,
+  kind_filter text DEFAULT NULL
+)
+RETURNS TABLE (
+  id bigint,
+  event_kind text,
+  actor_id uuid,
+  actor_nickname text,
+  target_id uuid,
+  target_nickname text,
+  details jsonb,
+  created_at timestamptz
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $function$
+  SELECT
+    audit.id,
+    audit.event_kind,
+    audit.actor_id,
+    actor.nickname,
+    audit.target_id,
+    target.nickname,
+    CASE audit.event_kind
+      WHEN 'ban_applied' THEN pg_catalog.jsonb_strip_nulls(
+        pg_catalog.jsonb_build_object(
+          'suspension_id', audit.details -> 'suspension_id',
+          'level', audit.details -> 'level',
+          'reason', audit.details -> 'reason',
+          'category', audit.details -> 'category',
+          'ends_at', audit.details -> 'ends_at',
+          'linked_fingerprint_candidates',
+            audit.details -> 'linked_fingerprint_candidates',
+          'linked_accounts_action', audit.details -> 'linked_accounts_action'
+        )
+      )
+      WHEN 'suspension_lifted' THEN pg_catalog.jsonb_strip_nulls(
+        pg_catalog.jsonb_build_object(
+          'suspension_id', audit.details -> 'suspension_id',
+          'reason', audit.details -> 'reason'
+        )
+      )
+      WHEN 'report_status_changed' THEN pg_catalog.jsonb_strip_nulls(
+        pg_catalog.jsonb_build_object(
+          'from', audit.details -> 'from',
+          'to', audit.details -> 'to',
+          'bulk', audit.details -> 'bulk',
+          'target_type', audit.details -> 'target_type',
+          'affected', audit.details -> 'affected'
+        )
+      )
+      WHEN 'content_takedown' THEN pg_catalog.jsonb_strip_nulls(
+        pg_catalog.jsonb_build_object(
+          'target_type', audit.details -> 'target_type',
+          'reason', audit.details -> 'reason',
+          'affected', audit.details -> 'affected'
+        )
+      )
+      WHEN 'actor_blocked' THEN pg_catalog.jsonb_strip_nulls(
+        pg_catalog.jsonb_build_object(
+          'table', audit.details -> 'table',
+          'level', audit.details -> 'level',
+          'ends_at', audit.details -> 'ends_at'
+        )
+      )
+      WHEN 'content_restored' THEN pg_catalog.jsonb_strip_nulls(
+        pg_catalog.jsonb_build_object(
+          'target_type', audit.details -> 'target_type',
+          'reason', audit.details -> 'reason',
+          'affected', audit.details -> 'affected'
+        )
+      )
+      WHEN 'post_lock_changed' THEN pg_catalog.jsonb_strip_nulls(
+        pg_catalog.jsonb_build_object(
+          'post_id', audit.details -> 'post_id',
+          'locked', audit.details -> 'locked',
+          'reason', audit.details -> 'reason'
+        )
+      )
+      WHEN 'post_category_changed' THEN pg_catalog.jsonb_strip_nulls(
+        pg_catalog.jsonb_build_object(
+          'post_id', audit.details -> 'post_id',
+          'from', audit.details -> 'from',
+          'to', audit.details -> 'to',
+          'reason', audit.details -> 'reason'
+        )
+      )
+      ELSE pg_catalog.jsonb_strip_nulls(
+        pg_catalog.jsonb_build_object(
+          'decision', audit.details -> 'decision',
+          'terminal', audit.details -> 'terminal',
+          'reason', audit.details -> 'reason',
+          'effective_at', audit.details -> 'effective_at',
+          'suspension_active', audit.details -> 'suspension_active',
+          'lifted_now', audit.details -> 'lifted_now',
+          'remains_active', audit.details -> 'remains_active'
+        )
+      )
+    END,
+    audit.created_at
+  FROM public.admin_audit_log AS audit
+  LEFT JOIN public.profiles AS actor
+    ON actor.id = audit.actor_id
+  LEFT JOIN public.suspensions AS appeal_suspension
+    ON audit.event_kind IN (
+      'appeal_decided', 'appeal_more_information_requested'
+    )
+   AND appeal_suspension.id = audit.target_id
+  LEFT JOIN public.profiles AS target
+    ON target.id = COALESCE(appeal_suspension.profile_id, audit.target_id)
+  WHERE audit.event_kind IN (
+      'ban_applied',
+      'suspension_lifted',
+      'report_status_changed',
+      'content_takedown',
+      'actor_blocked',
+      'appeal_decided',
+      'appeal_more_information_requested',
+      'content_restored',
+      'post_lock_changed',
+      'post_category_changed',
+      'event_hidden',
+      'event_unhidden'
+    )
+    AND (kind_filter IS NULL OR audit.event_kind = kind_filter)
+  ORDER BY audit.created_at DESC, audit.id DESC
+  LIMIT GREATEST(1, LEAST(limit_in, 500))
+  OFFSET GREATEST(0, offset_in);
+$function$;
 
 COMMENT ON TABLE public.community_events IS
   'Events from four sources (caaci, partner, campus, member). Readers see visible rows that ended no more than 180 days ago, through an allowlist of columns. A member row is written only by create_member_event, which no role may execute until a later migration opens the member write channel; the other sources get their writers in a later migration too.';

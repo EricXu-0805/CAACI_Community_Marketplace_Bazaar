@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { ADMIN, PRE_P3_CAPABILITIES } from './fixtures/community-p3-database.mjs'
+import { ADMIN, PRE_P3_CAPABILITIES, readMigration } from './fixtures/community-p3-database.mjs'
 import {
-  BLOCKED_WORD, CREATED, DISPATCHER, EVENT_CAACI, EVENT_CAMPUS, EVENT_PARTNER, EVENT_REVOKED, EVENT_UNAVAILABLE, MEMBER_A, MEMBER_B, OFFICIAL,
-  OPEN_CHANNEL, PARTNER, PREDECESSOR, RESTRICTED, SKIP, STATES, TOKENS, UNVERIFIED, id, pinned, readOps, setState, startEventsDatabase,
+  AUDIT_LIST, BLOCKED_WORD, CREATED, DISPATCHER, EVENT_CAACI, EVENT_CAMPUS, EVENT_PARTNER, EVENT_REVOKED, EVENT_UNAVAILABLE, MEMBER_A, MEMBER_B,
+  MIGRATION, OFFICIAL, OPEN_CHANNEL, PARTNER, PREDECESSOR, RESTRICTED, SKIP, STATES, TOKENS, UNVERIFIED, id, pinned, readOps, setState, startEventsDatabase,
 } from './fixtures/community-events-database.mjs'
 
 /*
@@ -15,7 +15,9 @@ import {
  *
  * The migration leaves the member write channel closed (D-54 2l). The cases
  * that write as a member open it for their own transaction: the fixture makes
- * the three grants of P4.6 there and they never outlive it.
+ * the three grants of P4.6 there and they never outlive it. One case cannot
+ * work that way: two connections writing at once need the grants committed
+ * for the length of that call (the fixture says how, and takes them back).
  */
 const EVENTS = 'public.admin_execute_community_events(text,uuid,text,text,jsonb)'
 const CREATE = 'public.create_member_event(uuid,text,text,jsonb)'
@@ -46,17 +48,24 @@ test('P4.2 community events', { skip: SKIP }, async t => {
 
     await t.test('the ops files pin what the migration reads and what it stores', () => {
       const precheck = pinned(readOps('PRECHECK_20261120122054_community_events.sql'))
-      assert.equal(db.readBefore.size, 9)
+      assert.equal(db.readBefore.size, 10)
       for (const [signature, md5] of db.readBefore) assert.equal(precheck.get(signature), md5, `PRECHECK does not pin the stored ${signature}`)
+      // The migration's own guard holds the same values for what it wraps, calls or reissues.
+      const guard = pinned(readMigration(MIGRATION))
+      assert.equal(guard.size, 9)
+      for (const [signature, md5] of guard) assert.equal(db.readBefore.get(signature), md5, `the migration guards a different ${signature}`)
+      assert.ok(guard.has(AUDIT_LIST), 'the migration does not guard the audit list it reissues')
       const verify = pinned(readOps('VERIFY_20261120122054_community_events.sql'))
-      const after = db.bodyMd5([DISPATCHER, PREDECESSOR, ...CREATED])
-      assert.equal(after.size, CREATED.length + 2)
+      const after = db.bodyMd5([DISPATCHER, PREDECESSOR, AUDIT_LIST, ...CREATED])
+      assert.equal(after.size, CREATED.length + 3)
       for (const [signature, md5] of after) assert.equal(verify.get(signature), md5, `VERIFY does not pin the stored ${signature}`)
-      // The previous dispatcher is kept whole under its new name, and nothing the migration only reads has changed.
+      // The previous dispatcher is kept whole under its new name, the moderation role's audit list is reissued
+      // (D-55 3b), and nothing the migration only reads has changed.
       assert.equal(after.get(PREDECESSOR), db.readBefore.get(DISPATCHER))
-      assert.notEqual(after.get(DISPATCHER), db.readBefore.get(DISPATCHER))
-      const untouched = [...db.readBefore.keys()].filter(signature => signature !== DISPATCHER)
-      assert.deepEqual(db.bodyMd5(untouched), new Map([...db.readBefore].filter(([signature]) => signature !== DISPATCHER)))
+      const reissued = [DISPATCHER, AUDIT_LIST]
+      for (const signature of reissued) assert.notEqual(after.get(signature), db.readBefore.get(signature), signature)
+      const untouched = [...db.readBefore.keys()].filter(signature => !reissued.includes(signature))
+      assert.deepEqual(db.bodyMd5(untouched), new Map([...db.readBefore].filter(([signature]) => !reissued.includes(signature))))
     })
 
     await t.test('the member write channel is closed: without the grants every member write is refused with 42501 (D-54 2l)', () => {
@@ -101,6 +110,17 @@ test('P4.2 community events', { skip: SKIP }, async t => {
         assert.match(owner(`UPDATE public.community_events SET ${times} WHERE id = '${EVENT_CAMPUS}'`), /community_events_time_order_check/, times)
       }
       assert.equal(attempt(`UPDATE public.community_events SET ends_at = starts_at + interval '90 days' WHERE id = '${EVENT_CAMPUS}'`, { role: 'postgres' }), 'ok:1')
+      // An all-day event is on from the start of its first day to the start of the day after its last, so it has an
+      // end, after its start (D-55 3d). No end, and an end at the start, are refused by name; one day in Champaign is not.
+      const allDay = (key, ends) => `INSERT INTO public.community_events (source_type, source_key, organizer_name, title_en, starts_at, ends_at, all_day, page_url, registration_mode)
+        VALUES ('campus', '7/${key}', 'University Library', 'All day ${key}', '2026-11-23 00:00 America/Chicago', ${ends}, true,
+          'https://calendars.illinois.edu/detail/7/${key}', 'calendar_page')`
+      const noEnd = '23514:new row for relation "community_events" violates check constraint "community_events_all_day_end_check"'
+      assert.equal(attempt(allDay(124001, 'NULL'), { role: 'postgres' }), noEnd)
+      assert.equal(attempt(allDay(124002, `'2026-11-23 00:00 America/Chicago'`), { role: 'postgres' }), noEnd)
+      assert.equal(attempt(allDay(124003, `'2026-11-24 00:00 America/Chicago'`), { role: 'postgres' }), 'ok:1')
+      // A row that has no end cannot become an all-day one either.
+      assert.equal(attempt(`UPDATE public.community_events SET all_day = true WHERE id = '${EVENT_CAMPUS}'`, { role: 'postgres' }), noEnd)
       // A row is withdrawn only on its source's evidence: two checks in a row that did not find it.
       assert.match(owner(`UPDATE public.community_events SET availability = 'unavailable' WHERE id = '${EVENT_CAMPUS}'`), /community_events_unavailable_check/)
       // The place and the note pass the keyword filter whatever the source, on insert and when they change.
@@ -205,6 +225,16 @@ test('P4.2 community events', { skip: SKIP }, async t => {
           VALUES ('member', '${post(2)}', '${MEMBER_A}', '${post(2)}', now() + interval '1 day', 'ARC', 'discussion')`, member())
       assert.equal(around('x'.repeat(61)), '22023:member_event_title_too_long')
       assert.equal(around('x'.repeat(60)), 'ok:1')
+      // The same way round the function with no place to meet at: none, a blank one, or one with a space at either
+      // end. The table refuses each by name, so what the guard promises holds for the place as well (D-55 3c).
+      const aroundPlace = place => attempt(`INSERT INTO public.posts (id, user_id, content, title, category)
+          VALUES ('${post(2)}', '${MEMBER_A}', 'Written directly, in one transaction.', 'Somewhere or nowhere', 'events-social');
+        INSERT INTO public.community_events (source_type, source_key, organizer_user_id, discussion_post_id, starts_at, location, registration_mode)
+          VALUES ('member', '${post(2)}', '${MEMBER_A}', '${post(2)}', now() + interval '1 day', ${place}, 'discussion')`, member())
+      assert.equal(aroundPlace(`'ARC'`), 'ok:1')
+      for (const place of ['NULL', `'   '`, `' ARC'`, `'ARC '`]) {
+        assert.equal(aroundPlace(place), '23514:new row for relation "community_events" violates check constraint "community_events_member_shape"', place)
+      }
       // A refused call leaves no topic behind, also when it is not rolled back by the caller.
       assert.throws(() => as(createEvent(UNVERIFIED, post(2)), 'authenticated', UNVERIFIED), /member_event_not_eligible/)
       assert.equal(sql(`SELECT count(*) FROM public.posts WHERE id = '${post(2)}'`), '0')
@@ -497,6 +527,26 @@ test('P4.2 community events', { skip: SKIP }, async t => {
       for (const closed of [EVENT_UNAVAILABLE, EVENT_REVOKED, id(61), id(67)]) {
         assert.equal(mutate('owner', 'create_event_discussion', payload(closed)), 'refused:event_discussion_closed', closed)
       }
+    })
+
+    await t.test('an operator reads back the takedowns of events in the moderation audit list, and not the opening of a discussion (D-55 3b)', () => {
+      // Asked the way the console asks for an operator: as the service role.
+      const listed = filter => JSON.parse(sql(`BEGIN; SET LOCAL ROLE service_role;
+        SELECT coalesce(json_agg(json_build_object('kind', event_kind, 'target', target_id, 'reason', details ->> 'reason') ORDER BY id), '[]')
+        FROM public.admin_list_moderation_audit_log(500, 0, ${filter}); COMMIT;`))
+      const onRecord = kind => Number(sql(`SELECT count(*) FROM public.admin_audit_log WHERE event_kind = '${kind}'`))
+      // Control: by now each of the three kinds is on record.
+      for (const kind of ['event_hidden', 'event_unhidden', 'event_discussion_created']) assert.ok(onRecord(kind) >= 1, kind)
+      const all = listed('NULL')
+      for (const kind of ['event_hidden', 'event_unhidden']) {
+        assert.equal(all.filter(row => row.kind === kind).length, onRecord(kind), kind)
+        assert.equal(listed(`'${kind}'`).length, onRecord(kind), `${kind}, asked for by name`)
+      }
+      // Opening a discussion is the owner's action; it is in the owner's list only.
+      assert.equal(all.filter(row => row.kind === 'event_discussion_created').length, 0)
+      assert.deepEqual(listed(`'event_discussion_created'`), [])
+      // A row names the event and the reason that was given.
+      assert.deepEqual(listed(`'event_hidden'`).find(row => row.target === EVENT_CAMPUS), { kind: 'event_hidden', target: EVENT_CAMPUS, reason: REASON })
     })
 
     await t.test('two administrators opening the discussion at once get one topic', async () => {

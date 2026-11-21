@@ -32,6 +32,8 @@ export const EVENT_UNAVAILABLE = id(55)
 
 export const DISPATCHER = 'public.admin_execute_mutation(text,uuid,text,text,jsonb)'
 export const PREDECESSOR = 'public.admin_execute_mutation_pre_community_events(text,uuid,text,text,jsonb)'
+// The moderation role's audit list, which the migration reissues with the two kinds that role produces here (D-55 3b).
+export const AUDIT_LIST = 'public.admin_list_moderation_audit_log(integer,integer,text)'
 // What the migration wraps or calls and leaves as it is.
 export const READ = [
   DISPATCHER,
@@ -60,7 +62,10 @@ export const BLOCKED_WORD = 'fixtureblockedword'
 
 // The three grants that open the member write channel. The events migration withholds them (D-54 2l); the
 // migration of P4.6 makes them. A test that writes as a member makes them inside its own transaction, which
-// rolls back or takes them back before it commits, so the database is never left with the channel open.
+// rolls back or takes them back before it commits. One case is the exception (D-55 3e): members writing at once
+// on separate connections cannot see a grant that was never committed, so `together` below commits the three
+// grants for the length of that call and takes them back in `finally`. The cluster is this test's own and is
+// thrown away with it, and the last case of the test file reads from the catalog that the channel is closed.
 const CHANNEL = [
   'EXECUTE ON FUNCTION public.create_member_event(uuid, text, text, jsonb)',
   `INSERT (source_type, source_key, organizer_user_id, discussion_post_id, starts_at, ends_at, location, registration_mode)
@@ -125,7 +130,7 @@ export function startEventsDatabase({ migrate = true } = {}) {
         FOR EACH ROW EXECUTE FUNCTION public.fixture_post_serialize();
       CREATE TRIGGER trg_rl_posts_before_insert BEFORE INSERT ON public.posts
         FOR EACH ROW EXECUTE FUNCTION public.fixture_post_duplicate();`)
-    readBefore = db.bodyMd5(READ)
+    readBefore = db.bodyMd5([...READ, AUDIT_LIST])
     if (migrate) {
       db.sql(readMigration(MIGRATION))
       db.sql(organizationRows)
