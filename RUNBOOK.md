@@ -538,6 +538,14 @@ and then production:
    lines in it and in the REGRESSION file that say VERIFY may be run again
    later, or at any time, hold only until then.
 
+**Community P4 (`20261120122054_community_events`).**
+Before pull request #380 is merged, its public smoke (`public-smoke` in
+`ci.yml`) must run green against a database that has both `20261120100354`
+and `20261120122054` applied: neither the events page (`pages/events/index`)
+nor the plaza page as P4 has it (`pages/plaza/index`, which from P4 on also
+calls `rpc/list_community_events`) has had its page sweep run against a real
+backend.
+
 `scripts/consent-version-deploy-order-boundary.test.mjs` pins the half CI can
 see from the repo alone (the constant must already be accepted by the newest
 `record_consent` in the repo). It cannot see any database.
