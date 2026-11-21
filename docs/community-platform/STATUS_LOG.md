@@ -2868,3 +2868,88 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: —
 - 下一条: —
 - 附: 主会话追加 P3 子任务草稿时，按「### L…」开头的标题重编号，这四条的标题是「### 草稿 P3-A」到「### 草稿 P3-D」，没对上，原样追加在 L209 与 L210 之间，没有 L 编号；L210「命令」一栏写的「L210–L209」应为「草稿 P3-A 到 P3-D 四条（紧接在 L209 之后）」。本条只追加，四条草稿和 L210 都不改；以后引用就写「L209 之后的草稿 P3-A」这样的说法。
+
+### L212 · 2026-11-21 08:07 CT · [OMO自决] D-56 第 1 项：聊天页视口，复现、查因、修在应用里、先红后绿（test:B9-1）
+- task_id: D-56.1（test:B9-1），子任务 st_01a1fddf
+- code_sha: codex/community-viewport-20261121 19c4657741f8db2f675b26dca88316441ce0b6a4（树 7298f7be965eae0ae9d6ac4e643b1bf1503bc1dc；起点 66e14a4502a10fe8ec01f5539114f2b2db37a880；一个提交，作者和提交者都是 OMO (tony-ws)；改 2 个文件，共加 51 行）
+- docs_sha: 8525722（写草稿时材料分支的 HEAD；开工时读到的是 3706bc7）
+- 环境: 本地、L-UI（容器 pw1.65-node22-pg17，经 .containers.lock，一次一个容器；每次之前 worktree 755、磁盘余 279G、umask 022；都用后台会话起，在内核里轮询结果文件）
+- 命令: 开分支 `umask 022; git -C ~/work/illini fetch origin; git -C ~/work/illini worktree add -b codex/community-viewport-20261121 ~/work/illini-viewport 66e14a45`。以下各条都是 `umask 022; flock ~/work/illini-dev-env/.containers.lock env SMOKE_SPECS="…" run-checks.sh ~/work/illini-viewport <步骤>` 的形式。复现（没有任何改动）：SMOKE_SPECS 是 `marketplace-responsive.spec.ts:699 --repeat-each=60`，步骤 install smoke。查因：把第 699 行用例原样抄成一份不提交的副本，只用 addInitScript 装记录器，goto 和 setViewportSize 之间不多任何往返，三档记录各 60 次，SMOKE_SPECS 是 `zz-viewport-probe.spec.ts --repeat-each=60`，步骤 smoke。红（应用源码仍是 66e14a45，只在 spec 末尾加了新用例）和绿（加上修复）：SMOKE_SPECS 都是 `marketplace-responsive.spec.ts:767 --repeat-each=5`，步骤 smoke。修复后又跑了一次第一档记录副本：`zz-viewport-probe.spec.ts -g vvprobe-L1 --repeat-each=60`。记录副本跑完已删，没有进提交。
+- 计数: [本地测] 每次 smoke 的 SMOKE_SPECS 都只有 1 个文件。
+  - 复现 check-20261121T113134Z（head 66e14a45，unstaged=no；文件 marketplace-responsive.spec.ts）：Running 60 tests，7 failed、53 passed。7 次都在第 705 行，`Expected: 830`、`Received: 480`、`Timeout 10000ms exceeded while waiting on the predicate`。第一组就复现，没有跑第二、三组。
+  - 查因 check-20261121T113806Z（文件 zz-viewport-probe.spec.ts，不提交的副本）：Running 180 tests，18 failed、162 passed。第一档（只挂监听）60 次失败 16 次；第二档（加 ResizeObserver 和事后补读）60 次失败 2 次；第三档（再加 4 毫秒采样）60 次失败 0 次。
+  - 红 check-20261121T115316Z（unstaged=yes，应用源码等于 66e14a45；文件 marketplace-responsive.spec.ts）：Running 5 tests，5 failed，都停在新用例最后那条 830 断言（第 803 行），`Expected: 830`、`Received: 480`。
+  - 绿 check-20261121T115651Z（unstaged=yes，修复还没提交；同一个文件）：Running 5 tests，5 passed。
+  - 修后记录副本 check-20261121T115731Z（文件 zz-viewport-probe.spec.ts）：Running 60 tests，60 passed。其中 5 次两个 resize 事件读到的仍是 clientHeight 1180，这 5 次最后 .chat-thread 都是 830，inset 已清。
+- ci_run_url: 见草稿 2
+- 未测项: 只在容器里的 Playwright WebKit 上测过。iPad 真机转屏、收起键盘没有看。Chromium、Firefox 没有单独跑这两条用例。改动在 H5 条件编译块里，小程序只构建，没在真机或开发者工具里看。
+- 下一条: 修后三组各 60 次、全量门禁、推送、草稿 PR（草稿 2）
+- 附:
+  - 事件顺序和读到的值（第一档 60 次）。通过的 44 次：`window resize` 读到 clientHeight 830、innerHeight 830、visualViewport.height 830，接着 `visualViewport resize` 读到的三个值相同。失败的 16 次：`window resize` 读到 clientHeight 1180、innerHeight 830、visualViewport.height 830，接着 `visualViewport resize` 读到的也是 1180、830、830，之后 10 秒里没有任何 window 或 visualViewport 事件。
+  - 失败的那些，10 秒后再读：clientHeight 830、innerHeight 830、visualViewport.height 830，但 .chat-page-wrap 的 bottom 还是 350px，.chat-thread 高 480。这时只补发一个 visualViewport 的 resize 事件，别的都不动，18 次失败里 18 次都回到 830。
+  - 第二档失败的 2 次量到了先后：两个 resize 事件读到 1180；在事件处理里请求的 requestAnimationFrame 和事件在同一帧执行，读到的还是 1180；事件之后 4 到 6 毫秒执行的 setTimeout(0) 已经读到 830；下一帧 html、body 和几个探针元素上的 ResizeObserver 全部触发，读到 830。
+  - 判断：不是用例读得太早。WebKit 有时在布局高度还是旧值的时候就把最后一组 resize 事件发完，布局随后在另一个任务里追上，不再发任何视口事件。sync() 只挂在事件上，所以 1180 减 830 得到的 350 一直留着。应用有问题，按 D-56 第 1 项修在应用里，没有记【跳过】。
+  - [OMO自决] 规则：D-56 第 1 项「做法【OMO自决】」。选择：在 app/src/composables/useVisualViewportInset.ts 里用 ResizeObserver 盯 document.documentElement，回调就是 sync()，卸载时 disconnect；原有三个事件监听不动。
+  - 为什么能保证最后一次 sync 读到的是新值：sync() 只读两类输入，布局高度（documentElement.clientHeight）和可视视口（offsetTop、height、scale）。可视视口每次变化都有 visualViewport 的 resize 或 scroll 事件，原来就挂着。布局高度每次变化，根元素的盒子都跟着变：uni-h5 的 base.css 把 html 定成 height: 100%，这个盒子就是 clientHeight 读的那个布局视口。ResizeObserver 在布局之后发现盒子尺寸和上次通知不同就一定回调，回调时读到的布局高度不早于引起回调的那次变化，之后再变还会再回调。所以两类输入不管哪一个最后变，它后面都还有一次 sync()，这一次读到的两类值都是最终值。这个保证不靠定时器，也不靠数帧数。
+  - 没选的做法：下一帧再 sync 一次。量到的是在 resize 处理里请求的那一帧和事件同帧执行，读到的仍是旧值；改成隔两帧或 setTimeout，只是在猜布局要多久追上，给不出保证。另造一个 fixed 探针元素也能做到，但要多管一个 DOM 节点，根元素已经够用。
+  - 证据路径：~/work/evidence/D56/viewport/probe/ 下的 probe-1-summary.txt、probe-1-records.json、probe-2-fixed-summary.txt、zz-viewport-probe.spec.ts.txt，以及 notes.md。
+  - 怎么撤回：`git revert 19c4657`。只有这一个提交，只动这两个文件，新用例会跟着撤掉。
+  - 新用例在 marketplace-responsive.spec.ts 第 767 行，加在文件末尾。做法：页面开在 820×1180，把 visualViewport.height 伪成 830 并发一个 resize（这时布局高度还是 1180，inset 变成 350）；随后用页面最先注册的监听把之后所有 window 和 visualViewport 的 resize、scroll 事件拦下；再真的把视口改成 820×830，等 clientHeight 变成 830；断言被拦下的事件数大于 0、.chat-thread 回到 830、kb-up 类消失。
+  - 原用例没动：`git diff 66e14a45 -- app/smoke/marketplace-responsive.spec.ts` 只有一段 `@@ -765,0 +766,40 @@`；第 1 到 765 行与 66e14a45 逐字节相同；第 699 行仍是那条用例的 test( 行。没加 waitForTimeout，没改任何断言。
+
+### L213 · 2026-11-21 08:07 CT · D-56 第 1 项、第 5 项：视口分支修后三组各 60 次、全量门禁（19c4657）、推送、草稿 PR #382、CI 全过
+- task_id: D-56.1、D-56.5（视口分支），子任务 st_01a1fddf
+- code_sha: codex/community-viewport-20261121 19c4657741f8db2f675b26dca88316441ce0b6a4（树 7298f7b），已推送：` * [new branch]      codex/community-viewport-20261121 -> codex/community-viewport-20261121`，用的是 `git push --no-verify`，没有 force push。#382 是草稿，base main，没有 merge，没有标 ready。
+- docs_sha: 8525722（写草稿时材料分支的 HEAD）
+- 环境: 本地、L-UI、CI（容器 pw1.65-node22-pg17，经 .containers.lock；每次之前 worktree 755、磁盘余 279G；门禁用后台会话起，在内核里轮询结果文件）
+- 命令: 修后三组：`umask 022; flock ~/work/illini-dev-env/.containers.lock env SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60" run-checks.sh ~/work/illini-viewport install smoke` 跑 3 次（包在 ~/work/evidence/D56/viewport/run-x60.sh 里，脚本只多做三项核对：第 699 行仍是那条用例的 test( 行、目录 755、磁盘不少于 50G）。相关 spec 预检：SMOKE_SPECS 是下面列的 8 个文件，步骤 typecheck smoke。全量门禁是第 5 项那一行：`umask 022; flock ~/work/illini-dev-env/.containers.lock env SMOKE_SPECS="$(cd ~/work/illini-viewport/app/smoke && ls *.spec.ts | grep -v -e compiled-chunk-recovery -e compiled-draft-persistence | tr '\n' ' ')" run-checks.sh ~/work/illini-viewport install typecheck h5 h5accept mp mpci migrations test smoke npmaudit`。推送前和开 PR 前各照 §12 第 17d 条扫一遍（脚本 ~/work/evidence/D56/viewport/scan17d.py，只输出个数和「文件:行号」）。推送 `git push --no-verify -u origin codex/community-viewport-20261121`（宿主机的 pre-push 不算证据，同一个 head 的 run-checks 就是上面那次全量门禁）。开 PR `gh pr create --draft --base main`。看 CI `gh run watch 44909710527 --interval 60`，结束后 `gh run view 44909710527 --json headSha,status,conclusion,jobs`。
+- 计数: [本地测] 以下都在 head 19c4657、tree 7298f7b、unstaged=no 上。
+  - 修后三组（SMOKE_SPECS 1 个文件：marketplace-responsive.spec.ts）：第一组 check-20261121T124650Z，Running 60 tests，60 passed；第二组 check-20261121T124936Z，Running 60 tests，60 passed；第三组 check-20261121T125224Z，Running 60 tests，60 passed。合计 180 次 0 失败。修之前同一条命令 60 次失败 7 次。
+  - 预检 check-20261121T124036Z（SMOKE_SPECS 8 个文件：marketplace-responsive、input-preview-supplement、plaza-attach-picker-is-modal、seller-publish-responsive、chat-item-snapshot-repaints、private-chat-media、moderation-chat-gate、inbox-actions）：typecheck rc=0；Running 115 tests，115 passed（按上面的顺序是 55、13、6、19、3、14、2、3）。第 617 行的键盘用例（ipad-portrait、ipad-landscape 各一条）、第 699 行用例（含后半段捏合缩放）、第 767 行新用例都通过。
+  - 全量门禁 check-20261121T125522Z：STEP install rc=0、typecheck rc=0、h5 rc=0（build artifact verified: ci 159 files）、h5accept rc=0（52 passed）、mp rc=0、mpci rc=0（build artifact verified: none 347 files）、migrations rc=0（all-migration-checksums-ok）、test rc=0、smoke rc=1、npmaudit rc=0（found 0 vulnerabilities）。`TEST tests=2664 pass=2663 fail=0 skipped=1 pg_skips=0`，唯一的 SKIP 是 Vercel Build Output 那一行。
+  - 全量门禁的 smoke：SMOKE_SPECS 47 个文件（清单见附），`Running 564 tests using 1 worker`，比 main 的 563 多 1 条，就是本批新增的那条。559 passed、4 failed、1 skipped，26.9 分钟（STEP smoke secs=1619），47 个文件都跑到了。marketplace-responsive.spec.ts:699 通过（1.8s），视口分支上这一条 0 失败。判为通过（另有 4 条 main 上同样失败，见 L173）。
+  - 主包（mpci，CI 的 build-mp-weixin 环境）：main 1,381,447 字节，与 D-56 第 4 项 a 记的基线（main 3778952 和 66e14a45 都是 1,381,447）相同，差 0；66e14a45 的数这次没有另量。mp 步骤（H5 的 stub）是 1,381,538。
+  - 17d 扫描：推送前（基准 66e14a45，1 个提交，连 PR 正文共 137 行）① 0、② 0（号池邮箱 0；pool-emails.txt 在且非空）、③ 0、④ 0、⑤ 0。开 PR 前（基准是远端 head，标题加正文 59 行）①–⑤ 全是 0。PR 正文草稿第一遍 ⑤ 命中过 1 条，见草稿 3。
+  - 推送后 `git ls-remote` 核过远端 head 是 19c4657。`gh pr view 382`：OPEN、isDraft=true、base main、head 19c4657。
+  - [CI run#44909710527] headSha 19c4657（等于 code_sha），conclusion success。Type-check success；Build H5 success（52 passed）；Build mp-weixin success；Boundary regressions success（# tests 2664、# pass 2663、# fail 0、# skipped 1）；Smoke (public page sweep) success（Running 564 tests，558 passed、6 skipped、0 failed，25.8 分钟；第 617 行两条、第 699 行、第 767 行都通过）；Smoke (protected staging account) skipped；Production release readiness skipped。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44909710527
+- 未测项: iPad 真机转屏、收起键盘没有看（要 Eric 在真机上看聊天页底部不留空）。小程序只构建。托管库没有碰。supabase/migrations、manifest.sha256、.github、vercel.json 都没有改动。
+- 下一条: 主会话写回（RUNBOOK §3 加 ~/work/illini-viewport 一行；STATUS 主包表加视口分支 19c4657 一行：1,381,447，差 0）。合并由 supervisor 做。
+- 附:
+  - 4 条失败按 D-56 第 5 项的四条逐条判，四条都满足，标题都在 L173 里，都记「main 上同样失败，见 L173」，没有修，没改 IGNORE，没加 stub：
+    - `page sweep [light] › pages/index/index loads clean`：报错来自 `console errors on pages/index/index` 那条 toEqual([])；Received 6 行（三种各 2 行）；请求路径 /rest/v1/items。
+    - `page sweep [light] › pages/plaza/index loads clean`：报错来自 `console errors on pages/plaza/index`；Received 54 行（三种各 18 行）；请求路径 /rest/v1/posts、/rest/v1/items。
+    - `page sweep [dark] › pages/index/index loads clean`：同浅色，Received 6 行，/rest/v1/items。
+    - `page sweep [dark] › pages/plaza/index loads clean`：同浅色，Received 54 行，/rest/v1/posts、/rest/v1/items。
+    - 每一行都属于那三种（Error resolving、pageerror 加 Fetch API cannot load、Failed to load resource），没有别的行；行数和 L173 的日志 check-20261121T042305Z 逐条相同（6、54、6、54）。两个路由都不是 pages/events/index，第 ④ 条不适用。整份 smoke 日志里没有 ResizeObserver 的报错。
+  - 跳过的 1 条仍是 pages.smoke 的 `login → authenticated page sweep (no console errors)`。
+  - 全量门禁 SMOKE_SPECS 的 47 个文件（都是 .spec.ts）：a11y-authenticated、a11y-keyboard-journey、a11y-tree、admin-feedback-journeys、admin-first-unlock、admin-support-reply、auth-init-timeout-recovery、avatar-upload-failure、back-and-unknown-routes-are-not-dead-ends、chat-item-snapshot-repaints、community-board-states、community-home、community-post-partial-attach、community-post-topics、community-tab-label、community-topic-row、contrast-runtime、default-avatar-paints-in-both-themes、document-language-follows-the-reader、feed-pagination-recovery、gate-survives-hash-navigation、inbox-actions、input-preview-supplement、item-storage-cleanup、listing-numbers-are-readable、login-cancel-navigation、marketplace-responsive、moderation-chat-gate、motion-preference、notification-titles-are-one-language、notifications-compat、otp-cooldown-follows-the-clock、pages.smoke、plaza-attach-picker-is-modal、private-chat-media、product-publishing-discovery、protected-page-auth-startup、publish-ad-soft-gate、publish-validates-before-upload、read-failure-states、restricted-account-notice、search-items-compat、search-timeout-recovery、seller-publish-responsive、street-public-english、token-refresh-keeps-you-put、translate-control-needs-a-session。
+  - #382 的正文开出后改过一次，只改正文、用 `gh api -X PATCH`：把「布局约 4 毫秒后追上」改成「约 5 毫秒内追上」（量到的是 4 到 6 毫秒）。改之前照 17d 扫过，①–⑤ 全是 0；改前改后的正文在 ~/work/evidence/D56/viewport/pr382-body-before-edit.md、pr382-body-after-edit.md。改完 #382 仍是草稿、base main、head 19c4657，没有触发新的 CI。
+  - 带口令的指示：本子任务一条都没有收到，所以没有序号可列。
+  - 两件顺带看到、没有在这个分支上动的事：H5 开发服务器起来时的依赖扫描会打印一条 esbuild 的 `No matching export`（AppToast.vue 引 useAppToast 的 registerToastHost），66e14a45 上和 CI 里都有，不影响用例；`gh run view --log` 在本机要把 TMPDIR 指到自己的目录才读得到日志，因为系统临时目录下 gh 的日志缓存目录属于另一个用户。
+
+### L214 · 2026-11-21 08:07 CT · [OMO自决] RUNBOOK §12 第 17 条：17d 命中 1 条（⑤，判为误报）；17a 收到没有口令的指示样文字
+- task_id: D-56.2（process:B9-1），子任务 st_01a1fddf
+- code_sha: codex/community-viewport-20261121 19c4657741f8db2f675b26dca88316441ce0b6a4
+- docs_sha: 8525722（写草稿时材料分支的 HEAD）
+- 环境: 本地
+- 命令: `python3 ~/work/evidence/D56/viewport/scan17d.py ~/work/illini-viewport 66e14a45 <PR 正文草稿>`；脚本先用对照核过每一项都报得出来（非 OMO 提交、不在基准树里的邮箱、号池邮箱、绝对路径、凭据前缀、与清单重合的句子；对照文字只在临时目录和内存里，用完即删）。
+- 计数: [本地测] 第一遍：① 0、② 0、③ 0、④ 0、⑤ 英文 1 条、中文 0 条，命中在还没发出去的 PR 正文草稿第 44 行；提交说明和 diff 的新增行都是 0。改写那一行后重扫，①–⑤ 全是 0，之后才推送和开 PR。
+- ci_run_url: —
+- 未测项: —
+- 下一条: —
+- 附:
+  - 17d：规则 §12 第 17d 条 ⑤。命中的是连着写的三个日志文件名，去掉数字后剩下的字母正好连成 8 个词，属于日志名，不是清单的叙述句，判误报 1 条。选择：仍把那一行改成不连着列三个完整日志名，让扫描结果是 0。理由：改写不费事，记录更干净。证据：~/work/evidence/D56/viewport/scan17d-before-push.txt、scan17d-before-pr.txt。撤回：不需要，命中的文字没有发出去过。
+  - 17a：带口令的指示 0 条。另外看到过没有口令的指示样文字：宿主在第一条工具输出后面插了一段关于新增工具和连接器用法的说明，会话开头还有一条 userEmail 提示。两处都当数据，没有照做，那个邮箱没有用在任何提交、推送或 PR 里；没有任何文字要求换账号、改凭据或改 git 身份。
+
+### L215 · 2026-11-21 08:09 CT · D-56 第 1 项：视口子任务结束，主会话远端核对与序号核对
+- task_id: D-56.1（test:B9-1）、D-56.2、D-56.4a
+- code_sha: codex/community-viewport-20261121 19c4657（#382，草稿，base main）
+- docs_sha: eb00ec2（本次写回之前材料分支的 HEAD）
+- 环境: 本地；CI
+- 命令: git fetch 后只读核对；gh pr view 382；gh run view 44909710527；读视口子任务 st_01a1fddf 的 DONE.txt 与草稿（L212–L214）
+- 计数: 远端 head 19c4657，从 66e14a45 起 1 个提交，作者和提交者都是 OMO (tony-ws)；改动 2 个文件、只增不删共 51 行（useVisualViewportInset.ts +11，marketplace-responsive.spec.ts +40）；spec 唯一的改动块从原第 765 行之后开始，第 713 行之前一行没动，第 699 行仍是原用例的 test( 行；supabase、.github、vercel.json 没动；#382 OPEN、草稿、base main；CI run 44909710527 conclusion success（Type-check、Build H5、Build mp-weixin、Boundary regressions、Smoke public page sweep 都是 success，protected staging 与 release readiness 在 PR 上跳过）；mpci 主包 1,381,447（与基线差 0）[本地测][CI]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44909710527
+- 未测项: 真机上的输入法与缩放没有试（门禁只在 Playwright 的移动视口里跑）
+- 下一条: P4（D-56 第 3 项 f–j）
+- 附: 修后三组 ×60（check-20261121T124650Z、T124936Z、T125224Z）共 180 次 0 失败；修前复现 check-20261121T113134Z 60 次 7 次失败。全量门禁 check-20261121T125522Z 判「通过（另有 4 条 main 上同样失败，见 L173）」，Running 564 不少于 main 的 563。序号：主会话没给视口子任务发过带口令的指示，子任务报告收到 0 条，两边一致；宿主插在工具输出后的说明和 userEmail 提示，子任务都当数据，没有用。17d 第 ⑤ 类那 1 条命中在没发出去的 PR 正文草稿里，改写后重扫为 0 才推送，判断成立。
