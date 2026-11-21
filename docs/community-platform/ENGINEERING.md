@@ -324,6 +324,11 @@ create index posts_unanswered_idx on public.posts (region, created_at desc, id d
 
 ① 表 private.community_reply_notice_config（singleton boolean 主键、DEFAULT true、CHECK (singleton)；enabled boolean NOT NULL DEFAULT false；ENABLE ROW LEVEL SECURITY，没有策略；REVOKE ALL FROM PUBLIC, anon, authenticated, service_role；迁移里插入一行）。② 列 public.post_comments.reply_to_comment_id uuid，可空，外键 post_comments(id) ON DELETE SET NULL（约束名 post_comments_reply_to_comment_id_fkey）；部分索引 post_comments_reply_to_comment_id_idx (reply_to_comment_id) WHERE reply_to_comment_id IS NOT NULL；`GRANT INSERT (reply_to_comment_id) TO authenticated`，不授 SELECT、UPDATE。③ 函数 private.validate_comment_reply_target()（SECURITY DEFINER，search_path=pg_catalog，对 API 角色全部 REVOKE）与触发器 enforce_reply_target（BEFORE INSERT ON post_comments，按名字排在 enforce_actor_post_comments、enforce_locked_post_reply 之后）；新错误名 comment_reply_target_invalid（23514）。④ private.notify_topic_reply() 改了：先看开关；作者被影子隐藏时不发；comment_reply 发给 coalesce(reply_to_comment_id, parent_comment_id) 的作者；订阅者与回复者或话题作者之间有任一方向的拉黑就不发。通知表（§5.3）里 comment_reply 的接收人应改成「被回复的那条回复的作者（没指明时是楼主）」。⑤ public.list_own_hidden_posts(uuid) 的返回列是 id、title、category、content、created_at，没有 hidden_reason。⑥ 迁移开头在漂移守卫之后加了 `LOCK TABLE public.post_comments, public.posts IN ACCESS EXCLUSIVE MODE`；漂移守卫多钉了 moderation_private.current_profile_state(uuid) 9c0b020a…。函数体 md5（P4 要重算的依据）：private.notify_topic_reply() aca99f42836280e42523f3e64f722908，private.validate_comment_reply_target() 4795236eac69a88568327a0c0cd61563，public.list_own_hidden_posts(uuid) c9f99d66e033e5d9f99429cde0508a8b；其余 11 个本迁移发的函数体没变。
 
+#### 第九批（D-55）补记：P3 迁移相对本节改变的对象（STOP-16a，L183）
+
+- `public.admin_execute_community_governance(text,uuid,text,text,jsonb)` 的 `restore_content`、`target_type = comment` 一支：恢复一条回复时对所属话题多写两列，`last_activity_at = greatest(last_activity_at, 回复的 created_at)`，`answered_at = coalesce(answered_at, 回复者 <> 楼主时回复的 created_at)`；`comment_count + 1` 照旧。签名、SECURITY DEFINER、search_path、属主、授权都没变；md5(prosrc) `e6ddf89b765c544d9434a843478ccf42` → `fedabd431c829a5b2303e4a46961a855`（mig:P3-B8-1）。
+- 新对象 0 个；本迁移发的其余 13 个函数体、表、列、约束、索引、授权、策略、触发器、加锁顺序都没变。迁移头补了一句：`post_comments` 有没有 SELECT 授权的列，API 角色用 `select=*` 会报 42501，客户端必须列出列名（mig:P3-B8-2，静态测试见 L184）。
+
 ### 5.4 LEGAL：两个迁移
 
 **`<UTC ts>_accept_cornfield_consent_version.sql`（LEGAL.2）**：照同类迁移的写法（最新一条是 `20260919090100_accept_acquisition_privacy.sql:12-44`），把新版本号加进约束 `profiles_tos_version_release_allowlist` 和 `record_consent` 的 CASE。原因与顺序见 §10.1。
@@ -538,6 +543,14 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 - 迁移不再给 authenticated 成员活动的 EXECUTE、INSERT、UPDATE，留给 P4.6 的迁移授予（要授予的三项和列名写在迁移注释里）。
 - `hide_event`、`unhide_event` 幂等，审计 details 多一个 changed；`unhide_event` 可能恢复成 unavailable。
 - 新的拒绝：22023 `moderation_block:event_location`、`moderation_block:event_status_note`；成员路径结束时间晚于开始后 30 天（D-54 第 2 项 m）沿用 `member_event_time_out_of_range`。
+
+#### 第九批（D-55）补记：P4 迁移相对本节新增或改变的对象（STOP-16a，L197）
+
+- `public.admin_list_moderation_audit_log(integer,integer,text)`：本迁移 CREATE OR REPLACE，白名单只加 `event_hidden`、`event_unhidden`；`event_discussion_created` 不加，照 P3 迁移的规则留在 owner 的列表里（`admin_list_owner_audit_log` 没有白名单）。RETURNS TABLE、LANGUAGE sql STABLE SECURITY DEFINER、search_path、授权都照 P3 原样。迁移守卫与 PRECHECK 钉它在 P3 之后的 md5 `42d02d7ac06498a48e2172c35d5ff517`，VERIFY 钉本迁移给出的 `720fe81c9d72c7729ce2d184a8a8fd36`（mig:P4-B8-4）。
+- `community_events_member_shape`：末项改成 `location IS NOT NULL AND location = pg_catalog.btrim(location) AND char_length(location) BETWEEN 1 AND 80`，空白和 NULL 都以 23514 被拒（mig:P4-B8-1）。
+- 新约束 `community_events_all_day_end_check`：`CHECK (NOT all_day OR (ends_at IS NOT NULL AND ends_at > starts_at))`，全天活动必须有结束时间且晚于开始（mig:P4-B8-5）。
+- 钉住的 P3 函数体随 P3 第九批改动重算：`admin_execute_community_governance` 改为 `fedabd431c829a5b2303e4a46961a855`（VERIFY）。
+- 本迁移应用之后，P3 的 VERIFY 按设计不再通过（它钉的 `admin_list_moderation_audit_log`、`admin_execute_mutation` 与第 6 节的词表、能力行都被本迁移改过），第一条报错是 `community_watch_save_function_body:public.admin_list_moderation_audit_log(integer,integer,text):720fe81c9d72c7729ce2d184a8a8fd36:this migration`（L199）。已应用 P4 的库，回复通知开关第 1 步改看 VERIFY_20261120122054（P4 分支仓库根目录 RUNBOOK.md「Reply notice switch」）。
 
 ## 6. 兼容矩阵与发布顺序（P2.9 ④）
 
