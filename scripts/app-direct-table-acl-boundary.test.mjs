@@ -171,7 +171,7 @@ test('comment status remains selectable only through active-row RLS for report s
  * (reply_to_comment_id). PostgREST reads every column for `select=*`, and
  * supabase-js sends exactly that for a bare `.select()`, so either one is now
  * answered with 42501 for anon and authenticated. Every read of post_comments
- * has to name its columns.
+ * has to name its columns, and that column cannot be one of them.
  */
 const SHIPPED_SOURCES = [[path.join(ROOT, 'app/src'), /\.(?:ts|vue|js)$/], [path.join(ROOT, 'api'), /\.(?:js|mjs|ts)$/]]
 
@@ -214,17 +214,54 @@ function skipBalanced(source, start, close) {
   return i
 }
 
+// The index just past the `>` that closes the type arguments opened right before `start`.
+function skipTypeArguments(source, start) {
+  let depth = 1
+  let i = start
+  while (i < source.length && depth > 0) {
+    const ch = source[i]
+    if (ch === '"' || ch === "'" || ch === '`') i = skipLiteral(source, i)
+    else if (source.startsWith('=>', i)) i += 2
+    else { depth += ch === '<' ? 1 : ch === '>' ? -1 : 0; i += 1 }
+  }
+  return i
+}
+
+// The method call that starts at `index`, in any of the ways one is written: .name(…), ?.name(…)
+// or ['name'](…), with or without type arguments. White space and comments may come before it.
+// Null when no call starts there.
+function callAt(source, index) {
+  const head = /^(?:\s|\/\/[^\n]*|\/\*[\s\S]*?\*\/)*(?:\??\.\s*([A-Za-z_$][\w$]*)|(?:\?\.)?\s*\[\s*(['"`])([A-Za-z_$][\w$]*)\2\s*\])\s*/.exec(source.slice(index))
+  if (!head) return null
+  let open = index + head[0].length
+  if (source[open] === '<') open = skipTypeArguments(source, open + 1)
+  while (/\s/.test(source[open] ?? '')) open += 1
+  if (source[open] !== '(') return null
+  const end = skipBalanced(source, open + 1, ')')
+  return { name: head[1] ?? head[3], args: source.slice(open + 1, end - 1), end }
+}
+
 // Every call chained straight onto the expression that ends at `index`, across
 // lines and comments: [name, the text between its parentheses].
 function chainedCalls(source, index) {
   const calls = []
   for (let i = index; ;) {
-    const link = /^(?:\s|\/\/[^\n]*|\/\*[\s\S]*?\*\/)*\??\.\s*([A-Za-z_$][\w$]*)\s*\(/.exec(source.slice(i))
-    if (!link) return calls
-    const end = skipBalanced(source, i + link[0].length, ')')
-    calls.push([link[1], source.slice(i + link[0].length, end - 1)])
-    i = end
+    const call = callAt(source, i)
+    if (!call) return calls
+    calls.push([call.name, call.args])
+    i = call.end
   }
+}
+
+// Every from-call in the source, however it is written: where it starts, where it ends and the
+// text of its first argument.
+function fromCalls(source) {
+  const calls = []
+  for (const hit of source.matchAll(/\??\.\s*from\b|\[\s*(['"`])from\1\s*\]/g)) {
+    const call = callAt(source, hit.index)
+    if (call?.name === 'from') calls.push({ index: hit.index, end: call.end, table: topLevelParts(call.args)[0] })
+  }
+  return calls
 }
 
 // The parts of `list` between commas that are not inside brackets or literals.
@@ -241,53 +278,94 @@ function topLevelParts(list) {
   return [...parts, list.slice(from)].map(part => part.trim())
 }
 
-// The column list a select argument stands for, or null when the source does
-// not spell it out: a literal, a template, or a constant of the same file.
-function selectedColumns(source, argument) {
-  const expression = argument.replace(/\s+as\s+(?:any|string)\s*$/, '').trim()
+// An argument without the cast that may follow it ('a' as any, NAME as never): the literal or the
+// name it starts with. Null when there is more to it than that.
+function castFree(argument) {
+  const text = argument.trim()
+  const literal = /^['"`]/.test(text)
+  const head = literal ? skipLiteral(text, 0) : (/^[A-Za-z_$][\w$]*/.exec(text) ?? [''])[0].length
+  if (!head || (literal && (head < 2 || text[head - 1] !== text[0]))) return null
+  return /^(?:\s+(?:as|satisfies)\s[\s\S]*)?$/.test(text.slice(head)) ? text.slice(0, head) : null
+}
+
+// The text an argument stands for, or null when the source does not spell it out: a literal, a
+// template, or a constant of the same file.
+function spelledOut(source, argument) {
+  const expression = castFree(argument)
+  if (expression === null) return null
   const constant = name => {
-    const literal = new RegExp(`\\bconst ${name.replace(/\$/g, '\\$')}\\s*=\\s*(['"\`])`).exec(source)
+    const literal = new RegExp(`\\bconst ${name.replace(/\$/g, '\\$')}\\s*(?::[^=]*)?=\\s*(['"\`])`).exec(source)
     if (!literal) return null
     const start = literal.index + literal[0].length - 1
-    return selectedColumns(source, source.slice(start, skipLiteral(source, start)))
+    return spelledOut(source, source.slice(start, skipLiteral(source, start)))
   }
-  if (/^[A-Za-z_$][\w$]*$/.test(expression)) return constant(expression)
-  if (!/^(['"`])[\s\S]*\1$/.test(expression) || skipLiteral(expression, 0) !== expression.length) return null
-  let columns = expression.slice(1, -1)
-  if (expression[0] !== '`') return columns
-  for (const [placeholder, name] of columns.matchAll(/\$\{\s*([^{}]*?)\s*\}/g)) {
+  if (!/^['"`]/.test(expression)) return constant(expression)
+  let text = expression.slice(1, -1)
+  if (expression[0] !== '`') return text
+  for (const [placeholder, name] of text.matchAll(/\$\{\s*([^{}]*?)\s*\}/g)) {
     const value = /^[A-Za-z_$][\w$]*$/.test(name) ? constant(name) : null
     if (value === null) return null
-    columns = columns.replace(placeholder, value)
+    text = text.replace(placeholder, value)
   }
-  return columns
+  return text
+}
+
+// The names of the constants that hold the table's name. A from-call given one of them reads the
+// table as well, whichever shipped file the constant is in.
+const tableConstants = source => [...source.matchAll(/\bconst\s+([A-Za-z_$][\w$]*)\s*(?::[^=]*)?=\s*(['"`])post_comments\2/g)].map(match => match[1])
+
+// What a column list asks of post_comments that no API role is granted, if anything.
+function columnProblem(columns) {
+  if (!columns.trim() || topLevelParts(columns).includes('*')) return 'reads every column'
+  return /\breply_to_comment_id\b/.test(columns) ? 'names reply_to_comment_id, which no API role may read' : null
+}
+
+// What is left of a URL from `start` on: up to the white space or the quote that ends it, with
+// the placeholders of a template taken whole.
+function urlTail(source, start) {
+  let i = start
+  while (i < source.length && !/[\s'"`]/.test(source[i])) i = source.startsWith('${', i) ? skipBalanced(source, i + 2, '}') : i + 1
+  return source.slice(start, i)
 }
 
 // What is wrong with the way one source reads post_comments, and how many reads it names in full.
-function postCommentReads(source) {
+// `constants` are the names that stand for the table, in this file or in another shipped one.
+function postCommentReads(source, constants = tableConstants(source)) {
   const problems = []
   let named = 0
-  for (const from of source.matchAll(/\.from\(\s*(['"`])post_comments\1\s*\)/g)) {
-    const line = source.slice(0, from.index).split('\n').length
-    const calls = chainedCalls(source, from.index + from[0].length)
+  const lineOf = index => source.slice(0, index).split('\n').length
+  // The table is named by a literal, with or without a cast, or by a constant.
+  for (const from of fromCalls(source)) {
+    const table = spelledOut(source, from.table)
+    if (table !== 'post_comments' && !(table === null && constants.includes(castFree(from.table)))) continue
+    const line = lineOf(from.index)
+    const calls = chainedCalls(source, from.end)
     if (!calls.length) problems.push(`line ${line}: nothing is chained onto .from('post_comments'), so what it reads cannot be checked`)
     for (const [name, args] of calls) {
       if (name !== 'select') continue
-      const columns = args.trim() ? selectedColumns(source, topLevelParts(args)[0]) : ''
+      const columns = args.trim() ? spelledOut(source, topLevelParts(args)[0]) : ''
+      const problem = columns === null ? null : columnProblem(columns)
       if (columns === null) problems.push(`line ${line}: the columns of .select(${args.trim()}) are not spelled out in this file`)
-      else if (!columns.trim() || topLevelParts(columns).includes('*')) problems.push(`line ${line}: .select(${args.trim()}) reads every column`)
+      else if (problem) problems.push(`line ${line}: .select(${args.trim()}) ${problem}`)
       else named += 1
     }
   }
-  // The same read, embedded in another table's column list or written as a REST query.
+  // The same read, embedded in another table's column list…
   for (const embedded of source.matchAll(/\bpost_comments(?:!\w+)?\s*\(/g)) {
     const end = skipBalanced(source, embedded.index + embedded[0].length, ')')
-    if (topLevelParts(source.slice(embedded.index + embedded[0].length, end - 1)).includes('*')) {
-      problems.push(`line ${source.slice(0, embedded.index).split('\n').length}: post_comments(*) reads every column`)
-    }
+    const columns = source.slice(embedded.index + embedded[0].length, end - 1)
+    if (topLevelParts(columns).includes('*')) problems.push(`line ${lineOf(embedded.index)}: post_comments(*) reads every column`)
+    else if (columnProblem(columns)?.startsWith('names')) problems.push(`line ${lineOf(embedded.index)}: post_comments(${columns.trim()}) ${columnProblem(columns)}`)
   }
-  for (const rest of source.matchAll(/\bpost_comments\?[^\s'"`]*?\bselect=\*/g)) {
-    problems.push(`line ${source.slice(0, rest.index).split('\n').length}: post_comments?select=* reads every column`)
+  // …or written as a REST request: the path, and whatever the same literal puts after it.
+  for (const rest of source.matchAll(/\/rest\/v1\/post_comments\b|\bpost_comments(?=\?[\w$])/g)) {
+    const line = lineOf(rest.index)
+    const select = /[?&]select=([^&]*)/.exec(urlTail(source, rest.index + rest[0].length))
+    if (!select) { problems.push(`line ${line}: a request for post_comments without select= reads every column`); continue }
+    const columns = spelledOut(source, `\`${select[1]}\``)
+    const problem = columns === null ? null : columnProblem(columns)
+    if (columns === null) problems.push(`line ${line}: the columns of post_comments?select=${select[1]} are not spelled out in this file`)
+    else if (problem) problems.push(`line ${line}: post_comments?select=${select[1]} ${problem}`)
   }
   return { problems, named }
 }
@@ -306,6 +384,21 @@ test('no shipped read of post_comments asks for every column', async () => {
     ["supabase.from('posts').select('id, post_comments(*)')", 'post_comments(*) reads every column'],
     ["supabase.from('posts').select('id, replies:post_comments!post_comments_post_id_fkey(id, *)')", 'post_comments(*) reads every column'],
     ['fetch(`${base}/rest/v1/post_comments?post_id=eq.${id}&select=*`)', 'post_comments?select=* reads every column'],
+    // The table named another way: through a constant, under a cast, with type arguments, by a
+    // bracketed call. A call chained onto it may be written in the last two ways as well.
+    ["const REPLIES = 'post_comments'\nsupabase.from(REPLIES).select('*')", 'reads every column'],
+    ["supabase.from('post_comments' as any).select('*')", 'reads every column'],
+    ["supabase.from<any>('post_comments').select('*')", 'reads every column'],
+    ["supabase['from']('post_comments').select('*')", 'reads every column'],
+    ["supabase.from('post_comments')['select']<any>('*')", 'reads every column'],
+    // A REST request that leaves select= out reads every column too.
+    ['fetch(`${base}/rest/v1/post_comments?post_id=eq.${id}`)', 'without select='],
+    ['call(`post_comments?post_id=eq.${id}&order=created_at`)', 'without select='],
+    ["fetch(new URL('/rest/v1/post_comments', base))", 'without select='],
+    // The column no API role is granted cannot be read by name either.
+    ["supabase.from('post_comments').select('id, reply_to_comment_id')", 'names reply_to_comment_id'],
+    ["supabase.from('posts').select('id, post_comments(id, reply_to_comment_id)')", 'names reply_to_comment_id'],
+    ['fetch(`${base}/rest/v1/post_comments?select=id,reply_to_comment_id`)', 'names reply_to_comment_id'],
   ]) {
     const { problems } = postCommentReads(sample)
     assert.equal(problems.length, 1, sample)
@@ -320,11 +413,32 @@ test('no shipped read of post_comments asks for every column', async () => {
     assert.deepEqual(postCommentReads(sample), { problems: [], named: sample.includes('.from(\'post_comments\')') ? 1 : 0 }, sample)
   }
   assert.deepEqual(postCommentReads("supabase.from('post_comments').delete().eq('id', id)"), { problems: [], named: 0 })
+  // The other ways of naming the table are reads like any other once their columns are named.
+  for (const [sample, named] of [
+    ["const REPLIES = 'post_comments'\nsupabase.from(REPLIES).select('id, content')", 1],
+    ["supabase.from('post_comments' as any).select('id, content')", 1],
+    ["supabase.from<any>('post_comments').select('id')", 1],
+    ["supabase['from']('post_comments').select('id')", 1],
+    // Writing the column is granted; reading it back is what is not.
+    ["supabase.from('post_comments').insert({ reply_to_comment_id: answered }).select('id')", 1],
+    ['fetch(`${base}/rest/v1/post_comments?post_id=eq.${id}&select=id,content`)', 0],
+    // Not the table: a constant that holds another name, and a member of a type.
+    ["const REPLIES = 'posts'\nsupabase.from(REPLIES).select('*')", 0],
+    ['interface Topic { post_comments?: Reply[] }', 0],
+  ]) assert.deepEqual(postCommentReads(sample), { problems: [], named }, sample)
+  // A constant that holds the table's name in one shipped file stands for it in the others too,
+  // unless a file has a constant of its own by that name.
+  const imported = "import { REPLIES } from './tables'\nsupabase.from(REPLIES).select('*')"
+  assert.deepEqual(postCommentReads(imported), { problems: [], named: 0 })
+  assert.match(postCommentReads(imported, ['REPLIES']).problems.join(), /^line 2: \.select\('\*'\) reads every column$/)
+  assert.deepEqual(postCommentReads("const REPLIES = 'posts'\nsupabase.from(REPLIES).select('*')", ['REPLIES']), { problems: [], named: 0 })
 
   const found = []
   let named = 0
-  for (const { file, source } of await shippedSources()) {
-    const read = postCommentReads(source)
+  const sources = await shippedSources()
+  const constants = sources.flatMap(({ source }) => tableConstants(source))
+  for (const { file, source } of sources) {
+    const read = postCommentReads(source, constants)
     named += read.named
     found.push(...read.problems.map(problem => `${file} ${problem}`))
   }
