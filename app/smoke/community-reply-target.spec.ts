@@ -105,8 +105,8 @@ test('the reply sheet in the community list sends the reply that was answered', 
 })
 
 // The reply sheet shows a reply as soon as it is sent, under an id of its own making, and swaps in
-// the saved row when the server answers. Until then there is nothing the server could be told was
-// answered, so the reply offers no "Reply": not in the thread, not at its head, not in its menu.
+// the saved row when the server answers. Until then the server has no row by that id, so the reply
+// offers nothing that needs one: no "Reply" and no like, in the thread or at its head, and no menu.
 test('a reply that is still being sent cannot be answered until it is saved', async ({ page }) => {
   await installTopicFixture(page)
   await page.route('**/rest/v1/posts?**', route => route.fulfill({
@@ -129,19 +129,39 @@ test('a reply that is still being sent cannot be answered until it is saved', as
   const pending = sheet.locator('.cs-item-child', { hasText: 'Still on its way' })
   await expect(pending).toBeVisible()
   await expect(pending.locator('.cs-reply-btn')).toHaveCount(0)
+  await expect(pending.locator('.cs-like-btn')).toHaveCount(0)
   // The saved reply next to it can still be answered.
   await expect(sheet.locator('.cs-item-child', { hasText: nested.content }).locator('.cs-reply-btn')).toHaveCount(1)
-  // Its menu still removes it, and offers no reply either.
+  // Its menu would be empty: the reply cannot be answered yet, and it cannot be removed either,
+  // because removing names the saved row and there is none. An empty menu does not open. The page
+  // shows nothing when a menu stays shut, so every menu it opens from here on is counted.
+  await page.evaluate(() => {
+    const host = window as unknown as { uni: { showActionSheet: (options: unknown) => unknown }; __menusOpened: number }
+    const open = host.uni.showActionSheet
+    host.__menusOpened = 0
+    host.uni.showActionSheet = options => { host.__menusOpened += 1; return open.call(host.uni, options) }
+  })
   await pending.press('ContextMenu')
   const menu = page.locator('uni-actionsheet')
-  await expect(menu.getByText(text('plaza.delete'), { exact: true })).toBeVisible()
   await expect(menu.getByText(text('plaza.reply'), { exact: true })).toHaveCount(0)
+  // The saved reply next to it is asked for its menu in the same way, after the pending one. When
+  // that menu is up, the earlier request has been handled too, so one menu opened means this one.
+  await sheet.locator('.cs-item-child', { hasText: nested.content }).press('ContextMenu')
+  await expect(menu.getByText(text('plaza.reportComment'), { exact: true })).toBeVisible()
   await page.locator('.uni-actionsheet__action .uni-actionsheet__cell').click()
   await expect(page.locator('.uni-actionsheet_toggle')).toHaveCount(0)
+  expect(await page.evaluate(() => (window as unknown as { __menusOpened: number }).__menusOpened)).toBe(1)
 
   // Saved: it is a reply like any other, and an answer to it names the id the server gave it.
   release()
   await expect(pending.locator('.cs-reply-btn')).toHaveCount(1)
+  await expect(pending.locator('.cs-like-btn')).toHaveCount(1)
+  // Its menu opens again, with both of its author's actions.
+  await pending.press('ContextMenu')
+  await expect(menu.getByText(text('plaza.delete'), { exact: true })).toBeVisible()
+  await expect(menu.getByText(text('plaza.reply'), { exact: true })).toBeVisible()
+  await page.locator('.uni-actionsheet__action .uni-actionsheet__cell').click()
+  await expect(page.locator('.uni-actionsheet_toggle')).toHaveCount(0)
   await pending.locator('.cs-reply-btn').click()
   await sheet.locator('textarea').fill('Now it can be answered')
   await sheet.locator('.ci-send').click()
@@ -157,8 +177,10 @@ test('a reply that is still being sent cannot be answered until it is saved', as
   const head = sheet.locator('.cs-item:not(.cs-item-child)', { hasText: 'A new thread on its way' })
   await expect(head).toBeVisible()
   await expect(head.locator('.cs-reply-btn')).toHaveCount(0)
+  await expect(head.locator('.cs-like-btn')).toHaveCount(0)
   release()
   await expect(head.locator('.cs-reply-btn')).toHaveCount(1)
+  await expect(head.locator('.cs-like-btn')).toHaveCount(1)
 
   // Nothing that was sent named a reply by an id the server never issued.
   for (const write of writes) {
