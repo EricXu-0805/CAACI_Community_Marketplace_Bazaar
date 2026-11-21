@@ -2294,3 +2294,15 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: —
 - 下一条: 第 4 项 a、g 进 FINAL 第九批 ⑥；第 4 项 e 等 3b 提交；第 4 项 f 等 mpci
 - 附: STATUS（report:B8-2）：阻塞第 1 条的「接下来」改成 #372 已进 3778952、C-final 已过、3778952 已发布到生产 H5；worktree 一行改成现在的 head（illini-p3、illini-events-20261120、illini-brand），加 confirm-final-3778952；CI 现状补 3778952 与 run 44783052160；第 4 条（#373）、第 14 条（#377）标成已完成；第 28 条照抄 D-55 第 0 项（发布、邮件模板与发件人名、#374 和 #377 改 base 后的关闭重开、账本只读核查）。ENGINEERING（report:B8-4）：§5.5 成员资格一行改成「is_illini_verified 为真；受限账号先被 assert_posting_allowed 以 suspension_active 拒绝」，INSERT、UPDATE 授权两行标成「留给 P4.6 的迁移」，守卫的 UPDATE 范围照 4c1c666 的迁移改写，保留词、链接两行补上 location、status_note；§5.3 通知表 comment_reply 的收件人、followed_post_reply 的排除里「父回复的作者」都换成「被回复的那条回复的作者（coalesce(reply_to_comment_id, parent_comment_id)）」，两行其余文字不动。
+
+### L173 · 2026-11-20 22:52 CT · D-55 第 5 项：main 3778952 对照门禁（只跑一次，三个分支共用）
+- task_id: D-55.5（main 对照）
+- code_sha: 37789526983b71d2ac154961cb4c7bd92104ce70（main，~/work/confirm-final-3778952，detached，只跑不提交）
+- docs_sha: cc8cb60（本次写回之前材料分支的 HEAD）
+- 环境: 本地（pw1.65-node22，容器锁；磁盘 281G；worktree 755、umask 022）
+- 命令: `umask 022; flock ~/work/illini-dev-env/.containers.lock env SMOKE_SPECS="$(cd ~/work/confirm-final-3778952/app/smoke && ls *.spec.ts | grep -v -e compiled-chunk-recovery -e compiled-draft-persistence | tr '\n' ' ')" run-checks.sh ~/work/confirm-final-3778952 install mpci smoke`（check-20261121T042305Z，tree ef633e5、unstaged=no；子任务 st_01a1fc56 起跑，主会话从日志整理结果）
+- 计数: SMOKE_SPECS 47 个文件；Running 563 tests；558 passed、4 failed、1 skipped，smoke 1655 秒（27.5 分钟）；install rc=0、mpci rc=0、smoke rc=1；main 主包 1,381,447 字节 [本地测]
+- ci_run_url: —（main 上 run 44783052160 七个 job 全过，见 L153）
+- 未测项: —
+- 下一条: 三个分支的门禁按本条对照
+- 附: main 上失败的 4 条（用例标题原文）：smoke/pages.smoke.spec.ts:196:7 › page sweep [light] › pages/index/index loads clean；smoke/pages.smoke.spec.ts:196:7 › page sweep [light] › pages/plaza/index loads clean；smoke/pages.smoke.spec.ts:196:7 › page sweep [dark] › pages/index/index loads clean；smoke/pages.smoke.spec.ts:196:7 › page sweep [dark] › pages/plaza/index loads clean。它们的控制台错误只有三种，反复出现：「Error resolving “00000000000000000000.supabase.co”: Name or service not known」「pageerror: Fetch API cannot load https: /00000000000000000000.supabase.co/rest/v1/…」（首页请求 items，广场请求 posts）「Failed to load resource: Error resolving “00000000000000000000.supabase.co”: Name or service not known」，原因是容器里解析不了 stub 的 supabase 地址。按 D-55 第 5 项：分支上标题相同的失败记「main 上同样失败，见 L173」，不修，不按 BACKLOG §14 第 3 行停；main 上没有的路由（pages/my-topics/index、pages/events/index、pages/event/detail/index）只出现这三种错误的，记成同一类，不修、不改 IGNORE、不加 stub。主包 1,381,447 是第 4 项 f 的基线。
