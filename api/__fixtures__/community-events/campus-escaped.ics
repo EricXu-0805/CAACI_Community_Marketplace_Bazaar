@@ -1,0 +1,15 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:90000007@illinois.edu
+SUMMARY:Synthetic folded
+  title\, with punctuation\; and \\ slash
+DTSTART;TZID=America/Chicago:20261120T113000
+DTEND;TZID=America/Chicago:20261120T133000
+TZID:America/Chicago
+LOCATION:Synthetic hall\, room A\; public\\space
+DESCRIPTION:Synthetic description.
+ORGANIZER:mailto:organizer@example.test
+CONTACT:organizer@example.test
+END:VEVENT
+END:VCALENDAR

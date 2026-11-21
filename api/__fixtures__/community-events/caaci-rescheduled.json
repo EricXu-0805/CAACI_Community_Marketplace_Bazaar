@@ -1,0 +1,10 @@
+{
+  "source_type": "caaci",
+  "source_key": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "title_en": "Synthetic rescheduled event",
+  "starts_at": "2026-11-22T18:00:00Z",
+  "ends_at": "2026-11-22T20:00:00Z",
+  "previous_starts_at": "2026-11-20T17:30:00Z",
+  "schedule_changed_at": "2026-11-12T18:00:00Z",
+  "availability": "visible"
+}

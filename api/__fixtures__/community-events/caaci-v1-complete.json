@@ -1,0 +1,22 @@
+{
+  "schema": "caaci.public-events.v1",
+  "generated_at": "2026-11-13T18:00:00Z",
+  "complete": true,
+  "events": [{
+    "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "slug": "synthetic-gathering",
+    "title_en": "Synthetic gathering",
+    "title_zh": "示例活动",
+    "summary_en": "Synthetic description.",
+    "summary_zh": "Synthetic description.",
+    "starts_at": "2026-11-20T17:30:00Z",
+    "ends_at": "2026-11-20T19:30:00Z",
+    "time_zone": "America/Chicago",
+    "location": "Synthetic public hall",
+    "takes_registrations": true,
+    "registration_open": true,
+    "page_url": "https://caaciorg.com/events/#synthetic-gathering",
+    "register_url": "https://caaciorg.com/events/synthetic-gathering/register/",
+    "content_hash": "sha256:synthetic-fixture"
+  }]
+}

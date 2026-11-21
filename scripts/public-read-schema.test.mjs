@@ -10,9 +10,10 @@ test('public schema preflight checks listing, post and comment projections witho
   const results = await verifyPublicReadSchema({ url, key, fetchImpl: async (target, init) => {
     seen.push({ target, init }); return migrated(target)
   } })
-  assert.equal(results.length, 7)
+  // Six projections, the search and events functions, and the topic state function.
+  assert.equal(results.length, 9)
   const reads = seen.filter(({ target }) => !target.pathname.includes('/rpc/'))
-  assert.equal(reads.length, 5)
+  assert.equal(reads.length, 6)
   for (const { target, init } of reads) {
     assert.equal(target.searchParams.get('limit'), '0')
     assert.equal(init.method, undefined)
@@ -25,11 +26,19 @@ test('public schema preflight checks listing, post and comment projections witho
   assert.equal(seen[2].target.searchParams.get('select'), 'id,content_i18n')
   assert.equal(seen[3].target.searchParams.get('select'), 'id,title,category,region')
   assert.equal(seen[4].target.searchParams.get('select'), 'id,last_activity_at,answered_at,is_featured,locked_at')
+  assert.equal(seen[5].target.pathname, '/rest/v1/community_events')
+  assert.equal(seen[5].target.searchParams.get('select'), 'id,source_type,starts_at,availability')
   const [rpc] = seen.filter(({ target }) => target.pathname === '/rest/v1/rpc/search_community_posts')
   assert.equal(rpc.init.method, 'POST')
   assert.deepEqual(JSON.parse(rpc.init.body), { terms_in: ['x'], limit_in: 1 })
   assert.equal(rpc.init.headers.Authorization, undefined)
   assert.equal(rpc.init.redirect, 'error')
+  // P4: the events page reads its list through one function.
+  const [events] = seen.filter(({ target }) => target.pathname === '/rest/v1/rpc/list_community_events')
+  assert.equal(events.init.method, 'POST')
+  assert.deepEqual(JSON.parse(events.init.body), { limit_in: 1 })
+  assert.equal(events.init.headers.Authorization, undefined)
+  assert.equal(events.init.redirect, 'error')
   // P3.6: the topic page asks this function why a topic cannot be read. Asking about a topic that
   // does not exist reads nothing and writes nothing.
   const [state] = seen.filter(({ target }) => target.pathname === '/rest/v1/rpc/community_post_state')
@@ -58,6 +67,11 @@ test('a candidate without the community topic migration fails before any browser
   await assert.rejects(verifyPublicReadSchema({ url, key, fetchImpl: missingActivity }), /public_schema_mismatch: community topic activity columns returned HTTP 400/)
   const missingRpc = async target => target.pathname.includes('/rpc/') ? new Response('{}', { status: 404 }) : new Response('[]', { status: 200 })
   await assert.rejects(verifyPublicReadSchema({ url, key, fetchImpl: missingRpc }), /public_schema_mismatch: community search rpc returned HTTP 404/)
+  // P4: a target without the events migration has neither the table nor its list function.
+  const missingEvents = async target => target.pathname.endsWith('/community_events') ? new Response('{}', { status: 404 }) : migrated(target)
+  await assert.rejects(verifyPublicReadSchema({ url, key, fetchImpl: missingEvents }), /public_schema_mismatch: community events returned HTTP 404/)
+  const missingList = async target => target.pathname.endsWith('/rpc/list_community_events') ? new Response('{}', { status: 404 }) : migrated(target)
+  await assert.rejects(verifyPublicReadSchema({ url, key, fetchImpl: missingList }), /public_schema_mismatch: community events rpc returned HTTP 404/)
   // P3: a target that has the columns and not the function the topic page calls. The function ships in
   // the same migration as the watch and save tables, which the publishable key cannot read, so this one
   // answer also stands for them.

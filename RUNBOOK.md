@@ -628,6 +628,13 @@ and no script.
 
 1. `supabase/_ops/VERIFY_20261120100354_community_watch_save_activity.sql`
    passes. Its notice line reads `community_reply_notice_switch|enabled=f`.
+   If `20261120122054_community_events` has already been applied to that
+   database, this file stops with an error there, by design: the events
+   migration replaces functions and vocabularies it pins, and its pins are not
+   changed for that. Step 1 is then
+   `supabase/_ops/VERIFY_20261120122054_community_events.sql` passing, followed
+   by this statement on its own, which must return `f`:
+   `SELECT enabled FROM private.community_reply_notice_config;`
 2. The H5 deployment that reads this database is the P3 release or later. The
    same deployment carries `api/notification-digest.js`, which keeps both keys
    out of the digest mail.

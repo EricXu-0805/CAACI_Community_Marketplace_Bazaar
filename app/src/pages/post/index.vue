@@ -47,6 +47,10 @@
           @keydown.enter.prevent="openCommunityBoard(post.category)"
           @keydown.space.prevent="openCommunityBoard(post.category)">{{ t(`plaza.category.${post.category}`) }}</text>
         <text v-if="post.title" class="post-topic-title" role="heading" aria-level="2">{{ post.title }}</text>
+        <!-- SPEC 6.4 row 6: this topic is an event's discussion. -->
+        <view v-if="topicEvent" class="post-event" data-test="topic-event">
+          <EventCard :event="topicEvent" :now="topicEventNow" compact @open="openTopicEvent" />
+        </view>
         <view class="content-wrap">
           <text class="content">{{ displayContent }}</text>
           <view
@@ -401,9 +405,12 @@ import { isSuspensionActive } from '../../utils/suspension'
 import { captureException } from '../../utils/sentry'
 import { hiddenTopicShare } from '../../utils/communityPost'
 import { useTopicLists, type TopicListRow, type TopicMark } from '../../composables/useTopicLists'
+import { useCommunityEvents } from '../../composables/useCommunityEvents'
+import type { CommunityEvent } from '../../utils/communityEvents'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
 import { BASE_URL } from '../../config/runtime'
+import EventCard from '../../components/EventCard.vue'
 import UBadge from '../../components/UBadge.vue'
 import UAvatar from '../../components/UAvatar.vue'
 import UIcon from '../../components/UIcon.vue'
@@ -417,6 +424,20 @@ const { currentUser, requireAuth, awaitAuthReady } = useAuth()
 const replyRestricted = computed(() => isSuspensionActive(currentUser.value))
 const { fetchPost, deletePost, toggleLike, toggleCommentLike, fetchComments, createComment, deleteComment, retryAttachPostItems } = usePlaza()
 const { supabase } = useSupabase()
+// P4.9: the event this topic is the discussion of. Only 找搭子 topics can be one.
+const { findTopicEvent } = useCommunityEvents()
+const topicEvent = ref<CommunityEvent | null>(null)
+const topicEventNow = ref(0)
+function loadTopicEvent(p: Post) {
+  topicEvent.value = null
+  if (p.category !== 'events-social') return
+  findTopicEvent(p.id, p.title ?? null).then((row) => {
+    if (post.value?.id !== p.id) return
+    topicEventNow.value = Date.now()
+    topicEvent.value = row
+  }).catch(() => { /* The card is an addition; the topic reads the same without it. */ })
+}
+function openTopicEvent(id: string) { uni.navigateTo({ url: `/pages/event/detail/index?id=${encodeURIComponent(id)}` }) }
 const { reportTarget, blockedIds, ensureLoaded: ensureBlockedLoaded, unblockUser } = useModeration()
 const { addPostToHistory } = useHistory()
 
@@ -836,6 +857,7 @@ async function loadPostForCurrentAccount() {
       addPostToHistory(p)
       void loadAttachPending(p)
       void loadMarks(p)
+      loadTopicEvent(p)
       try {
         const rows = await fetchComments(postId.value)
         if (!pageMounted || requestEpoch !== postLoadEpoch || commentsRequestEpoch !== commentsLoadEpoch) return
@@ -1492,6 +1514,7 @@ async function retryReply() {
 .attach-pending-btn { padding: 6px 14px; border-radius: 999px; font-size: 14px; color: var(--text-secondary); border: 1px solid var(--line-hair); }
 .attach-pending-btn.primary { color: var(--brand); border-color: var(--brand); }
 .attach-pending-btn.disabled { opacity: 0.5; pointer-events: none; }
+.post-event { margin-bottom: 12px; padding: 0 12px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line-soft); }
 .post-topic-title { display: block; font-size: 22px; font-weight: 700; line-height: 1.4; margin-bottom: 12px; overflow-wrap: anywhere; }
 
 /* P3.2: watch and save. */

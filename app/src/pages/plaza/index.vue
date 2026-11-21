@@ -51,6 +51,9 @@
       <view class="bh-text">
         <text class="bh-name" role="heading" aria-level="1">{{ t(`plaza.category.${selectedCategory}`) }}</text>
         <text class="bh-scope">{{ t(`plaza.boardScope.${selectedCategory}`) }}</text>
+        <!-- SPEC 6.7.2: the events list is one tap from the board members' events are discussed on. -->
+        <text v-if="selectedCategory === 'events-social'" class="bh-events" role="button" tabindex="0" data-test="board-events"
+          @click="openEvents" @keydown.enter.prevent="openEvents">{{ t('events.calendarLink') }}</text>
       </view>
       <text class="bh-compose" role="button" @click="openComposer">{{ t('plaza.write') }}</text>
     </view>
@@ -377,7 +380,9 @@
         :desktop="isDesktop"
         :is-logged-in="isLoggedIn"
         :latest-sort="homeLatestSort"
+        :now="homeData?.now ?? 0"
         @latest-sort="homeLatestSort = $event"
+        @events="openEvents"
         @board="showBoard"
         @all="showAll"
         @compose="openComposer"
@@ -944,11 +949,12 @@ const { homeData, homeFailed, loadHome, clearHome } = useCommunityHome()
 const EMPTY_HOME: HomePostData = { candidates: [], weeklyCategories: [], totalDiscussionCount: 0 }
 // SPEC 5.2 ④: the order of the home's latest list, chosen by its tabs.
 const homeLatestSort = ref<HomeLatestSort>('active')
-// No event source exists before P4.8, so the events block has nothing to show.
 const homeSections = computed(() => buildHomeSections(
-  homeData.value?.posts ?? EMPTY_HOME, homeData.value?.items ?? [], [], homeData.value?.now ?? 0,
+  homeData.value?.posts ?? EMPTY_HOME, homeData.value?.items ?? [], homeData.value?.events ?? [], homeData.value?.now ?? 0,
   isDesktop.value ? 'desktop' : 'phone', homeLatestSort.value,
 ))
+
+function openEvents() { uni.navigateTo({ url: '/pages/events/index' }) }
 
 // An unknown board or view opens the home (SPEC 4.4).
 function routeOf(query: { board?: unknown; view?: unknown }): { view: CommunityView; board: PostCategory | null } {
@@ -3375,6 +3381,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
 .bh-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .bh-name { font-family: var(--font-serif); font-size: var(--t-h2); line-height: var(--lh-h2); font-weight: 600; color: var(--ink); }
 .bh-scope { font-size: var(--t-caption); line-height: var(--lh-caption); color: var(--ink-soft); }
+.bh-events { align-self: flex-start; min-height: var(--space-7); font-size: var(--t-caption); line-height: var(--space-7); color: var(--ink-soft); cursor: pointer; }
 .bh-compose {
   flex: none; padding: 0 var(--space-3); border-radius: var(--radius-sm);
   font-size: 14px; line-height: var(--space-7); color: var(--ink); white-space: nowrap;

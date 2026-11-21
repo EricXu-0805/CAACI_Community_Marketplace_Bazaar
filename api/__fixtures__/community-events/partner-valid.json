@@ -1,0 +1,27 @@
+{
+  "partner": {
+    "id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    "slug": "synthetic-club",
+    "name_zh": "示例组织",
+    "name_en": "Synthetic club",
+    "status": "active",
+    "consent_ref": "SYNTHETIC-001",
+    "allowed_link_hosts": ["partner.example.test", "forms.example.test"],
+    "contact_role": "Synthetic coordinator",
+    "contact_email": "organizer@example.test"
+  },
+  "event": {
+    "id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    "source_type": "partner",
+    "title": "示例桌游活动",
+    "title_en": "Synthetic games",
+    "summary": "Synthetic description.",
+    "summary_en": "Synthetic description.",
+    "starts_at": "2026-12-05T01:00:00Z",
+    "ends_at": "2026-12-05T04:00:00Z",
+    "location": "Synthetic public hall",
+    "page_url": "https://partner.example.test/events/games/",
+    "register_url": "https://forms.example.test/games/",
+    "availability": "visible"
+  }
+}

@@ -49,6 +49,7 @@ test('migration inventory covers every shipped direct relation plus view depende
   assert.deepEqual([...relations].sort(), [
     'banners_live',
     'blocks',
+    'community_events',
     'conversation_archives',
     'conversations',
     'favorites',
@@ -73,9 +74,11 @@ test('migration inventory covers every shipped direct relation plus view depende
     'suspensions',
   ])
 
-  // post_follows and post_bookmarks are created, with their grants and policies, by the P3 migration.
+  // post_follows and post_bookmarks are created, with their grants and policies, by the P3 migration;
+  // community_events, read for a topic's event card, by the events migration.
   const migration = (await readFile(migrationUrl, 'utf8')) + (await readFile(new URL('../supabase/migrations/20260916195510_discovery_preferences.sql', import.meta.url), 'utf8'))
     + (await readFile(new URL('../supabase/migrations/20261120100354_community_watch_save_activity.sql', import.meta.url), 'utf8'))
+    + (await readFile(new URL('../supabase/migrations/20261120122054_community_events.sql', import.meta.url), 'utf8'))
   for (const relation of relations) {
     assert.match(migration, new RegExp(`public\\.${relation}\\b`), relation)
   }

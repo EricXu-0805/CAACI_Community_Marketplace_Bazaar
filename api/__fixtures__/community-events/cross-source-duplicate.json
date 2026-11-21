@@ -1,0 +1,6 @@
+[
+  {"id":"member","source_type":"member","page_url":null,"register_url":null,"starts_at":"2026-11-20T17:30:00Z"},
+  {"id":"campus","source_type":"campus","page_url":"https://CALENDARS.ILLINOIS.EDU/detail/3715/90000001/?utm_source=fixture#details","register_url":null,"starts_at":"2026-11-20T17:30:00Z"},
+  {"id":"partner","source_type":"partner","page_url":"https://calendars.illinois.edu/detail/3715/90000001","register_url":"https://CAACIORG.COM/events/synthetic-gathering/register/?utm_medium=fixture#form","starts_at":"2026-11-20T17:30:00Z"},
+  {"id":"caaci","source_type":"caaci","page_url":"https://caaciorg.com/events/#synthetic-gathering","register_url":"https://caaciorg.com/events/synthetic-gathering/register/","starts_at":"2026-11-20T17:30:00Z"}
+]
