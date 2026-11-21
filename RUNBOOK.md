@@ -533,6 +533,10 @@ and then production:
    below. `supabase/_ops/REGRESSION_20261120100354_community_watch_save_activity.sql`
    is for the disposable local replay only and must never run against a
    hosted project.
+5. Once `20261120122054_community_events` is applied to a database, this
+   VERIFY stops there at `admin_list_moderation_audit_log`, by design: the
+   lines in it and in the REGRESSION file that say VERIFY may be run again
+   later, or at any time, hold only until then.
 
 `scripts/consent-version-deploy-order-boundary.test.mjs` pins the half CI can
 see from the repo alone (the constant must already be accepted by the newest
