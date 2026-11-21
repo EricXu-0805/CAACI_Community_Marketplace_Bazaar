@@ -416,7 +416,7 @@ test.describe('events for an English reader', () => {
     await expect(card).not.toHaveAttribute('aria-label', named('Nov 24'))
     const spoken = copy['events.runsOnSpoken'].replace('{date}', 'Nov 24')
     await expect(card).toHaveAttribute('aria-label', named(spoken))
-    // The mark itself would be read out as "plus".
+    // client:P4-B8-5
     expect(spoken).not.toContain(copy['events.runsOn'])
   })
 })
