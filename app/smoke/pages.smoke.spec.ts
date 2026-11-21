@@ -14,6 +14,7 @@ const PAGES = [
   'pages/index/index', 'pages/plaza/index', 'pages/post/index',
   'pages/publish/index', 'pages/publish/edit', 'pages/messages/index',
   'pages/profile/index', 'pages/detail/index', 'pages/chat/index',
+  'pages/events/index', 'pages/event/detail/index',
   'pages/history/index', 'pages/legal/index', 'pages/welcome/index',
   'pages/settings/index', 'pages/seller/index', 'pages/profile/edit',
   'pages/notifications/index', 'pages/blocked/index', 'pages/reset-password/index',
