@@ -1,0 +1,334 @@
+TAP version 13
+# Subtest: topic input keeps legacy updates nullable and rejects incomplete/invalid metadata
+ok 1 - topic input keeps legacy updates nullable and rejects incomplete/invalid metadata
+  ---
+  duration_ms: 0.7845
+  type: 'test'
+  ...
+# Subtest: publishing includes topic metadata and moderates title plus body
+ok 2 - publishing includes topic metadata and moderates title plus body
+  ---
+  duration_ms: 65.044
+  type: 'test'
+  ...
+# Subtest: legacy publish still stores null metadata; validation fails before writing
+ok 3 - legacy publish still stores null metadata; validation fails before writing
+  ---
+  duration_ms: 141.543833
+  type: 'test'
+  ...
+# Subtest: attachment failure retains the committed topic and returns partial success
+ok 4 - attachment failure retains the committed topic and returns partial success
+  ---
+  duration_ms: 20.658167
+  type: 'test'
+  ...
+# Subtest: unknown write and stale-account success retain duplicate guard; definite rejection releases it
+ok 5 - unknown write and stale-account success retain duplicate guard; definite rejection releases it
+  ---
+  duration_ms: 49.068958
+  type: 'test'
+  ...
+# Subtest: category is applied on the server for ordinary and search pagination
+ok 6 - category is applied on the server for ordinary and search pagination
+  ---
+  duration_ms: 15.687333
+  type: 'test'
+  ...
+# Subtest: the first authoritative anonymous handshake clears mounted prior-owner state
+ok 7 - the first authoritative anonymous handshake clears mounted prior-owner state
+  ---
+  duration_ms: 29.300417
+  type: 'test'
+  ...
+# Subtest: detail and seller actions reject late results from a replaced account/page
+ok 8 - detail and seller actions reject late results from a replaced account/page
+  ---
+  duration_ms: 2.374917
+  type: 'test'
+  ...
+# Subtest: account-bound external side effects cannot cross the A to B handoff
+ok 9 - account-bound external side effects cannot cross the A to B handoff
+  ---
+  duration_ms: 2.23025
+  type: 'test'
+  ...
+# Subtest: stale notification failures are silent and auth-waiting forms acquire a single-entry lock
+ok 10 - stale notification failures are silent and auth-waiting forms acquire a single-entry lock
+  ---
+  duration_ms: 1.880083
+  type: 'test'
+  ...
+# Subtest: Illini verification binds one normalized email to a mutually exclusive flow
+ok 11 - Illini verification binds one normalized email to a mutually exclusive flow
+  ---
+  duration_ms: 0.339625
+  type: 'test'
+  ...
+# Subtest: local duplicate holds are isolated by account identity and session generation
+ok 12 - local duplicate holds are isolated by account identity and session generation
+  ---
+  duration_ms: 9.544625
+  type: 'test'
+  ...
+# Subtest: polling, offer, moderation and view-count continuations retain their entry owner
+ok 13 - polling, offer, moderation and view-count continuations retain their entry owner
+  ---
+  duration_ms: 3.32825
+  type: 'test'
+  ...
+# Subtest: liking a post whose heart was stale does not inflate its count
+ok 14 - liking a post whose heart was stale does not inflate its count
+  ---
+  duration_ms: 79.894084
+  type: 'test'
+  ...
+# Subtest: a first like still counts
+ok 15 - a first like still counts
+  ---
+  duration_ms: 32.378333
+  type: 'test'
+  ...
+# Subtest: a comment like behaves the same either way
+ok 16 - a comment like behaves the same either way
+  ---
+  duration_ms: 43.359917
+  type: 'test'
+  ...
+# Subtest: both like-membership reads report the failure they swallow
+ok 17 - both like-membership reads report the failure they swallow
+  ---
+  duration_ms: 0.348834
+  type: 'test'
+  ...
+# Subtest: account transitions invalidate plaza membership cache and stale like completions
+ok 18 - account transitions invalidate plaza membership cache and stale like completions
+  ---
+  duration_ms: 1.642166
+  type: 'test'
+  ...
+# Subtest: comment read failures render an explicit retry state instead of no-comments
+ok 19 - comment read failures render an explicit retry state instead of no-comments
+  ---
+  duration_ms: 0.884875
+  type: 'test'
+  ...
+# Subtest: public resource UTF-8 sizing is JSCore-safe and Unicode-correct
+ok 20 - public resource UTF-8 sizing is JSCore-safe and Unicode-correct
+  ---
+  duration_ms: 0.744
+  type: 'test'
+  ...
+# Subtest: public media reads and writes fail closed around the exact configured origin
+ok 21 - public media reads and writes fail closed around the exact configured origin
+  ---
+  duration_ms: 0.154292
+  type: 'test'
+  ...
+# Subtest: avatar thumbnails validate exact origin and owner before constructing a render URL
+ok 22 - avatar thumbnails validate exact origin and owner before constructing a render URL
+  ---
+  duration_ms: 39.522042
+  type: 'test'
+  ...
+# Subtest: public banners render only exact-origin deterministic managed uploads
+ok 23 - public banners render only exact-origin deterministic managed uploads
+  ---
+  duration_ms: 13.05175
+  type: 'test'
+  ...
+# Subtest: public listing storage stays image-only and matches the client 5 MiB ceiling
+ok 24 - public listing storage stays image-only and matches the client 5 MiB ceiling
+  ---
+  duration_ms: 1.603042
+  type: 'test'
+  ...
+# Subtest: upload batches carry their account generation into item mutations
+ok 25 - upload batches carry their account generation into item mutations
+  ---
+  duration_ms: 2.833083
+  type: 'test'
+  ...
+# Subtest: account changes fail closed before writes and committed writes are not compensated
+ok 26 - account changes fail closed before writes and committed writes are not compensated
+  ---
+  duration_ms: 0.870667
+  type: 'test'
+  ...
+# Subtest: compensation targets only the original owner and makes orphan risk observable
+ok 27 - compensation targets only the original owner and makes orphan risk observable
+  ---
+  duration_ms: 0.284166
+  type: 'test'
+  ...
+# Subtest: response-lost and 5xx mutations retain media while definite rejections compensate
+ok 28 - response-lost and 5xx mutations retain media while definite rejections compensate
+  ---
+  duration_ms: 25.613959
+  type: 'test'
+  ...
+# Subtest: chat requires private media keys while text and stickers retain account-bound idempotent sends
+ok 29 - chat requires private media keys while text and stickers retain account-bound idempotent sends
+  ---
+  duration_ms: 2.232167
+  type: 'test'
+  ...
+# Subtest: chat retries reuse a client-allocated row id and recover response-lost commits
+ok 30 - chat retries reuse a client-allocated row id and recover response-lost commits
+  ---
+  duration_ms: 11.094125
+  type: 'test'
+  ...
+# Subtest: mini-program image moderation waits for a durable verdict handoff
+ok 31 - mini-program image moderation waits for a durable verdict handoff
+  ---
+  duration_ms: 0.656125
+  type: 'test'
+  ...
+# Subtest: every remaining upload caller carries owner generation through its database write
+ok 32 - every remaining upload caller carries owner generation through its database write
+  ---
+  duration_ms: 1.306125
+  type: 'test'
+  ...
+# Subtest: text-only and no-upload submits remain bound to the account that owns the page state
+ok 33 - text-only and no-upload submits remain bound to the account that owns the page state
+  ---
+  duration_ms: 0.892083
+  type: 'test'
+  ...
+# Subtest: consent RPC calls carry page intent and never acknowledge or navigate a replacement account
+ok 34 - consent RPC calls carry page intent and never acknowledge or navigate a replacement account
+  ---
+  duration_ms: 0.699375
+  type: 'test'
+  ...
+# Subtest: an incomplete public profile can never satisfy the suspension and consent gate
+ok 35 - an incomplete public profile can never satisfy the suspension and consent gate
+  ---
+  duration_ms: 1.5875
+  type: 'test'
+  ...
+# Subtest: submit locks are released only when the in-flight operation settles
+ok 36 - submit locks are released only when the in-flight operation settles
+  ---
+  duration_ms: 2.392334
+  type: 'test'
+  ...
+# Subtest: publish removes only its scoped switch-tab guard
+ok 37 - publish removes only its scoped switch-tab guard
+  ---
+  duration_ms: 0.182959
+  type: 'test'
+  ...
+# Subtest: chat history is archived per participant and never hard-deleted by the client
+ok 38 - chat history is archived per participant and never hard-deleted by the client
+  ---
+  duration_ms: 2.865583
+  type: 'test'
+  ...
+# Subtest: a committed chat response cannot repopulate the next account singleton
+ok 39 - a committed chat response cannot repopulate the next account singleton
+  ---
+  duration_ms: 0.783875
+  type: 'test'
+  ...
+# Subtest: comment moderation and delayed plaza pickers stay bound to their originating account session
+ok 40 - comment moderation and delayed plaza pickers stay bound to their originating account session
+  ---
+  duration_ms: 0.763625
+  type: 'test'
+  ...
+# Subtest: every migration version is unique
+ok 41 - every migration version is unique
+  ---
+  duration_ms: 3.953125
+  type: 'test'
+  ...
+# Subtest: legacy names are frozen and every forward migration uses a real 14-digit UTC version
+ok 42 - legacy names are frozen and every forward migration uses a real 14-digit UTC version
+  ---
+  duration_ms: 4.000958
+  type: 'test'
+  ...
+# Subtest: migration history never enables pg_cron
+ok 43 - migration history never enables pg_cron
+  ---
+  duration_ms: 35.390291
+  type: 'test'
+  ...
+# Subtest: migration SHA-256 manifest exactly guards every current SQL byte sequence
+ok 44 - migration SHA-256 manifest exactly guards every current SQL byte sequence
+  ---
+  duration_ms: 14.413833
+  type: 'test'
+  ...
+# Subtest: repaired legacy collisions preserve forensic bytes and require guarded forward convergence
+ok 45 - repaired legacy collisions preserve forensic bytes and require guarded forward convergence
+  ---
+  duration_ms: 1.657
+  type: 'test'
+  ...
+# Subtest: reviewed historical repairs retain the prior bytes and document ledger byte divergence
+ok 46 - reviewed historical repairs retain the prior bytes and document ledger byte divergence
+  ---
+  duration_ms: 2.223125
+  type: 'test'
+  ...
+# Subtest: forward repair is standalone and scoped to the two Plaza relations
+ok 47 - forward repair is standalone and scoped to the two Plaza relations
+  ---
+  duration_ms: 2.946375
+  type: 'test'
+  ...
+# Subtest: repair clears table and column drift before exact application grants
+ok 48 - repair clears table and column drift before exact application grants
+  ---
+  duration_ms: 1.928625
+  type: 'test'
+  ...
+# Subtest: all eight permissive policies use an exact NULL-safe contract
+ok 49 - all eight permissive policies use an exact NULL-safe contract
+  ---
+  duration_ms: 1.0685
+  type: 'test'
+  ...
+# Subtest: ops verify direct ACL provenance, effective inheritance, and service CRUD
+ok 50 - ops verify direct ACL provenance, effective inheritance, and service CRUD
+  ---
+  duration_ms: 3.77175
+  type: 'test'
+  ...
+# Subtest: forward migration has a reviewed manifest entry after the frozen boundary
+ok 51 - forward migration has a reviewed manifest entry after the frozen boundary
+  ---
+  duration_ms: 2.270208
+  type: 'test'
+  ...
+# Subtest: every PL/pgSQL and DO body closes with an explicit END semicolon
+ok 52 - every PL/pgSQL and DO body closes with an explicit END semicolon
+  ---
+  duration_ms: 0.849458
+  type: 'test'
+  ...
+# Subtest: current release documents preserve the historical 34/38 to 37/38 baseline without treating it as current proof
+ok 53 - current release documents preserve the historical 34/38 to 37/38 baseline without treating it as current proof
+  ---
+  duration_ms: 9.790667
+  type: 'test'
+  ...
+# Subtest: README migration inventory matches the repository and names all three production tail steps
+ok 54 - README migration inventory matches the repository and names all three production tail steps
+  ---
+  duration_ms: 1.430084
+  type: 'test'
+  ...
+1..54
+# tests 54
+# suites 0
+# pass 54
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 585.886333

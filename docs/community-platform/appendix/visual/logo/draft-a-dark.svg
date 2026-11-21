@@ -1,0 +1,19 @@
+<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sealD" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#DD6147"></stop>
+      <stop offset="1" stop-color="#A8381F"></stop>
+    </linearGradient>
+  </defs>
+  <rect width="80" height="80" rx="19" fill="#221D18"></rect>
+  <rect x="7.5" y="7.5" width="65" height="65" rx="15" fill="url(#sealD)"></rect>
+  <rect x="7.5" y="7.5" width="65" height="65" rx="15" fill="none" stroke="#FBF8F2" stroke-opacity="0.2" stroke-width="1"></rect>
+  <rect x="11.5" y="11.5" width="57" height="57" rx="11.5" fill="none" stroke="#FBF8F2" stroke-opacity="0.12" stroke-width="1"></rect>
+  <g stroke="#FBF8F2" stroke-opacity="0.55" stroke-width="1.3" stroke-linecap="round">
+    <path d="M16 13.2v3.6M14.2 15h3.6"></path>
+    <path d="M64 13.2v3.6M62.2 15h3.6"></path>
+    <path d="M16 63.2v3.6M14.2 65h3.6"></path>
+    <path d="M64 63.2v3.6M62.2 65h3.6"></path>
+  </g>
+  <path fill="#FCFAF5" d="M44.64 40.75L44.33 40.98C46.2 43.01 48.03 46.09 48.42 48.9C53.07 52.33 57.08 43.01 44.64 40.75M24.21 24.33L24.56 25.46L37 25.46L37 37.74L25.77 37.74L26.08 38.84L37 38.84L37 53.77L21.94 53.77L22.26 54.9L56.93 54.9C57.51 54.9 57.94 54.71 58.06 54.28C56.11 52.64 52.95 50.22 52.95 50.22L50.1 53.77L42.03 53.77L42.03 38.84L53.46 38.84C54.04 38.84 54.47 38.64 54.59 38.21C52.75 36.61 49.75 34.39 49.75 34.39L47.1 37.74L42.03 37.74L42.03 25.46L55.09 25.46C55.68 25.46 56.11 25.26 56.22 24.84C54.31 23.2 51.19 20.82 51.19 20.82L48.39 24.33"></path>
+</svg>

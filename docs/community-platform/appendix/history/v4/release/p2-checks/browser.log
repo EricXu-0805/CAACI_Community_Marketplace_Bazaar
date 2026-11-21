@@ -1,0 +1,60 @@
+
+> uni-preset-vue@0.0.0 smoke
+> playwright test community-post-topics.spec.ts plaza-attach-picker-is-modal.spec.ts
+
+[2m[WebServer] [22m(node:14732) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 9 tests using 1 worker
+
+(node:14734) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14734) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 smoke/community-post-topics.spec.ts:83:5 › legacy rows, board filtering, title search and topic detail coexist (13.1s)
+(node:15054) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15054) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 smoke/community-post-topics.spec.ts:99:5 › topic validates metadata before writing and sends the selected board (2.0s)
+  ✓  3 smoke/community-post-topics.spec.ts:116:5 › existing update entry publishes without topic metadata (1.5s)
+  ✓  4 smoke/plaza-attach-picker-is-modal.spec.ts:83:5 › the attach picker covers the composer it opens over (1.5s)
+  ✓  5 smoke/plaza-attach-picker-is-modal.spec.ts:118:5 › tapping beside the attach picker closes it (1.4s)
+  ✓  6 smoke/plaza-attach-picker-is-modal.spec.ts:130:7 › keyboard keeps plaza tools and both comment entries reachable at 320px (2.1s)
+  ✓  7 smoke/plaza-attach-picker-is-modal.spec.ts:130:7 › keyboard keeps plaza tools and both comment entries reachable at 390px (2.2s)
+  ✓  8 smoke/plaza-attach-picker-is-modal.spec.ts:130:7 › keyboard keeps plaza tools and both comment entries reachable at 834px (2.1s)
+  ✓  9 smoke/plaza-attach-picker-is-modal.spec.ts:130:7 › keyboard keeps plaza tools and both comment entries reachable at 1194px (2.0s)
+
+
+  1) smoke/community-post-topics.spec.ts:83:5 › legacy rows, board filtering, title search and topic detail coexist 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('.post-topic-title')
+    Expected: [32m"Quantum study group"[39m
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toHaveText" with timeout 10000ms[22m
+    [2m  - waiting for locator('.post-topic-title')[22m
+
+
+      93 |   await page.getByRole('heading', { name: TOPIC.title }).click()
+      94 |   await expect(page).toHaveURL(new RegExp(`pages/post/index.*id=${TOPIC.id}`))
+    > 95 |   await expect(page.locator('.post-topic-title')).toHaveText(TOPIC.title)
+         |                                                   ^
+      96 |   await expect(page.locator('.post-board')).toHaveText('Campus life')
+      97 | })
+      98 |
+        at /Users/xiaogangxu/Downloads/CAACI/Community-Platform/implementation/app/smoke/community-post-topics.spec.ts:95:51
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/community-post-topics-lega-29766-ch-and-topic-detail-coexist/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/community-post-topics-lega-29766-ch-and-topic-detail-coexist/error-context.md
+
+  1 failed
+    smoke/community-post-topics.spec.ts:83:5 › legacy rows, board filtering, title search and topic detail coexist 
+  8 passed (30.8s)

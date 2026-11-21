@@ -1,0 +1,759 @@
+{
+ "names": {
+  "summary": "共列 8 个候选名，每个都查了重名，也按 .com/.org/.net/.app 查了域名（2026-11-12 用 dig 加注册局 WHOIS/RDAP）。我首推「玉米地 / Cornfield」，对外全称「玉米地 · 香槟华人论坛」。稳妥的备选是「香槟论坛 / Chambana Forum」。如果想保留现在的「集」字印章 logo，就选「香槟集 / CU Commons」。三个名字的 .com/.org/.net/.app 主拼写都还没人注册。\n\n现名 Illini Market 的商标风险算中等，这是我的判断。UIUC 品牌站把「Illini」「Fighting Illini」「Illinois」「UI」和 Block I 都列为学校商标，「Illini」只放给注册学生组织（RSO）用在名字里。这个产品条款里写的是 Guoyi (Eric) Xu 个人运营，不是 RSO，又在规划 Premium 订阅和商家年费，所以这条放行用不上。\n\n我直接排除了三个名字。「CU Forum」：cuforum.com 2026-01 被抢注，现在挂的是成人垃圾页；cuforum.org 是科罗拉多大学的校园刊物。「双城论坛」：中文里「双城」通常指明尼阿波利斯–圣保罗，这一条是常识判断，没找出处。「伊大论坛 / Illini Forum」：商标风险最高，留在列表里作对照。\n\n现在改名成本最低。小程序开发版（AppID wxc3da81aa8852a6ff，现名「香槟市集」）还没提审也没发布，产品也还没公开上线。代码里有 55 个文件、242 行写了品牌名或域名。\n\n有四处没核实：\n- 微信里候选名有没有被占用。搜狗微信搜索只收录认证号，搜「UIUC」也是空的，这个方法不可靠。\n- 小程序的主体类型和剩余改名次数。\n- USPTO 上「ILLINI」单词商标现在的状态。\n- 学校 General Rules 第三条第六款的原文。PDF 返回 403，没读到。",
+  "illini_trademark": "一、学校怎么规定（访问日期均为 2026-11-12）\n- 学校把哪些词算作商标：UIUC 品牌站 Trademarks and Licensing 页列了 Block I、体育盾牌、头盔 logo、校徽，以及「University of Illinois」「Fighting Illini」「Illinois」「U. of I.」「UI」「Illini」「Oskee Wow-Wow」。页面要求用在任何产品上之前，先拿到 Licensing and Trademark Office（licensing@illinois.edu）或 CLC 的批准。https://brand.illinois.edu/applying-the-brand/trademarks-and-licensing 。这条的弱点：页面没说网站、App、域名或线上服务名算不算「产品」，非学校实体能不能用也没写。\n- RSO（注册学生组织）的规则：名字可以带「Illini」（例：Illini Chemistry Club）；不能以「University of Illinois」「Illinois」或它们的缩写开头；「Illinois」只能指州；不应使用「UIUC」；logo 不能用 Block I、校标或 Victory Shield；不能自称代表学校。https://brand.illinois.edu/applying-the-brand/registered-student-organizations 。Student Code 2-303 也允许 RSO 名称带 Illini/Illinois，这一条是从搜索摘要读到的，没打开全文。https://studentcode.illinois.edu/article2/part3/2-303 。弱点：这两处都只管 RSO。CAACI 是独立的 501(c)(3)，不是 RSO；本产品条款写的是「community project operated by Guoyi (Eric) Xu」（app/src/legal/terms.en.ts:9），套不进这条放行。\n- 有约束力的原文：学校法务页指向 General Rules 第三条第六款，说学校同时持有注册商标和普通法商标。但法务页和 General Rules 的 PDF 都返回 403，原文没读到，这是本节最大的缺口。\n\n二、联邦注册和执法先例\n- 联邦注册：第三方商标聚合站显示，「ILLINOIS」有几件有效注册（如 Reg. 3692259 和 4890118，Markinton 2026-01 更新），https://markinton.com/trademark/illinois-77695312 。「FIGHTING ILLINI」有一件 1998 年的申请（serial 75415478），状态没查到。单独的「ILLINI」在聚合站上没找到有效的联邦注册。弱点：我没能直接查 USPTO（API 拒绝了请求），所以「没找到」不等于不存在。学校品牌站照样把 Illini 列为商标，普通法权利也不需要注册。\n- 执法先例：2017 年 11 月学校在 USPTO 异议了校友 O'Malley 的商标申请，2018 年 3 月起诉他卖「Make Illinois Great Again」T 恤，同年 7 月和解，学校付他 7,500 美元。https://www.wcbu.org/state-news/2018-07-17/u-of-i-settles-lawsuit-against-alumnus-for-7-5k 、https://www.techdirt.com/articles/20180327/14381239516/university-illinois-attempts-to-trademark-bully-alumnus-after-failing-to-stop-his-trademark-registration.shtml 。弱点：那个案子涉及服装和 Chief 形象版权，不是线上服务名。\n- 和学校无关却用 Illini 的反例：Illini Media（Daily Illini 的出版方）1911 年由州政府特许成立，是非营利机构。https://en.wikipedia.org/wiki/Illini_Media 。弱点：它比学校的授权体系早得多，又是学生媒体，不能拿来类比商业产品。\n\n三、对现名「Illini Market」的评估（判断）\n- 名字里真正有辨识度的就是「Illini」。拿它做 UIUC 社区交易平台的名字，容易让人以为是学校办的。\n- 风险会随这几件事上升：收费（Premium 定价和商家年费是规划，代码里还没有）、注册 LLC（计划 2026-12）、公开推广。\n- 想把「ILLINI MARKET」注册成自己的商标，大概率会被学校异议，O'Malley 案就是先例。\n- 同名或近名已有两个：Devpost 上有个同名学生项目 https://devpost.com/software/illini-market ；校友会（UIAA）2022-11-01 宣布了官方的「Alma Market」，学生和本地商家都能在上面卖东西。https://prnewswire.com/news-releases/the-university-of-illinois-alumni-association-opens-a-community-based-online-marketplace-301664059.html\n- 我对短期的判断：上线前的社区项目马上收到警告函的可能性不高，但不能排除。\n- 现有徽章「伊利诺伊认证 / Verified Illini」（zh.ts:505、en.ts:507）读起来像学校出的认证，建议改成「校园邮箱已验证 / Campus email verified」。\n- 现在的品牌色 #B9452C 和「集」字印章 logo 都没碰 Block I，也没用 Illini 橙蓝配色，这两处没问题。\n\n四、对候选名的评估（判断）\n- 玉米地、香槟论坛、香槟集、香槟街坊、香槟院子、香槟茶馆、CU Chinese Forum 都不含 Illini、Illinois 或 UIUC，学校商标风险低。\n- 描述里写「服务 UIUC 及香槟地区华人」属于说明事实，可以；但别放进名字或 logo，也别出现「官方」字样。\n- 「伊大论坛 / Illini Forum」风险最高。\n- 「香槟」在中国是酒类地理标志：2013 年起受保护，连中文译名一起，https://drinksint.com/news/fullstory.php/aid/3839/.html 。这只约束酒类等商品，美国的论坛服务不受影响。现有小程序名「香槟市集」已经注册成功，说明「香槟」过了微信的名称检查；这个证据偏弱，因为还没经过提审。\n- 以上不是法律意见。如果坚持保留 Illini，建议先给 licensing@illinois.edu 写信问清楚。",
+  "candidates": [
+   {
+    "zh": "玉米地（对外全称：玉米地 · 香槟华人论坛）",
+    "en": "Cornfield（副标题 Champaign-Urbana Chinese Community）",
+    "tagline_zh": "香槟华人的日常、问答和二手",
+    "why": "这是中文留学圈对 UIUC 现成的叫法，不用解释。教育在线 2025-07-23 的文章说，校友比起「厄巴纳-香槟」更爱叫它「玉米地」（https://www.eol.cn/liuxue/lx-wyw/2025072316634.html）；新东方 2020-01-10 的文章说大家一听到 UIUC，第一反应就是「玉米地」（https://liuxue.xdf.cn/yichang/mglh_bklh_yxtj/1795289.shtml）；一亩三分地 2012 年有个热帖叫《我的玉米地-在UIUC的日子》（https://www.1point3acres.com/bbs/thread-29455-1-1.html，只看到搜索摘要）。弱点：这些都是留学机构和论坛的二手材料，没有官方出处。名字里没有任何学校商标。它和一亩三分地同属「田地」意象，但不是照搬（判断）。微信名称长度 6 字符，在 4–30 的范围内。",
+    "conflicts": "网页搜索没找到同名的华人社区或 App。国内搜「玉米地 品牌」只出来鲜食玉米电商和排行页（https://www.cnpp.cn/focus/3566810.html），没有同名品牌。搜狗微信对「玉米地」返回空，但它对「UIUC」也是空，因为只收录认证号，所以这个结果不能说明没重名，微信内是否被占用要在后台试填才知道。英文 cornfield 是普通名词，cornfield.com 的域名服务器指向 Afternic 域名交易平台。",
+    "domains": "2026-11-12 查询结果。\n未注册：cornfieldforum.com/.org/.net/.app 四个、cornfieldcu.com/.org/.net/.app 四个、cornfield.app、yumidi.org、yumidi.app。\n已注册：\n- cornfield.com：2000-03 注册，域名服务器在 Afternic，疑似待售，价格未知\n- cornfield.org、cornfield.net：均 2000 年注册\n- yumidi.com：2001-06 注册，阿里云万网，网页没有标题\n- yumidi.net：2026-09-16 刚被注册，挂的是 YUMI CONSULTING 页面\n不确定性：「未注册」只说明查询那一刻注册局里没有记录。它可能是溢价或保留域名，也可能随时被别人注册。",
+    "risks": "名字带一点自嘲：一亩三分地那帖里就有人拿「玉米地和坟地」开玩笑。学长学姐说、求职这类严肃内容挂在它下面，部分校友可能嫌不够正式（判断）。英文 Cornfield 在美国人看来只是「玉米田」，看不出是香槟，必须配副标题。名字本身没有「论坛」两个字，要靠副标题交代。"
+   },
+   {
+    "zh": "香槟论坛",
+    "en": "Chambana Forum",
+    "tagline_zh": "香槟华人论坛 · 校园、生活、二手、活动",
+    "why": "完全照 Eric 说的「XX论坛」格式来，一看就是论坛。「香槟」是华人对 Champaign 的通用叫法。Chambana 是当地人对 Champaign-Urbana 两座城的合称俗语，能把住在 Urbana 的人也带上。ChambanaMoms.com 2009 年起就在用这个词（https://www.chambanamoms.com/about/）。",
+    "conflicts": "中文搜「香槟论坛」只出来香槟酒的内容（如 https://jancisrobinson.com/zh-hans/articles/champagne-and-other-festive-fizz-2023），没有同名社区。「香槟」在中国是受保护的酒类地理标志，中文译名一起受保护（2013-05，https://drinksint.com/news/fullstory.php/aid/3839/.html），所以中文搜索和微信搜一搜里会混进大量酒水内容。chambana.com（2004）、chambana.org（2022）、chambana.net（2003）都已被别人注册。本地 CU LocalWiki（https://localwiki.org/cu/）是 wiki 不是论坛，不构成直接冲突。",
+    "domains": "2026-11-12 查询结果。\n未注册：chambanaforum.com/.org/.net/.app 四个（.com/.org/.net 另用注册局 RDAP 复核为 404）、xiangbinluntan.com/.org/.net/.app 四个、xiangbin.org、xiangbin.app、chambana.app。\n已注册：xiangbin.com（2004，eName）、xiangbin.net（2010）、chambana.com/.org/.net。\n不确定性同上：未注册不等于一定买得到。",
+    "risks": "名字太通用，难有辨识度，也很难注册成自己的商标（判断）。刚来的新生未必认识 Chambana。微信里「香槟论坛」有没有被酒类账号占用，没查到。"
+   },
+   {
+    "zh": "香槟集",
+    "en": "CU Commons",
+    "tagline_zh": "香槟华人的论坛、二手和活动",
+    "why": "可以保留生产环境里那枚宋体「集」字印章（app/src/static/logo-mark.svg，V4 评审记录这套视觉是 Eric 6 月批准的方向），也接得上小程序现名「香槟市集」，视觉上改动最小。「集」既是集市也是聚集，论坛、二手、活动都装得下。Commons 是公共空间的意思，适合论坛。",
+    "conflicts": "没找到叫「CU Commons」的社区。本地有 Champaign Commons 购物中心（109 N. Mattis Ave，主力店 Schnucks，https://www.commercialsearch.com/commercial-property/us/il/champaign/champaign-commons），还有 University Commons、Urbana Commons 两处公寓（https://www.rentable.co/urbana-il/urbana-commons），英文名在本地容易被当成楼盘。CU 在外地还指科罗拉多大学（cuforum.org 就是 CU 校园刊物）、康奈尔、哥大。中文搜「香槟集市」没有结果。",
+    "domains": "2026-11-12 查询：cucommons.com/.org/.net/.app、chambanacommons.com/.org/.net/.app、xiangbinji.com/.org/.net/.app 全部未注册（cucommons.com/.org 另用 RDAP 复核为 404）。",
+    "risks": "「集」还是会让人先想到市集，和 Eric 嫌 market 不像论坛的初衷相反（判断）。名字不带「论坛」。英文名像公寓楼盘。"
+   },
+   {
+    "zh": "香槟街坊",
+    "en": "CU Neighbors",
+    "tagline_zh": "在香槟的华人街坊",
+    "why": "「街坊」能把学生、校友、家属和本地华人居民都装进来，和 CAACI 社区协会的身份对得上，也不像 AI 产品名（判断）。",
+    "conflicts": "搜「CU Neighbors」只出来 Champaign 市政府的社区新闻（https://champaignil.gov/category/neighborhood-news）和 CU-CitizenAccess 的报道，没有同名社区或 App。中文「香槟街坊」没有搜到结果。",
+    "domains": "2026-11-12 查询：cuneighbors.com/.org/.net/.app 全部未注册（.com 另用 RDAP 复核为 404）。",
+    "risks": "「街坊」口语感偏老，本科生可能嫌土（判断）。英文 Neighbors 很通用，像 Nextdoor 的本地版，难建立品牌。名字里看不出是论坛。"
+   },
+   {
+    "zh": "香槟华人论坛",
+    "en": "CU Chinese Forum",
+    "tagline_zh": "UIUC 与香槟地区华人交流",
+    "why": "纯描述型的名字，用户搜什么就叫什么，在微信搜一搜和中文搜索里最容易被找到。",
+    "conflicts": "本地已有 CAACI（Chinese American Association of Central Illinois）、Champaign-Urbana Chinese-American Evergreen Association（https://getholdings.com/nonprofits/ein/823256560）、CSSA 等组织，名字和它们靠得很近，外人可能以为是其中某一家的官方论坛。",
+    "domains": "2026-11-12 查询：cuchinese.com/.org/.net/.app、cuchineseforum.com/.org/.net/.app 全部未注册。cuchinese.com 没人注册有点意外，已用 Verisign RDAP 复核为 404。",
+    "risks": "名字长而泛，难做品牌，也难注册商标（判断）。只说「华人」，可能把想参与的非华人校友和本地人挡在外面（判断）。"
+   },
+   {
+    "zh": "香槟院子",
+    "en": "CU Yard",
+    "tagline_zh": "香槟华人的院子",
+    "why": "「院子」有自家人聚在一起的感觉，比「广场」更亲近（判断）。",
+    "conflicts": "Urbana 401 N. Broadway Ave 有一家 The Yard on Broadway，这条来自 Experience CU 2025-08 版地图的搜索摘要（https://www.experiencecu.org/media-library/documents/Resources/2025_Illustrated_Map_August.pdf），PDF 本身没打开核对。",
+    "domains": "2026-11-12 查询：cuyard.com/.org/.net/.app、chambanayard.com/.org/.net/.app 全部未注册（cuyard.com 另用 RDAP 复核为 404）。",
+    "risks": "英文 Yard 容易让人想到 Harvard Yard，或者被当成院子出租、旧家具（判断）。看不出是论坛。"
+   },
+   {
+    "zh": "香槟茶馆",
+    "en": "Chambana Teahouse",
+    "tagline_zh": "坐下来聊聊香槟的事",
+    "why": "茶馆是中文圈常用的闲聊区意象（老舍《茶馆》），口语化，不像 AI 产品名（判断）。",
+    "conflicts": "中文搜「香槟茶馆」没有结果，没发现同名社区。",
+    "domains": "2026-11-12 查询：chambanateahouse.com/.org/.net/.app、cuteahouse.com/.org/.net/.app 全部未注册。cuteahouse 读起来像「cute a house」，不建议用。",
+    "risks": "更像板块名而不是整站名（判断）。英文名长。本地哪天开了同名的茶饮店就会撞名（判断）。"
+   },
+   {
+    "zh": "伊大论坛（对照组，不推荐）",
+    "en": "Illini Forum",
+    "tagline_zh": "伊大华人论坛",
+    "why": "「伊大」是华人对伊利诺伊大学的常用简称，一看就知道是 UIUC。列出来主要是为了和其他候选比较风险。",
+    "conflicts": "IlliniBoard.com 是需要订阅的 Illinois 体育内容站（https://illiniboard.com/），IlliniGuys 有球迷论坛（https://illiniguys.com/illiniguys-celebrate-3rd-anniversary），英文名和这类体育站容易混。「Illini」在学校商标清单上（https://brand.illinois.edu/applying-the-brand/trademarks-and-licensing）。",
+    "domains": "2026-11-12 查询：illiniforum.com/.org/.net/.app 全部未注册（.com 另用 RDAP 复核为 404）。",
+    "risks": "8 个候选里商标风险最高。学校只允许 RSO 在名字里用 Illini，本项目不是 RSO，还规划了收费（判断）。「伊大」也可能被理解成伊利诺伊州内其他学校（判断，没找到出处）。英文名会让人误以为是体育论坛或学校官方。"
+   }
+  ],
+  "recommendation": "我的排序如下。最终由 Eric 和主席定。\n\n1. 首推：玉米地 / Cornfield。对外全称「玉米地 · 香槟华人论坛」，英文副标题写 Champaign-Urbana Chinese Community。\n- 理由一：它是这个圈子本来就在用的叫法，教育在线和新东方的留学文章都写过，口口相传成本最低。\n- 理由二：不碰 Illini、Illinois、UIUC 任何一个词，商标上最干净。\n- 理由三：cornfieldforum.com 和 cornfieldcu.com 都没人注册。\n- 代价一：yumidi.com 和 yumidi.net 已被占，拼音域名用不了，只能用英文域名。\n- 代价二：名字里没有「论坛」，要靠副标题交代。\n- 代价三：有人会嫌它自嘲、不够正式。如果主席担心校友和家长觉得不够正经，就选第二名。\n\n2. 稳妥：香槟论坛 / Chambana Forum。\n- 它完全符合 Eric 说的「XX论坛」，也最不容易被误读。\n- chambanaforum.com/.org/.net/.app 四个都没人注册。\n- 缺点是太通用：中文搜索会被香槟酒的内容淹没，也很难注册成自己的商标。\n\n3. 想保留现有视觉：香槟集 / CU Commons。\n- 「集」字印章 logo 和小程序现名「香槟市集」都能沿用，改动最小。\n- 但「集」仍然带着市集的意思，没解决「听起来不像论坛」这个问题。\n\n不管选哪个，下面几件事都要做：\n- 在小程序提审前把名字定下来，并在小程序后台「设置 → 基本信息 → 名称」里试填，确认没被占用（只试填，不提交）。\n- 选定后尽快注册主域名。查询结果只代表 2026-11-12 当时的状态。\n- illinimarket.com 继续保留，做 301 跳转，至少保留一年。\n- 「Illini」退出产品名和徽章文案。「UIUC」只出现在描述里。\n- 「二手 / Market」降为一个板块名。\n\n拍板前最好再补三项核对：\n- 在微信和小红书里搜一下这几个名字有没有同名账号。\n- 把三个名字念给几位新生和一位校友听，看谁一听就懂。\n- 确认小程序的主体类型和剩余改名次数。",
+  "migration_notes": "一、时机\n现在改名最便宜。memory 记录：小程序开发版 2026-10-26 已上传，没提审，没发布；公开上线还是 NO-GO。另外，2026-11-12 的 handoff 文档 BACKGROUND_AND_DECISIONS.md 第 30 行写着「Illini Market 继续作为产品名称和社区核心；首轮不做重新命名」，改名要先把这条决定改掉，同步更新 OMO_PROMPT 和 V4 评审里写死的「Illini 集市」。\n\n二、微信小程序（AppID wxc3da81aa8852a6ff，现名「香槟市集」）\n- 改名入口：设置 → 基本信息 → 小程序名称 → 修改，管理员扫码确认。\n- 改名次数：ifanr 2017-08-16 的文章说，个人主体在发布前有 3 次改名机会，发布后每年 2 次（https://www.ifanr.com/minapp/892522）。另一篇 ifanr 问答说，企业主体改名要走微信认证，认证费 300 元（https://www.ifanr.com/minapp/892392，发布日期不明）。这两篇都是旧的第三方资料，以后台实际提示为准。这个 AppID 是个人、企业还是海外主体，还没核实；已经用掉几次改名机会也不知道。\n- 名称规则：4–30 个字符，一个汉字算 2 个；不能和别的主体的公众号或小程序重名；碰到保护词要再审，最多 7 个工作日（Oray 2023 指南，https://service.oray.com/question/5655.html）。\n- 名字和类目要对得上：名字带「论坛」，提审时可能要求选社交或论坛类目。这类类目审核偏严，对主体资质有要求，这一点只找到 2018 年 V2EX 帖子里的经验（https://v2ex.com/t/472456），没有官方条文，要在后台「服务类目」里核对。\n- 备案：如果这个小程序已经做过备案，改名可能要走变更备案。我没找到官方说法，待核。\n- 改不改无所谓的：project.config.json:26 的 projectname 只是开发者工具里的本地名，跟着改就行。\n\n三、代码和文案\n2026-11-12 在当前工作树上用 grep 搜品牌名，共 55 个文件、242 行。\n- 品牌名本身：app/src/manifest.json:2、app/src/pages.json:182（navigationBarTitleText）、static/manifest.webmanifest:2-3（PWA 名称和简称）、app/index.html、app/public-brand-pages.ts（13 处）。\n- i18n：zh.ts:177 的 'app.name' 是「Illini 集市」，en.ts:177 是「Illini Market」；'app.desc' 两种语言里都写成二手交易平台，要改成论坛的描述。zh.ts:473 和 en.ts:475 的审核提示把产品说成「只用于同学之间交易物品」。徽章文案在 zh.ts:505-515、en.ts:507-517，建议改成「校园邮箱已验证」。\n- 路由：pages/illini-verify 这类内部路由名和数据库字段 is_illini_verified 不用改，改了反而会让旧链接失效。\n- 分享卡：api/share.js:197-237 和 api/share-post.js:171-205 里的 og:site_name 和兜底标题「Illini Market · Campus Plaza」要改。微信会缓存已经分享出去的卡片，旧卡片会继续显示旧名字。\n- 法律文本：terms、privacy、guidelines 的中英文版都写着服务名，改完更新「最后更新」日期。\n- 静态页：static/h5/account-deletion.html（10 处）、robots.txt。\n- 邮件：supabase/email-templates 下的 confirm-signup 和 reset-password 只是仓库副本，实际生效的在 Supabase 后台，要手动重新粘贴。\n- 测试：api/_share-boundary.test.mjs（33 处）、_email-brand-boundary.test.mjs（11 处）、_deployment-boundary.test.mjs 都断言了品牌字符串，要跟着改，否则 CI 会红。\n\n四、域名和跳转\n- illinimarket.com：2026-06-25 在 Cloudflare 注册。要长期续费保留，页面路径一律 301 到新域名，path 和 query 原样带过去。\n- 接口：/api/* 和 /share/* 在过渡期两个域名都要能直接服务，不要对 POST 请求做跳转。原因是已经装上的小程序旧版本和没刷新的 H5 还在调旧域名。\n- 换新域名要同步改：\n  - 代码里的 CORS 白名单（例如 api/auth/send-illini-code.js:22-23）\n  - Supabase Auth 的 Site URL 和 Redirect URLs\n  - Vercel 项目域名\n  - Cloudflare DNS\n  - 小程序后台的 request 合法域名和业务域名\n  - Sentry 等监控配置\n- 邮件发件人：现在是 DIGEST_FROM=Illini Market <noreply@send.illinimarket.com>。可以分两步走：先只改显示名，继续用已经验证过的 send.illinimarket.com；等新域名在 Resend 里配好 SPF、DKIM、DMARC 并验证通过后再换。这样不影响邮件送达率。\n- 支持邮箱：help@illinimarket.com（runtime.ts:57），跳转期间继续收信。\n- 防御性注册：illinimarket.org、.net、.app 目前都没人注册，要不要买下来防止被人冒用，由 Eric 决定。\n\n五、对外过渡\n- 10 月已经用 Illini Market 这个名字私信过 300 多位本地卖家（自动化 11-02 起暂停）。站内和关于页建议写「原 Illini Market」，保留大约 3 个月。\n- CAACI 官网、周报、微信群里提到新名字，都属于对外发布，要 Eric 先批准。\n- 仓库名、Supabase 项目名、Codex 自动化名这些内部名称不用改。\n\n六、「二手 / Market」改成子板块\n- 把它保留为一个一级板块或 tab，中文叫「二手」，英文叫「Market」或「Marketplace」，和校园日常、落脚香槟、学长学姐说、找搭子、吃喝好店并列。\n- 首页瀑布流和 pages/index、pages/detail 照常沿用，只改入口文案和页面标题。V4 评审里「广场改名社区」那一步可以和这次改名一起排期。"
+ },
+ "home": {
+  "observations": [
+   {
+    "site": "一亩三分地·论坛首页（Discuz 经典版）",
+    "url": "https://www.1point3acres.com/bbs/ （直连返回 403，是 Cloudflare 验证页，没有绕过；改读 Internet Archive 2026-11-02 快照 https://web.archive.org/web/20261102123613/https://www.1point3acres.com/bbs/ ，访问 2026-11-12）",
+    "what_homepage_shows": "从上到下：① 页头两层：导读/功能中心/话题/求职/攻略/搜索；第二层 首页、论坛、Offer多多、面试经验、Salarytics、Visa Tracker、交友、Instant、精品网课、生活攻略、手机APP、商务合作。② 快捷面板：话题/学校/公司/地区入口，11 门网课，9 篇攻略。③ 不带标签的头条 14 条。④ 三列网格里 4 个热榜：最新热门、置顶话题、最新回复、最新主题，每个 30 条，每条后面跟 [子版块] 标签。⑤ 16 个分区小列表（留学申请、人际关系、EECS、签证手续、留美生活、投资理财、好物Deals、心有宠物、职场达人、找工求职、职位内推、数据科学、世界公民、身份移民、海归中国、学习研究），每个 1–5 条。小列表的表头是 12px 字、颜色 #497b89、浅蓝底 rgb(230,241,246)，条目是 #666 灰字加 [子版] 标签。⑥ 赞助专栏 8 个，学校 logo 15 个。⑦ 主栏是分区索引，13 个左右分区组（留学申请、世界公民、投资理财、海外生活、人际关系、只想聊聊、海外求职、中国求职、职场达人、专业技术、签证移民、版务管理等）。每个版块一行，写 版块名|子版块、主题数/帖子数、New 数、最后发帖人：标题、时间，例如 研究生申请 93175/951164，New 2，9 分钟前。⑧ 右侧栏是 300px 宽的卡片（card-1p3a w-[300px]）：功能更新、加米话题、本周最热 10 条、本月最热 10 条、最新动态、好物推荐 9 条、绿卡排期表。主栏底部还有本日活跃排行 12 人、淘专辑推荐。整页以 text-sm 和 12px 灰字为主。",
+    "transferable": "（1）分区下面直接挂 2–5 条最新帖的小列表，正是 Eric 说的「首页分几个类别」，能整页移植成我们的板块卡。（2）每条帖子标注所属子版块，读者不用点进去就知道在哪个板块。（3）分区行的信息顺序值得照搬：名称、说明、数量、最后活跃的帖子和时间，信息密度高，扫读也快。（4）侧栏放长期有用的东西，一亩三分地放的是绿卡排期表，我们对应「新来先看」和近期活动。",
+    "avoid": "同一个帖子在首页反复出现：「最近准备 AI Infra 面试…」在快照文本里出现 8 次，「在美国的钱真的能搬回去吗」出现 6 次。同屏有 4 个 30 条热榜、16 个小列表、赞助专栏、logo 墙，还有签到、积分、道具、竞猜、勋章入口。标题被截成半句，12px 灰字铺满全页。我们只有 20–60 帖，照搬只会显得空，又显得乱。限制：这份结论只来自一个桌面快照的 HTML，没有看到渲染后的像素，也没有看到手机版（手机主要靠 App）。"
+   },
+   {
+    "site": "一亩三分地·新版站点根页面",
+    "url": "https://www.1point3acres.com/ （Archive 2026-11-04 快照 https://web.archive.org/web/20261104033352/https://www.1point3acres.com/ ，访问 2026-11-12）",
+    "what_homepage_shows": "这不是论坛列表，是一张入口页：页头 社区/面经/Offer多多/APP/English/登录；一句定位加三个按钮（逛社区、看面经、搜社区）和搜索框；「你最近在忙什么？」下面 6 个编号入口：01 找工作、02 职场、03 申请学校、04 签证身份、05 海外生活、06 更多版块，每个配一行说明（如「H1B、绿卡、身份问题」）；接着是两个工具卡（面经题库、Offer多多），2006–今天的站史时间线，页脚。",
+    "transferable": "板块说明用具体名词写，例如「租房、买车、日常互助」，不写口号；按「你在忙什么」组织入口。我们的板块说明可以照这个写法。",
+    "avoid": "整页都是介绍，看不到任何真实帖子。站史时间线这类自我介绍，对一个新论坛只有坏处。这一页适合当营销落地页，不适合当论坛首页。"
+   },
+   {
+    "site": "美卡论坛 uscardforum.com（Discourse）",
+    "url": "https://www.uscardforum.com/ （直连和 .json 接口都是 Cloudflare 403，没有绕过；读的是 Archive 2026-11-06 快照 https://web.archive.org/web/20261106185528/https://www.uscardforum.com/ 里预载的站点设置和分类数据，访问 2026-11-12）",
+    "what_homepage_shows": "站点设置原值：top_menu = categories|latest|top|new|unread|hot，首页就是「类别」页；desktop_category_page_style = categories_and_latest_topics，即左边分类列表、右边最新话题；mobile_category_page_style = categories_with_featured_topics，手机上每个分类下挂几条话题；navigation_menu = header dropdown，没有左侧栏，分类从页头下拉进入，下拉显示 8 个（header_dropdown_category_count = 8）；主题叫「蓝黑」；首页没有欢迎横幅（enable_welcome_banner=false）。顶级分类 11 个，顺序固定：玩卡 41064、旅行 30797、理财 7786、败家 14802、生活 11600、法律 3970、情感 3365、搬砖 5006、文艺 646、闲聊 14296、疫情（已关闭）1279，下设 42 个子分类。每个分类有一种颜色、一句说明和主题数，并带日/周/月新帖数，如 玩卡 32/230/955。右侧最新列表预载 16 条，第一条是置顶的「欢迎来到美卡论坛&本论坛版规」。",
+    "transferable": "这是和我们最接近的结构：几个顶级分类，每个配颜色、一句说明、数量，再挂几条最新话题。手机端用「分类+精选话题」的分节列表。分类从页头下拉进入，不占左栏宽度。版规帖置顶 1 条。",
+    "avoid": "分类说明有的写成「来分享美好生活的点点滴滴吧」这类空话，我们的说明要写具体话题。已关闭的分类留在首页是噪音，我们关掉就移走。限制：页面布局是根据设置名和 Discourse 的标准行为推断的，我没有看到渲染画面；左右两栏的具体像素宽度没有核实。"
+   },
+   {
+    "site": "Discourse 分类页样式（官方 meta 讨论）",
+    "url": "https://meta.discourse.org/t/redesigning-the-default-category-page/46783/77 ；https://meta.discourse.org/t/how-can-i-view-categories-and-latest-on-mobile/358489 （经搜索结果摘要读取，访问 2026-11-12）",
+    "what_homepage_shows": "桌面分类页有三种官方样式：Categories and Latest Topics（左分类，右最新）、Categories with Featured Topics（每个分类下挂精选话题，用户反馈默认 3 条、调不高）、Categories Only。手机端选项更少，想在手机上同时看分类和最新，要写自定义 JS。",
+    "transferable": "手机端「每个分类下挂 3 条」是成熟的默认做法，我们手机首页每个板块放 3 条，有据可依。",
+    "avoid": "这一条只读了搜索摘要，没有逐帖核对原文，「默认 3 条」来自一位用户的说法，不是官方文档。"
+   },
+   {
+    "site": "北美华人e网 huaren.us",
+    "url": "https://huaren.us/ （直连 Cloudflare 403，没有绕过；读的是 Archive 2026-11-11 快照 https://web.archive.org/web/20261111083614/https://huaren.us/ ，UI 标注 Desktop v5.1，访问 2026-11-12）",
+    "what_homepage_shows": "页头：首页/板块/搜索/多媒体/官方频道/News新闻/故事会，还有字体大小、黑白模式、展开边栏等开关。正文依次是：趋势 10 条；历史上的今天（2016–2025 每年 1 条）；6 个热门板块做成标签页，带新帖数（华人闲话 5089、星在银河 557…），共 12 页；Hot Styles 折扣 10 条，整页出现 3 次；热帖约 60 条；新帖；最多收藏；华人快讯新闻聚合约 20 条；打折购物/华人闲话/唤来换去/家有一小等板块标签（懒加载）；多处 Advertisement。布局类名显示容器 max-w-[1440px]、主栏 w-[970px]、侧栏 w-[310px]，正文 text-sm，元信息大量用 10–11px（text-[10px] 23 处、text-[11px] 36 处）。HTML 里有手机底栏：首页｜版块｜发帖｜消息｜我的。",
+    "transferable": "手机底部 5 项标签栏是中文论坛的常见做法；热门板块做成标签页并标出新帖数，可以在一个区块里切换多个板块。",
+    "avoid": "Eric 说的「乱」就是这一页：同一折扣块重复 3 次，八卦热榜占首屏，新闻聚合、历史上的今天、广告位一起堆着，元信息只有 10–11px。我们首页一律不放广告、新闻聚合和重复区块。"
+   },
+   {
+    "site": "V2EX",
+    "url": "https://www.v2ex.com/ （直连 200，取了桌面版和 iPhone UA 版的 HTML，以及样式表 /assets/…-combo.css，访问 2026-11-12）",
+    "what_homepage_shows": "桌面：页头 44px。主栏顶部是一排主题标签（技术、创意、好玩、Apple、酷工作、交易、城市、问与答、最热、全部、R2、VXNA），下面一排子节点（程序员、Python、Claude、OpenAI…）。主栏是主题行列表：头像、标题、节点 · 作者 · 时间 · 最后回复人、回复数。右栏依次是 登录注册框、Today Top 10、Hottest Nodes 约 17 个、Site of the Day、最近新增节点、Community Stats（会员 863,747、主题 1,256,641、回复 18,285,688）。CSS 实测：.content 最大宽 1060–1100px，#Rightbar 宽 270px，#Main 右边距 310px，.cell 内边距 10px、字号 14px、行高 150%，.item_title 16px、行高 130%。手机版只有主题标签和主题行列表，Top 10、热门节点、统计全部去掉。",
+    "transferable": "主题行的写法：标题一行，元信息一行，回复数靠右，适合放在我们首页的「全站最新」。用 1px 分隔线代替大卡片。手机端去掉侧栏，只留列表，这个取舍干净。",
+    "avoid": "V2EX 首页只有一条全站时间线，分类只是标签，做不出 Eric 要的「首页分几个类别看起来丰富」。站点统计和 Top 10 要有大量真实活动才撑得起，新站放了只会暴露数字小。"
+   }
+  ],
+  "desktop_layout": "总框架（1280 视口）：页面底色 #F7F6F3。内容容器宽 1200px 居中，左右各留 40px。容器分两栏：主栏 876px、间距 24px、侧栏 300px。首页不设左侧导航栏，也不放 hero 大图和口号。这和现在的 V4 原型有三处不同：原型有 200px 左栏，有「在香槟，把生活连接起来。」标题区，帖子用大卡片。我建议这三样都在首页拿掉，宽度让给板块网格；板块入口改放进页头的「社区」下拉，美卡就是这么做的。\n\n① 页头：高 56px，吸顶，白底，底边 1px #E7E5E0。左侧放站名和标识，约 160px。导航是 社区▾（下拉列出 5 个板块）/ 二手 / 活动，字号 14px，间距 24px。右侧依次是搜索框 320×36（占位文字「搜帖子、二手、活动」）、发帖按钮 72×36（全站唯一的主色按钮）、消息铃铛（有未读才显示数字）、头像 32px。未登录时，头像换成「登录 / 用 Illinois 邮箱加入」。\n\n② 未登录提示条：只对未登录用户显示，尺寸 1200×44，在页头下方 16px。内容是一句话（「UIUC 华人学生和校友的论坛，由 CAACI 志愿者维护」）加一个加入按钮，可以关闭。登录用户看不到。\n\n③ 主栏 A：板块网格，从页头下方 20px 开始。共 2 列 × 3 行，每张卡 426×约 224px，列间距 24，行间距 16。卡片白底、1px 边框、圆角 8、内边距上下 16 / 左右 20。顺序固定：\n- 第一行：校园日常 ｜ 落脚香槟\n- 第二行：学长学姐说 ｜ 找搭子\n- 第三行：吃喝好店 ｜ 二手好物\n\n讨论板块卡的结构：\n- 卡头第 1 行，高 24px。左边是 3×16px 的板块色条和板块名（16px/600）。右边是「本周 N 新帖」（12px 灰，N≥3 才显示）和「全部 ›」（13px）。\n- 卡头第 2 行，高 20px。板块说明，13px 灰，单行，写具体话题：\n  - 校园日常：课程、考试、校园里的事\n  - 落脚香槟：租房、银行卡、驾照、公交\n  - 学长学姐说：选课、实习、读研，问过来人\n  - 找搭子：拼车、饭搭子、自习、看球\n  - 吃喝好店：香槟附近吃喝和小店\n- 1px 分隔线下面是 4 行主题，每行 34px。\n  - 标题 14px #1F1F1F，单行省略，可用宽度约 300px，大约 21 个汉字。\n  - 右侧固定 76px 放回复数和时间。回复数 ≥1 才显示数字；0 回复的提问显示「待回答」小标签。时间 12px 灰，7 天内写「3 天前」，更早写「11月3日」。\n  - 最多 1 条置顶，排最上面，带 11px「置顶」标签。其余按最后活跃时间排。\n\n二手好物卡放在第 6 格。卡头格式同上，链接写「全部二手 ›」。下面 3 行在售商品，每行 48px：40×40 圆角缩略图、14px 单行标题、右侧 15px/600 价格。已售和已下架的商品不上首页。3×48 和讨论卡的 4×34 差不多高，两张卡能对齐。\n\n网格总高约 704px。在 1280×800 的屏幕上，第一行和第二行卡片能完整看到。\n\n④ 主栏 B：全站最新，在网格下方 32px。\n- 标题行：「全站最新」18px/600；三个文字标签页 最新回复 ｜ 新发布 ｜ 待回答（14px，选中项加 2px 下划线）；右侧「全部讨论 ›」。\n- 白底容器，放 15 行，每行 56px。左边 28px 头像。第一行是标题，15px/500，单行省略。第二行 12px 灰：板块名（用板块色的文字）· 作者 · 时间 · 最后回复人。右侧是回复数胶囊。\n- 网格里已经出现过的帖子，这里不再出现。\n- 底部放「查看更多 ›」按钮，跳到社区列表页，不做无限滚动。\n- 能显示的帖子少于 5 条时，整个区块收起，只留一行「查看全部 N 个讨论 ›」。\n\n⑤ 侧栏（300px）：从上到下，块间距 16。\n- S1 新来先看，约 220px。放 3–5 条站务维护的长期内容：版规、新生安顿清单、二手交易安全、Illinois 身份验证说明。每行 36px，14px，前面加 11px 类型标签「指南」或「版规」。\n- S2 近期活动，最多 3 条，每条 64px。左边是 44×48 的日期块（月 11px，日 20px 粗体）。右边是 14px 标题（最多 2 行）、12px 时间地点（如「周六 18:00 · Illini Union」）、来源标签（「CAACI 主办」或「转自 xx」）。底部放「全部活动 ›」。未来 30 天没有活动时，整块隐藏。\n- S3 本周热议，5 条，单行标题加回复数。达到阈值才出现。\n- S4 关于本站，12px 灰字，约 100px：谁在维护、版规、意见反馈、申请当版主、联系方式。\n- 侧栏不放广告、签到、排行榜、在线人数。\n\n⑥ 页脚：一行 12px 链接（关于、版规、隐私、反馈）加版权信息。\n\n字体与密度：\n- 字体栈：-apple-system, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans SC, sans-serif。\n- 字号：正文 14px/1.5；列表标题 14–15px；元信息 12px；区块标题 18px/600。最小 12px，不学 huaren 用 10–11px。\n- 颜色：正文 #1F1F1F，次要文字 #6B6B6B，元信息 #8A8A8A，边框 #E7E5E0。5 个板块各配一个低饱和色，只用在色条和板块名上。主色只给发帖按钮。不要用 Illinois 官方 Block I 标志，避免被看成学校官方站点。\n- 密度：首屏约 6 张卡、每张 4 条，加侧栏 2 块。这个密度介于 V2EX（标题 16px，行内边距 10px）和一亩三分地（12–14px，多块并列）之间，属于我的设计判断，还没有拿真实用户验证。",
+  "mobile_layout": "390 视口：左右边距 16px，内容宽 358px。从上到下：\n\n① 顶栏 48px。左边站名，17px/600。右边是搜索图标和消息铃铛，各占 40×40 的点击区。\n\n② 板块标签行 44px，吸顶在顶栏下面。横向滚动的胶囊，高 30px，字号 14px：全部（首页默认选中）｜校园日常｜落脚香槟｜学长学姐说｜找搭子｜吃喝好店。最后一个胶囊只露出一半，提示可以横滑。点板块进入该板块页。\n\n③ 未登录提示条 44px。只对未登录用户显示，可以关闭。\n\n④ 新来先看：一行 48px 的折叠条，写「新来先看 · 版规、安顿清单等 4 篇 ›」，点开展开列表。\n\n⑤ 近期活动：横向滑动卡片，每张 260×72，含日期块、2 行标题、时间地点，最多 3 张。未来 30 天没有活动时，这一行不出现。\n\n⑥ 五个板块分节，顺序和桌面一样。\n- 节头 44px：3px 色条，板块名 16px/600，右侧「更多 ›」。\n- 下面 3 条主题，每条最低 52px。标题 15px/1.4，最多 2 行。元信息 12px 灰，写回复数或「待回答」，加时间。\n- 节与节之间用 8px 灰色间隔带分开。这是 Discourse 手机端「分类 + 精选话题」的做法，美卡手机端就设成这种样式。\n- 某个板块不足 3 条时，用一行灰字补位：「适合在这里问：… 发第一帖 ›」，不留空白。\n\n⑦ 二手新上架。节头下面横向滑动商品卡，每张宽 128px：128×128 图片、13px 单行标题、15px/600 价格。最多 6 张，最后一张是「看全部二手」。\n\n⑧ 全站最新。上面出现过的帖子不再重复，最多 10 条。行结构同桌面，但标题 15px、最多 2 行。下方放一个 44px 高的全宽按钮「查看全部讨论」。可显示的帖子不足 5 条时，只留这个按钮。达到热议阈值后，在这里加一个「本周热议」标签页，不单独开区块。\n\n⑨ 页脚小字：关于本站 / 版规 / 反馈。\n\n⑩ 底部标签栏 56px，另加安全区高度：社区｜二手｜活动｜消息｜我的（沿用 V4 的五项）。发帖用右下角 52px 的圆形悬浮按钮，位于标签栏上方 16px，只在社区页面出现。\n\n手机首页不放：侧栏「关于本站」的长文字、任何横幅或轮播、统计数字。整页高度估算：5 个板块 × 约 210px，加其他部分，约 1800–2200px。",
+  "block_rules": "1. 区块数量：桌面主栏 2 块（板块网格、全站最新），侧栏最多 4 块。手机 5 类区块：新来先看、近期活动、板块分节、二手、全站最新。超过这个数，就要先删掉一块。\n\n2. 顺序固定，不随数据变化。区块按阈值显示或隐藏，隐藏时不留「暂无内容」的空框。唯一的例外是 5 个讨论板块和二手卡：它们一直在，内容不够时用「适合在这里问：… 发第一帖 ›」一行补位。\n\n3. 一个区块只用一种形态：讨论是文字行，二手是图片加价格，活动是日期块。首页不出现大卡片帖子、正文摘要和带配图的帖子；摘要只在板块页出现。\n\n4. 去重：同一个帖子在首页只出现一次。优先级：置顶 > 板块卡 > 全站最新 > 本周热议。一亩三分地快照里同一帖出现 8 次，这条规则就是针对这种情况。\n\n5. 每张板块卡：\n   - 桌面最多 4 行，手机 3 行；\n   - 最多 1 条置顶；\n   - 同一作者最多 2 行；\n   - 站务账号的帖子，整个首页加起来最多 3 条。\n\n6. 阈值（以下数值是我的建议，上线后可以调）：\n   - 「本周 N 新帖」：N≥3 才显示；\n   - 板块总帖数：≥50 才显示；\n   - 本周热议：最近 7 天内至少 5 个帖子，每个 ≥3 条回复，且回复来自 ≥2 个不同用户；\n   - 全站最新：去重后 ≥5 条才显示；\n   - 近期活动：未来 30 天内 ≥1 场；\n   - 浏览量、在线人数、注册人数：第一版首页一律不显示。\n\n7. 文字：\n   - 板块说明不超过 16 字，写具体话题（学一亩三分地新版的「H1B、绿卡、身份问题」），不写「来分享美好生活吧」这类话；\n   - 区块标题只用名词，例如「近期活动」；\n   - 按钮写动作，例如「发第一帖」「全部活动」；\n   - 界面文字不用 emoji，不放口号。\n\n8. 视觉：板块色只用在 3px 色条和板块名上。主色只给发帖按钮。不用渐变、插画、轮播、图标墙。最小字号 12px。\n\n9. 分组：5 个讨论板块加二手，正好填满 2×3 的 6 格。以后要新增板块，必须替换或合并一个，网格不扩到第 7 格。细分话题用板块内的标签处理（如落脚香槟下的 租房/交通/证件），不建二级板块。活动的形态和讨论不同，所以不进网格，放侧栏。\n\n10. 首页永远不出现：\n    - 广告；\n    - 签到、积分、勋章、道具；\n    - 等级榜、活跃用户排行；\n    - 「历史上的今天」、新闻聚合；\n    - 未经核实的商家优惠；\n    - AI 生成的摘要；\n    - 没有标注来源的转载或翻译内容；\n    - 显示为 0 的计数。",
+  "cold_start_behavior": "前提：上线时全站有 20–60 个帖子，每天 0–5 个新帖。\n\n上线门槛：\n- 每个讨论板块至少 4 个真实帖子，5×4=20，桌面板块卡刚好填满，多出来的进「全站最新」。\n- 二手至少 3 件真实在售商品。不够时，二手卡显示「发布第一件 ›」补位行。\n\n内容来源，必须都是真人真事：\n1. 站务账号写长期指南，署名清楚写「站务」。例如落脚香槟的租房合同、银行卡、手机卡、驾照、MTD 公交；校园日常的选课注册时间线。\n2. 团队成员用本人账号发自己真实的问题和经验。\n3. 学长学姐说：邀请 5–10 位校友，每人回答一个真实问题。\n4. 吃喝好店：只写团队自己去过的店，照片自己拍。\n5. 找搭子：绑定真实活动，例如 CAACI 活动的拼车。\n6. 微信群里收集的问题：先征得提问人同意，改写后发出，标注「整理自群聊，已获同意」。\n7. 外部来源（如 Reddit r/UIUC）的翻译或改写：法律评估出结论前，不上首页。如果以后上线，必须带「整理自 xx · 原帖链接」标签，并归到站务账号，不能伪装成成员发帖。\n\n不造假：\n- 不建马甲账号；\n- 不用机器人回帖；\n- 不倒填发帖日期；\n- 不显示虚高的浏览量；\n- 不显示在线人数。\n\n内容少时也要显得有秩序，不显得空：\n- 板块卡高度固定。不足 4 条时补一行「适合在这里问：租房合同、水电网、驾照… 发第一帖 ›」。这一行是使用说明，不是假帖。\n- 低于阈值的数字直接不显示，不写「0」或「1 帖」。\n- 本周热议和各种统计先隐藏。\n- 超过 7 天的帖子显示具体日期（「10月28日」），避免一整排「3 周前」。\n- 全站最新去重后不足 5 条时，收成一行链接。\n\n20 帖时首页是什么样：桌面上 6 张卡都是满的，全站最新收成一行链接，侧栏有新来先看和近期活动（前提是有活动）。60 帖时：全站最新出现 15 条左右，其余内容不变。\n\n需要配套的运营动作：\n- 团队承诺 24 小时内回复每个提问。「待回答」标签是在请人来答，不能长期挂着没人管。\n- 每周把新帖大致平均分到 5 个板块。\n- 第一个月不开新板块。\n\n什么时候算进入常态：连续 4 周每周 ≥30 个新帖。到时本周热议、「本周 N 新帖」、板块总帖数会按阈值自动出现，站务帖在首页仍然最多 3 条，布局本身不变。「4 周、每周 30 帖」是我的估计，还没有数据支撑。"
+ },
+ "legal": {
+  "summary": "结论：用脚本抓 Reddit（r/UIUC）、一亩三分地、美卡论坛、小红书、知乎的帖子，再翻译或改写成站内内容，这五个来源的条款都明文禁止，版权上也站不住，风险高。冷启动换三条路：一是人工看帖、只记下问题，然后自己写原创指南；二是\"自己的话写摘要 + 一句短引 + 原帖链接 + 署名\"；三是请作者授权，或者干脆请作者本人来发。这三条风险低。\n\n关键事实（2026-11-12 查）：\n1. Reddit 的 robots.txt 当天实取，对所有爬虫一律 Disallow: /。User Agreement 2026-07-01 生效，第 7 条只允许在 robots.txt 范围内有条件地爬取，并写明 \"scraping the Services without Reddit's prior written consent is prohibited\"。第 3 条还禁止三件事：未经书面协议商业利用内容、制作内容的衍生作品、用 Reddit 内容搭建\"类似或竞争的网站\"。论坛正好落在最后一项里。\n2. 版权归发帖人，不归平台：Reddit UA 第 5 条、Data API Terms 2.4、知乎协议三.1 都这么写。美国法下翻译属于衍生作品（17 U.S.C. §101），改编权只属于作者。每一篇翻译帖都可能让作者直接发 DMCA 通知。\n3. 官方 API 也解决不了。Data API Terms 2.4（2026-07-20 修订）只许原样复制和展示，除了排版不许修改，翻译和改写都超出许可。商业用途要另签协议。2025-11-11 起 API 自助申请已关闭，改为审批制。\n4. 判例：Van Buren（2021-06-03）和 hiQ（第九巡回 2022）之后，抓公开页面的 CFAA 刑事风险变低了。合同之诉却照样能赢：hiQ 在 2022-11 被判违反 LinkedIn 用户协议，最后以同意判决加禁令收场。两份判决对\"违约之诉会不会被版权法排除\"给了相反答案：X v. Bright Data（2024-05）认为会被排除，Reddit v. Anthropic（2026-03 发回州法院）认为不会，这个问题法律上还没定论。Reddit 2025-10 起诉 SerpApi、Perplexity 等，据二手报道，2026-07 大部分诉请过了驳回动议。\n5. DMCA 安全港只保护用户自己上传的内容。运营方自己搬来的内容不在保护范围内（§512(c)）。版主或员工审核后发布的内容，也可能被算成平台自己的发布（Mavrix v. LiveJournal，2017）。\n6. 中国法方面：知乎协议三.10 明禁抓取，三.5 规定转载须经原作者单独授权，三.8 允许知乎以自己名义起诉。小红书协议 4.1、4.2 与此类似。新《反不正当竞争法》2025-10-15 施行，第 13 条第 3 款禁止以避开技术管理措施等方式获取他人数据。大众点评诉百度案中，百度因大量使用大众点评的用户点评，二审判赔 300 万元加 23 万元合理费用。\n7. 用 LLM 洗稿：改写后只要保留了原文的结构和细节，中美法院都可能认定实质性相似。版权局 2025-01-29 的 AI 报告第二部分认为，没有足够人类表达的 AI 产出不受保护。结果是洗出来的稿子你们自己未必有版权，却仍可能侵犯原作者的版权。Google 的垃圾内容政策也把\"抓取后同义替换或翻译再发布\"列为 spam。\n\n我的判断：对一个小论坛，最现实的后果不是被起诉，而是这几样：原作者或平台发 DMCA 通知，托管商下架；微信小程序被投诉下架；在 UIUC 华人小圈子里被认出\"搬运洗稿\"，新论坛和 CAACI 的信誉一起受损。\n\n这次没核实到的地方：\n- Reddit Public Content Policy 原文返回 403，相关内容只能用 TechCrunch 2024-05 的报道。\n- 美卡的 /tos 页面返回 403，只通过搜索摘要确认它用的是 Discourse 模板条款。\n- 小红书协议看的是第三方转载版。\n- Reddit v. SerpApi 案 2026-07 的裁定只看到标题和二手摘要。\n- X v. Bright Data 的上诉进展没查到。\n- 论坛以后上线付费或赞助后，会不会被 Reddit 认定为 monetized 产品。我倾向于会。",
+  "sources_checked": [
+   {
+    "source": "Reddit User Agreement（美国及非 EEA 版）",
+    "url": "https://redditinc.com/policies/user-agreement",
+    "date_or_version": "2026-07-01 生效，2026-05-26 修订；2026-11-12 访问",
+    "key_terms": "§3 未经书面协议不得商业利用 Content、不得制作衍生作品、不得为搭建类似或竞争网站而访问；§5 用户保留所有权，授予 Reddit 永久、可再许可的许可（含 AI 训练）；§7 只在 robots.txt 范围内有条件许可爬取，未经事先书面同意禁止 scraping；§14 适用加州法，旧金山法院管辖"
+   },
+   {
+    "source": "reddit.com robots.txt",
+    "url": "https://www.reddit.com/robots.txt",
+    "date_or_version": "2026-11-12 实取（HTTP 200）",
+    "key_terms": "User-agent: * / Disallow: /；注释引用 Public Content Policy，并把研究和非商业用途指向 r/reddit4researchers"
+   },
+   {
+    "source": "Reddit Developer Terms",
+    "url": "https://redditinc.com/policies/developer-terms",
+    "date_or_version": "2024-09-24 生效，2026-03-26 修订；2026-11-12 访问",
+    "key_terms": "2.1 只许复制展示 User Content，修改仅限排版；4.1 由企业使用或用于已变现的产品须另签协议；4.2 不得制作衍生作品或再分发，不得用于训练模型；5.2 User Content 归用户，须回链、注明用户名、标明来自 Reddit"
+   },
+   {
+    "source": "Reddit Data API Terms",
+    "url": "https://redditinc.com/policies/data-api-terms",
+    "date_or_version": "2023-06-19 生效，2026-07-20 修订；2026-11-12 访问",
+    "key_terms": "2.4 只许为运行 App 复制和展示，排版以外不得修改；3.1 商业用途须另签协议；3.2 不得超出批准用途使用或留存数据，不得用 API 发垃圾信息；第 4 条要求署名"
+   },
+   {
+    "source": "Reddit Public Content Policy（原文 403，未能读取）及 TechCrunch 报道",
+    "url": "https://techcrunch.com/2024/05/09/reddit-locks-down-its-public-data-in-new-content-policy-says-use-now-requires-a-contract",
+    "date_or_version": "报道日期 2024-05-09；原文地址 support.reddithelp.com/hc/en-us/articles/26410290525844 访问被拒",
+    "key_terms": "商业用途（含 AI）须签合同；合作方须同步用户删除；不得用内容识别个人。均为二手转述，弱于原文"
+   },
+   {
+    "source": "Reddit Responsible Builder Policy（r/redditdev 公告的第三方镜像）",
+    "url": "https://r.datuan.dev/r/redditdev/comments/1oug31u/introducing_the_responsible_builder_policy_new/",
+    "date_or_version": "公告 2025-11-11；只看到镜像，没看到官方页",
+    "key_terms": "公共数据 API 自助申请关闭，开发者、研究者、版主须申请审批"
+   },
+   {
+    "source": "Reddit v. Anthropic 发回州法院（Crowell 律所解读）",
+    "url": "https://www.crowell.com/en/insights/client-alerts/northern-district-of-california-court-holds-state-tort-and-contract-claims-not-preempted-by-federal-copyright-act-remands-reddit-v-anthropic-to-state-court",
+    "date_or_version": "北加州联邦地区法院，2026-03 前后；案号 25-cv-05643；没读裁定原文",
+    "key_terms": "违约、不当得利、侵扰动产等州法诉请不被版权法排除，案件发回加州州法院"
+   },
+   {
+    "source": "Reddit v. SerpApi、Oxylabs、AWMProxy、Perplexity（Law360 及 Search Engine Land）",
+    "url": "https://www.law360.com/articles/2508228/reddit-ai-data-scraping-case-mostly-survives-dismissal",
+    "date_or_version": "2025-10-22 在纽约南区起诉；2026-07 驳回动议大部分被拒（只看到标题和二手摘要）",
+    "key_terms": "通过 Google 搜索结果间接抓取 Reddit 内容；DMCA 反规避等诉请继续审理"
+   },
+   {
+    "source": "Van Buren v. United States（最高法院判决书）",
+    "url": "https://www.supremecourt.gov/opinions/20pdf/19-783_k53l.pdf",
+    "date_or_version": "2021-06-03 判决",
+    "key_terms": "'exceeds authorized access' 限于进入本无权进入的区域，收窄了 CFAA 的适用"
+   },
+   {
+    "source": "hiQ Labs v. LinkedIn 结案（ZwillGen 总结）",
+    "url": "https://www.zwillgen.com/alternative-data/hiq-v-linkedin-wrapped-up-web-scraping-lessons-learned/",
+    "date_or_version": "2022-11 违约简易判决，2022-12 同意判决加永久禁令",
+    "key_terms": "自动抓取和假账号违反用户协议；hiQ 须停止抓取并销毁数据和代码，据报道判决金额 50 万美元"
+   },
+   {
+    "source": "X Corp. v. Bright Data（Proskauer 解读，附裁定 PDF）",
+    "url": "https://newmedialaw.proskauer.com/2024/05/14/california-court-issues-another-noteworthy-decision-dismissing-breach-of-contract-and-tort-claims-in-web-scraping-dispute/",
+    "date_or_version": "2024-05-09，Alsup 法官；上诉状态未核实",
+    "key_terms": "基于抓取的违约之诉与版权法冲突而被排除；侵扰动产等诉请驳回"
+   },
+   {
+    "source": "Meta v. Bright Data（Eric Goldman 博客客座文章）",
+    "url": "https://blog.ericgoldman.org/archives/2024/01/game-on-bright-data-scores-major-victory-in-web-scraping-dispute-with-meta-guest-blog-post.htm",
+    "date_or_version": "2024-01-23，Chen 法官；2024-02 Meta 撤诉",
+    "key_terms": "未登录抓取公开数据不受 Meta 条款约束；登录状态下抓取另当别论"
+   },
+   {
+    "source": "17 U.S.C. §101（衍生作品定义）",
+    "url": "https://www.law.cornell.edu/uscode/text/17/101",
+    "date_or_version": "现行法典，2026-11-12 访问",
+    "key_terms": "衍生作品指基于已有作品创作的作品，例举中包括翻译"
+   },
+   {
+    "source": "17 U.S.C. §107（合理使用）",
+    "url": "https://www.law.cornell.edu/uscode/text/17/107",
+    "date_or_version": "现行法典",
+    "key_terms": "批评、评论、新闻报道、教学、研究等目的；四要素：目的与性质、作品性质、使用的数量与实质性、对市场的影响"
+   },
+   {
+    "source": "17 U.S.C. §512（DMCA 安全港）",
+    "url": "https://www.law.cornell.edu/uscode/text/17/512",
+    "date_or_version": "现行法典",
+    "key_terms": "(c) 只覆盖用户指令存储的内容；须不知情、收到通知后迅速移除、不从可控的侵权中直接获利、指定代理人；(i) 须有重复侵权者封号政策"
+   },
+   {
+    "source": "美国版权局 DMCA 指定代理人目录",
+    "url": "https://www.copyright.gov/dmca-directory/",
+    "date_or_version": "2026-11-12 访问",
+    "key_terms": "想获得安全港须在线登记代理人并在网站公开联系方式；页面没写费用和续期年限"
+   },
+   {
+    "source": "Mavrix Photographs v. LiveJournal（第九巡回法院）",
+    "url": "https://law.justia.com/cases/federal/appellate-courts/ca9/14-56596/14-56596-2017-08-30.html",
+    "date_or_version": "2017-08-30 修订意见，873 F.3d 1045",
+    "key_terms": "版主审核后发布的内容可能不算用户指令存储；版主可能被认定为平台的代理人"
+   },
+   {
+    "source": "美国版权局《版权与人工智能》报告",
+    "url": "https://www.copyright.gov/ai/",
+    "date_or_version": "第二部分（可版权性）2025-01-29 发布",
+    "key_terms": "讨论 AI 产出的可版权性；结论（须有足够的人类表达）来自我已有的了解，本页没有逐字核对"
+   },
+   {
+    "source": "Google Search 垃圾内容政策",
+    "url": "https://developers.google.com/search/docs/essentials/spam-policies",
+    "date_or_version": "2026-11-12 访问，页面没写更新日期",
+    "key_terms": "抓取后同义替换或翻译再发布属于 spam；用生成式 AI 批量生成没有附加价值的页面属于 scaled content abuse"
+   },
+   {
+    "source": "FTC 消费者评价与推荐规则（联邦公报）",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2024-08-22/html/2024-18519.htm",
+    "date_or_version": "16 CFR Part 465，2024-10-21 生效",
+    "key_terms": "禁止企业制作或传播虚假评价，包括 AI 生成的评价；是否适用于非营利组织没有核实"
+   },
+   {
+    "source": "一亩三分地 Terms of Use",
+    "url": "https://www.1point3acres.com/terms_of_use.html",
+    "date_or_version": "页面标注 2021-08-13 更新；2026-11-12 访问",
+    "key_terms": "§14(a) 不得复制、分发、发布，只限非商业个人浏览，不得用数据挖掘或机器人工具；§19(b) 禁止爬虫和未授权的自动化手段；§12 有侵权通知流程；没有写明用户内容归属"
+   },
+   {
+    "source": "美卡论坛 /tos（403，经搜索摘要确认）及 robots.txt",
+    "url": "https://www.uscardforum.com/tos",
+    "date_or_version": "tos 页面返回 403；robots.txt 于 2026-11-12 实取",
+    "key_terms": "中文条款与 Discourse 模板一致：搜索引擎可以抓取索引，其余禁止自动化；robots.txt 屏蔽 /search 和若干 SEO 爬虫"
+   },
+   {
+    "source": "Discourse 服务条款模板",
+    "url": "https://meta.discourse.org/t/updated-terms-of-service-template/103384",
+    "date_or_version": "Discourse 官方模板帖",
+    "key_terms": "内容归作者；平台只获得向本站用户提供、复制、分析内容的许可；禁止自动化访问，搜索引擎例外；不得移除权属标记"
+   },
+   {
+    "source": "知乎用户协议",
+    "url": "https://www.zhihu.com/term/zhihu-terms",
+    "date_or_version": "2025-03-20 更新，2025-03-25 生效",
+    "key_terms": "三.1 原创内容著作权归用户，用户可自行授权第三方；三.4 授予知乎永久、可再许可的许可；三.5 站外转载须联系原作者取得单独授权并注明出处；三.8 知乎可以自己名义维权；三.10 未经书面许可不得抓取；二.9 禁止自动化程序"
+   },
+   {
+    "source": "小红书用户服务协议（第三方法规站转载版）",
+    "url": "https://www.elawcn.com/agreement/2026/0301/1751.html",
+    "date_or_version": "2025-12-08 更新；没看官方页",
+    "key_terms": "3.4 未经许可不得复制、读取、统计平台内容和数据；4.1 禁止非法抓取，禁止第三方插件；4.2 用户授予非排他许可，小红书可以自己名义取证、投诉、起诉"
+   },
+   {
+    "source": "小红书站外导流规则（界面新闻等报道）",
+    "url": "https://www.jiemian.com/article/12228571.html",
+    "date_or_version": "2025 年前后报道",
+    "key_terms": "私信或主页留微信号、外链属于导流违规，会限流或禁言；属二手报道"
+   },
+   {
+    "source": "《反不正当竞争法》（2025 年修订，国家知识产权局刊载）",
+    "url": "https://www.cnipa.gov.cn/art/2026/5/20/art_104_206437.html",
+    "date_or_version": "2025-10-15 施行",
+    "key_terms": "第 13 条第 3 款：不得以欺诈、胁迫、避开或破坏技术管理措施等方式获取、使用其他经营者合法持有的数据"
+   },
+   {
+    "source": "《著作权法》2020 年修正要点（澎湃）及 WIPO Lex 文本",
+    "url": "https://www.thepaper.cn/newsDetail_forward_12808151",
+    "date_or_version": "2021-06-01 施行",
+    "key_terms": "法定赔偿上限 500 万元，惩罚性赔偿 1 至 5 倍；第 10 条（翻译权、改编权、信息网络传播权）、第 24 条（适当引用须指明作者和作品名）、第 5 条（单纯事实消息）的条文号来自我已有的了解，原文没有逐字核对，可在 https://www.wipo.int/wipolex/zh/legislation/details/21065 核对"
+   },
+   {
+    "source": "大众点评诉百度不正当竞争案（澎湃、第一财经报道）",
+    "url": "https://www.thepaper.cn/newsDetail_forward_1474673",
+    "date_or_version": "一审 2016-05-26；二审上海知识产权法院维持",
+    "key_terms": "百度地图使用 86,286 条大众点评用户评论，构成实质性替代，判赔 300 万元加 23 万元合理费用"
+   },
+   {
+    "source": "《错位时空》改编（洗稿）案（澎湃）",
+    "url": "https://www.thepaper.cn/newsDetail_forward_22508818",
+    "date_or_version": "2023-03-30 报道，杭州中院，浙江高院维持",
+    "key_terms": "改编作品与原作构成实质性相似，侵犯信息网络传播权，判赔 5 万元。这是歌曲案而非文字洗稿，作为证据偏弱"
+   },
+   {
+    "source": "r/UIUC 规则（第三方镜像）",
+    "url": "https://axebps-redlib.hf.space/r/UIUC/wiki/rules",
+    "date_or_version": "镜像，日期不明",
+    "key_terms": "规则包括 'Sales, ads, voting' 和个人信息等条目；以 Reddit 上的现行版本为准"
+   },
+   {
+    "source": "UIUC Student Legal Service 服务范围",
+    "url": "https://odosapps.odos.illinois.edu/sls/resources/brochures/docs/SLScantHelp2.pdf",
+    "date_or_version": "旧版宣传册",
+    "key_terms": "SLS 不处理版权、商标、专利问题"
+   }
+  ],
+  "risk_matrix": [
+   {
+    "approach": "(a) 批量爬取，翻译后转发",
+    "target": "Reddit r/UIUC",
+    "risk_level": "高",
+    "legal_basis": "robots.txt Disallow: /；User Agreement §3、§7；17 U.S.C. §101、§106(2)；§512(c) 不适用；hiQ 违约判决；Reddit 起诉 Anthropic、SerpApi、Perplexity",
+    "why": "合同和版权两头都踩线。合同上，robots.txt 对所有爬虫全禁，条款明禁 scraping，也禁止为搭建类似网站而访问 Reddit 内容。版权上，每篇译文都是未经许可的衍生作品，原作者可以直接发 DMCA 通知。这些内容是运营方自己发布的，安全港不保护。Reddit 是眼下起诉抓取方最积极的平台。不过我判断，对小论坛更现实的后果是被下架，加上在 UIUC 圈子里的名声受损。"
+   },
+   {
+    "approach": "(a) 批量爬取，翻译后转发",
+    "target": "一亩三分地",
+    "risk_level": "高",
+    "legal_basis": "1p3a Terms of Use（2021-08-13）§14(a)、§19(b)、§12；17 U.S.C. §106；中国法可参照大众点评诉百度",
+    "why": "条款只允许非商业的个人浏览，明禁爬虫。一亩三分地服务的正是同一群北美华人，搬它的内容容易被看成截流，除了版权还会招来不正当竞争的指控。很多帖子要登录或花积分才能看，登录状态下抓取受合同约束更强，Meta v. Bright Data 只豁免了未登录抓取。"
+   },
+   {
+    "approach": "(a) 批量爬取，翻译后转发",
+    "target": "美卡论坛",
+    "risk_level": "高",
+    "legal_basis": "Discourse 模板 ToS：内容归作者，平台只能向本站用户提供；禁止自动化访问，搜索引擎例外；robots.txt",
+    "why": "条款里没有任何给第三方转载的许可，抓取本身也违约。美卡主要讲信用卡和理财，跟 UIUC 新生内容重合不多，我判断搬过来收益小、风险大。"
+   },
+   {
+    "approach": "(a) 批量爬取，翻译后转发",
+    "target": "小红书 / 知乎",
+    "risk_level": "高",
+    "legal_basis": "知乎协议三.5、三.8、三.10、二.9；小红书协议 3.4、4.1、4.2；著作权法第 10 条（信息网络传播权、改编权）；反不正当竞争法第 13 条第 3 款（2025-10-15 施行）",
+    "why": "两家都明禁抓取，也都约定平台可以用自己的名义维权。知乎还要求站外转载必须取得作者单独授权。小红书以图片为主，搬图更容易侵权。小程序跑在腾讯体系里，被投诉下架是最现实的后果。"
+   },
+   {
+    "approach": "(b) 用人工或 LLM 改写，让帖子看起来像原创",
+    "target": "所有来源",
+    "risk_level": "高",
+    "legal_basis": "美国：实质性相似和衍生作品规则，版权局 AI 报告第二部分，Google spam 政策，FTC 16 CFR Part 465；中国：洗稿按抄袭认定（实质性相似），《错位时空》案",
+    "why": "只要保留了原文的结构、情节和细节，换了词仍然是在使用原作的表达，侵权性质不变。另外还多了一层欺骗：把别人的亲身经历包装成站内原创，放在「吃喝好店」「落脚香槟」板块里就等于假评价。LLM 改写不会降低风险，反而让 CAACI 对产出没有版权。这条一旦被认出来，对新论坛信任的打击最大。FTC 规则管不管得到非营利组织，我不确定。"
+   },
+   {
+    "approach": "(c) 写摘要，附一句短引、链接和署名",
+    "target": "Reddit r/UIUC",
+    "risk_level": "低",
+    "legal_basis": "17 U.S.C. §107（评论或报道性质，用量很少，链接给原帖带流量，对原帖市场没有替代）；人工浏览不算 scraping；Developer Terms 只约束 API 使用",
+    "why": "条件是：人工浏览、数量少、用自己的话概括、只引一两句、不放截图、敏感话题不写用户名。合理使用是个案抗辩，不是许可。User Agreement §3 里「为搭建类似网站而访问」那句，严格读也能套到这里，我判断按低频人工摘要的做法实际风险很小。登录 Reddit 账号时，你就受这份协议约束。"
+   },
+   {
+    "approach": "(c) 写摘要，附一句短引、链接和署名",
+    "target": "一亩三分地 / 美卡论坛",
+    "risk_level": "中",
+    "legal_basis": "1p3a ToS §14(a)；Discourse 模板；17 U.S.C. §107",
+    "why": "版权上的分析和 Reddit 一样。区别在于这两家是同一人群的直接竞品，更容易被看成截流。要登录或花积分才能看的内容一律不引，只用公开帖，链接回原帖。"
+   },
+   {
+    "approach": "(c) 写摘要，附一句短引、链接和署名",
+    "target": "知乎 / 小红书",
+    "risk_level": "中",
+    "legal_basis": "著作权法第 24 条第 1 款第（二）项「适当引用」，须指明作者和作品名；知乎协议三.5；小红书协议 4.1",
+    "why": "中国法允许为评论或说明问题适当引用，前提是引文不能成为新内容的主体。小红书笔记以图片为主，截图和搬图不算适当引用。平台协议约束的是在平台上注册过的账号。"
+   },
+   {
+    "approach": "(d) 只用帖子发现常见问题，答案和指南自己写",
+    "target": "所有来源",
+    "risk_level": "低",
+    "legal_basis": "版权只保护表达，不保护思想和事实（美国 Feist 规则；著作权法第 5 条单纯事实消息）；人工浏览不触发反爬条款",
+    "why": "这是最干净的一条路。条件：人工浏览或经搜索引擎找帖，不跑脚本，跑脚本就回到 (a) 的合同风险。只记「问题、链接、日期」，不抄原文。事实用 UIUC、ISSS、MTD、市政府等官方页面核实。不照搬别人故事里的细节。"
+   },
+   {
+    "approach": "(e) 请作者授权转载或翻译",
+    "target": "Reddit 作者",
+    "risk_level": "低",
+    "legal_basis": "User Agreement §5：用户保留所有权，给 Reddit 的是非独占许可，作者可以另行授权；Reddit 反垃圾规则",
+    "why": "授权由版权人本人给，版权问题就解决了。风险在执行环节：授权要留书面凭证，私信截图或邮件都行；范围要写清，包括翻译、删改、署名、能否撤回；要确认对方确实是作者。群发私信会触发 Reddit 的反垃圾规则，只能一对一少量发。"
+   },
+   {
+    "approach": "(e) 请作者授权转载或翻译",
+    "target": "一亩三分地 / 美卡 / 知乎 / 小红书作者",
+    "risk_level": "低",
+    "legal_basis": "知乎协议三.1 明确允许作者自行授权第三方；小红书 4.2 给平台的是非排他许可；1p3a ToS 没有约定独占许可",
+    "why": "作者有权授权。小红书私信里不要放微信号或站外链接，那会被算成导流违规。对方同意后，请对方告诉你方便的联系方式，再在站外完成后续。"
+   },
+   {
+    "approach": "(f) 在条款范围内用 Reddit 官方 API",
+    "target": "Reddit",
+    "risk_level": "中",
+    "legal_basis": "Data API Terms 2.4、3.1、3.2（2026-07-20 修订）；Developer Terms 4.1、5.2（2026-03-26 修订）；Responsible Builder Policy（2025-11-11）",
+    "why": "合法，但达不到你们的目的。许可只到原样复制和展示，排版以外不许修改，翻译和改写都在许可之外。要先申请审批；商业用途要另签协议；要回链、署名、同步作者的删帖。论坛以后上线付费或赞助，我判断基本会被认定为 monetized。这条只适合原样嵌入英文原帖的场景。"
+   },
+   {
+    "approach": "(g) 邀请原帖作者或 r/UIUC 常客自己来发",
+    "target": "Reddit r/UIUC",
+    "risk_level": "低",
+    "legal_basis": "17 U.S.C. §512(c)：用户自己上传的内容可享安全港，前提是登记指定代理人并有重复侵权政策；r/UIUC 规则含 'Sales, ads, voting'（第三方镜像）；Reddit 反垃圾规则",
+    "why": "作者自己发，版权和署名问题自然就没有了。风险在推广方式上：发介绍帖前先问 mod；私信一对一、数量少、内容个性化，不群发。"
+   },
+   {
+    "approach": "(g) 邀请原帖作者或常客自己来发",
+    "target": "CAACI 校友和董事网络、华人平台作者",
+    "risk_level": "低",
+    "legal_basis": "小红书导流规则；知乎协议",
+    "why": "最适合「学长学姐说」板块。我判断熟人网络的转化率比找陌生人高。在小红书上邀请时，私信里不要直接放链接或微信号。"
+   },
+   {
+    "approach": "上述任何做法中保留用户名或个人经历细节",
+    "target": "Reddit / 小红书 / 一亩三分地",
+    "risk_level": "中",
+    "legal_basis": "Reddit Public Content Policy 禁止用内容识别个人（二手资料）；r/UIUC 规则含个人信息条目；伊利诺伊州隐私侵权（公开私人事实）",
+    "why": "r/UIUC 发帖人多是同校学生。把帖子翻成中文搬进华人小圈子，被认出来的可能性会变大，签证、心理、室友冲突、房东纠纷这类话题尤其如此。作者在原平台删了帖，你这里的副本还在。所以这类话题去掉用户名，只保留与主题有关的信息。"
+   }
+  ],
+  "recommended_plan": "一、上线前先搭好法律底座（1 周内）\n1. 写社区条款。要点：作者保留版权；授予本站非独占的展示许可，作者删帖即终止；禁止发布他人作品；转载必须注明来源并已取得授权。\n2. 做一个版权投诉页，并在 copyright.gov/dmca-directory 在线登记 DMCA 指定代理人。据我所知收费 6 美元、三年续期，这次没在官网页面上核对到，登记当天以官网为准。同时写一条重复侵权者封号政策（§512(i)）。没有这两项，用户上传内容的安全港就不成立。\n3. 设一个撤稿和投诉邮箱，目标是 48 小时内处理完。\n4. 编辑账号一律实名，用「CAACI 编辑部·某某」这样的署名。不建马甲号，不伪造用户，不刷评论。这和 docs/community-platform/research/PLATFORM_RESEARCH.md 第 18 行「不以模拟人数、伪造评论表现热闹」是一致的。\n\n二、哪些事永远不做\n- 不对 Reddit、一亩三分地、美卡、小红书、知乎跑任何脚本、无头浏览器、代理池或登录态抓取。哪怕「只是为了找问题」也不行。\n- 不把整帖机翻后转发。不把别人的帖子交给 LLM 改写，再当站内原创发布。\n- 不截图、不搬小红书的图片，不碰一亩三分地要积分或登录才能看的内容。\n- 签证、心理、室友冲突、房东纠纷这类敏感经历，不带用户名，也不带能认出人的细节。\n- 「吃喝好店」「落脚香槟」板块不发编造或改写来的「亲身体验」评价。\n- 不群发私信拉人。\n\n三、冷启动流程（4 周，按 3 名志愿者估）\n第 1 周：建问题库。每人人工浏览 r/UIUC 近一年的热帖、一亩三分地的公开 UIUC 相关帖、小红书和知乎上搜「UIUC」「香槟」的结果。表格只记五项：问题（用自己的话写一句）、对应板块、原帖链接、日期、是否敏感。目标 60–80 个问题，聚成 20 个左右的主题。\n第 2 周：写原创指南，每个主题一篇。\n- 「落脚香槟」：租房签约、水电网、SSN、银行、驾照、MTD 公交。\n- 「校园日常」：选课、CRCE、打印。\n- 「吃喝好店」：只发编辑亲自去过的店，标注「编辑亲测」。\n- 「学长学姐说」：用问答格式。\n事实一律引官方页面，并注明「最后核实日期」。LLM 只用来排版、润色你们自己写的稿子，不要把别人的帖子贴进去。\n第 2–3 周：请真人来发。从 CAACI 校友、董事、学长学姐里找 10–20 人，每人认领 1–2 个问题，用自己的经历回答。在 r/UIUC 或华人平台上遇到写得特别好的帖子，一对一请作者授权，或请作者本人来发（模板见下）。私信每周不超过 10 条，这个数是我为避开反垃圾机制定的，没有官方依据。\n第 3 周起：每周一篇「本周外站热议」，选 3–5 个讨论串。每串用自己的话写不超过 150 字的概括，最多引一句原文，附链接和署名，不放截图。\n长期：维护一张授权记录表（作者、平台、授权凭证截图、授权范围、日期）。撤稿请求 48 小时内处理。每季度复查一次 Reddit、知乎、小红书的条款，Reddit 2026 年已经改过两次。\n\n四、模板（{论坛名} 等名字定了再填）\nA. 摘要署名行（中文）：\n「本文是 {论坛名} 编辑根据 r/UIUC 讨论串《{原帖标题}》（发帖人 u/{用户名}，{YYYY-MM-DD}）写的中文摘要和评论，不是原文翻译。原文：{链接}。原文版权归原作者。作者如果希望修改或撤下，请写信到 {邮箱}，我们会在 48 小时内处理。」\n敏感话题把「发帖人 u/{用户名}」换成「r/UIUC 网友」。\nA'. 英文：\n\"Summary and commentary by {Forum} editors, based on the r/UIUC thread \\\"{title}\\\" by u/{username} ({date}). This is not a translation. Original: {URL}. All rights in the original belong to its author. To request edits or removal, email {email}; we respond within 48 hours.\"\n\nB. 已获授权的转载署名行：\n「经原作者 {作者名} 于 {日期} 书面授权{翻译/转载}，原文首发于 {平台}：{链接}。版权归原作者，转载请联系原作者。」\n\nC. 授权请求（英文，用于 Reddit 私信）：\n\"Hi u/{username}, I volunteer with a free community forum for Chinese students and alumni at UIUC, supported by CAACI, a local nonprofit. Your post \\\"{title}\\\" ({link}) explains {topic} better than anything we have. Would you be OK with us translating it into Chinese and posting it on our forum, with your username and a link back to your original? We would only change what translation needs, and we would not use it in ads or paid content. You can ask us to take it down at any time at {email}. If you would rather post it yourself, we can set up an account for you. No worries at all if not. Thanks!\"\n\nD. 授权请求（中文，用于一亩三分地、知乎、小红书站内私信）：\n「你好，我是 UIUC 华人学生和校友论坛 {论坛名} 的志愿者，论坛由本地非营利组织 CAACI 支持。你写的《{标题}》把 {话题} 讲得特别清楚。想问问你：我们能不能在论坛上{全文/节选}转载这篇，署上你的名字，附原文链接，不用于广告或收费内容？你可以随时让我们撤下。如果你更愿意自己来发，我们给你开账号。不方便的话也完全没关系，谢谢！」\n在小红书上用时，这条私信里不放链接和微信号。对方同意后，请对方告诉你方便的联系方式，后续在站外完成。\n\nE. 邀请对方自己来发（中英文各一句，可接在 C、D 后面）：\n「你这篇对新生特别有用。愿意的话，来 {论坛名} 的「{板块}」发一份，我们会把它置顶到对应的新生指南里。」\n\"Would you be up for posting it yourself in our \\\"{board}\\\" section? We'd pin it in the newcomer guide.\"\n\n五、需要请律师的情况\n1. 想做任何规模的转载或翻译，哪怕只拿到了部分授权；或者想和 Reddit 谈数据协议。\n2. 定稿社区条款、隐私政策、DMCA 政策时。还要确认运营主体是 CAACI 还是个人，这决定了出事时由谁承担责任。\n3. 收到律师函、DMCA 通知或平台投诉时。\n4. 小程序在中国境内分发，要过一遍内容合规（国内平台规则加中国法）。\n5. 想靠合理使用做超出「一句短引」的事。\nUIUC Student Legal Service 的资料写明它不处理版权和商标问题。可以去问芝加哥的 Lawyers for the Creative Arts，或伊利诺伊州律师协会的律师转介服务，两家的受理资格都没有核实。",
+  "not_legal_advice_note": "这份是基于公开资料的研究整理，不是法律意见，也不构成律师和当事人关系。平台条款随时会改，Reddit 的 Developer Terms 和 Data API Terms 2026 年就分别修订过一次。判例里「违约之诉会不会被版权法排除」这个问题还没定论，几个关键诉讼也还在进行。还有几份材料只拿到了二手或转载版本：Reddit Public Content Policy、美卡 tos、小红书协议、Reddit v. SerpApi 的裁定。批量转载、和平台签数据协议、确定运营主体和条款文本、收到投诉这几种情况，请先找执业律师。"
+ },
+ "legalCheck": {
+  "summary": "复核结论：原研究的主判断成立。用脚本抓 r/UIUC、一亩三分地、美卡、知乎、小红书，再翻译或改写成站内内容，风险高；人工找问题后自己写、请作者授权、请作者本人来发，风险低。没有哪一档需要整体翻转。要改的是 6 处事实。风险矩阵新增 3 行，1 行改法律依据。另有 5 处遗漏要补。\n\n要改的事实（2026-11-12 逐一重开来源）：\n1. Reddit Developer Terms 页面写的是 Last Revised March 24, 2026，原研究写成 03-26。Reddit 2026 年改过的是三份文件，不是两份：Developer Terms（03-24）、User Agreement（05-26 修订，07-01 生效）、Data API Terms（07-20）。\n2. 原研究说两份判决给了「相反答案」，这个说法要改。X v. Bright Data 在 2024-11-26 准许 X 修改起诉状：基于访问方式和服务器损害的违约、侵扰动产诉请放行，只有基于抓取复制的违约诉请仍被版权法排除。Reddit v. Anthropic 的发回裁定（北加州联邦地区法院，2026-03-30，案号 3:25-cv-05643-TLT，裁定首页已看到）放行了违约等五项州法诉请，理由同样是协议限制的是访问方式和技术设施。Reddit v. SerpApi（纽约南区，2026-07-31）把纽约州不当得利、不正当竞争诉请按版权法排除，保留 DMCA §1201(a) 反规避诉请和民事共谋诉请。三份裁定的分界其实一致：针对「你怎么进来」的诉请能成立，只针对「你拿了内容」的诉请容易被排除。落到你们身上：跑脚本正好落进能成立的那一类；人工看帖再自己写，合同风险小很多，作者的版权却一点没少。\n3. Reddit UA §7 原文是 “Access, search, or collect data from the Services by any means (automated or otherwise)”。「人工浏览不算 scraping」这句成立。但登录账号的人系统性地手工收集数据，字面上也落在 §7 里。§3 禁止「为搭建类似或竞争网站而访问」，这一条能不能套到一个中文 UIUC 华人论坛上有争议，原研究说「正好落在」是说过头了。\n4. Data API Terms 开头写明：从 Reddit 拿到的任何 Materials，“whether using the Data APIs or not”，都只能按该条款使用。Reddit 主张的约束范围比原研究写的宽。没用 API 的人受不受这句约束，是另一个问题。\n5. DMCA 指定代理人的费用这次在版权局 FAQ 上核实了：每次登记 6 美元，三年后失效，续期等于重新提交，再付 6 美元。\n6. 知乎协议的日期和原研究引的条号（三.1、三.4、三.5、三.8、三.10）都对，但漏了两处。三.2 规定「问题及补充说明、答案总结、话题描述」的知识产权归知乎，所以连问题原文也别照抄。三.5 要求转载时在正文开头显著位置注明作者名、原始链接，并写明「发表于知乎」，授权转载的署名模板要补上这一项。\n\n风险矩阵改动：\n- 新增「每周固定的外站热议栏目」一行，定为中。偶尔写一篇摘要仍是低。按周系统汇编同一个竞品站的讨论，就接近大众点评诉百度里的「实质性替代」。那个案子并不要求每条点评都构成作品，单条再短，成规模搬竞品的用户内容也可能算不正当竞争。\n- 新增「绕道抓取」一行，定为高。经 Google 搜索结果、SERP API、redlib 一类镜像站或代理池批量拿 Reddit 内容，正是 Reddit v. SerpApi 里被诉的做法。原研究自己就引了两个 Reddit 镜像站作资料来源。读一页没问题，但不能把它们做成数据管道。\n- 新增「编辑先审后发或精选用户投稿」一行，定为中，依据是 Mavrix 案。\n- 「保留用户名或个人经历」维持中，但法律依据要改弱。伊利诺伊州的「公开私人事实」侵权要求事实本身是私密的，公开帖子很难满足这一条。这一行的实际风险在伦理和信誉，不在诉讼。\n\n遗漏：\n1. 47 U.S.C. §230(e)(2) 把知识产权排除在外。用户发的侵权内容，只能靠 DMCA 安全港兜底。\n2. 微信小程序的 UGC 必须过内容安全审核，而 Mavrix 案认定，先审后发可能让平台失去安全港。审核规则要写成「违法和垃圾内容筛查」，不能写成「编辑精选」。\n3. 小程序面向中国大陆用户，中国这边的通知删除规则是民法典第 1195 到 1197 条。收到通知要转送给发帖人并及时处理，否则对扩大的损害承担连带责任。\n4. 小程序从二手交易改成论坛，至少牵涉四件事：服务类目资质、名称里能不能出现「论坛」二字、UGC 接口、个人主体能不能开 UGC。这次没查到官方答案。我判断这些比冷启动内容更可能先卡住上线，改名前先去公众平台后台看「服务类目」的资质说明。\n5. Reddit 自己在做机器翻译：2024-05 从法语开始，2024-09 扩到 35 个以上国家，2025-04 加了印地语，中文支不支持没查到。UA §5 也授权 Reddit 修改和改编用户内容。翻译的市场已经有人在占，合理使用第四要素（对原作市场的影响）对「翻译转发」更不利。\n\n补充 FTC：消费者评价规则 2024-10-21 生效，2025-12-22 发出首批 10 封警告信。据律所报道，每次违规的民事罚款上限是 53,088 美元。FTC Act 只管「为自身或成员牟利」的组织，Community Blood Bank v. FTC（第八巡回，1969）据此否定了 FTC 对真正非营利机构的管辖。所以这条规则够不够得着，取决于运营主体是 CAACI 还是 Eric 个人。\n\n这次仍未核实：\n- Reddit Public Content Policy 原文，还是 403。\n- Responsible Builder Policy 的官方页，还是只有镜像和第三方博客。\n- 美卡 /tos 全文，还是 403，只有搜索摘要。\n- 小红书官方协议页，还是只能看转载站。\n- SerpApi 裁定原文，以及 Oxylabs、AWMProxy 两名被告的结果。\n- X v. Bright Data 有没有上诉。\n- 著作权法第 24、54 条和《信息网络传播权保护条例》第 22 条的原文。\n- 微信小程序论坛类目的资质要求。",
+  "sources_checked": [
+   {
+    "source": "Reddit User Agreement（美国及非 EEA 版）",
+    "url": "https://redditinc.com/policies/user-agreement",
+    "date_or_version": "页面写 Effective July 1, 2026, Last Revised May 26, 2026；2026-11-12 实取（HTTP 200），对照原文核对",
+    "key_terms": "§3：未经书面协议不得 commercially exploit、不得 modify or prepare derivative works of Content、不得 access Content in order to build a similar or competitive website。§5：用户保留所有权，授予 Reddit 永久、可再许可的许可，范围含 modify、adapt、prepare derivative works 和 AI 训练。§7：不得 “Access, search, or collect data ... by any means (automated or otherwise)”，只在 robots.txt 范围内有条件许可爬取，未经事先书面同意禁止 scraping。§14：适用加州法，旧金山法院管辖。原研究的引述准确，但漏了 §7 里的 “or otherwise”，「论坛正好落在 §3」也说过头"
+   },
+   {
+    "source": "reddit.com robots.txt",
+    "url": "https://www.reddit.com/robots.txt",
+    "date_or_version": "2026-11-12 实取（HTTP 200）",
+    "key_terms": "User-agent: * / Disallow: /；注释指向 Public Content Policy 和 r/reddit4researchers。与原研究一致"
+   },
+   {
+    "source": "Reddit Developer Terms",
+    "url": "https://redditinc.com/policies/developer-terms",
+    "date_or_version": "页面写 Effective September 24, 2024, Last Revised March 24, 2026（原研究写 03-26，有误）；2026-11-12 实取",
+    "key_terms": "2.1：只许复制、展示 User Content，修改仅限排版。4.1：由企业使用、或用于已变现的产品，须另签协议。4.2 禁止的衍生作品指 Reddit Services and Data 的 features or functionality，不是 User Content。5.2：User Content 归用户，用于训练须经权利人许可，须回链、注明用户名、标明来自 Reddit。另有条款：User Content 被删除或修改后，App 须同步删除或修改"
+   },
+   {
+    "source": "Reddit Data API Terms",
+    "url": "https://redditinc.com/policies/data-api-terms",
+    "date_or_version": "页面写 Effective June 19, 2023, Last Revised July 20, 2026；2026-11-12 实取",
+    "key_terms": "开头：从 Reddit 取得的任何 Materials，“whether using the Data APIs or not”，都只能按该条款使用。2.4：User Content 归用户；只许为运行 App 复制和展示，“You may not modify the User Content except to format it”。3.1：商业用途须另签协议。3.2：不得超出批准用途使用或留存数据，不得用 API 发垃圾信息、骚扰用户。4.2：署名按开发者文档。6：终止后须删除缓存内容和衍生数据"
+   },
+   {
+    "source": "Reddit Public Content Policy（原文）及 TechCrunch、Axios 报道",
+    "url": "https://techcrunch.com/2024/05/09/reddit-locks-down-its-public-data-in-new-content-policy-says-use-now-requires-a-contract",
+    "date_or_version": "原文 support.reddithelp.com/hc/en-us/articles/26410290525844 于 2026-11-12 仍返回 403；报道日期 2024-05-09",
+    "key_terms": "商业用途须签合同；合作方须尊重用户的删除；不得用内容识别个人；r/reddit4researchers 面向非商业用途。都是二手材料，2024 年以后有没有改过未知"
+   },
+   {
+    "source": "Reddit Responsible Builder Policy（r/redditdev 公告的镜像，另有两篇第三方博客）",
+    "url": "https://r.datuan.dev/r/redditdev/comments/1oug31u/introducing_the_responsible_builder_policy_new/",
+    "date_or_version": "公告 2025-11-11；官方页仍没找到；另见 molehill.pages.dev、postpone.app 的博客",
+    "key_terms": "公共数据 API 自助申请关闭，改为审批，申请时要交用途说明；2025-11 以前的凭证据博客说照常可用；管理员称目标是 7 天内答复。这些都来自镜像或第三方转述"
+   },
+   {
+    "source": "Reddit v. Anthropic 发回州法院的裁定（CourtListener 存档 PDF，已看首页）及 Loeb 律所解读",
+    "url": "https://storage.courtlistener.com/recap/gov.uscourts.cand.452341/gov.uscourts.cand.452341.60.0.pdf",
+    "date_or_version": "北加州联邦地区法院，案号 3:25-cv-05643-TLT，2026-03-30 提交；州法院案号 CGC-25-625892；Loeb 解读 https://www.loeb.com/en/insights/publications/2026/04/reddit-inc-v-anthropic-pbc",
+    "key_terms": "发回州法院；违约、不当得利、侵扰动产、侵权干扰合同、加州 §17200 五项州法诉请都不被版权法排除。理由是每项都有额外要件：协议限制访问方式，被告规避技术措施，被告公开宣称遵守 robots.txt"
+   },
+   {
+    "source": "Reddit v. SerpApi LLC（Loeb 律所解读）",
+    "url": "https://www.loeb.com/en/insights/publications/2026/08/reddit-v-serpapi-llc",
+    "date_or_version": "纽约南区，2026-07-31 裁定，解读 2026-08 发布；据其他报道主审法官是 Engelmayer；没读裁定原文",
+    "key_terms": "对 SerpApi 和 Perplexity 的 §1201(a)(1)(A) 规避诉请、对 SerpApi 的 §1201(a)(2) 贩运诉请继续审理；§1201(b) 驳回，理由是 SearchGuard 属于访问控制措施；纽约州不当得利、不正当竞争诉请因版权法优先被驳回；民事共谋诉请保留。Oxylabs、AWMProxy 两名被告的结果没查到"
+   },
+   {
+    "source": "X Corp. v. Bright Data 后续（Eric Goldman 博客客座文章）",
+    "url": "https://blog.ericgoldman.org/archives/2025/01/catching-up-on-the-heavyweight-scraping-battle-between-x-and-bright-data-guest-blog-post.htm",
+    "date_or_version": "2025-01-13 发布",
+    "key_terms": "2024-11-26 法院准许修改起诉状：基于访问和服务器损害的违约、侵扰动产、侵权干扰诉请放行，基于抓取的违约诉请仍被版权法排除。2024-12-17 Bright Data 提出反垄断反诉。没查到上诉"
+   },
+   {
+    "source": "hiQ Labs v. LinkedIn 结案（ZwillGen 总结）",
+    "url": "https://www.zwillgen.com/alternative-data/hiq-v-linkedin-wrapped-up-web-scraping-lessons-learned/",
+    "date_or_version": "2022-11 简易判决，2022-12 同意判决；2026-11-12 重读",
+    "key_terms": "hiQ 开公司账号时明示接受了用户协议，自动抓取加雇人建假账号构成违约。同意判决含永久禁令，要求销毁数据和代码，赔偿 50 万美元。这些是双方约定，不构成先例"
+   },
+   {
+    "source": "Meta v. Bright Data（Eric Goldman 博客客座文章）",
+    "url": "https://blog.ericgoldman.org/archives/2024/01/game-on-bright-data-scores-major-victory-in-web-scraping-dispute-with-meta-guest-blog-post.htm",
+    "date_or_version": "2024-01-23 裁定，2024-02 Meta 撤诉；这次没重开",
+    "key_terms": "未登录抓取公开数据，不受 Meta 条款约束；登录状态另当别论"
+   },
+   {
+    "source": "Van Buren v. United States；Mavrix Photographs v. LiveJournal",
+    "url": "https://law.justia.com/cases/federal/appellate-courts/ca9/14-56596/14-56596-2017-08-30.html",
+    "date_or_version": "Van Buren 2021-06-03；Mavrix 873 F.3d 1045（第九巡回，2017-08-30 修订意见）；这次都没重开，日期与已知一致",
+    "key_terms": "Van Buren 收窄了 CFAA 的适用。Mavrix：版主按实质标准审核后才发布的内容，可能不算「按用户指令存储」，版主可能被认定为平台的代理人"
+   },
+   {
+    "source": "17 U.S.C. §101、§103(a)、§107、§512；47 U.S.C. §230(e)(2)",
+    "url": "https://www.law.cornell.edu/uscode/text/17/512",
+    "date_or_version": "现行法典；§103(a) 和 §230(e)(2) 是这次补的，依据已有了解，没有逐字核对",
+    "key_terms": "翻译属于衍生作品。§103(a)：衍生作品中非法使用原作的部分本身不受保护。§512(c) 只覆盖用户指令存储的内容，(i) 要求有重复侵权者政策。§230(e)(2) 不适用于知识产权，用户上传的侵权内容只能靠 DMCA 安全港"
+   },
+   {
+    "source": "美国版权局 DMCA 指定代理人目录 FAQ",
+    "url": "https://www.copyright.gov/dmca-directory/faq.html",
+    "date_or_version": "2026-11-12 访问",
+    "key_terms": "每次登记、修改或重新提交收费 6 美元；登记三年后失效；续期没有单独费用，等于重新提交再付 6 美元。原研究标注「没核对到」的这一项现已核实"
+   },
+   {
+    "source": "美国版权局《版权与人工智能》第二部分（IPWatchdog、Copyright Alliance 的转述）",
+    "url": "https://copyrightalliance.org/ai-report-part-2-copyrightability/",
+    "date_or_version": "报告 2025-01-29 发布；没读报告原文",
+    "key_terms": "纯 AI 产出不受保护；单靠提示词不足以构成作者身份；人类对 AI 产出做了创造性的选择和编排，可以作为汇编受保护；个案判断"
+   },
+   {
+    "source": "Google Search 垃圾内容政策",
+    "url": "https://developers.google.com/search/docs/essentials/spam-policies",
+    "date_or_version": "2026-11-12 访问，页面没写更新日期",
+    "key_terms": "scaled content abuse 的例子里明写 “automated transformations like synonymizing, translating, or other obfuscation techniques”；scraping 条目定义为搬运其他网站的内容。原研究的结论对，出处应是 scaled content abuse 条目"
+   },
+   {
+    "source": "FTC 消费者评价规则执法动态（Venable、Benesch 律所文章）",
+    "url": "https://www.venable.com/insights/publications/2025/12/ftc-signals-heightened-enforcement-of-new",
+    "date_or_version": "规则 2024-10-21 生效；首批警告信 2025-12-22；eCFR 原文页这次被重定向，没打开",
+    "key_terms": "首批向 10 家公司发警告信；AI 生成的评价明确在规则范围内；据律所报道每次违规罚款上限 53,088 美元"
+   },
+   {
+    "source": "Community Blood Bank of Kansas City Area v. FTC, 405 F.2d 1011",
+    "url": "https://m.openjurist.org/405/f2d/1011",
+    "date_or_version": "第八巡回，1969；只看了搜索摘要",
+    "key_terms": "FTC Act §4 的 corporation 限于为自身或成员牟利的组织；法院否定了 FTC 对真正非营利机构的管辖主张"
+   },
+   {
+    "source": "一亩三分地 Terms of Use",
+    "url": "https://www.1point3acres.com/terms_of_use.html",
+    "date_or_version": "页面写 Last updated August 13, 2021；2026-11-12 用 WebFetch 读到（curl 返回 403）",
+    "key_terms": "§5：许可只限个人使用。§14(a)：不得复制、发布、录入数据库，只能为非商业个人用途浏览，禁止数据挖掘和机器人。§19(b)：禁止爬虫、浏览器插件和其他未授权的自动化手段。§11(a)：站方不预审帖子。§11(d)：用户不得删除自己的帖子。§12：侵权通知发给客服，没写明 DMCA 代理人。条款没写用户内容归属"
+   },
+   {
+    "source": "美卡论坛 /tos 及 robots.txt",
+    "url": "https://www.uscardforum.com/tos",
+    "date_or_version": "/tos 于 2026-11-12 仍返回 403，只看到搜索摘要；robots.txt 当天实取",
+    "key_terms": "摘要显示：禁止用爬虫、浏览器插件等非浏览器程序自动访问或监控论坛，搜索引擎例外；禁止用 iframe 在其他网站展示论坛内容。robots.txt 整站屏蔽 mauibot、semrushbot、ahrefsbot、blexbot、seo spider，对所有爬虫屏蔽 /search、/my、/g 和 RSS"
+   },
+   {
+    "source": "Discourse 服务条款模板",
+    "url": "https://meta.discourse.org/t/updated-terms-of-service-template/103384",
+    "date_or_version": "2026-11-12 返回 403，这次没能复核",
+    "key_terms": "原研究的描述（内容归作者，平台只能向本站用户提供）这次没能核实"
+   },
+   {
+    "source": "知乎用户协议",
+    "url": "https://www.zhihu.com/term/zhihu-terms",
+    "date_or_version": "更新 2025-03-20，生效 2025-03-25；2026-11-12 实取，按页面列表顺序核对了条号",
+    "key_terms": "三.1：原创内容著作权归用户，用户可自行授权第三方。三.2（原研究漏了）：问题及补充说明、答案总结、话题描述的知识产权归知乎。三.4：用户授予知乎永久、可再许可的许可。三.5：站外转载须取得原作者单独授权，在正文开头显著位置注明作者名、原始链接，并写明「发表于知乎」。三.8：知乎可以自己的名义维权。三.10：未经书面许可不得抓取、复制、镜像。第二章开头：通过 RSS、站外 API 间接使用，也视为接受本协议"
+   },
+   {
+    "source": "小红书用户服务协议（第三方法规站转载版）",
+    "url": "https://www.elawcn.com/agreement/2026/0301/1751.html",
+    "date_or_version": "2025-12-08 更新；官方页仍没找到",
+    "key_terms": "3.4：未经书面许可，不得复制、读取、采用、统计平台内容和数据。4.1(2)：禁止盗链、非法抓取。4.1(3)：禁止第三方插件。4.2：非排他许可，可再许可第三方，小红书可以自己的名义取证、投诉、起诉。2025-12-08 以后用非大陆手机号注册的用户适用 rednote 条款"
+   },
+   {
+    "source": "《反不正当竞争法》2025 年修订（国家知识产权局转载）",
+    "url": "https://www.cnipa.gov.cn/art/2026/5/20/art_104_206437.html",
+    "date_or_version": "页面 2026-05-20 发布，是转载；法律 2025-06-27 通过，第 41 条规定 2025-10-15 施行",
+    "key_terms": "第 13 条第 3 款：不得以欺诈、胁迫、避开或破坏技术管理措施等不正当方式，获取、使用其他经营者合法持有的数据，前提是损害他人权益并扰乱竞争秩序。适用对象是经营者，人工浏览不触发"
+   },
+   {
+    "source": "《著作权法》2020 年修正（WIPO Lex）",
+    "url": "https://www.wipo.int/wipolex/zh/legislation/details/21065",
+    "date_or_version": "2021-06-01 施行；这次没能逐字核对原文",
+    "key_terms": "第 24 条开头的三步检验（不得影响作品正常使用，不得不合理损害著作权人合法权益）和第（二）项适当引用；第 54 条法定赔偿上限 500 万元、惩罚性赔偿 1 至 5 倍。依据已有了解"
+   },
+   {
+    "source": "民法典第 1195、1197 条（澎湃、中伦律所解读）",
+    "url": "https://www.zhonglun.com/research/articles/8165.html",
+    "date_or_version": "2021-01-01 施行；二手解读",
+    "key_terms": "权利人通知后，平台须转送用户并及时采取删除、屏蔽、断开链接等必要措施，否则对扩大的损害承担连带责任；平台知道或应当知道而不处理的，承担连带责任。《信息网络传播权保护条例》第 22 条这次没查到原文"
+   },
+   {
+    "source": "大众点评诉百度不正当竞争案（第一财经、澎湃）",
+    "url": "https://www.yicai.com/news/5340378.html",
+    "date_or_version": "一审 2016-05-26 浦东法院；二审 2017-08-30 上海知产法院驳回上诉，维持原判",
+    "key_terms": "涉及 1,055 个商户、86,286 条点评，其中 784 家商户超过 75% 的点评来自大众点评，多为全文展示且位置靠前，构成实质性替代。判赔 300 万元加 23 万元合理费用。这是不正当竞争案，不是著作权案"
+   },
+   {
+    "source": "《错位时空》改编案（澎湃）",
+    "url": "https://www.thepaper.cn/newsDetail_forward_22508818",
+    "date_or_version": "2023-03-30 报道；这次没重开",
+    "key_terms": "歌曲案，作为文字洗稿的证据偏弱。建议换成琼瑶诉于正（《梅花烙》与《宫锁连城》，北京高院 2015 年二审）作为情节结构实质性相似的先例，这个案子这次没核实"
+   },
+   {
+    "source": "Reddit 机器翻译扩张（MultiLingual、PPC Land 报道）",
+    "url": "https://multilingual.com/reddit-expands-machine-translation-to-over-35-new-countries/",
+    "date_or_version": "2024-05 从法语开始，2024-09 扩到 35 个以上国家，2025-04 加印地语",
+    "key_terms": "Reddit 自己在做站内翻译；中文支不支持没查到"
+   },
+   {
+    "source": "r/UIUC 规则（第三方镜像）",
+    "url": "https://axebps-redlib.hf.space/r/UIUC/wiki/rules",
+    "date_or_version": "镜像，日期不明；Reddit 原站这次没读",
+    "key_terms": "有 Sales, ads, voting 条目，禁止发布个人信息，禁止用临时账号。推广前以 Reddit 上的现行规则和 modmail 答复为准"
+   },
+   {
+    "source": "微信小程序论坛类目和 UGC 资质（搜索结果）",
+    "url": "https://www.ifanr.com/minapp/900763",
+    "date_or_version": "2026-11-12 搜索，没找到官方答案",
+    "key_terms": "「社交」类目下有社区/论坛子类目；有 UGC 的小程序须接入内容安全审核（分析文章说法）；个人主体能不能开 UGC、论坛类目要什么资质，都没查到官方原文"
+   }
+  ],
+  "risk_matrix": [
+   {
+    "approach": "(a) 批量爬取，翻译后转发",
+    "target": "Reddit r/UIUC",
+    "risk_level": "高",
+    "legal_basis": "robots.txt Disallow: /；User Agreement §3、§7（2026-07-01 生效版）；17 U.S.C. §101、§106(2)、§512(c)；hiQ v. LinkedIn（2022）；Reddit v. Anthropic 发回裁定（2026-03-30）",
+    "why": "合同和版权两边都踩线。脚本访问正是 2024-11 X v. Bright Data 和 2026-03 Reddit v. Anthropic 两份裁定都放行的「访问方式」类违约诉请，不容易被版权法排除。每篇译文都是未经许可的衍生作品，运营方自己发布的内容也不受安全港保护。我判断对小论坛最现实的后果是被下架，加上在 UIUC 圈子里丢名声，而不是被起诉。"
+   },
+   {
+    "approach": "(a') 绕道抓取：经 Google 搜索结果、SERP API、redlib 一类镜像站或代理池批量获取",
+    "target": "Reddit（也适用于其他来源）",
+    "risk_level": "高",
+    "legal_basis": "Reddit v. SerpApi（纽约南区 2026-07-31，§1201(a) 反规避诉请继续审理）；User Agreement §7；Data API Terms 开头写明不论是否用 API 都受约束",
+    "why": "这正是 Reddit 眼下在起诉的做法，算不上漏洞。镜像站本身也违反 Reddit 条款。读一页镜像看看结构没问题，不能做成数据管道。"
+   },
+   {
+    "approach": "(a) 批量爬取，翻译后转发",
+    "target": "一亩三分地",
+    "risk_level": "高",
+    "legal_basis": "1p3a Terms of Use（2021-08-13）§5、§14(a)、§19(b)；17 U.S.C. §106；中国法可参照大众点评诉百度（2017-08-30 二审）",
+    "why": "条款只允许非商业的个人浏览，明禁爬虫和数据挖掘。一亩三分地服务的是同一群北美华人，搬它的内容就是截流，除了版权还可能被告不正当竞争。要登录或花积分才能看的帖子，抓取时受合同约束更强。"
+   },
+   {
+    "approach": "(a) 批量爬取，翻译后转发",
+    "target": "美卡论坛",
+    "risk_level": "高",
+    "legal_basis": "美卡 /tos（搜索摘要：禁止爬虫和浏览器插件自动访问，搜索引擎例外，禁止用 iframe 外嵌）；robots.txt；17 U.S.C. §106",
+    "why": "条款没有给第三方任何转载许可，抓取本身就违约，用 iframe 外嵌也被明文禁止。我判断美卡和 UIUC 新生关心的内容重合不多，搬过来收益小、风险大。"
+   },
+   {
+    "approach": "(a) 批量爬取，翻译后转发",
+    "target": "小红书 / 知乎",
+    "risk_level": "高",
+    "legal_basis": "知乎协议三.2、三.5、三.8、三.10（2025-03-25 生效）；小红书协议 3.4、4.1、4.2（2025-12-08 版，转载站）；著作权法第 10 条；反不正当竞争法第 13 条第 3 款（2025-10-15 施行）",
+    "why": "两家都明禁抓取，都约定平台可以用自己的名义维权。知乎连问题原文的知识产权都归平台。小红书以图片为主，搬图更容易侵权。小程序跑在腾讯体系里，最现实的后果是被投诉下架。"
+   },
+   {
+    "approach": "(b) 用人工或 LLM 改写，让帖子看起来像原创",
+    "target": "所有来源",
+    "risk_level": "高",
+    "legal_basis": "实质性相似和衍生作品规则；17 U.S.C. §103(a)；版权局 AI 报告第二部分（2025-01-29）；Google spam 政策 scaled content abuse 条目明写 translating、synonymizing；FTC 16 CFR Part 465（2024-10-21 生效）；中国法上洗稿按实质性相似认定",
+    "why": "保留了原文的结构和细节，换了词也还是在用原作的表达。洗出来的稿子你们自己也没有版权，理由有两层：纯 AI 产出不受保护，非法使用原作的部分本身也不受保护（§103(a)）。放进「吃喝好店」「落脚香槟」就成了假评价，一旦被认出来，对新论坛的信任打击最大。FTC 管不管得到，要看运营主体：如果是 CAACI 这类真正的非营利机构，按 Community Blood Bank v. FTC（1969）大概率管不到；如果是 Eric 个人或营利实体，就管得到，据报道每次违规罚款上限 53,088 美元。"
+   },
+   {
+    "approach": "(c) 偶尔人工写摘要，附一句短引、链接和署名",
+    "target": "Reddit r/UIUC",
+    "risk_level": "低",
+    "legal_basis": "17 U.S.C. §107；版权不保护思想和事实；User Agreement §3、§7 对登录用户有约束",
+    "why": "条件：人工浏览，最好在未登录状态下；数量少；用自己的话概括；最多引一句；不放截图；敏感话题不写用户名。登录账号的志愿者，字面上受 §7「collect data by any means (automated or otherwise)」约束，所以频率要低。合理使用是个案里的抗辩，不是许可。"
+   },
+   {
+    "approach": "(c') 每周固定的「外站热议」栏目，系统汇编外站讨论",
+    "target": "所有来源，尤其是一亩三分地",
+    "risk_level": "中",
+    "legal_basis": "大众点评诉百度（实质性替代，2017-08-30 二审维持）；User Agreement §3「为搭建类似或竞争网站而访问」；1p3a §14(a)；17 U.S.C. §107 第四要素",
+    "why": "偶尔一篇是评论，按周固定出就成了汇编。在中国法下，即使单条内容短到不构成作品，成规模搬竞品的用户内容也可能算不正当竞争。Reddit 自己在做翻译，翻译市场有人在占，第四要素对你们不利。建议改成不定期发，以链接导读为主，不把一亩三分地当固定来源。"
+   },
+   {
+    "approach": "(c) 写摘要，附一句短引、链接和署名",
+    "target": "一亩三分地 / 美卡论坛",
+    "risk_level": "中",
+    "legal_basis": "1p3a ToS §14(a)；美卡 /tos；17 U.S.C. §107",
+    "why": "版权分析和 Reddit 一样。区别在于两家是同一人群的直接竞品，更容易被看成截流。要登录或花积分才能看的内容一律不引，只用公开帖，并链接回原帖。"
+   },
+   {
+    "approach": "(c) 写摘要，附一句短引、链接和署名",
+    "target": "知乎 / 小红书",
+    "risk_level": "中",
+    "legal_basis": "著作权法第 24 条第（二）项和第 24 条开头的三步检验；知乎协议三.2、三.5；小红书协议 3.4",
+    "why": "中国法允许为评论或说明问题适当引用，但引文不能成为新内容的主体，也不能影响原作的正常使用。知乎的问题原文归平台，别照抄。小红书 3.4 连「读取、统计」都写进去了，约束的是注册账号。截图和搬图不算适当引用。"
+   },
+   {
+    "approach": "(d) 只用帖子发现常见问题，答案和指南自己写",
+    "target": "所有来源",
+    "risk_level": "低",
+    "legal_basis": "版权只保护表达，不保护思想和事实（美国 Feist 规则；著作权法第 5 条单纯事实消息）；人工浏览不触发反爬条款和反不正当竞争法第 13 条第 3 款",
+    "why": "这是最干净的一条路。条件：人工浏览，或从搜索引擎点进原帖，不跑任何脚本。问题用自己的话写，连知乎的问题原文也不抄。事实用 UIUC、ISSS、MTD、市政府等官方页面核实。不照搬别人故事里的细节。"
+   },
+   {
+    "approach": "(e) 请作者授权转载或翻译",
+    "target": "Reddit 作者",
+    "risk_level": "低",
+    "legal_basis": "User Agreement §5（用户保留所有权，给 Reddit 的是非独占许可）；Reddit 反垃圾规则",
+    "why": "版权人本人授权，版权问题就解决了。风险在执行：要留书面凭证；范围要写清，包括翻译、展示平台（含小程序和中国大陆）、期限、能否撤回、署名方式；要确认对方确实是作者；只能一对一少量发私信。"
+   },
+   {
+    "approach": "(e) 请作者授权转载或翻译",
+    "target": "一亩三分地 / 美卡 / 知乎 / 小红书作者",
+    "risk_level": "低",
+    "legal_basis": "知乎协议三.1（作者可自行授权第三方）、三.5（须注明「发表于知乎」）；小红书 4.2 是非排他许可；1p3a 条款没约定用户内容归属",
+    "why": "作者有权授权。知乎内容转载时，要按三.5 在开头注明作者名、原始链接和「发表于知乎」。在小红书私信里不放微信号或外链，那会被算成导流违规。"
+   },
+   {
+    "approach": "(f) 在条款范围内用 Reddit 官方 API",
+    "target": "Reddit",
+    "risk_level": "中",
+    "legal_basis": "Data API Terms 2.4、3.1、3.2（2026-07-20 修订）；Developer Terms 2.1、4.1、5.2（2026-03-24 修订）；Responsible Builder Policy（2025-11-11，镜像来源）",
+    "why": "合法，但达不到你们的目的。许可只到原样复制和展示，排版以外不许改，翻译在许可之外。现在要先申请审批；企业使用或已变现的产品要另签协议；作者删帖要同步删除。只适合原样嵌入英文原帖的场景。"
+   },
+   {
+    "approach": "(g) 邀请原帖作者或 r/UIUC 常客自己来发",
+    "target": "Reddit r/UIUC",
+    "risk_level": "低",
+    "legal_basis": "17 U.S.C. §512(c)（须登记代理人并有重复侵权政策）；r/UIUC 规则含 Sales, ads, voting（镜像）；Reddit 反垃圾规则",
+    "why": "作者自己发，版权和署名问题就没有了。风险在推广方式上：发介绍帖前先问 mod，私信一对一、内容个性化，不群发。不要替别人开账号，可以帮对方注册。"
+   },
+   {
+    "approach": "(g) 邀请原帖作者或常客自己来发",
+    "target": "CAACI 校友和董事网络、华人平台作者",
+    "risk_level": "低",
+    "legal_basis": "小红书导流规则（二手报道）；知乎协议",
+    "why": "最适合「学长学姐说」板块。我判断熟人网络比陌生人转化率高。在小红书上邀请时，私信里不直接放链接或微信号。"
+   },
+   {
+    "approach": "上线后由编辑先审后发或精选用户投稿",
+    "target": "本站用户内容",
+    "risk_level": "中",
+    "legal_basis": "Mavrix v. LiveJournal（第九巡回 2017）；17 U.S.C. §512(c)；47 U.S.C. §230(e)(2)；民法典第 1195 至 1197 条",
+    "why": "230 条款不管知识产权，用户发的侵权内容只能靠 DMCA 安全港。如果编辑按实质标准挑选后才发布，内容可能不再算「按用户指令存储」，安全港就可能丢。可小程序的 UGC 又必须过内容安全审核。解决办法是审核规则只写违法和垃圾内容筛查，不写编辑精选，并留存规则和记录。"
+   },
+   {
+    "approach": "上述任何做法中保留用户名或个人经历细节",
+    "target": "Reddit / 小红书 / 一亩三分地",
+    "risk_level": "中",
+    "legal_basis": "r/UIUC 规则禁止发布个人信息（镜像）；Reddit Public Content Policy 禁止用内容识别个人（二手资料，原本约束的是数据合作方）；伊利诺伊州公开私人事实侵权（依据弱）",
+    "why": "公开帖子很难满足「私人事实」这个要件，诉讼风险低。实际风险在伦理和信誉：r/UIUC 发帖人多是同校学生，翻成中文搬进华人小圈子更容易被认出来，签证、心理、室友冲突、房东纠纷这类话题尤其如此。作者在原平台删了帖，你们这里的副本还在。所以敏感话题去掉用户名和能认出人的细节。"
+   }
+  ],
+  "recommended_plan": "一、改名和上线前，先定三件事\n1. 运营主体：是 CAACI，还是 Eric 个人。这件事决定 FTC 规则管不管得到，决定 DMCA 代理人用谁的名义登记，决定授权由谁签，也决定出事后由谁担责。\n2. 微信小程序的类目和名称：从二手交易改成论坛，可能需要换「社区/论坛」类目，名称里出现「论坛」也可能要相应资质，UGC 还要接内容安全审核。这次没查到官方答案。改名前先在公众平台后台「设置 - 服务类目」看资质说明。\n3. 与主席确认对外表述：模板里「supported by CAACI」「免费」这类说法，定稿前要确认属实。\n\n二、上线前的法律底座（1 周内）\n1. 社区条款，要点四条：\n- 作者保留版权；\n- 作者授予本站非独占的展示许可，范围写明网页和小程序，作者删帖即终止；\n- 禁止发布他人作品；\n- 转载必须已取得授权，并注明来源。\n2. DMCA 代理人：在 copyright.gov/dmca-directory 用运营主体的名义登记。费用已核实：每次 6 美元，三年后失效，续期等于重新提交再付 6 美元。同时写一条重复侵权者封号政策（§512(i)）。少了这两项，用户上传内容的安全港就不成立；230 条款也不管知识产权。\n3. 一个投诉入口，同时满足两套规则：美国 DMCA 通知要素，和中国民法典第 1195 条（收到通知后转送发帖人并及时处理）。撤稿和投诉的目标处理时间是 48 小时。\n4. 审核规则只写违法、垃圾、隐私筛查，不写编辑精选。审核记录要留存。这是为了避开 Mavrix 案的风险。\n5. 编辑账号一律实名署名，例如「CAACI 编辑部·某某」。不建马甲号，不伪造用户，不刷评论。这和 PLATFORM_RESEARCH.md 第 18 行的原则一致。\n\n三、哪些事永远不做\n- 不对 Reddit、一亩三分地、美卡、小红书、知乎跑任何脚本、无头浏览器、代理池或登录态抓取。\n- 也不绕道：不经 Google 搜索结果、SERP API、redlib 一类镜像站批量拿内容。Reddit v. SerpApi 告的就是这种做法。\n- 不把整帖机翻后转发。不把别人的帖子交给 LLM 改写，再当站内原创发布。\n- 不截图，不搬小红书的图，不用 iframe 外嵌美卡等 Discourse 论坛的内容，不碰一亩三分地要积分或登录才能看的内容。\n- 知乎的问题原文也不照抄。按协议三.2，问题和补充说明的知识产权归知乎。\n- 签证、心理、室友冲突、房东纠纷这类敏感经历，不带用户名，也不带能认出人的细节。\n- 「吃喝好店」「落脚香槟」不发编造或改写来的「亲身体验」。\n- 不群发私信拉人，不替别人开账号。\n\n四、冷启动流程（4 周，按 3 名志愿者估）\n第 1 周，建问题库。人工浏览 r/UIUC 近一年的热帖（尽量在未登录状态下）、一亩三分地公开的 UIUC 相关帖、小红书和知乎上搜「UIUC」「香槟」的结果。表格只记五项：问题（用自己的话写一句）、对应板块、原帖链接、日期、是否敏感。目标 60–80 个问题，聚成 20 个左右的主题。\n第 2 周，每个主题写一篇原创指南：\n- 「落脚香槟」：租房签约、水电网、SSN、银行、驾照、MTD 公交；\n- 「校园日常」：选课、CRCE、打印；\n- 「吃喝好店」：只写编辑亲自去过的店，标注「编辑亲测」；\n- 「学长学姐说」：用问答格式。\n事实一律引官方页面，并注明「最后核实日期」。LLM 只用来润色你们自己写的稿子，不要把别人的帖子贴进去。\n第 2–3 周，请真人来发。从 CAACI 校友、董事和学长学姐里找 10–20 人，每人认领 1–2 个问题，用自己的经历回答。遇到写得特别好的外站帖子，一对一请作者授权，或请作者本人来发。私信每周不超过 10 条，这个上限是我为避开反垃圾机制定的，没有官方依据。\n第 3 周起，不定期发「外站导读」，不做每周固定栏目。每篇 3–5 个讨论串，以链接为主。每串用自己的话写不超过 150 字的概括，最多引一句原文，附链接和署名。一亩三分地不当固定来源。想把它做成固定周更，先请律师看一遍。\n长期：\n- 维护一张授权记录表，字段包括：作者、平台、原文链接、授权凭证截图、授权范围（翻译、转载或节选）、展示范围（网页、小程序、是否含中国大陆）、期限、能否撤回、署名方式、允许的改动、是否无偿、日期。\n- 撤稿请求 48 小时内处理。\n- 每季度复查一次 Reddit、知乎、小红书的条款。Reddit 2026 年已经改了三份文件：Developer Terms 03-24、User Agreement 05-26、Data API Terms 07-20。\n\n五、模板（{论坛名} 等名字定了再填）\nA. 摘要署名行（中文）：\n「本文是 {论坛名} 编辑根据 r/UIUC 讨论串《{原帖标题}》（发帖人 u/{用户名}，{YYYY-MM-DD}）写的中文导读和评论，不是原文翻译。原文：{链接}。原文版权归原作者。作者如果希望修改或撤下，请写信到 {邮箱}，我们会在 48 小时内处理。」\n敏感话题把「发帖人 u/{用户名}」换成「r/UIUC 网友」。\nA'. 英文：\n“Summary and commentary by {Forum} editors, based on the r/UIUC thread ‘{title}’ by u/{username} ({date}). This is not a translation. Original: {URL}. All rights in the original belong to its author. To request edits or removal, email {email}; we respond within 48 hours.”\n\nB. 已获授权的转载署名行，放在正文开头：\n「经原作者 {作者名} 于 {日期} 书面授权{翻译/转载}。原文：{链接}。版权归原作者，转载请联系原作者。」\n知乎内容要在这一行里写明「发表于知乎」，这是知乎协议三.5 的要求。\n\nC. 授权请求（英文，用于 Reddit 私信）：\n“Hi u/{username}, I help run {Forum}, a free forum for Chinese students and alumni at UIUC, supported by CAACI, a local nonprofit. Your post ‘{title}’ ({link}) explains {topic} better than anything we have. Would you be OK with us translating it into Chinese and posting it on our forum (website and WeChat mini program), with your username and a link to your original? We would only change what translation needs. It would appear only in that forum post; for any other use we would ask you first. You can ask us to take it down at any time at {email}. If you would rather post it yourself, we are happy to help you sign up. No worries at all if not. Thanks!”\n原模板里的「we can set up an account for you」改成了帮对方注册，因为替别人开号有冒用身份的风险。原模板还承诺「not use it in ads or paid content」，而平台研究写着将来要做付费功能，这句可能兑现不了，所以改成了「只在该帖子里展示，其他用途另行征求同意」。\n\nD. 授权请求（中文，用于一亩三分地、知乎、小红书站内私信）：\n「你好，我是 UIUC 华人学生和校友论坛 {论坛名} 的志愿者，论坛由本地非营利组织 CAACI 支持。你写的《{标题}》把 {话题} 讲得特别清楚。想问问你：我们能不能把这篇{全文/节选}转到论坛上（网页和微信小程序），署你的名字，附原文链接？内容只在这篇帖子里展示，其他用途会另外征求你的同意。你可以随时让我们撤下。如果你更愿意自己来发，我们帮你注册。不方便的话也完全没关系，谢谢！」\n用在知乎时，加一句「我们会按知乎协议，在文章开头注明你的名字、原文链接和『发表于知乎』」。用在小红书时，私信里不放链接和微信号；对方同意后，请对方告诉你方便的联系方式，后续在站外完成。\n\nE. 邀请对方自己来发（中英文各一句，可接在 C、D 后面）：\n「你这篇对新生特别有用。愿意的话，来 {论坛名} 的「{板块}」发一份，我们会把它置顶到对应的新生指南里。」\n“Would you be up for posting it yourself in our ‘{board}’ section? We'd pin it in the newcomer guide.”\n\n六、需要请律师的情况\n1. 想做任何规模的转载或翻译，或者想把外站导读做成固定栏目；想和 Reddit 谈数据协议。\n2. 定稿社区条款、隐私政策、DMCA 政策和审核规则时，同时确定运营主体。\n3. 收到律师函、DMCA 通知或平台投诉时。\n4. 小程序在中国大陆分发：类目资质、UGC 合规，以及国内平台规则加中国法这一整套。\n5. 想靠合理使用或适当引用，做超出「一句短引」的事。\nUIUC Student Legal Service 的资料写明它不处理版权和商标问题，这一条这次没重新核实。可以去问芝加哥的 Lawyers for the Creative Arts，或伊利诺伊州律师协会的律师转介服务，两家的受理资格都没核实。",
+  "not_legal_advice_note": "这份是基于公开资料的研究和复核，不是法律意见，也不构成律师和当事人关系。平台条款随时会改：Reddit 2026 年就改了 Developer Terms（03-24）、User Agreement（05-26 修订，07-01 生效）和 Data API Terms（07-20）三份文件。Reddit v. Anthropic 已发回加州州法院，Reddit v. SerpApi 还在审，X v. Bright Data 有没有上诉没查到，「违约之诉会不会被版权法排除」的分界还在变。下面这些材料只看到二手或转载版本：Reddit Public Content Policy、Responsible Builder Policy、美卡 /tos、小红书协议、SerpApi 裁定细节、著作权法第 24 和 54 条原文、微信小程序论坛类目资质。遇到以下几种情况，请先找执业律师：批量转载、和平台签数据协议、确定运营主体和条款文本、小程序改类目、收到投诉。"
+ }
+}

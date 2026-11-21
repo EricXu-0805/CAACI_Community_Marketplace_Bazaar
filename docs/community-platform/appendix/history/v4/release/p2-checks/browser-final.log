@@ -1,0 +1,18 @@
+
+> uni-preset-vue@0.0.0 smoke
+> playwright test community-post-topics.spec.ts
+
+[2m[WebServer] [22m(node:23230) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 3 tests using 1 worker
+
+(node:23268) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23268) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 smoke/community-post-topics.spec.ts:83:5 › legacy rows, board filtering, title search and topic detail coexist (3.5s)
+  ✓  2 smoke/community-post-topics.spec.ts:99:5 › topic validates metadata before writing and sends the selected board (2.2s)
+  ✓  3 smoke/community-post-topics.spec.ts:120:5 › existing update entry publishes without topic metadata (1.9s)
+
+  3 passed (9.9s)

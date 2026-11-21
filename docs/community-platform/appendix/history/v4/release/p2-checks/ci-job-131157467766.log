@@ -1,0 +1,250 @@
+﻿2026-11-12T11:37:40.8180039Z Current runner version: '2.338.2'
+2026-11-12T11:37:40.8210144Z ##[group]Runner Image Provisioner
+2026-11-12T11:37:40.8211341Z Hosted Compute Agent
+2026-11-12T11:37:40.8212087Z Version: 20261028.624
+2026-11-12T11:37:40.8213053Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+2026-11-12T11:37:40.8214005Z Build Date: 2026-10-28T21:51:42Z
+2026-11-12T11:37:40.8215274Z Worker ID: {da5438f4-afa6-47af-89ac-8ebdc348ffe4}
+2026-11-12T11:37:40.8216479Z Region: eastus2
+2026-11-12T11:37:40.8217260Z Cloud: Azure
+2026-11-12T11:37:40.8218045Z ##[endgroup]
+2026-11-12T11:37:40.8219895Z ##[group]Operating System
+2026-11-12T11:37:40.8220774Z Ubuntu
+2026-11-12T11:37:40.8221632Z 26.04.1
+2026-11-12T11:37:40.8222385Z LTS
+2026-11-12T11:37:40.8223163Z ##[endgroup]
+2026-11-12T11:37:40.8223937Z ##[group]Runner Image
+2026-11-12T11:37:40.8224923Z Image: ubuntu-26.04
+2026-11-12T11:37:40.8225895Z Version: 20261101.186.1
+2026-11-12T11:37:40.8227636Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261101.186/images/ubuntu/Ubuntu2604-Readme.md
+2026-11-12T11:37:40.8229825Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261101.186
+2026-11-12T11:37:40.8231254Z ##[endgroup]
+2026-11-12T11:37:40.8232963Z ##[group]GITHUB_TOKEN Permissions
+2026-11-12T11:37:40.8235689Z Contents: read
+2026-11-12T11:37:40.8236518Z Metadata: read
+2026-11-12T11:37:40.8237354Z PullRequests: read
+2026-11-12T11:37:40.8238234Z ##[endgroup]
+2026-11-12T11:37:40.8240743Z Secret source: Actions
+2026-11-12T11:37:40.8242071Z Cache mode: write
+2026-11-12T11:37:40.8243376Z Prepare workflow directory
+2026-11-12T11:37:40.8879033Z Prepare all required actions
+2026-11-12T11:37:40.8939609Z Getting action download info
+2026-11-12T11:37:41.0399508Z Download action repository 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-11-12T11:37:41.1521677Z Download action repository 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-11-12T11:37:41.3849296Z Complete job name: Smoke (public page sweep)
+2026-11-12T11:37:41.4570107Z ##[group]Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+2026-11-12T11:37:41.4571023Z with:
+2026-11-12T11:37:41.4571566Z   repository: EricXu-0805/CAACI_Community_Marketplace_Bazaar
+2026-11-12T11:37:41.4575124Z   token: ***
+2026-11-12T11:37:41.4575774Z   ssh-strict: true
+2026-11-12T11:37:41.4576233Z   ssh-user: git
+2026-11-12T11:37:41.4576669Z   persist-credentials: true
+2026-11-12T11:37:41.4577139Z   clean: true
+2026-11-12T11:37:41.4577569Z   sparse-checkout-cone-mode: true
+2026-11-12T11:37:41.4578055Z   fetch-depth: 1
+2026-11-12T11:37:41.4578488Z   fetch-tags: false
+2026-11-12T11:37:41.4578912Z   show-progress: true
+2026-11-12T11:37:41.4579332Z   lfs: false
+2026-11-12T11:37:41.4579737Z   submodules: false
+2026-11-12T11:37:41.4580176Z   set-safe-directory: true
+2026-11-12T11:37:41.4580664Z   allow-unsafe-pr-checkout: false
+2026-11-12T11:37:41.4581361Z env:
+2026-11-12T11:37:41.4581775Z   NODE_VERSION: 22
+2026-11-12T11:37:41.4582359Z   VITE_SUPABASE_URL: https://hygkwxugskijadgfisji.supabase.co
+2026-11-12T11:37:41.4583046Z   VITE_SUPABASE_PUBLISHABLE_KEY: 
+2026-11-12T11:37:41.4584947Z   VITE_SUPABASE_ANON_KEY: ***
+2026-11-12T11:37:41.4585419Z ##[endgroup]
+2026-11-12T11:37:41.7421104Z Syncing repository: EricXu-0805/CAACI_Community_Marketplace_Bazaar
+2026-11-12T11:37:41.7424029Z ##[group]Getting Git version info
+2026-11-12T11:37:41.7427772Z Working directory is '/home/runner/work/CAACI_Community_Marketplace_Bazaar/CAACI_Community_Marketplace_Bazaar'
+2026-11-12T11:37:41.7459357Z [command]/usr/bin/git version
+2026-11-12T11:37:41.7544382Z git version 2.56.0
+2026-11-12T11:37:41.7552311Z ##[endgroup]
+2026-11-12T11:37:41.7568639Z Temporarily overriding HOME='/home/runner/work/_temp/cb767646-8fa3-4d05-86f7-59c08012826b' before making global git config changes
+2026-11-12T11:37:41.7570876Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-12T11:37:41.7573471Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/CAACI_Community_Marketplace_Bazaar/CAACI_Community_Marketplace_Bazaar
+2026-11-12T11:37:41.8163169Z Deleting the contents of '/home/runner/work/CAACI_Community_Marketplace_Bazaar/CAACI_Community_Marketplace_Bazaar'
+2026-11-12T11:37:41.8192784Z ##[group]Initializing the repository
+2026-11-12T11:37:41.8198661Z [command]/usr/bin/git init /home/runner/work/CAACI_Community_Marketplace_Bazaar/CAACI_Community_Marketplace_Bazaar
+2026-11-12T11:37:41.8209196Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-12T11:37:41.8277481Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-12T11:37:41.8282378Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-12T11:37:41.8283734Z hint: call:
+2026-11-12T11:37:41.8284859Z hint:
+2026-11-12T11:37:41.8286005Z hint: 	git config --global init.defaultBranch <name>
+2026-11-12T11:37:41.8287231Z hint:
+2026-11-12T11:37:41.9018789Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-12T11:37:41.9020879Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-12T11:37:41.9026774Z hint:
+2026-11-12T11:37:41.9027834Z hint: 	git branch -m <name>
+2026-11-12T11:37:41.9028723Z hint:
+2026-11-12T11:37:41.9029870Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-12T11:37:41.9031932Z Initialized empty Git repository in /home/runner/work/CAACI_Community_Marketplace_Bazaar/CAACI_Community_Marketplace_Bazaar/.git/
+2026-11-12T11:37:41.9035668Z [command]/usr/bin/git remote add origin https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar
+2026-11-12T11:37:41.9038408Z ##[endgroup]
+2026-11-12T11:37:41.9039516Z ##[group]Disabling automatic garbage collection
+2026-11-12T11:37:41.9040514Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-12T11:37:41.9042646Z ##[endgroup]
+2026-11-12T11:37:41.9043894Z ##[group]Setting up auth
+2026-11-12T11:37:41.9045432Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-12T11:37:41.9048903Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-12T11:37:41.9052335Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-12T11:37:41.9073442Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-12T11:37:41.9358106Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-12T11:37:41.9394169Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-12T11:37:41.9703445Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-12T11:37:41.9742605Z ##[endgroup]
+2026-11-12T11:37:41.9744020Z ##[group]Fetching the repository
+2026-11-12T11:37:41.9752131Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +c4e4e2baf72f4229cc1a7a4ae1b70fbcf6554810:refs/remotes/pull/369/merge
+2026-11-12T11:37:42.9926268Z From https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar
+2026-11-12T11:37:42.9929421Z  * [new ref]         c4e4e2baf72f4229cc1a7a4ae1b70fbcf6554810 -> pull/369/merge
+2026-11-12T11:37:42.9933786Z ##[endgroup]
+2026-11-12T11:37:42.9935357Z ##[group]Determining the checkout info
+2026-11-12T11:37:42.9937323Z ##[endgroup]
+2026-11-12T11:37:42.9950840Z [command]/usr/bin/git sparse-checkout disable
+2026-11-12T11:37:42.9997931Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-12T11:37:43.0025855Z ##[group]Checking out the ref
+2026-11-12T11:37:43.0034870Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/369/merge
+2026-11-12T11:37:43.0799381Z Note: switching to 'refs/remotes/pull/369/merge'.
+2026-11-12T11:37:43.0800768Z 
+2026-11-12T11:37:43.0801875Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-12T11:37:43.0807993Z changes and commit them, and you can discard any commits you make in this
+2026-11-12T11:37:43.0810480Z state without impacting any branches by switching back to a branch.
+2026-11-12T11:37:43.0812274Z 
+2026-11-12T11:37:43.0813567Z If you want to create a new branch to retain commits you create, you may
+2026-11-12T11:37:43.0816267Z do so (now or later) by using -c with the switch command. Example:
+2026-11-12T11:37:43.0817665Z 
+2026-11-12T11:37:43.0818765Z   git switch -c <new-branch-name>
+2026-11-12T11:37:43.0819787Z 
+2026-11-12T11:37:43.0820929Z Or undo this operation with:
+2026-11-12T11:37:43.0822048Z 
+2026-11-12T11:37:43.0823161Z   git switch -
+2026-11-12T11:37:43.0824455Z 
+2026-11-12T11:37:43.0826325Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-12T11:37:43.0827954Z 
+2026-11-12T11:37:43.0830127Z HEAD is now at c4e4e2b Merge e4c776b315d53b5c3a61db068b8911df1d681406 into 7b18f2052e52a4268c25407d0584748477cbf978
+2026-11-12T11:37:43.0839011Z ##[endgroup]
+2026-11-12T11:37:43.0869370Z [command]/usr/bin/git log -1 --format=%H
+2026-11-12T11:37:43.0894325Z c4e4e2baf72f4229cc1a7a4ae1b70fbcf6554810
+2026-11-12T11:37:43.1837899Z ##[group]Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+2026-11-12T11:37:43.1839236Z with:
+2026-11-12T11:37:43.1839923Z   node-version: 22
+2026-11-12T11:37:43.1840652Z   cache: npm
+2026-11-12T11:37:43.1841460Z   cache-dependency-path: app/package-lock.json
+2026-11-12T11:37:43.1842527Z   always-auth: false
+2026-11-12T11:37:43.1843305Z   check-latest: false
+2026-11-12T11:37:43.1851846Z   token: ***
+2026-11-12T11:37:43.1852537Z env:
+2026-11-12T11:37:43.1853197Z   NODE_VERSION: 22
+2026-11-12T11:37:43.1854195Z   VITE_SUPABASE_URL: https://hygkwxugskijadgfisji.supabase.co
+2026-11-12T11:37:43.1855456Z   VITE_SUPABASE_PUBLISHABLE_KEY: 
+2026-11-12T11:37:43.1859780Z   VITE_SUPABASE_ANON_KEY: ***
+2026-11-12T11:37:43.1860669Z ##[endgroup]
+2026-11-12T11:37:43.3109543Z (node:2076) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-12T11:37:43.3113248Z Found in cache @ /opt/hostedtoolcache/node/22.23.4/x64
+2026-11-12T11:37:43.3116381Z ##[group]Environment details
+2026-11-12T11:37:43.3120907Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-12T11:37:43.8028210Z node: v22.23.4
+2026-11-12T11:37:43.8030509Z npm: 10.9.9
+2026-11-12T11:37:43.8030965Z yarn: 1.22.22
+2026-11-12T11:37:43.8032053Z ##[endgroup]
+2026-11-12T11:37:43.8032594Z [command]/opt/hostedtoolcache/node/22.23.4/x64/bin/npm config get cache
+2026-11-12T11:37:43.8952453Z /home/runner/.npm
+2026-11-12T11:37:44.0545751Z Cache hit for: node-cache-Linux-x64-npm-82e80f2764521a1ab9c6717ea3229a07458348d5812b40473d2c04763508c29a
+2026-11-12T11:37:44.0608762Z (node:2076) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-12T11:37:44.4993213Z Received 66432298 of 66432298 (100.0%), 162.0 MBs/sec
+2026-11-12T11:37:44.4994180Z Cache Size: ~63 MB (66432298 B)
+2026-11-12T11:37:44.5036693Z [command]/usr/bin/tar -xf /home/runner/work/_temp/546d56ab-c0ba-497c-84e3-0710c50cb017/cache.tzst -P -C /home/runner/work/CAACI_Community_Marketplace_Bazaar/CAACI_Community_Marketplace_Bazaar --use-compress-program unzstd
+2026-11-12T11:37:44.8267512Z Cache restored successfully
+2026-11-12T11:37:44.8296801Z Cache restored from key: node-cache-Linux-x64-npm-82e80f2764521a1ab9c6717ea3229a07458348d5812b40473d2c04763508c29a
+2026-11-12T11:37:44.8854992Z ##[group]Run npm ci --legacy-peer-deps
+2026-11-12T11:37:44.8855348Z [36;1mnpm ci --legacy-peer-deps[0m
+2026-11-12T11:37:44.9184084Z shell: /usr/bin/bash -e {0}
+2026-11-12T11:37:44.9184344Z env:
+2026-11-12T11:37:44.9184541Z   NODE_VERSION: 22
+2026-11-12T11:37:44.9184831Z   VITE_SUPABASE_URL: https://hygkwxugskijadgfisji.supabase.co
+2026-11-12T11:37:44.9185180Z   VITE_SUPABASE_PUBLISHABLE_KEY: 
+2026-11-12T11:37:44.9186539Z   VITE_SUPABASE_ANON_KEY: ***
+2026-11-12T11:37:44.9186770Z ##[endgroup]
+2026-11-12T11:37:48.0648556Z npm warn deprecated phin@3.7.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+2026-11-12T11:37:53.1843169Z 
+2026-11-12T11:37:53.1856367Z > uni-preset-vue@0.0.0 prepare
+2026-11-12T11:37:53.1869727Z > cd .. && git config core.hooksPath .githooks 2>/dev/null || true
+2026-11-12T11:37:53.1870375Z 
+2026-11-12T11:37:53.2222817Z 
+2026-11-12T11:37:53.2223949Z added 610 packages, and audited 611 packages in 8s
+2026-11-12T11:37:53.2225193Z 
+2026-11-12T11:37:53.2226036Z 75 packages are looking for funding
+2026-11-12T11:37:53.2234193Z   run `npm fund` for details
+2026-11-12T11:37:53.2588302Z 
+2026-11-12T11:37:53.2596099Z 13 vulnerabilities (9 moderate, 4 high)
+2026-11-12T11:37:53.2613240Z 
+2026-11-12T11:37:53.2624315Z To address issues that do not require attention, run:
+2026-11-12T11:37:53.2627433Z   npm audit fix
+2026-11-12T11:37:53.2629650Z 
+2026-11-12T11:37:53.2630556Z To address all issues possible (including breaking changes), run:
+2026-11-12T11:37:53.2636626Z   npm audit fix --force
+2026-11-12T11:37:53.2636847Z 
+2026-11-12T11:37:53.2637104Z Some issues need review, and may require choosing
+2026-11-12T11:37:53.2637584Z a different dependency.
+2026-11-12T11:37:53.2637777Z 
+2026-11-12T11:37:53.2637944Z Run `npm audit` for details.
+2026-11-12T11:37:53.3759364Z ##[group]Run if [[ -n "$VITE_SUPABASE_URL" && ( -n "$VITE_SUPABASE_PUBLISHABLE_KEY" || -n "$VITE_SUPABASE_ANON_KEY" ) ]]; then
+2026-11-12T11:37:53.3760077Z [36;1mif [[ -n "$VITE_SUPABASE_URL" && ( -n "$VITE_SUPABASE_PUBLISHABLE_KEY" || -n "$VITE_SUPABASE_ANON_KEY" ) ]]; then[0m
+2026-11-12T11:37:53.3760535Z [36;1m  echo "can_run=true" >> "$GITHUB_OUTPUT"[0m
+2026-11-12T11:37:53.3760812Z [36;1melse[0m
+2026-11-12T11:37:53.3761037Z [36;1m  if [[ "pull_request" != "pull_request" ]]; then[0m
+2026-11-12T11:37:53.3761476Z [36;1m    echo "::error::Production smoke configuration is missing; release verification cannot be skipped."[0m
+2026-11-12T11:37:53.3761863Z [36;1m    exit 1[0m
+2026-11-12T11:37:53.3762051Z [36;1m  fi[0m
+2026-11-12T11:37:53.3762252Z [36;1m  echo "can_run=false" >> "$GITHUB_OUTPUT"[0m
+2026-11-12T11:37:53.3762648Z [36;1m  echo "Smoke skipped: public Supabase CI credentials are unavailable (expected on forks)."[0m
+2026-11-12T11:37:53.3763024Z [36;1mfi[0m
+2026-11-12T11:37:53.3809845Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-12T11:37:53.3810152Z env:
+2026-11-12T11:37:53.3810339Z   NODE_VERSION: 22
+2026-11-12T11:37:53.3810625Z   VITE_SUPABASE_URL: https://hygkwxugskijadgfisji.supabase.co
+2026-11-12T11:37:53.3810939Z   VITE_SUPABASE_PUBLISHABLE_KEY: 
+2026-11-12T11:37:53.3812004Z   VITE_SUPABASE_ANON_KEY: ***
+2026-11-12T11:37:53.3812242Z ##[endgroup]
+2026-11-12T11:37:53.4257999Z ##[group]Run node scripts/verify-public-read-schema.mjs
+2026-11-12T11:37:53.4258395Z [36;1mnode scripts/verify-public-read-schema.mjs[0m
+2026-11-12T11:37:53.4303416Z shell: /usr/bin/bash -e {0}
+2026-11-12T11:37:53.4303657Z env:
+2026-11-12T11:37:53.4303839Z   NODE_VERSION: 22
+2026-11-12T11:37:53.4304123Z   VITE_SUPABASE_URL: https://hygkwxugskijadgfisji.supabase.co
+2026-11-12T11:37:53.4304444Z   VITE_SUPABASE_PUBLISHABLE_KEY: 
+2026-11-12T11:37:53.4305501Z   VITE_SUPABASE_ANON_KEY: ***
+2026-11-12T11:37:53.4305817Z ##[endgroup]
+2026-11-12T11:37:53.8636536Z {"publicReadSchema":[{"name":"item category and street details","status":200},{"name":"plaza attached item details","status":200},{"name":"public comment translations","status":200}]}
+2026-11-12T11:37:53.8797088Z ##[group]Run npx playwright install --with-deps webkit chromium
+2026-11-12T11:37:53.8797517Z [36;1mnpx playwright install --with-deps webkit chromium[0m
+2026-11-12T11:37:53.8845030Z shell: /usr/bin/bash -e {0}
+2026-11-12T11:37:53.8845271Z env:
+2026-11-12T11:37:53.8845455Z   NODE_VERSION: 22
+2026-11-12T11:37:53.8845846Z   VITE_SUPABASE_URL: https://hygkwxugskijadgfisji.supabase.co
+2026-11-12T11:37:53.8846190Z   VITE_SUPABASE_PUBLISHABLE_KEY: 
+2026-11-12T11:37:53.8847278Z   VITE_SUPABASE_ANON_KEY: ***
+2026-11-12T11:37:53.8847516Z ##[endgroup]
+2026-11-12T11:37:54.7285518Z BEWARE: your OS is not officially supported by Playwright; installing dependencies for ubuntu26.04-x64 as a fallback.
+2026-11-12T11:37:54.7287192Z Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.60.0!
+2026-11-12T11:37:54.7386789Z Failed to install browsers
+2026-11-12T11:37:54.7397811Z Error: ERROR: Playwright does not support webkit on ubuntu26.04-x64
+2026-11-12T11:37:54.7752180Z ##[error]Process completed with exit code 1.
+2026-11-12T11:37:54.7971921Z Post job cleanup.
+2026-11-12T11:37:54.8797574Z [command]/usr/bin/git version
+2026-11-12T11:37:54.8856783Z git version 2.56.0
+2026-11-12T11:37:54.8959247Z Temporarily overriding HOME='/home/runner/work/_temp/141bce14-360a-47ad-b18d-21197cc4cf29' before making global git config changes
+2026-11-12T11:37:54.8996677Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-12T11:37:54.9007964Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/CAACI_Community_Marketplace_Bazaar/CAACI_Community_Marketplace_Bazaar
+2026-11-12T11:37:54.9014889Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-12T11:37:54.9018850Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-12T11:37:54.9569786Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-12T11:37:54.9587367Z http.https://github.com/.extraheader
+2026-11-12T11:37:54.9648204Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-11-12T11:37:54.9691164Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-12T11:37:55.0073032Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-12T11:37:55.0115095Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-12T11:37:55.0533511Z Cleaning up orphan processes
+2026-11-12T11:37:55.0845977Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@11d5960a326750d5838078e36cf38b85af677262, actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+
