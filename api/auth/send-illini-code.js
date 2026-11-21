@@ -223,7 +223,7 @@ function clientIp(request) {
 
 function codeEmailHtml(code) {
   // Matches the house transactional-email style (notification-digest): parchment
-  // ground, the orange 集 brand seal, Georgia serif wordmark, warm text palette,
+  // ground, the orange 玉 brand seal, Georgia serif wordmark, warm text palette,
   // white card. color-scheme:light pins it so dark mail clients (Apple Mail)
   // render it as designed instead of auto-inverting it into muddy dark-on-dark.
   // The code box uses Illini navy — on-brand for the badge being earned.
@@ -236,7 +236,7 @@ function codeEmailHtml(code) {
 <body style="margin:0;background:#F7F4EE;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
   <div style="max-width:480px;margin:0 auto;padding:32px 20px;">
     <div style="text-align:center;">
-      <span style="display:inline-block;width:44px;height:44px;line-height:44px;border-radius:12px;background:#C74A2F;color:#fff;font-weight:700;font-size:22px;">集</span>
+      <span style="display:inline-block;width:44px;height:44px;line-height:44px;border-radius:12px;background:#C74A2F;color:#fff;font-weight:700;font-size:22px;">玉</span>
       <div style="font-family:Georgia,'Times New Roman',serif;font-size:20px;color:#2A2521;margin-top:10px;">Cornfield · 玉米地</div>
     </div>
     <div style="background:#fff;border-radius:16px;padding:28px 28px 26px;margin-top:18px;">

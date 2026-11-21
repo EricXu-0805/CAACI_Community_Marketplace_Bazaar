@@ -51,3 +51,10 @@ test('photo placeholder seals use 玉, never the old 集', () => {
     'no placeholder seal found: the search no longer matches the markup')
   assert.deepEqual(seals.filter(line => /u-thumb-ph-seal[^"]*"[^>]*>[^<]*集/.test(line)), [])
 })
+
+test('email seals use 玉 in all seven places, never the old 集', () => {
+  const paths = ['api/', 'supabase/email-templates/']
+  const seals = gitGrep(['-oF', '>玉<', '--', ...paths])
+  assert.equal(seals.length, 7, '搜索不再匹配印章标记')
+  assert.deepEqual(gitGrep(['-oF', '>集<', '--', ...paths]), [])
+})
