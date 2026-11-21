@@ -2552,3 +2552,15 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: 邮件在真实客户端里的样子
 - 下一条: P4 第二阶段
 - 附: protected staging account 那个 job 在 PR 上按 ci.yml 本来就跳过，和 main 上一样。合并、发布、重贴两个认证邮件模板归 supervisor。
+
+### L192 · 2026-11-21 02:59 CT · [OMO自决] marketplace-responsive.spec.ts:699 是 main 上就有的不稳定用例，按「main 上同样失败」记，不修、不挡 P4 推送（D-55 第 5 项）
+- task_id: D-55.5、D-55.3
+- code_sha: codex/community-events-20261120 本地 24ff7bf（远端仍是 4c1c666）；对照 main 3778952
+- docs_sha: ca3cefd（本次写回之前材料分支的 HEAD）
+- 环境: 本地（容器锁，一次一个）
+- 命令: P4 子任务 st_01a1fc58 在锁里只跑这一个 spec（SMOKE_SPECS=marketplace-responsive.spec.ts，只跑 smoke 一步）：24ff7bf 四次（check-20261121T082653Z、T083042Z、T083437Z、T083820Z），main 3778952 四次（一次性 worktree ~/work/illini-events-d55-ctl-main，check-20261121T084237Z、T084635Z、T085045Z、T085435Z）
+- 计数: 24ff7bf：54 passed；1 failed 53 passed；54 passed；10 failed 50 passed。main 3778952：54 passed；1 failed 53 passed；54 passed；9 failed 51 passed [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: P4 第二阶段推送
+- 附: P4 第二阶段门禁 check-20261121T073957Z（24ff7bf）smoke 647 条 639 passed、7 failed、1 skipped：首页、广场 4 条（L173）、pages/events/index 2 条（同一类，L178）之外，多出「marketplace-responsive.spec.ts:699 › layout resize is not subtracted twice and pinch zoom is not treated as a keyboard」，报错是视口改成 820×830 后 10 秒内 .chat-thread 高度仍是 480、不是 830。这一条在 L173 的 main 对照、P3 门禁、P4 第一阶段门禁里都通过，所以先当成只在分支上失败，不推送、先查。单跑八次的结果两个 head 一样：时过时不过，main 上也失败。结论：这是 main 3778952 上已有的不确定用例，L173 那一次碰巧通过；不是第二阶段带出来的。按 D-55 第 5 项「标题相同、main 上也失败的，不修」记，P4 这次门禁判「通过（另有 7 条 main 上同样失败或同类）」，不重跑全量。另：D-55 第 5 项说 main 对照只在 ~/work/confirm-final-3778952 跑一次；这次在另一个一次性 worktree 里对 main 单跑一个 spec，是为了判这一条的归属，不是第二次 main 对照，三个分支的对照仍以 L173 为准。这个用例的不确定性本身是缺陷（测试在等视口改完后的布局，时序没有锁住），不在 D-55 范围里，写进第九批 ⑥ 留作后续，不在本批改。
