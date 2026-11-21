@@ -457,7 +457,7 @@
             </view>
             <text class="cs-content">{{ localize(thread.parent.content_i18n, thread.parent.content) }}</text>
             <view class="cs-actions">
-              <view class="cs-like-btn hit-target" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="thread.parent.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(thread.parent)">
+              <view v-if="!isPendingComment(thread.parent)" class="cs-like-btn hit-target" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="thread.parent.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(thread.parent)">
                 <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                 <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
               </view>
@@ -496,7 +496,7 @@
               </view>
               <text class="cs-content">{{ localize(child.content_i18n, child.content) }}</text>
               <view class="cs-actions">
-                <view class="cs-like-btn hit-target" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="child.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(child)">
+                <view v-if="!isPendingComment(child)" class="cs-like-btn hit-target" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="child.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(child)">
                   <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                   <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
                 </view>
@@ -1489,8 +1489,9 @@ const replyTo = ref<PostComment | null>(null)
 const commentSubmitting = ref(false)
 let commentSheetEpoch = 0
 // A reply is in the list from the moment it is sent, under an id made up here ('temp-…'), until
-// the server's row replaces it. That id names nothing the server knows, so such a reply cannot be
-// answered yet: no reply button, no reply in its menu, and a tap that still arrives is ignored.
+// the server's row replaces it. That id names nothing the server knows, so nothing that would send
+// it is offered yet: no reply or like button and no menu, and a reply tap that still arrives is
+// ignored.
 const isPendingComment = (c: PostComment) => c.id.startsWith('temp-')
 // Sheet 打开时 input 不应自动 focus（避免键盘挡评论列表）。
 // inputFocused 由用户显式动作驱动：tap 输入框 / tap 评论 / tap "回复" / tap 长按菜单"回复"。
@@ -2432,17 +2433,20 @@ async function onCommentLongPress(c: PostComment) {
       }
     },
   })
-  // A closed update takes no replies, and a reply still being sent cannot be answered yet, so
-  // neither menu offers one.
+  // A closed update takes no replies. A reply still being sent has no saved row to answer or to
+  // remove, so its menu offers neither; it is always its sender's own, which leaves that menu
+  // empty, and an empty menu is not opened.
+  const pending = isPendingComment(c)
   const actions: Array<{ label: string; run: () => void }> = [
-    ...(commentingPost.value?.locked_at || isPendingComment(c) ? [] : [{ label: t('plaza.reply'), run: reply }]),
+    ...(commentingPost.value?.locked_at || pending ? [] : [{ label: t('plaza.reply'), run: reply }]),
     ...(isMine
-      ? [{ label: t('plaza.delete'), run: confirmDelete }]
+      ? (pending ? [] : [{ label: t('plaza.delete'), run: confirmDelete }])
       : [
         { label: t('plaza.reportComment'), run: () => promptReport('comment', c.id) },
         { label: t('plaza.reportUser'), run: () => promptReportUser(c.user_id) },
       ]),
   ]
+  if (!actions.length) return
   uni.showActionSheet({
     itemList: actions.map(action => action.label),
     success: (res) => {

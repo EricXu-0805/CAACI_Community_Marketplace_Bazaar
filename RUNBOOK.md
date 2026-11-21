@@ -516,7 +516,14 @@ and then production:
    or an administrator takedown, at that moment can deadlock with it, and
    PostgreSQL then rolls back either side. If the migration stops on a
    deadlock (`40P01`) or on `lock_timeout` (`55P03`), the whole transaction
-   has rolled back, so simply run it again as it is.
+   has rolled back, so simply run it again as it is. If it stops on `57014`
+   instead (`statement_timeout`, which line 47 of the migration sets to 60s),
+   the whole transaction has rolled back as well, but the same file would
+   time out at the same statement, so do not run it again. Note the statement
+   the error stopped at, run the read-only
+   `SELECT count(*) FROM public.posts;` and
+   `SELECT count(*) FROM public.post_comments;`, and give that statement and
+   the two counts to the release owner, who decides what happens next.
 2. Repeat step 1 on production.
 3. Only then merge the frontend and deploy `api/admin`, and release the P3
    Mini Program. If the frontend went out first, the community lists and
