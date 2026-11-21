@@ -86,6 +86,11 @@ PR #369 · run [44647478789](https://github.com/EricXu-0805/CAACI_Community_Mark
 | #374 b35cf8e（已含#369+#375） | 1,372,224 | 200,640 | check-20261113T205110Z，L79；未含#372/#373 [本地测] |
 | #374 6d6c598 | 1,551,820 | 21,044 | check-20261113T183852Z [本地测] |
 | #374 6d6c598 ＋ 3d24a8e 试合（supervisor） | 1,551,949 | 20,915 | D-47 第 6 项；这是第二轮拆包前的历史组合，已被本次组合实测替代，没算 #369 的 3b、3f 和 #372、#373 |
+| main 3778952（D-56 第 4 项 a 的基线） | 1,381,447（与基线差 0） | 191,417 | L173，mpci packageBytes.main |
+| main 66e14a45（#381 合并后；印章 c1cacb6 同树） | 1,381,447（与基线差 0） | 191,417 | L190，mpci packageBytes.main |
+| P3 7ccb195（第九批） | 1,422,595（与基线差 +41,148） | 150,269 | L179，mpci packageBytes.main |
+| P4 24ff7bf（第九批） | 1,459,446（与基线差 +77,999） | 113,418 | L193，mpci packageBytes.main |
+| P3 fdb823a（第十批，D-56 第 3 项 b–d） | 1,422,723（与基线差 +41,276） | 150,141 | L208，mpci packageBytes.main |
 
 main · 定时 run [42684660097](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/42684660097) · 2026-11-09 · runner ubuntu-26.04 [CI run#42684660097]
 
