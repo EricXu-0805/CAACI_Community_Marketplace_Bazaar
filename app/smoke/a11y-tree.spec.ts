@@ -219,16 +219,16 @@ for (const vp of VIEWPORTS) {
       test.setTimeout(300_000)
       // document.title is the first thing announced on navigation and the
       // label of every tab and history entry (2.4.2). 28 of 29 routes used to
-      // fall through to globalStyle's "Illini Market".
+      // fall through to globalStyle's "玉米地".
       const titles = new Map<string, string>()
       for (const route of PAGES) {
         await snapshotOf(page, route)
         titles.set(route, await page.title())
       }
-      const generic = [...titles.entries()].filter(([, title]) => title === 'Illini Market')
+      const generic = [...titles.entries()].filter(([, title]) => title === '玉米地')
       // detail, seller and legal title themselves from data the page owns, and
       // welcome legitimately is the app name. Everything else must be distinct.
-      expect(generic.length, `routes still titled only "Illini Market":\n${generic.map(([r]) => r).join('\n')}`)
+      expect(generic.length, `routes still titled only "玉米地":\n${generic.map(([r]) => r).join('\n')}`)
         .toBeLessThanOrEqual(4)
       // Logged out, many routes legitimately land on the sign-in page and
       // share its title, so the ceiling here is well below 29.

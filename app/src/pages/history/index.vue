@@ -48,7 +48,7 @@
         @open="goDetail(item.id)" @action="removeEntry(item.id, 'item')" @menu="onRemoveOne(item.id, 'item')">
       <view class="item-row u-rise">
         <image v-if="thumbUrl(item.images?.[0], 'list')" :src="thumbUrl(item.images?.[0], 'list')" :alt="localize(item.title_i18n, item.title)" class="item-img" mode="aspectFill" lazy-load />
-        <view v-else class="item-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+        <view v-else class="item-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
         <view class="item-info">
           <text class="item-title">{{ localize(item.title_i18n, item.title) }}</text>
           <view class="item-price-row">

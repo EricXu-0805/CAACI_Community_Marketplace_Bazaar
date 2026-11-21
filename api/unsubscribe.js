@@ -176,7 +176,7 @@ h1{font-size:19px;margin:0 0 6px}p{font-size:13px;color:#8B8478;line-height:1.6;
 button{appearance:none;border:0;border-radius:10px;background:#C74A2F;color:#fff;font-size:15px;font-weight:600;padding:12px 28px;cursor:pointer}</style>
 </head><body><div class="card"><div class="seal">集</div>
 <h1>Unsubscribe · <span lang="zh">退订邮件提醒</span></h1>
-<p>Click below to stop receiving Illini Market email reminders.<br><span lang="zh">点击下方按钮，将不再收到集市的邮件提醒。</span></p>
+<p>Click below to stop receiving Cornfield email reminders.<br><span lang="zh">点击下方按钮，将不再收到玉米地的邮件提醒。</span></p>
 <form method="POST" action="${action}"><button type="submit">Confirm unsubscribe · <span lang="zh">确认退订</span></button></form>
 </div></body></html>`
   return new Response(html, {
@@ -196,7 +196,7 @@ export default async function handler(req) {
   // never reveal that. But a genuine DB/network failure must NOT masquerade as
   // success, or the user is told "unsubscribed" while still getting mail.
   const done = () => page('已退订', "You're unsubscribed",
-    '你将不再收到集市的邮件提醒。', "You won't receive Illini Market email reminders anymore.")
+    '你将不再收到玉米地的邮件提醒。', "You won't receive Cornfield email reminders anymore.")
   const fail = () => page('退订失败', 'Unsubscribe failed',
     '请稍后重试，或在 App 设置中关闭邮件提醒。', 'Please try again later, or turn off email reminders in the app settings.')
 

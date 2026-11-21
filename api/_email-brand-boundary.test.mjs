@@ -1,4 +1,4 @@
-// The product has two names — `Illini Market` (en) and `Illini 集市` (zh) — and four
+// The product has two names — `Cornfield` (en) and `玉米地` (zh) — and four
 // outbound email surfaces. The two Supabase auth templates paired both names and
 // linked the domain; the two Vercel handlers named only the Chinese half, so an
 // English-reading recipient got a wordmark they had never seen and no way to tie
@@ -21,18 +21,18 @@ const EMAIL_SURFACES = [
 ]
 
 // Assert on rendered markup (`>text<`), never a bare substring. Both handlers
-// carry `const FROM = env('DIGEST_FROM', 'Illini Market <noreply@send.illinimarket.com>')`,
-// so a bare /Illini Market/ or /illinimarket\.com/ matches the FROM constant and
+// carry `const FROM = env('DIGEST_FROM', '玉米地 Cornfield <noreply@send.illinimarket.com>')`,
+// so a bare /Cornfield/ or /illinimarket\.com/ matches the FROM constant and
 // passes even when the email body names neither. The first draft of this file
 // did exactly that and stayed green against a fully reverted template.
 test('every outbound email names the product in both languages', () => {
   for (const rel of EMAIL_SURFACES) {
     const source = read(rel)
-    assert.match(source, />Illini 集市</, `${rel} dropped the current Chinese wordmark`)
+    assert.match(source, />玉米地</, `${rel} dropped the current Chinese wordmark`)
     assert.doesNotMatch(source, /香槟集市/, `${rel} still contains the retired Chinese wordmark`)
     assert.match(
       source,
-      />Illini Market</,
+      />Cornfield</,
       `${rel} names the product only in Chinese in its rendered body — an `
         + 'English-reading UIUC student cannot connect it to the site they signed up for',
     )
@@ -52,17 +52,17 @@ test('every outbound email links the domain it was sent from', () => {
 })
 
 test('handler subjects do not re-spend the inbox on the brand', () => {
-  // FROM already renders as "Illini Market" in the recipient's inbox. A phone
+  // FROM already renders as "玉米地 Cornfield" in the recipient's inbox. A phone
   // truncates the subject around 35-40 characters, so a brand prefix pushed the
   // English half of every bilingual subject ("... · Meetup proposed") off the end.
   for (const rel of ['api/notification-digest.js', 'api/meetup-notify.js']) {
     const source = read(rel)
-    assert.match(source, /const FROM = env\('DIGEST_FROM', 'Illini Market </)
+    assert.match(source, /const FROM = env\('DIGEST_FROM', '玉米地 Cornfield </)
     // A subject literal is the only place a quoted string *starts* with the
     // wordmark; the footer pairing is mid-template and never quote-adjacent.
     assert.doesNotMatch(
       source,
-      /[`'"](Illini 集市|Illini Market)\s*·/,
+      /[`'"](玉米地|Cornfield)\s*·/,
       `${rel} has a subject literal repeating the brand the FROM name already shows`,
     )
   }

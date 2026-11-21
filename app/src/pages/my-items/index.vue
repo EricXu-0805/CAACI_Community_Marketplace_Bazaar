@@ -80,7 +80,7 @@
             mode="aspectFill"
             lazy-load
           />
-          <view v-else class="card-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">集</text></view>
+          <view v-else class="card-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal">玉</text></view>
         </view>
         <view class="card-body">
           <text class="card-title">{{ localize(item.title_i18n, item.title) }}</text>

@@ -221,8 +221,8 @@ test('upstream errors and malformed rows fail to the generic share surface', asy
   const { default: handler } = await load('share.js')
   const response = await handler(new Request(`https://illinimarket.com/api/share?id=${ITEM_ID}`))
   const meta = metaOf(await response.text())
-  assert.equal(meta.title, 'Illini Market · UIUC Community Marketplace')
-  assert.equal(meta.description, 'Buy, sell, and connect with the UIUC community. 校园二手交易与交流。')
+  assert.equal(meta.title, '玉米地 · 社区')
+  assert.equal(meta.description, 'Chinese community in Illinois, now open in Champaign-Urbana. 伊利诺伊华人论坛，现开放香槟地区。')
 })
 
 test('share preview bounds public query responses and fails to the generic surface', async () => {
@@ -234,8 +234,8 @@ test('share preview bounds public query responses and fails to the generic surfa
   const response = await handler(new Request(`https://illinimarket.com/api/share?id=${ITEM_ID}`))
   const meta = metaOf(await response.text())
 
-  assert.equal(meta.title, 'Illini Market · UIUC Community Marketplace')
-  assert.equal(meta.description, 'Buy, sell, and connect with the UIUC community. 校园二手交易与交流。')
+  assert.equal(meta.title, '玉米地 · 社区')
+  assert.equal(meta.description, 'Chinese community in Illinois, now open in Champaign-Urbana. 伊利诺伊华人论坛，现开放香槟地区。')
 })
 
 const LONE_SURROGATE_RE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/
@@ -374,7 +374,7 @@ test('a share link whose listing is gone lands on the detail route, not the home
   assert.equal(missing.ogUrl, missing.canonical)
   assert.equal(missing.refresh, detail)
   // The card still must not invent a listing it could not read.
-  assert.equal(missing.title, 'Illini Market · UIUC Community Marketplace')
+  assert.equal(missing.title, '玉米地 · 社区')
 
   // Control: with no listing named there is nothing to explain, so the root
   // stays the destination — the fix is not "always append a detail route".

@@ -1,6 +1,6 @@
 # Supabase Email Templates
 
-Custom branded email templates for Illini Market. Bilingual (English first, with Chinese), warm
+Custom branded email templates for 玉米地 Cornfield. Bilingual (English first, with Chinese), warm
 terracotta brand, code-based (not magic links).
 
 ## How to apply
@@ -9,8 +9,8 @@ terracotta brand, code-based (not magic links).
 2. For each template:
    - `Confirm signup` → paste contents of `confirm-signup.html`
    - `Reset password` → paste contents of `reset-password.html`
-   - Signup subject: `Illini Market · Verify your email / 确认邮箱`
-   - Recovery subject: `Illini Market · Reset your password / 重置密码`
+   - Signup subject: `Cornfield · Verify your email / 确认邮箱`
+   - Recovery subject: `Cornfield · Reset your password / 重置密码`
    The subject is a separate dashboard setting; changing the HTML `<title>`
    does not change the subject shown in the inbox.
 3. **Both templates use `{{ .Token }}` (the 6-digit code), NOT
@@ -32,7 +32,7 @@ From address is `illinimarket.com`, not CAACI. Configure under
 - Port: `465`
 - Username: `resend`
 - Password: a Resend API key
-- Sender: `Illini Market <noreply@send.illinimarket.com>` (on the Resend-verified
+- Sender: `玉米地 Cornfield <noreply@send.illinimarket.com>` (on the Resend-verified
   `send.illinimarket.com` domain)
 
 ## Preview
@@ -41,7 +41,7 @@ Open the `.html` files directly in a browser. `{{ .Token }}` renders literally
 in the preview; Supabase substitutes the real 6-digit code at send time.
 
 After applying, send a real signup confirmation to a Gmail `+` alias owned by
-the tester. Check the received subject, sender/domain, current `Illini 集市`
+the tester. Check the received subject, sender/domain, current `玉米地` / `Cornfield`
 branding, website wording, six-digit code and its verification. Check recovery
 mail separately. Gmail aliases share the existing inbox; this does not create
 a new Google identity or validate Google's own OAuth notification email.
