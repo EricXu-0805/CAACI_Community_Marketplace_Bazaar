@@ -2564,3 +2564,39 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: —
 - 下一条: P4 第二阶段推送
 - 附: P4 第二阶段门禁 check-20261121T073957Z（24ff7bf）smoke 647 条 639 passed、7 failed、1 skipped：首页、广场 4 条（L173）、pages/events/index 2 条（同一类，L178）之外，多出「marketplace-responsive.spec.ts:699 › layout resize is not subtracted twice and pinch zoom is not treated as a keyboard」，报错是视口改成 820×830 后 10 秒内 .chat-thread 高度仍是 480、不是 830。这一条在 L173 的 main 对照、P3 门禁、P4 第一阶段门禁里都通过，所以先当成只在分支上失败，不推送、先查。单跑八次的结果两个 head 一样：时过时不过，main 上也失败。结论：这是 main 3778952 上已有的不确定用例，L173 那一次碰巧通过；不是第二阶段带出来的。按 D-55 第 5 项「标题相同、main 上也失败的，不修」记，P4 这次门禁判「通过（另有 7 条 main 上同样失败或同类）」，不重跑全量。另：D-55 第 5 项说 main 对照只在 ~/work/confirm-final-3778952 跑一次；这次在另一个一次性 worktree 里对 main 单跑一个 spec，是为了判这一条的归属，不是第二次 main 对照，三个分支的对照仍以 L173 为准。这个用例的不确定性本身是缺陷（测试在等视口改完后的布局，时序没有锁住），不在 D-55 范围里，写进第九批 ⑥ 留作后续，不在本批改。
+
+### L193 · 2026-11-21 03:06 CT · 重新冻结：20261120122054_community_events（D-55 第 2 项 b；撤销冻结记在 L180）
+- task_id: D-55.3a–e、D-55.3g、D-55.3h（P4.2）
+- code_sha: codex/community-events-20261120 24ff7bf9a0a57075ce5b92157fcd86b94052aa64（#380，草稿，base 未动），已推送，4c1c666..24ff7bf 快进；重新冻结提交 1474eec（3b、3c、3d、3e 与仓库 RUNBOOK.md 那一句在同一提交）
+- docs_sha: 8503ce3（本次写回之前材料分支的 HEAD）
+- 环境: 本地、L-SQL
+- 命令: P4 子任务 st_01a1fc58：git merge 7ccb195（17bce7b，只有 manifest.sha256 冲突，按磁盘重算）；按新 P3 重算钉的 md5；3b–3e；lsql-replay（lsql-20261121T073835Z）；全量门禁 check-20261121T073957Z（head 24ff7bf、树 bf6473c、unstaged=no，SMOKE_SPECS 为 app/smoke 全部 spec 去掉两个）；推送前 git fetch，P3 远端仍是 7ccb195，git merge 7ccb195 显示 Already up to date；git push --no-verify；主会话在远端只读核对
+- 计数: 旧 sha256 4d382eaa74dae57146614167a99c7d48c24ecbdce3c72aaed96d513a242efd4f 作废 → 新 sha256 a8c0e08340203988a04bec5e210a2a1c73a941544ffe272adf754b0e56053a79，manifest 只换这一行、与磁盘一致；L-SQL files=184 replayed=184 errors=0，P3_TOTAL 703/703，EV_TOTAL 855/855，EV_CLOSED PASS，P3_SWITCH default=off PASS；门禁 install、typecheck、h5、h5accept（52 passed）、mp、mpci、migrations、test、npmaudit 都 rc=0，TEST 2898/2897/0/1，pg_skips 0；smoke Running 647 tests，639 passed、7 failed、1 skipped（30.3 分钟）；主包 1,459,446 字节 [隔离环境 L-SQL][本地测]
+- ci_run_url: —（base 不是 main）
+- 未测项: P4 子任务的逐项报告还没交回
+- 下一条: D-55.4e、D-55.4f
+- 附: 主会话在远端核过：20261112120000 仍 e2a85c3e…、20261114015420 仍 0dc2ceaf…、20261120100354 仍 c2a18ee8…；7ccb195、3778952、374ebe5、4c1c666 都是 24ff7bf 的祖先；ci.yml 与 main 相同；#380 OPEN、草稿、base codex/community-p3-20261120。门禁判「通过（另有 7 条 main 上同样失败或同类：首页、广场 4 条见 L173，pages/events/index 2 条同类见 L178，marketplace-responsive.spec.ts:699 见 L192）」。P4 最终 head 含 P3 7ccb195，P3 最终 head 也是 7ccb195，所以 D-55 第 3 项 a 的第二次合并是空合并，这次门禁就是 P4 的最终门禁。钉的 md5：admin_execute_community_governance 改为 fedabd431c829a5b2303e4a46961a855（VERIFY）；admin_list_moderation_audit_log 在迁移守卫与 PRECHECK 钉 P3 之后的 42d02d7ac06498a48e2172c35d5ff517，VERIFY 钉本迁移给出的 720fe81c9d72c7729ce2d184a8a8fd36。3b 要求的实测：P3、P4 都回放之后跑 P3 VERIFY，报的第一条错误原文是「ERROR:  community_watch_save_function_body:public.admin_list_moderation_audit_log(integer,integer,text):720fe81c9d72c7729ce2d184a8a8fd36:this migration」，与 D-55 预计的一致（lsql-20261121T073405Z，用的是证据目录里 lsql-replay.sh 的副本，diff 也在证据目录，~/work/illini-dev-env/lsql-replay.sh 与 appendix/env 的存档没改）。
+
+### L194 · 2026-11-21 03:06 CT · D-55 第 4 项 e：第八批 client:P4 m 项的不修理由补记、client:P4-m10 改记已修、门禁与 mig m 项的去向（report:B8-5）
+- task_id: D-55.4e（report:B8-5）
+- code_sha: codex/community-events-20261120 24ff7bf（3b 的提交 1474eec）
+- docs_sha: 8503ce3（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 只读：第八批 P4 子任务的草稿（证据目录，当时没有追加进 STATUS_LOG）、本机第七批核查清单的编号；本条只追加，L155–L162 不改
+- 计数: 4 项不修（部分）的理由补记；1 项改记为已修；3 项门禁 m 项与 1 项 mig m 项的去向 [源码 SHA]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-55.4f
+- 附: 第八批 client:P4 m 项里「改了一部分」的四项，没改的部分和理由（原来只在子任务草稿里，现补进来）：client:P4-m2（5e961a1）右上角菜单、发起人卡与私信、「来源信息核对于」一行、「私信发起人」没做，属于 P4.4、P4.6，D-54 第 2 项 l 之后成员活动在 P4.6 之前建不出来；SPEC §6.7.6 第 10 行的原文案等第 13 行的菜单做了再改回。client:P4-m5（2b0abe8）直接打开链接时仍最多读两个 200 行的列表，「近期」200 行以外的活动仍显示「已不再展示」：要有按 id 读单条的数据库接口（ENGINEERING §9.6 只有列表函数，直接读表会绕开列表的规则），200 行上限是 SPEC §6.7.4 第 6 条定的，放进 P4.6 或 P6.1。client:P4-m8（de04a67、5e961a1）E6 没配置时 owner 仍看得到「开讨论」：后台不知道 E6 配没配，whoami 的字段是严格校验的，加字段要同时改 API、客户端和测试；被拒时有具名提示（official_profile_not_configured）且不落库。client:P4-m13（5e961a1）点「这天还有 n 个网友发起」后定位到该日期、成员活动「参加讨论」聚焦回复框没做：两处都只和成员活动有关，随 P4.6 做。client:P4-m10：第八批记作「改了一部分」，没改的审计白名单（三种活动事件）由本批第 3 项 b 修掉（1474eec，admin_list_moderation_audit_log 的白名单加 event_hidden、event_unhidden；event_discussion_created 照 P3 的规则留在 owner 的列表里），现记为已修；第八批 ⑥ 里「白名单在 P3 的迁移里，本分支不能改」的理由不成立：P4 迁移可以 CREATE OR REPLACE 这个函数。门禁 m 项：gates:P3-P4-m1（admin-token-mint 测试依赖仓库目录权限）即本批 gates:B8-3，不改测试，理由见 L168（门禁环境要求 umask 022，每次门禁前核 755）；gates:P3-P4-m2（非交互 shell 读不到 .bashrc 里的 umask）第八批已在 RUNBOOK §1 补一句「新建 worktree 和跑 run-checks 之前先 umask 022」（D-54 第 2 项 p），本批每次门禁同一条命令里先 umask 022；gates:P3-P4-m3（run-checks 日志都写进共享的 logs 目录）即本批 gates:B8-1，本批不改 run-checks.sh，理由见 L168。mig:P4-m9：ENGINEERING §9 那一半（错误名）第八批已改（L163）；§5.5 那一半（member_event_not_eligible 的含义、授权两行、守卫范围、保留词与链接）由本批第 4 项 d 改（L172）。
+
+### L195 · 2026-11-21 03:06 CT · D-55 第 4 项 f：P3.8 DoD ③ 主包大小（main 3778952 与三个分支的 mpci）
+- task_id: D-55.4f（report:B8-6，P3.8 DoD ③）
+- code_sha: main 3778952；印章 c1cacb6；P3 7ccb195；P4 24ff7bf
+- docs_sha: 8503ce3（本次写回之前材料分支的 HEAD）
+- 环境: 本地（mpci，与 CI 的 Build mp-weixin 同一构建）
+- 命令: 读各次门禁的 mpci 日志 packageBytes.main：main check-20261121T042305Z（L173）、印章 check-20261121T065555Z（L190）、P3 check-20261121T061456Z（L179）、P4 check-20261121T073957Z（本条前一条）
+- 计数: main 3778952 1,381,447（基线）；印章 c1cacb6 1,381,447（差 0）；P3 7ccb195 1,422,595（比 main 多 41,148，余 150,269）；P4 24ff7bf 1,459,446（比 main 多 77,999，比 P3 多 36,851，余 113,418）；上限 1,572,864 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: FINAL 第九批
+- 附: 基线是 main 3778952 在本批唯一一次 main 对照里的 mpci（D-55 第 5 项）。P3 比 main 多出的部分：合并 3778952 带来的 1,401、分享图 static/app-icon-192.png 26,984、代码 97，以及第八批 P3 已有的增量（L179、L189）。D-55 第 2 项 f 要求 P4 最终 head 的余量不少于 65,536：达到（余 113,418）。

@@ -1,6 +1,6 @@
 # STATUS
 
-写于 2026-11-21 00:58 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-21 03:06 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: D-55 第 1 项（印章，子任务）、第 2 项（P3，子任务）、第 3 项 g、h（P4，子任务；a–e 等 P3 重新冻结），第 0、3f、4 项（主会话）`
 `latest_batch: appendix/batch/FINAL.md`
@@ -169,7 +169,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P4.7 第一步 | 通过 | appendix/research/campus-events.md；D-33 已按 D-43 代定 A，第二步依赖 P4.1、P4.2 |
 | P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送；已 merge 进 #380（de2d281） |
 | P4.3 | 部分 | caaciorg 本地 28d59b1，Node 20/24 全部通过 [本地测]；推送等 E8，开 PR 由 Eric 做 |
-| P4.2、P4.8、P4.9 | 重开（D-55 2b；P4.11 归 Eric） | #380 4c1c666：20261120122054 重新冻结 4d382eaa…（旧 6fcddd0e… 作废，L161），L-SQL 184/184、EV_TOTAL 817/817；全量 2882/2881/0/1、smoke 188；主包 1,430,773（L155、L160–L162） |
+| P4.2、P4.8、P4.9 | 部分（P4.11 未做，归 Eric） | #380 24ff7bf：20261120122054 重新冻结 a8c0e083…（旧 4d382eaa… 作废，L193），含 P3 7ccb195；L-SQL 184/184、EV_TOTAL 855/855、P3_TOTAL 703/703；全量 2898/2897/0/1，smoke 647 条 639 passed、7 条 main 上同样失败或同类；主包 1,459,446（余 113,418） |
 | P4.4–P4.7、P4.10、P4.11 | 未测 | P4.5 真实数据等 D-32；P4.4 同步新鲜度、P4.6 发起活动入口与组织者菜单没做 |
 | LEGAL.1–LEGAL.6 | 未测 | 等 D-37、D-38、D-39、D-40、D-28 |
 | CONTENT.1–CONTENT.6、P5.1–P8.1 | 未测 | 依赖 LEGAL 与 P5.2 |
