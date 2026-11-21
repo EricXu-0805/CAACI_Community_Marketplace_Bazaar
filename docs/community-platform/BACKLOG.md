@@ -1360,6 +1360,8 @@ $RC ~/work/illini-events install test
 - ① `campus-events.md` 已提交，每个事实都有来源链接和请求日期。
 - ② 第二步的 fixture 测试全部通过，`_campus-time` 的对照测试三个期望值全部通过。
 - ③ 只有抓 HTML 才拿得到数据时，停这条，不写代码。
+- ④ campus 行的撤下判断和 unhide 用同一个条件：missing_checks ≥ 2 且 missing_since 早于 12 小时前（D-55 3f）。
+- ⑤ 没有 DTEND 的全天活动，结束时间是开始日期的下一个香槟本地 00:00，不是 +24 小时；配一个 2027-03-14 的夹具（D-55 3f）。
 
 **证据**：`campus-events.md`、test 日志。标签 [源码 SHA]（第二步为 [本地测]）
 **回退**：默认。

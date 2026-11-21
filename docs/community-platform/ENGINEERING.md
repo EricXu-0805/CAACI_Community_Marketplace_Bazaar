@@ -299,8 +299,8 @@ create index posts_unanswered_idx on public.posts (region, created_at desc, id d
 |---|---|---|---|---|---|
 | `post_comment:<post_id>`（现有） | `post_comment` | 帖子作者 | `post-comment:<comment_id>` | 话题详情 | 是 |
 | `post_like:<post_id>`、`post_comment_like:<post_id>`（现有） | `post_like` | 帖子或回复作者 | 现有格式 | 话题详情 | 是 |
-| `comment_reply:<post_id>`（新） | `post_comment` | 父回复的作者；排除回复者本人和帖子作者（作者已收到 `post_comment`） | `comment-reply:<comment_id>` | 话题详情 | 否 |
-| `followed_post_reply:<post_id>`（新） | `post_comment` | 订阅者；排除回复者、帖子作者、父回复作者；按 `post_follows.created_at` 升序取前 500 人 | `followed-reply:<comment_id>:<recipient_id>` | 话题详情 | 否 |
+| `comment_reply:<post_id>`（新） | `post_comment` | 被回复的那条回复的作者（coalesce(reply_to_comment_id, parent_comment_id)）；排除回复者本人和帖子作者（作者已收到 `post_comment`） | `comment-reply:<comment_id>` | 话题详情 | 否 |
+| `followed_post_reply:<post_id>`（新） | `post_comment` | 订阅者；排除回复者、帖子作者、被回复的那条回复的作者（coalesce(reply_to_comment_id, parent_comment_id)）；按 `post_follows.created_at` 升序取前 500 人 | `followed-reply:<comment_id>:<recipient_id>` | 话题详情 | 否 |
 
 - type 沿用现有值，`notifications_type_check`（20260903070000:40-45）不改。
 - 客户端：`notifications.ts:117` 白名单加两个新 key；同一话题未读期间合并成一行；目标被隐藏后点开显示「已不可见」。
@@ -497,8 +497,8 @@ create table public.community_event_sync_state (
 - `community_events` 对 anon、authenticated 授白名单列的 SELECT。白名单不含 `content_hash`、`missing_since`、`missing_checks`、`last_checked_at`、`first_seen_at`、`last_seen_at`、`source_updated_at`、`review_flag`、`hidden_reason`、`consent_ref`、`created_by`。
 - 公开读策略：`availability = 'visible' and (partner_id is null or exists (select 1 from public.community_event_partners p where p.id = partner_id and p.status = 'active')) and (source_type <> 'member' or moderation_private.profile_content_visible(organizer_user_id))`。只有 `visible` 行对外可读（P4.2 ④）。后果：「来源已撤下」「已下架」的行对读者整行不可见，详情页拿不到来源，只能显示一句通用的「这场活动已不再展示」；按来源区分的横条文案只在客户端已缓存该行时用得上。
 - 发起人自读策略：`organizer_user_id = (select auth.uid())`，发起人能看到自己已被下架的活动。
-- INSERT 只授 authenticated，限 `source_type, source_key, organizer_user_id, discussion_post_id, starts_at, ends_at, location, registration_mode` 这些列。WITH CHECK `source_type = 'member' and organizer_user_id = (select auth.uid())`。
-- UPDATE 只授 `cancelled_at, status_note` 两列，USING 与 WITH CHECK 同上；V5 不支持改时间地点（SPEC.md「活动」网友发起一节）。不授 DELETE。
+- 【留给 P4.6 的迁移；20261120122054 不授，D-54 第 2 项 l】INSERT 只授 authenticated，限 `source_type, source_key, organizer_user_id, discussion_post_id, starts_at, ends_at, location, registration_mode` 这些列。WITH CHECK `source_type = 'member' and organizer_user_id = (select auth.uid())`。
+- 【留给 P4.6 的迁移；20261120122054 不授】UPDATE 只授 `cancelled_at, status_note` 两列，USING 与 WITH CHECK 同上；V5 不支持改时间地点（SPEC.md「活动」网友发起一节）。不授 DELETE。
 - `community_event_partners`：anon、authenticated 只有 `SELECT (id, slug, name_zh, name_en, status, allowed_link_hosts)`，策略 `status = 'active'`。
 - `community_event_sync_state`：全部列对 anon、authenticated 只读，里面没有秘密。
 - caaci、campus 行只经 service_role 的 RPC 写；partner 行只经管理动作写；member 行的插入被下面的守卫限定为 `create_member_event` 一条路。
@@ -506,16 +506,16 @@ create table public.community_event_sync_state (
 触发器：
 - `community_events_touch`：BEFORE UPDATE，写 `updated_at`。
 - `community_events_schedule_change`：BEFORE UPDATE，caaci、partner、campus 共用。`starts_at` 变了就写 `previous_starts_at = OLD.starts_at`、`schedule_changed_at = now()`、`revision + 1`；只有 `location` 变时 `revision + 1`。
-- `community_events_member_guard`：BEFORE INSERT OR UPDATE，只管 member 行；UPDATE 时只在 `cancelled_at`、`status_note` 变化时检查，外键置空等系统更新不经它。
+- `community_events_member_guard`：BEFORE INSERT OR UPDATE，只管 member 行；UPDATE 时在 `location`、`status_note`、`starts_at`、`ends_at` 有变化，或 `cancelled_at` 被写入、改动时检查：已写的 `cancelled_at` 不能清空或改值，新写的由服务器记成 `now()`，写入非空的 `status_note` 前先过 `assert_posting_allowed`，时间、地点、说明按下表查；外键置空等系统更新不经它。
 
 | 检查 | 错误码 |
 |---|---|
 | INSERT 时讨论帖属于 `auth.uid()`、`status='active'`、`category='events-social'`，且 `post.created_at = now()`（同一事务里刚建；客户端没有 `created_at` 的 INSERT 权限，直接写表做不到） | `member_event_rpc_required` |
-| `profiles.is_illini_verified` 为真且 `suspension_level = 0` | `member_event_not_eligible` |
+| `profiles.is_illini_verified` 为真；受限账号先被 `assert_posting_allowed` 以 `suspension_active` 拒绝 | `member_event_not_eligible` |
 | `starts_at` 晚于 `now()`，且不晚于 `now() + interval '60 days'` | `member_event_time_out_of_range` |
 | 本人未结束、未取消的活动已有 2 场 | `member_event_active_limit` |
-| 讨论帖标题匹配 `(?i)(官方\|主办\|official\|hosted by)` | `member_event_reserved_wording` |
-| 标题、正文、`location` 匹配 `(?i)(https?://\|www[.]\|[a-z0-9-]+[.](com\|net\|org\|edu\|cn\|io\|me\|ly\|link)\b)` | `member_event_link_not_allowed` |
+| 讨论帖标题，以及写入或改动的 `location`、`status_note` 匹配 `(?i)(官方\|主办\|official\|hosted by)` | `member_event_reserved_wording` |
+| 讨论帖标题、正文，以及写入或改动的 `location`、`status_note` 匹配 `(?i)(https?://\|www[.]\|[a-z0-9-]+[.](com\|net\|org\|edu\|cn\|io\|me\|ly\|link)\b)` | `member_event_link_not_allowed` |
 | UPDATE 把已写上的 `cancelled_at` 清空或改值 | `member_event_cancel_final` |
 
 - `community_events_post_link`：BEFORE UPDATE OF `discussion_post_id`，member 行被外键置空（作者删帖）时写 `availability='hidden'`、`hidden_reason='post_removed'`。
@@ -688,7 +688,7 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 - 允许的日历写成常量 `CAMPUS_CALENDARS = [{ id, name_zh, name_en, exclude_patterns }]`（`api/_community-events.js`）。D-33 之前它为空，所有学校活动的写入都返回 `campus_calendar_not_allowed`。
 - 解析 `api/_campus-ics.js`：先展开折行（CRLF 后跟空格或 tab），再反转义 `\\`、`\;`、`\,`、`\n`；只读 UID、SUMMARY、DTSTART、DTEND、LOCATION、LAST-MODIFIED 和 TZID 属性；DESCRIPTION、ORGANIZER、CONTACT、URL 丢弃，不进返回对象。TZID 不是 America/Chicago → `campus_unexpected_tz`；场次超过 400 → `campus_too_many_occurrences`。
 - 墙钟时间转 UTC 用 `api/_campus-time.js`（复制 `campusWallClockToInstant`）。对照值 [本地测 2026-11-12：Node 25.9.0 `--experimental-strip-types` 直接运行 7b18f20 的 `campusTime.ts`]：`2026-11-01 01:30 → 2026-11-01T07:30:00Z`（重复的那一小时取 CST）、`2027-03-14 02:30 → 2027-03-14T07:30:00Z`、`2026-11-20 11:30 → 2026-11-20T17:30:00Z`。
-- 全天活动（`VALUE=DATE`）：`all_day = true`，开始取当地 00:00，`ends_at` 取 DTEND 的当地 00:00；没有 DTEND 时取开始后一天。多场次：同一 UID 基础编号合成一行，`occurrence_count = N`，`starts_at` 取第一场未结束场次，`ends_at` 取最后一场的结束。
+- 全天活动（`VALUE=DATE`）：`all_day = true`，开始取当地 00:00，`ends_at` 取 DTEND 的当地 00:00；没有 DTEND 时取开始日期的下一个香槟本地 00:00，不是 +24 小时（2027-03-14 夏令时开始那天两者不同，配这一天的夹具；D-55 3f）。多场次：同一 UID 基础编号合成一行，`occurrence_count = N`，`starts_at` 取第一场未结束场次，`ends_at` 取最后一场的结束。
 - 映射：`source_key = '<日历 id>/<活动 id>'`，`title_en ← SUMMARY`（trim 后 ≤160），`location ← LOCATION`，`source_updated_at ← LAST-MODIFIED`；`content_hash` 对标题、开始、结束、地点、场次数求 sha256。标题匹配 `^(cancel+ed|postponed)\b`（不分大小写）时写 `review_flag = 'title_says_cancelled'`，系统不自动改状态，由管理员决定是否 `hide_event`。
 
 方式 A 逐条收录（管理端 `preview_campus_event` 只读预览 → `import_campus_event` 写入）：

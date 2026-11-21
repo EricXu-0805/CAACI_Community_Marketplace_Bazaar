@@ -2246,3 +2246,51 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: —
 - 下一条: —
 - 附: gates:B8-1（LOG_DIR）与 gates:B8-2（日志头记 umask 与仓库根目录权限）：这一批三个代码分支和 main 对照要在同一份 run-checks.sh 下跑，中途换脚本得等所有排队的门禁都停下（D-54 第 5 项要求 pgrep 无输出），同一批的证据会出自两个版本的脚本；日志文件名带时间戳、日志头已经记了 repo= 和 head=，能分清是哪个仓库的门禁；umask 与 755 由每次门禁的同一条命令里先 umask 022 再 stat -c %a 核，结果写进各自的 STATUS_LOG 条目。留到下次改 run-checks.sh 时一起加。gates:B8-3：门禁环境本来就要求 umask 022（RUNBOOK §1），这条测试在 022、仓库根目录 755 时成立；这一批每次门禁前都核 755，所以 scripts/admin-token-mint.test.mjs 不改。
+
+### L169 · 2026-11-20 22:24 CT · 更正 L167 的 code_sha
+- task_id: D-55.2b
+- code_sha: codex/community-p3-20261120 042427c7a37d9548fa758274b5fa0dc98f1c5bce（#379，撤销冻结时的远端 head）
+- docs_sha: 085fa30（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: git rev-parse origin/codex/community-p3-20261120（单个 ref）
+- 计数: —
+- ci_run_url: —
+- 未测项: —
+- 下一条: —
+- 附: L167 写 code_sha 时把三个 ref 一起交给了 `git rev-parse --short`，它只接受一个，所以那一栏里进了一句 git 的报错。实际撤销冻结时 P3 远端 head 是 042427c（gh pr view 379 同为 042427c）。L167 本身不改。
+
+### L170 · 2026-11-20 22:24 CT · 更正 L156–L159 的 docs_sha，说明 L154 与 L157（report:B8-3）
+- task_id: D-55.4c
+- code_sha: —
+- docs_sha: 085fa30（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 只读核 df9c287 的提交内容
+- 计数: —
+- ci_run_url: —
+- 未测项: —
+- 下一条: —
+- 附: L156、L157、L158、L159 是 P3 子任务的草稿，主会话在 df9c287 里一次追加，docs_sha 一栏留着占位「（主会话填）」没填，应为 822c737（追加之前材料分支的 HEAD）。它们表头的时间是事情发生的时间，所以早于排在前面的 L154、L155；编号按追加顺序。L157 与 L154 记的是同一次重新冻结（20261120100354，085d529，9e0a044d… → aedc9152…，门禁 check-20261120T173728Z），逐项细节以 L157 为准。L154–L159 本身不改。
+
+### L171 · 2026-11-20 22:24 CT · D-55 第 3 项 f：BACKLOG P4.7 DoD 追加两条、ENGINEERING §9.3 同步（mig:P4-B8-2、client:P4-B8-1）
+- task_id: D-55.3f
+- code_sha: —
+- docs_sha: 085fa30（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 改 BACKLOG.md（P4.7 的 DoD 末尾加 ④、⑤，原有条目一字不改）、ENGINEERING.md §9.3 一句
+- 计数: DoD 2 条
+- ci_run_url: —
+- 未测项: —
+- 下一条: P4 子任务（3g、3h）
+- 附: 这是 D-55 第 3 项 f 授权的追加，不算 BACKLOG §0.1 第 4 条说的改 DoD。④ campus 行的撤下判断和 unhide 用同一个条件（missing_checks ≥ 2 且 missing_since 早于 12 小时前）；⑤ 没有 DTEND 的全天活动，结束时间是开始日期的下一个香槟本地 00:00，不是 +24 小时，配 2027-03-14 的夹具。ENGINEERING §9.3「没有 DTEND 时取开始后一天」照 ⑤ 改写。两条都是潜在问题，到 P4.7 写代码时才会发生，这一批不改代码。
+
+### L172 · 2026-11-20 22:24 CT · 第八批报告与文档的更正（D-55 第 0 项、第 4 项 b、d）
+- task_id: D-55.0、D-55.4b、D-55.4d
+- code_sha: —
+- docs_sha: 085fa30（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: gh pr view 372、374、377、379、380 核状态（#372、#374、#377 MERGED，#379、#380 OPEN 草稿）；git worktree list 核各 worktree 的 head；改 STATUS 与 ENGINEERING
+- 计数: —
+- ci_run_url: —
+- 未测项: —
+- 下一条: 第 4 项 a、g 进 FINAL 第九批 ⑥；第 4 项 e 等 3b 提交；第 4 项 f 等 mpci
+- 附: STATUS（report:B8-2）：阻塞第 1 条的「接下来」改成 #372 已进 3778952、C-final 已过、3778952 已发布到生产 H5；worktree 一行改成现在的 head（illini-p3、illini-events-20261120、illini-brand），加 confirm-final-3778952；CI 现状补 3778952 与 run 44783052160；第 4 条（#373）、第 14 条（#377）标成已完成；第 28 条照抄 D-55 第 0 项（发布、邮件模板与发件人名、#374 和 #377 改 base 后的关闭重开、账本只读核查）。ENGINEERING（report:B8-4）：§5.5 成员资格一行改成「is_illini_verified 为真；受限账号先被 assert_posting_allowed 以 suspension_active 拒绝」，INSERT、UPDATE 授权两行标成「留给 P4.6 的迁移」，守卫的 UPDATE 范围照 4c1c666 的迁移改写，保留词、链接两行补上 location、status_note；§5.3 通知表 comment_reply 的收件人、followed_post_reply 的排除里「父回复的作者」都换成「被回复的那条回复的作者（coalesce(reply_to_comment_id, parent_comment_id)）」，两行其余文字不动。
