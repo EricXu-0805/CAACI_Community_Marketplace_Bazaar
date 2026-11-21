@@ -1,7 +1,12 @@
 -- P3: watching and saving topics, activity ordering, reply notifications and
 -- the community governance actions (BACKLOG P3.1, P3.3, P3.4, P3.5). P3 has
 -- one migration, so the read functions P3.5's console and P3.6's views need
--- are here as well. Everything is additive.
+-- are here as well. Everything is additive, with one thing every reader of
+-- replies has to know: post_comments gains a column that no API role may
+-- SELECT (reply_to_comment_id). PostgREST reads every column for `select=*`,
+-- so from this migration on that request is refused with 42501 for anon and
+-- authenticated. Clients must list the columns they read;
+-- scripts/app-direct-table-acl-boundary.test.mjs holds app/ and api/ to that.
 --
 -- Release order (D-54 2c):
 --   1. PRECHECK, this migration, VERIFY. The two new reply notices are behind
@@ -108,9 +113,17 @@ END
 $guard$;
 
 -- Take the two busiest locks first, in the order a reply takes them: the
--- reply, then its topic through the counter trigger. Taking them in the order
--- the statements below need them (topics first) could deadlock with a reply
--- that is in flight; this way the migration waits for it, up to lock_timeout.
+-- reply, then its topic through the counter trigger. That order rules out one
+-- deadlock only, the one with a reply that is in flight: the migration waits
+-- for it, up to lock_timeout. Other transactions take these tables, and the
+-- ones locked further down (profiles for the two foreign keys, then the three
+-- administrator tables), in another order. Deleting a topic takes the topic
+-- before its replies, deleting an account takes the profile before both, and
+-- an administrator takedown records its request before it touches the topic.
+-- Any of them can still deadlock with this migration. PostgreSQL then rolls
+-- one of the two transactions back, and it can be either one. This file is a
+-- single transaction, so when it is the one that stops (40P01, or 55P03 for
+-- lock_timeout) nothing of it is kept and it can be run again as it is.
 LOCK TABLE public.post_comments, public.posts IN ACCESS EXCLUSIVE MODE;
 
 -- ---------------------------------------------------------------------------
@@ -955,6 +968,8 @@ DECLARE
   post_is_official boolean;
   post_is_featured boolean;
   parent_post_id uuid;
+  restored_author uuid;
+  restored_at timestamptz;
   affected_rows integer := 0;
   event_kind_value text;
   audit_target uuid;
@@ -1132,12 +1147,20 @@ BEGIN
          SET status = 'active'
        WHERE comment.id = target_id_value
          AND comment.status = 'hidden'
-      RETURNING comment.post_id INTO parent_post_id;
+      RETURNING comment.post_id, comment.user_id, comment.created_at
+        INTO parent_post_id, restored_author, restored_at;
       GET DIAGNOSTICS affected_rows = ROW_COUNT;
-      -- The takedown subtracted the reply when it hid it.
+      -- The takedown subtracted the reply when it hid it. A reply that was
+      -- hidden when this migration ran was also left out of the backfill, so
+      -- the topic may never have been moved forward or answered by it: place
+      -- the reply now, as update_post_comment_count places a new one. Neither
+      -- time moves backwards and a first answer already recorded is kept.
       IF affected_rows > 0 THEN
         UPDATE public.posts AS post
-           SET comment_count = post.comment_count + 1
+           SET comment_count = post.comment_count + 1,
+               last_activity_at = greatest(post.last_activity_at, restored_at),
+               answered_at = coalesce(post.answered_at,
+                 CASE WHEN restored_author <> post.user_id THEN restored_at END)
          WHERE post.id = parent_post_id;
       END IF;
     END IF;

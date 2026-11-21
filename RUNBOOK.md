@@ -494,6 +494,39 @@ the database refuses their writes, so the same order applies, on both projects:
    Removing the two new `storage.objects` policies later needs the Dashboard;
    there is no rollback file.
 
+**Community P3 (`20261120100354_community_watch_save_activity`).**
+The P3 frontend reads four topic columns this migration adds on every list
+(`last_activity_at`, `answered_at`, `is_featured`, `locked_at`) and its topic
+page calls `community_post_state`, so the same order applies, staging first
+and then production:
+
+0. Confirm `20261114015420_restricted_account_writes` is already applied on
+   this project and its VERIFY passes. The P3 PRECHECK stops when the
+   restricted-account guard is missing, or when a function it is about to
+   reissue is not the one this repository expects.
+1. On staging, run
+   `supabase/_ops/PRECHECK_20261120100354_community_watch_save_activity.sql`
+   (read-only), apply the migration, then run
+   `supabase/_ops/VERIFY_20261120100354_community_watch_save_activity.sql`
+   (read-only). Neither may raise anything; VERIFY ends with the notice
+   `community_reply_notice_switch|enabled=f`. Apply it in a low-traffic window
+   if you can: it takes ACCESS EXCLUSIVE locks on `post_comments` and `posts`
+   and holds them while it backfills the topics and builds its indexes. It
+   waits for a reply that is in flight. A topic or an account being deleted,
+   or an administrator takedown, at that moment can deadlock with it, and
+   PostgreSQL then rolls back either side. If the migration stops on a
+   deadlock (`40P01`) or on `lock_timeout` (`55P03`), the whole transaction
+   has rolled back, so simply run it again as it is.
+2. Repeat step 1 on production.
+3. Only then merge the frontend and deploy `api/admin`, and release the P3
+   Mini Program. If the frontend went out first, the community lists and
+   topic pages fail to load until the migration is applied: apply it at once.
+4. The migration leaves the reply notice switch off. Turning it on is a
+   separate, later step with its own conditions: see "Reply notice switch"
+   below. `supabase/_ops/REGRESSION_20261120100354_community_watch_save_activity.sql`
+   is for the disposable local replay only and must never run against a
+   hosted project.
+
 `scripts/consent-version-deploy-order-boundary.test.mjs` pins the half CI can
 see from the repo alone (the constant must already be accepted by the newest
 `record_consent` in the repo). It cannot see any database.

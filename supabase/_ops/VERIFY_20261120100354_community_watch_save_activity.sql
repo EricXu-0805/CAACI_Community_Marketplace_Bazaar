@@ -30,7 +30,7 @@ BEGIN
     ('public.admin_token_authorization_v2(text)', '37d5ed1fbb3fc8a098ba942442479110', 'this migration', true, 'v', 'search_path=pg_catalog', 'service_role'),
     ('public.admin_list_moderation_audit_log(integer,integer,text)', '42d02d7ac06498a48e2172c35d5ff517', 'this migration', true, 's', 'search_path=pg_catalog', 'service_role'),
     ('public.admin_execute_mutation(text,uuid,text,text,jsonb)', '64d6f1d37e03577d534ccc5e1d496499', 'this migration', true, 'v', 'search_path=pg_catalog', 'service_role'),
-    ('public.admin_execute_community_governance(text,uuid,text,text,jsonb)', 'e6ddf89b765c544d9434a843478ccf42', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
+    ('public.admin_execute_community_governance(text,uuid,text,text,jsonb)', 'fedabd431c829a5b2303e4a46961a855', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
     ('private.reject_reply_to_locked_post()', '3b6872071d2eb7fb20cfec67a633a1c5', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
     ('private.validate_comment_reply_target()', '4795236eac69a88568327a0c0cd61563', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
     ('private.notify_topic_reply()', 'aca99f42836280e42523f3e64f722908', 'this migration', true, 'v', 'search_path=pg_catalog', ''),

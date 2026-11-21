@@ -15,7 +15,8 @@
 -- subtransaction and is rolled back, success included.
 --
 -- Part 2 runs the reply notices, the orderings and the five administrator
--- actions once each through the real chain.
+-- actions once each through the real chain, and then restores a reply that
+-- was hidden when the migration ran.
 --
 -- D-54 2c: the two new reply notices ship switched off. This file is where
 -- that is asserted (VERIFY only reports the value). After the assertion the
@@ -747,5 +748,56 @@ BEGIN
   RAISE NOTICE 'P3_SCENARIO|governance|PASS';
 END
 $governance$;
+
+-- A reply that was hidden when the migration ran. The backfill counts visible
+-- replies only, so it left the topic unanswered and last active when it was
+-- posted. Restoring the reply has to answer the topic and move it forward
+-- then. Otherwise the topic stays in the unanswered list with an answer on
+-- it, and VERIFY, which may be run again at any time, stops on its backfill
+-- check (section 8).
+DO $reply_restore$
+DECLARE
+  operator constant text := repeat('b', 64);
+  topic constant uuid := pg_temp.id(51);
+  reply uuid;
+  replied_at timestamptz;
+BEGIN
+  INSERT INTO public.posts(id,user_id,content,title,category,created_at) VALUES
+   (topic,pg_temp.id(2),'P3 regression body eleven','P3 regression topic eleven','local-deals',now()-interval '2 days');
+  UPDATE public.posts SET last_activity_at=created_at WHERE id=topic;
+  -- Member 3 answers and the reply is taken down, both through the real chain.
+  reply := pg_temp.as_member(3, $q$INSERT INTO public.post_comments(post_id,user_id,content) VALUES(pg_temp.id(51),auth.uid(),'Scenario answer that is taken down') RETURNING id$q$)::uuid;
+  SELECT created_at INTO replied_at FROM public.post_comments WHERE id = reply;
+  PERFORM pg_temp.expect('reply takedown through the chain',
+    pg_temp.mutate(operator, 921, 'takedown_content', jsonb_build_object('target_type', 'comment', 'target_id', reply, 'reason', 'Scenario reply takedown')),
+    '{"data": {"ok": true, "affected": 1}}');
+  -- What the backfill wrote for a topic whose only answer was hidden.
+  UPDATE public.posts SET last_activity_at=created_at, answered_at=NULL WHERE id=topic;
+  PERFORM pg_temp.expect('a topic whose only answer is hidden',
+    (SELECT comment_count::text || ':' || (last_activity_at = created_at)::text || ':' || (answered_at IS NULL)::text FROM public.posts WHERE id = topic),
+    '0:true:true');
+  PERFORM pg_temp.expect('listed as unanswered',
+    (SELECT count(*)::text FROM public.search_community_posts(ARRAY['P3'], 'unanswered', 50, 0) WHERE id = topic), '1');
+
+  PERFORM pg_temp.expect('reply restore',
+    pg_temp.mutate(operator, 922, 'restore_content', jsonb_build_object('target_type', 'comment', 'target_id', reply, 'reason', 'Scenario reply restore')),
+    '{"data": {"ok": true, "affected": 1}}');
+  PERFORM pg_temp.expect('the restored reply answers its topic and moves it forward',
+    (SELECT (SELECT status FROM public.post_comments WHERE id = reply) || ':' || comment_count::text
+            || ':' || (last_activity_at = replied_at)::text || ':' || (answered_at IS NOT DISTINCT FROM replied_at)::text
+       FROM public.posts WHERE id = topic),
+    'active:1:true:true');
+  PERFORM pg_temp.expect('no longer listed as unanswered',
+    (SELECT count(*)::text FROM public.search_community_posts(ARRAY['P3'], 'unanswered', 50, 0) WHERE id = topic), '0');
+  -- What section 8 of VERIFY counts, for this topic.
+  PERFORM pg_temp.expect('nothing for VERIFY to stop on',
+    (SELECT count(*)::text FROM public.posts AS post
+      WHERE post.id = topic AND post.answered_at IS NULL AND EXISTS (
+        SELECT 1 FROM public.post_comments AS answer
+         WHERE answer.post_id = post.id AND answer.status = 'active' AND answer.user_id <> post.user_id)),
+    '0');
+  RAISE NOTICE 'P3_SCENARIO|reply-restore|PASS';
+END
+$reply_restore$;
 
 ROLLBACK;

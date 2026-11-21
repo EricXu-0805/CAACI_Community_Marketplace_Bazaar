@@ -29,6 +29,7 @@ const LEGACY = `
     ('${LEGACY_REPLIED}','${OTHER}','taken down later', ${ago(5)}, 'hidden'),
     ('${LEGACY_REPLIED}','${REPLIER}','latest', ${ago(6)}, 'active'),
     ('${LEGACY_SELF}','${AUTHOR}','only the author', ${ago(7)}, 'active'),
+    ('${LEGACY_QUIET}','${AUTHOR}','the author, taken down', ${ago(3)}, 'hidden'),
     ('${LEGACY_HIDDEN_REPLY}','${OTHER}','taken down', ${ago(4)}, 'hidden');
   ALTER TABLE public.post_comments ENABLE TRIGGER USER;`
 
@@ -152,6 +153,46 @@ test('P3.1 watch, save and activity columns', { skip: SKIP }, async t => {
         FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'posts'
         AND column_name IN ('last_activity_at', 'answered_at', 'is_featured', 'locked_at')`),
       'answered_at:YES: is_featured:NO:false last_activity_at:NO:now() locked_at:YES:')
+    })
+
+    // A reply that was hidden when the migration ran placed nothing. Bringing it back has to place
+    // it then: otherwise its topic carries an answer and stays under "unanswered", and VERIFY, which
+    // may be run again at any time, stops on its backfill check.
+    await t.test('restoring a reply that was hidden before the migration answers its topic and moves it forward', () => {
+      const backfill = /SELECT (pg_catalog\.count\(\*\) FILTER \(WHERE post\.last_activity_at < post\.created_at\) AS backwards,[\s\S]*?AS featured)\s+INTO tally\s+(FROM public\.posts AS post);/
+        .exec(readOps('VERIFY_20261120100354_community_watch_save_activity.sql'))
+      assert.ok(backfill, 'section 8 of VERIFY is not where this test reads it')
+      // The three counts VERIFY raises community_watch_save_backfill on, as VERIFY takes them.
+      const tally = () => sql(`SELECT backwards || ':' || unanswered || ':' || featured FROM (SELECT ${backfill[1]} ${backfill[2]}) AS tally`)
+      const unanswered = () => as(`SELECT string_agg(right(id::text, 2), ',' ORDER BY id) FROM public.search_community_posts(ARRAY['Legacy'], 'unanswered', 100, 0)`, 'anon', '')
+      const hidden = (post, content) => sql(`SELECT id || '|' || created_at FROM public.post_comments
+        WHERE post_id = '${post}' AND content = '${content}' AND status = 'hidden'`).split('|')
+      const topic = post => sql(`SELECT comment_count || '|' || last_activity_at || '|' || coalesce(answered_at::text, 'null')
+        FROM public.posts WHERE id = '${post}'`).split('|')
+      const restore = reply => db.mutate('operator', 'restore_content', { target_type: 'comment', target_id: reply, reason: 'Restored after review' })
+      assert.equal(tally(), '0:0:0')
+      assert.equal(unanswered(), '42,43,44')
+
+      // The topic's only answer, from somebody else: it is answered when that reply was written.
+      const [answer, answeredAt] = hidden(LEGACY_HIDDEN_REPLY, 'taken down')
+      assert.deepEqual(restore(answer), { data: { ok: true, affected: 1 } })
+      assert.equal(tally(), '0:0:0', 'VERIFY still passes when it is run again')
+      assert.equal(unanswered(), '42,43')
+      assert.deepEqual(topic(LEGACY_HIDDEN_REPLY), ['1', answeredAt, answeredAt])
+
+      // A later reply to a topic that has its answer: the topic moves forward, the first answer stays.
+      const [late, lateAt] = hidden(LEGACY_REPLIED, 'taken down later')
+      const firstAnswer = topic(LEGACY_REPLIED)[2]
+      assert.deepEqual(restore(late), { data: { ok: true, affected: 1 } })
+      assert.deepEqual(topic(LEGACY_REPLIED).slice(1), [lateAt, firstAnswer])
+
+      // The author's own reply moves the topic and does not answer it.
+      const [own, ownAt] = hidden(LEGACY_QUIET, 'the author, taken down')
+      assert.deepEqual(restore(own), { data: { ok: true, affected: 1 } })
+      assert.deepEqual(topic(LEGACY_QUIET), ['1', ownAt, 'null'])
+      assert.equal(tally(), '0:0:0')
+      assert.equal(unanswered(), '42,43')
+      sql('DELETE FROM public.admin_audit_log; DELETE FROM public.admin_mutation_requests')
     })
 
     await t.test('a reply moves the topic forward once and answers it once', () => {

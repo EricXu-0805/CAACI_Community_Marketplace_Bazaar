@@ -166,6 +166,173 @@ test('comment status remains selectable only through active-row RLS for report s
   assert.match(regression, /hidden comment was reportable/)
 })
 
+/*
+ * 20261120100354 gives post_comments a column no API role may read
+ * (reply_to_comment_id). PostgREST reads every column for `select=*`, and
+ * supabase-js sends exactly that for a bare `.select()`, so either one is now
+ * answered with 42501 for anon and authenticated. Every read of post_comments
+ * has to name its columns.
+ */
+const SHIPPED_SOURCES = [[path.join(ROOT, 'app/src'), /\.(?:ts|vue|js)$/], [path.join(ROOT, 'api'), /\.(?:js|mjs|ts)$/]]
+
+async function shippedSources() {
+  const walk = async (directory, pattern) => (await Promise.all((await readdir(directory, { withFileTypes: true })).map(async entry => {
+    const absolute = path.join(directory, entry.name)
+    if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : walk(absolute, pattern)
+    return pattern.test(entry.name) && !/\.test\.[a-z]+$/.test(entry.name) ? [absolute] : []
+  }))).flat()
+  const files = (await Promise.all(SHIPPED_SOURCES.map(([directory, pattern]) => walk(directory, pattern)))).flat()
+  return Promise.all(files.map(async file => ({ file: path.relative(ROOT, file), source: await readFile(file, 'utf8') })))
+}
+
+// The index just past the string or template literal that opens at `start`.
+function skipLiteral(source, start) {
+  const quote = source[start]
+  let i = start + 1
+  while (i < source.length) {
+    if (source[i] === '\\') i += 2
+    else if (source[i] === quote) return i + 1
+    else if (quote === '`' && source.startsWith('${', i)) i = skipBalanced(source, i + 2, '}')
+    else i += 1
+  }
+  return i
+}
+
+// The index just past the bracket that closes the one opened right before `start`.
+function skipBalanced(source, start, close) {
+  const open = { ')': '(', '}': '{' }[close]
+  let depth = 1
+  let i = start
+  while (i < source.length) {
+    const ch = source[i]
+    if (ch === '"' || ch === "'" || ch === '`') i = skipLiteral(source, i)
+    else if (source.startsWith('//', i)) i = (source.indexOf('\n', i) + 1) || source.length
+    else if (source.startsWith('/*', i)) i = (source.indexOf('*/', i + 2) + 2) || source.length
+    else if (ch === close && --depth === 0) return i + 1
+    else { if (ch === open) depth += 1; i += 1 }
+  }
+  return i
+}
+
+// Every call chained straight onto the expression that ends at `index`, across
+// lines and comments: [name, the text between its parentheses].
+function chainedCalls(source, index) {
+  const calls = []
+  for (let i = index; ;) {
+    const link = /^(?:\s|\/\/[^\n]*|\/\*[\s\S]*?\*\/)*\??\.\s*([A-Za-z_$][\w$]*)\s*\(/.exec(source.slice(i))
+    if (!link) return calls
+    const end = skipBalanced(source, i + link[0].length, ')')
+    calls.push([link[1], source.slice(i + link[0].length, end - 1)])
+    i = end
+  }
+}
+
+// The parts of `list` between commas that are not inside brackets or literals.
+function topLevelParts(list) {
+  const parts = []
+  let from = 0
+  for (let i = 0; i < list.length;) {
+    const ch = list[i]
+    if (ch === '"' || ch === "'" || ch === '`') i = skipLiteral(list, i)
+    else if (ch === '(') i = skipBalanced(list, i + 1, ')')
+    else if (ch === '{') i = skipBalanced(list, i + 1, '}')
+    else { if (ch === ',') { parts.push(list.slice(from, i)); from = i + 1 } i += 1 }
+  }
+  return [...parts, list.slice(from)].map(part => part.trim())
+}
+
+// The column list a select argument stands for, or null when the source does
+// not spell it out: a literal, a template, or a constant of the same file.
+function selectedColumns(source, argument) {
+  const expression = argument.replace(/\s+as\s+(?:any|string)\s*$/, '').trim()
+  const constant = name => {
+    const literal = new RegExp(`\\bconst ${name.replace(/\$/g, '\\$')}\\s*=\\s*(['"\`])`).exec(source)
+    if (!literal) return null
+    const start = literal.index + literal[0].length - 1
+    return selectedColumns(source, source.slice(start, skipLiteral(source, start)))
+  }
+  if (/^[A-Za-z_$][\w$]*$/.test(expression)) return constant(expression)
+  if (!/^(['"`])[\s\S]*\1$/.test(expression) || skipLiteral(expression, 0) !== expression.length) return null
+  let columns = expression.slice(1, -1)
+  if (expression[0] !== '`') return columns
+  for (const [placeholder, name] of columns.matchAll(/\$\{\s*([^{}]*?)\s*\}/g)) {
+    const value = /^[A-Za-z_$][\w$]*$/.test(name) ? constant(name) : null
+    if (value === null) return null
+    columns = columns.replace(placeholder, value)
+  }
+  return columns
+}
+
+// What is wrong with the way one source reads post_comments, and how many reads it names in full.
+function postCommentReads(source) {
+  const problems = []
+  let named = 0
+  for (const from of source.matchAll(/\.from\(\s*(['"`])post_comments\1\s*\)/g)) {
+    const line = source.slice(0, from.index).split('\n').length
+    const calls = chainedCalls(source, from.index + from[0].length)
+    if (!calls.length) problems.push(`line ${line}: nothing is chained onto .from('post_comments'), so what it reads cannot be checked`)
+    for (const [name, args] of calls) {
+      if (name !== 'select') continue
+      const columns = args.trim() ? selectedColumns(source, topLevelParts(args)[0]) : ''
+      if (columns === null) problems.push(`line ${line}: the columns of .select(${args.trim()}) are not spelled out in this file`)
+      else if (!columns.trim() || topLevelParts(columns).includes('*')) problems.push(`line ${line}: .select(${args.trim()}) reads every column`)
+      else named += 1
+    }
+  }
+  // The same read, embedded in another table's column list or written as a REST query.
+  for (const embedded of source.matchAll(/\bpost_comments(?:!\w+)?\s*\(/g)) {
+    const end = skipBalanced(source, embedded.index + embedded[0].length, ')')
+    if (topLevelParts(source.slice(embedded.index + embedded[0].length, end - 1)).includes('*')) {
+      problems.push(`line ${source.slice(0, embedded.index).split('\n').length}: post_comments(*) reads every column`)
+    }
+  }
+  for (const rest of source.matchAll(/\bpost_comments\?[^\s'"`]*?\bselect=\*/g)) {
+    problems.push(`line ${source.slice(0, rest.index).split('\n').length}: post_comments?select=* reads every column`)
+  }
+  return { problems, named }
+}
+
+test('no shipped read of post_comments asks for every column', async () => {
+  // What the scan must refuse, and what it must accept, before it is trusted with the real sources.
+  const fields = "const FIELDS = 'id, content'\n"
+  for (const [sample, expected] of [
+    ["supabase\n  .from('post_comments')\n  .select('*')\n  .eq('post_id', id)", 'reads every column'],
+    ["supabase.from('post_comments').select()", 'reads every column'],
+    ["supabase.from('post_comments').select('id, *')", 'reads every column'],
+    ["supabase\n  .from(\"post_comments\")\n  // returns the row\n  .insert({ content: 'a (b' })\n  .select()\n  .single()", 'reads every column'],
+    [`${fields}supabase.from('post_comments').select(\`\${FIELDS}, *\`)`, 'reads every column'],
+    ["supabase.from('post_comments').select(columns)", 'not spelled out'],
+    ["const query = supabase.from('post_comments')\nquery.select('*')", 'cannot be checked'],
+    ["supabase.from('posts').select('id, post_comments(*)')", 'post_comments(*) reads every column'],
+    ["supabase.from('posts').select('id, replies:post_comments!post_comments_post_id_fkey(id, *)')", 'post_comments(*) reads every column'],
+    ['fetch(`${base}/rest/v1/post_comments?post_id=eq.${id}&select=*`)', 'post_comments?select=* reads every column'],
+  ]) {
+    const { problems } = postCommentReads(sample)
+    assert.equal(problems.length, 1, sample)
+    assert.ok(problems[0].includes(expected), `${sample}: ${problems[0]}`)
+  }
+  for (const sample of [
+    "supabase.from('post_comments').select('post_id, user_id').in('post_id', busy)",
+    `${fields}supabase\n  .from('post_comments')\n  .insert(row)\n  .select(\`\${FIELDS}, profile:profiles!post_comments_user_id_fkey(*)\` as any)\n  .single()`,
+    "supabase.from('post_comments').select('id', { count: 'exact', head: true })",
+    "supabase.from('posts').select('id, post_comments(id, content)')",
+  ]) {
+    assert.deepEqual(postCommentReads(sample), { problems: [], named: sample.includes('.from(\'post_comments\')') ? 1 : 0 }, sample)
+  }
+  assert.deepEqual(postCommentReads("supabase.from('post_comments').delete().eq('id', id)"), { problems: [], named: 0 })
+
+  const found = []
+  let named = 0
+  for (const { file, source } of await shippedSources()) {
+    const read = postCommentReads(source)
+    named += read.named
+    found.push(...read.problems.map(problem => `${file} ${problem}`))
+  }
+  assert.deepEqual(found, [])
+  // The scan has to have seen the reads it vouches for: the topic page's list, its insert, the home's and the notices'.
+  assert.ok(named >= 4, `only ${named} reads of post_comments were recognised`)
+})
+
 test('ops cover read-only precheck, exact verify and real multi-role behavior', async () => {
   const [precheck, verify, regression] = await Promise.all([
     readFile(precheckUrl, 'utf8'),
