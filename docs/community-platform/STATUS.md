@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-21 05:32 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-21 08:43 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: FINAL「第十批（D-56）」与 STATUS 同一提交推送，然后结束目标、取消续跑提醒、追加 STATUS_LOG`
+`next_task_id: —（第十批已交付，等下一条指示；不从 BACKLOG 往下接）`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-56 第十批进行中（L203 起）：范围是 D-56 第 0–5 项；做完写 FINAL「第十批（D-56）」与本文件同一提交，推送之后再结束目标、取消续跑提醒。第九批已交付（L165–L202）。
+D-56 第十批已交付（L203–L224）：FINAL「第十批（D-56）」与本文件在同一提交推送；推送之后结束目标、取消续跑提醒，不从 BACKLOG 往下接，等下一条指示。第九批已交付（L165–L202）。
 
 ## 版本
 

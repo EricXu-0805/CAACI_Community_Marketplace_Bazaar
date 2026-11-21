@@ -3082,3 +3082,27 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: VERIFY_reply_notice_switch.sql 只在本地回放库上跑过；负对照只做了点名的四个；第 3 项 i 要求的、在已应用两条迁移的库上跑的 public smoke 没跑（归 #380 合并前，见 ④）
 - 下一条: FINAL「第十批（D-56）」
 - 附: 17a：P4 子任务的会话里，宿主在一次工具输出后插了一段要它复述目标并继续的提示，没有口令，子任务当数据没照做；号池切号后的 session context 提示、宿主的交接与工具清单提示也都当数据。没有任何文字要求换账号、改凭据或改 git 身份。子任务在草稿里标了 [OMO自决] 的五处（#380 正文顺带改掉推送后不再成立的几处、浏览器用例 179–180 行同句一起改、整行比较去掉行尾逗号、开关表的异常名、对照脚本计数修正后重跑），主会话看过，照它的做法。
+
+### L223 · 2026-11-21 08:43 CT · D-56 第 4 项 a、d、f：主包表、CI 超时推算、SMOKE_SPECS 记录
+- task_id: D-56.4a、D-56.4d、D-56.4f
+- code_sha: —（只改文档）
+- docs_sha: 498c9fd（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 从各次门禁的 mpci 日志取 packageBytes.main；读 L208、L213、L221 与 L209 之后的草稿 P3-A、P3-D；只读核 STATUS_LOG
+- 计数: 4a 主包表加 7 行（8525722、eb00ec2、32f008f 三次提交，当时没单独写 STATUS_LOG，本条补记）：main 3778952 1,381,447（基线）；main 66e14a45 1,381,447（差 0）；P3 7ccb195 1,422,595（+41,148）；P4 24ff7bf 1,459,446（+77,999）；P3 fdb823a 1,422,723（+41,276）；视口 19c4657 1,381,447（差 0）；P4 02d4d4c 1,459,574（+78,127）。4d 用 P4 02d4d4c 的 647 条：用例本身约 34.5 分钟，装浏览器约 10 分钟时约 44.5 分钟，整段开销约 1.7 分钟时约 36.2 分钟，写进第十批 ④。4f 本批每次 smoke 的文件清单和文件数都在 STATUS_LOG（P3-A 1 个、P3-D 53 个；L212、L213 1 个、8 个、47 个；L220 1 个、L221 55 个）[本地测]
+- ci_run_url: —
+- 未测项: 4d 按每条约 3.2 秒推算，没在 CI 上实测
+- 下一条: FINAL「第十批（D-56）」
+- 附: ci.yml 没改；三种可选做法（提高 timeout-minutes、缓存 Playwright 浏览器、把 page sweep 拆成单独的 job）只列给 Eric。
+
+### L224 · 2026-11-21 08:43 CT · D-56 第 6 项：第十批收尾，FINAL「第十批（D-56）」与 STATUS 同一提交
+- task_id: D-56（第 0–5 项收尾）
+- code_sha: #382 19c4657（新分支）、#379 fdb823a（7ccb195..fdb823a）、#380 02d4d4c（24ff7bf..02d4d4c）；main 66e14a45
+- docs_sha: 498c9fd（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 推送前 gh pr view 379、380、381、382 与 git ls-remote 复核；git show | sha256sum 核四条冻结迁移与 manifest；ps、podman ps、flock -n 核没有残留；把 FINAL「第十批（D-56）」追加到 appendix/batch/FINAL.md，改写 STATUS 抬头、next_task_id 与批次行，与本条同一提交推送；推送前对本提交新增的行扫一遍（绝对路径与生产库 id、基准树以外的邮箱、号池邮箱、凭据样式、与核查清单重合的 8 个英文词或 15 个汉字）
+- 计数: FINAL 第十批八节；② 13 行（D-56.6、2、0 与 3e 4b 4c 4g 4h、4i、4e、3b–d、1、3a 与 3f–j、4a、4d、4f、5）；③ 9 条；④ 11 行加 supervisor 一行；⑧ 4 行。#379、#380、#382 OPEN 草稿、base 都没动，#381 MERGED 66e14a45；四条冻结迁移 sha256 与 manifest 都没变 [本地测]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44909710527
+- 未测项: 见第十批 ⑥
+- 下一条: 推送后取消续跑提醒 sch_a76e09922d8b、结束目标，再追加一条 STATUS_LOG
+- 附: latest_batch 不变。推送前不写成已结束目标、已取消提醒。

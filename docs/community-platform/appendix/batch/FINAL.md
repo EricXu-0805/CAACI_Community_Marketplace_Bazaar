@@ -938,3 +938,100 @@ D-55.5 ｜ 通过（另有 main 上同样失败的用例，L173、L192） ｜ �
 | 编号 | 选了什么 | 理由 | 怎么撤回 |
 |---|---|---|---|
 | D-55 第 2 项 b（【supervisor 做】依 Eric 03:17 CT 的原话） | 20261120100354、20261120122054 第九批再次原地改、重新冻结，不另起新迁移（P3 aedc9152… → c2a18ee8…；P4 4d382eaa… → a8c0e083…） | 两条都不在 staging、生产的账本里（supervisor 2026-11-21 03:36Z 只读核过：生产 146 行、staging 199 行）；原地改比追加修复迁移少一次上线步骤 | 改走两条前向修复迁移，时间戳晚于 20261120122054，P4 的晚于 P3 的 |
+
+## 第十批（D-56）
+
+按 DECISIONS D-56 第 0–5 项做（材料分支 476bba00）与 RUNBOOK §12 第 17 条。本批不放开任何【硬】条：第 9c 条的具名例外已在 FINAL 第九批推送时到期，所有迁移和 manifest 一个字节没改。【Eric 选】是 Eric 的选择，【supervisor 做】是 supervisor 依 Eric 2026-11-20 03:17 CT 的总批准代做或代定的事，OMO 都不做。核查清单只在 tony-ws 本机，本节只引编号。逐条细节在 STATUS_LOG L203–L224。`latest_batch` 不变。
+
+### ① 起止与 SHA 范围
+
+- 起止：2026-11-21 05:29 CT（D-56，材料分支 476bba00）至 2026-11-21 08:43 CT。
+- docs_sha：476bba0 → 本节所在提交。
+- main：66e14a45（#381 的 squash，2026-11-21 09:36:58Z 已由 supervisor 发布到生产 H5）。
+- 视口 #382：新分支 codex/community-viewport-20261121，66e14a45 → 19c4657（1 个提交），OPEN、草稿，base main；CI run 44909710527 success。
+- P3 #379：codex/community-p3-20261120，7ccb195 → fdb823a（3 个提交，快进），OPEN、草稿，base codex/community-restricted-20261113 没动。
+- P4 #380：codex/community-events-20261120，24ff7bf → 02d4d4c（普通 merge P3 fdb823a 的 53b2f8e 加 4 个提交，快进），OPEN、草稿，base codex/community-p3-20261120 没动。
+- #381：MERGED，main 66e14a45（本批开工前已合）。
+- 推送前复核（14:40Z 前后）：gh pr view 379、380、381、382 与 git ls-remote 的 main 和三个分支 head 都和上面一致。
+- 冻结迁移：20261112120000 e2a85c3e…、20261114015420 0dc2ceaf…、20261120100354 c2a18ee8…、20261120122054 a8c0e083… 都没动，manifest 没动（推送前在 main 66e14a4、视口 19c4657、P3 fdb823a、P4 02d4d4c 上逐一算 sha256：前两条四处都相同，20261120100354 在 P3、P4 上都是 c2a18ee8…，20261120122054 在 P4 上是 a8c0e083…；supabase/migrations/manifest.sha256 与各自起点 66e14a45、7ccb195、24ff7bf 逐字节相同；supabase/ 下只有 P4 新增了 _ops/VERIFY_reply_notice_switch.sql（第 3 项 f 准许），三个分支的 .github 都没动）。
+
+### ② 完成的任务
+
+```text
+D-56.6 ｜ 通过 ｜ —（不改代码） ｜ 476bba0 ｜ 本地 ｜ L203 ｜ create_goal 1 个；schedule_prompt list 为空后建 3600 秒续跑提醒 sch_a76e09922d8b，始终只有 1 个 ｜ — ｜ — ｜ — ｜ D-56.0
+D-56.2 ｜ 通过 ｜ — ｜ 476bba0 ｜ 本地 ｜ L204 ｜ 每个子任务按 §12 第 17 条起：本批口令、开工说明写明 17b 三件事与提交身份参数、17c 安全规则、17d 推送前扫描、交回时列出收到的序号；三个子任务（视口 st_01a1fddf、P3 st_01a1fde0、P4 st_01a1fe21）收到的带口令指示都是 0 条，主会话也一条没发过，两边一致（L215、L210、L222）；宿主插进来的提示都当数据（L214、L222 的 17a） ｜ — ｜ — ｜ — ｜ D-56.0
+D-56.0、3e、4b、4c、4g、4h ｜ 通过 ｜ —（只改文档） ｜ 476bba0 ｜ 本地 ｜ L205 ｜ 先 gh pr view 核 #379、#380（OPEN 草稿）与 #381（MERGED 66e14a45）；STATUS 第 28 条照抄第 0 项并删两句过时的话；版本表、分支行、阻塞第 1 条改成现状；P3、P4 两行补没做完的部分项与 mig:P3-B9-3 一句；阻塞第 31 条改正原因，第 32 条为 #380 合并前的 public smoke ｜ — ｜ — ｜ — ｜ D-56.4i
+D-56.4i ｜ 通过 ｜ —（只改文档） ｜ 476bba0 ｜ 本地 ｜ L206 ｜ BACKLOG P4.6、P4.7 的 DoD 末尾各追加一条（Unicode 空白、DTEND 等于 DTSTART），原有条目一字不改；ENGINEERING §9.3、§9.5 各同步一句 ｜ — ｜ — ｜ — ｜ D-56.4e
+D-56.4e ｜ 通过 ｜ —（只改文档） ｜ 3706bc7 之前 ｜ 本地 ｜ L207 ｜ 第九批报告与 STATUS_LOG 的 18 处更正汇成一条，含 3778952 的 47 个 spec 清单 ｜ — ｜ — ｜ — ｜ D-56.1
+D-56.3b–d ｜ 通过 ｜ #379 fdb823a（7ccb195..fdb823a 快进） ｜ 3706bc7 ｜ 本地 ｜ L208、L209 之后的草稿 P3-A 到 P3-D、L210、L211 ｜ 3b 61e265d：发送中（temp-）的回复行不显示点赞、菜单里没有删除、待发行行上不弹空菜单，测试先红后绿；3c f697460：post_comments 读取扫描多认 6 种写法，每种一个临时对照先红；3d fdb823a：仓库根 RUNBOOK 补 57014 一句；全量门禁 check-20261121T120007Z 判「通过（另有 4 条 main 上同样失败，见 L173）」，SMOKE_SPECS 53 个文件，Running 612（新断言加在已有用例里，与上次 P3 门禁相同），TEST 2799/2798/0/1；主包 1,422,723；17d ①–⑤ 都是 0；迁移与 manifest 没动 ｜ —（base 不是 main） ｜ 待发行行保存前约矮 20px（按 CSS 估算没量）；小程序没上真机；3c 认不出经对象成员、函数参数或拼字符串得到的表名 ｜ — ｜ D-56.3f–j
+D-56.1 ｜ 通过 ｜ #382 19c4657（新分支，从 66e14a45 起，base main） ｜ eb00ec2 ｜ 本地；CI ｜ L212–L215 ｜ 修在应用里（useVisualViewportInset.ts 给根元素加 ResizeObserver，布局高度变了再同步一次），原用例第 713 行之前一行没动；修前 ×60 复现 7 次失败（check-20261121T113134Z）；新用例在修前 5/5 红（T115316Z）、修后 5/5 绿（T115651Z）；修后三组 ×60（T124650Z、T124936Z、T125224Z）共 180 次 0 失败；全量门禁 check-20261121T125522Z 判「通过（另有 4 条 main 上同样失败，见 L173）」，SMOKE_SPECS 47 个文件，Running 564（main 563 加新用例），TEST 2664/2663/0/1；主包 1,381,447，与基线差 0；17d 推送、开 PR、改正文前都是 0 ｜ https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44909710527 ｜ 真机 iPad 上的旋转与收起键盘没试，只在 Playwright WebKit 里跑 ｜ — ｜ D-56.3f–j
+D-56.3a、3f–j ｜ 通过 ｜ #380 02d4d4c（24ff7bf..02d4d4c 快进） ｜ 5ef0e36 ｜ 本地 ｜ L216–L222 ｜ 3a 53b2f8e 普通 merge P3 fdb823a，无冲突；3f、3g e5a39e2：新增只读 supabase/_ops/VERIFY_reply_notice_switch.sql（钉值照抄 VERIFY_20261120100354 的三段）与不连库的相等测试（变异对照先红），RUNBOOK 开关第 1 步，一个正对照（NOTICE enabled=f）与四个负对照各报预期的异常名，19 步 19 过；3h 12c2b41；3i fd5baa7（同一句进 #380 描述）；3j 02d4d4c（后台时间中文带年份，先红后绿）；L-SQL 184/184、P3_TOTAL 703/703、EV_TOTAL 855/855、P3_SWITCH default=off PASS；全量门禁 check-20261121T135041Z 判「通过（另有 6 条：4 条 main 上同样失败，2 条同一类，见 L173）」，SMOKE_SPECS 55 个文件，Running 647，TEST 2899/2898/0/1；主包 1,459,574；迁移与 manifest 没动 ｜ —（base 不是 main） ｜ 新文件只在本地回放库上跑过；负对照只做了点名的四个；第 3 项 i 的 public smoke 没跑（④） ｜ — ｜ D-56.4a
+D-56.4a ｜ 通过 ｜ — ｜ 8525722、eb00ec2、32f008f（加行的提交） ｜ 本地 ｜ L223 ｜ STATUS 主包表加 7 行，每行写字节数和与基线 1,381,447 的差：main 3778952（基线）；main 66e14a45 差 0；P3 7ccb195 +41,148；P4 24ff7bf +77,999；P3 fdb823a +41,276；视口 19c4657 差 0；P4 02d4d4c +78,127 ｜ — ｜ — ｜ — ｜ D-56.4d
+D-56.4d ｜ 通过 ｜ —（ci.yml 没改） ｜ 498c9fd ｜ 本地 ｜ L223 ｜ ④ 重写 CI 超时推算：public-smoke 整个 job 的上限 45 分钟（ci.yml 第 387 行）连装浏览器一起算；P4 02d4d4c 的 647 条约 34.5 分钟，装浏览器约 10 分钟时整个 job 约 44.5 分钟，整段开销约 1.7 分钟时约 36.2 分钟；三种可选做法列给 Eric ｜ — ｜ 按每条约 3.2 秒推算，没在 CI 上实测 647 条 ｜ — ｜ D-56.4f
+D-56.4f ｜ 通过 ｜ — ｜ 498c9fd ｜ 本地 ｜ L223 ｜ 本批每一次 smoke 的 SMOKE_SPECS 文件清单和文件数都在 STATUS_LOG：P3 是 L209 之后的草稿 P3-A（3b 单跑，1 个文件）与 P3-D（全量 53 个）；视口是 L212、L213（单跑 1 个、预检 8 个、全量 47 个）；P4 是 L220（3j 单跑 1 个）与 L221（全量 55 个） ｜ — ｜ — ｜ — ｜ D-56.5
+D-56.5 ｜ 通过 ｜ #382 19c4657、#379 fdb823a、#380 02d4d4c ｜ 498c9fd ｜ 本地；CI ｜ L208、L213、L221 ｜ 三个最终 head 都在同一行跑 SMOKE_SPECS 加全部步骤：Running 视口 564（main 563 加 1 条新用例）、P3 612、P4 647，都不少于上次；main 对照沿用 L173，不重跑；失败逐条按四条同一类条件对照，视口 4 条、P3 4 条、P4 6 条（活动页 2 条凭第 ④ 条：同一次门禁 community-events.spec.ts 25 过 0 失败）；marketplace-responsive.spec.ts:699 三次门禁都过；没有只在分支上失败的用例 ｜ https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44909710527 ｜ — ｜ — ｜ —
+```
+
+### ③ [OMO自决] 清单
+
+| 编号 | 事项 |
+|---|---|
+| L204 | P4 子任务不和视口、P3 一起起：P4 要先合 P3 推送的新 head，提前起只会空等；等 P3 有结果（推送或判不过）再起 |
+| L209 之后的草稿 P3-A | 3b 的「不弹空菜单」对照：给 uni.showActionSheet 计数，先按待发行行、再按旁边已保存的行，断言计数正好是 1 |
+| L209 之后的草稿 P3-B、P3-C | 3c 除了列出的写法，还认另一个文件里定义的表名常量、方括号或泛型的链式调用，没有 select= 的 REST 请求一律判失败（静态扫描分不出读写）；3d 那句写「发布负责人」，因为仓库根 RUNBOOK 不点名任何人 |
+| L212 | 视口修在应用里：根元素 ResizeObserver 在每次布局高度变化后再同步一次；没用「下一帧再同步」（实测 requestAnimationFrame 在同一帧里仍读到旧值），也没用固定延时 |
+| L214 | 17d 第 ⑤ 类命中 1 条（PR 正文草稿里连着写的三个日志名）判误报，仍改写那一行，重扫为 0 后才推送 |
+| L216 | P4 推送前 17d 第 ⑤ 类命中 1 处（RUNBOOK.md 第 651 行的一个文件路径）判误报：主会话核过这个文件在 24ff7bf 的树里就有、24ff7bf 的 RUNBOOK 里已出现 2 次，没有要求改写 |
+| L218 | 开关检查：相等测试比较整行时去掉行尾逗号（新文件最后一行不能带逗号）；开关表那几条的异常名用 reply_notice_switch_table_*、reply_notice_switch_row，不是机械换前缀；对照用 $EV 下 lsql-replay 的副本（加 LSQL_LOG_DIR 与 AFTER_REPLAY），原脚本 sha256 没变；对照脚本第一次计数写错，修好后在提交后的 head 上重跑 |
+| L220 | 3j：community-event-console.spec.ts 第 179–180 行钉着同一句中文，一起改，否则 smoke 在那里变红 |
+| L221 | #380 正文除了第 3 项 i 那句，还顺带改了推送后不再成立的几处（merge 记录、发布顺序里开关第 1 步、D-56 改动与证据一段、主包字节数、一行「未做」）；撤回就把 pr380-body-before.md 的内容 PATCH 回去 |
+
+### ④ 等 Eric 或 supervisor 的清单
+
+| 要做的一件事 | 谁 | 解锁 |
+|---|---|---|
+| P3.7：在 staging、生产应用 20261120100354 并 VERIFY（照 E4 第 2 步核 sha256 c2a18ee8…） | Eric | #379 合并 |
+| P4.11：在 staging、生产应用 20261120122054 并 VERIFY（核 a8c0e083…）；应用之后回复通知开关第 1 步按 D-56 第 3 项 g（先跑最新一条已应用社区迁移的 VERIFY，再跑 VERIFY_reply_notice_switch.sql，NOTICE 必须是 enabled=f） | Eric | #380 合并 |
+| E6：设 COMMUNITY_OFFICIAL_PROFILE_ID；没设之前 set_post_official 与 create_event_discussion 返回 409 `official_profile_not_configured`、不落库 | Eric | P3.5、P4.9 的另一半 |
+| 打开回复通知开关（private.community_reply_notice_config）：前提是 P3 迁移已应用、P3 的 H5 与小程序都已发布；staging 与生产分开打开，各记一次；步骤在仓库根目录 RUNBOOK.md「Reply notice switch」 | Eric（或 supervisor 在 Eric 具名批准后） | P3.3 上线 |
+| #380 合并前：它的 public smoke 要在已经应用 20261120100354、20261120122054 的库上跑绿；活动页与 P4 的广场页都还没在真实后端上跑过巡检（D-56 第 3 项 i，STATUS 阻塞第 32 条） | Eric | #380 合并 |
+| 内容下架的申诉：现有申诉流程只认封禁，没有内容下架的申诉对象，也没有 decide_appeal 的恢复路径（第九批 ④） | Eric | P3.6 DoD ② |
+| 问题（第九批起）：要不要另设给作者看的下架理由选项；成员活动结束时间上限是不是 30 天；开关打开之前旧版小程序怎么办；community_post_state 对 anon 是否区分 hidden 和 missing；被作者硬删的回答不清空 answered_at、被隐藏的话题仍能收到回复要不要改；英文 360 px 宽时首页第四个标签换行要不要确认 | Eric | — |
+| CI 超时（D-56 第 4 项 d，第九批 ④ 那条推算作废）：45 分钟是 ci.yml 第 387 行 public-smoke 整个 job 的上限，装浏览器也算在里面。按每条约 3.2 秒（run 44647478789：472 条 25.5 分钟），P4 最终 head 的 647 条用例本身约 34.5 分钟；像 run 44647478789 那样装浏览器约 10 分钟时，整个 job 约 44.5 分钟；像 run 44783052160 那样整段开销约 1.7 分钟时约 36.2 分钟。（条数与第九批 24ff7bf 的 647 条相同。）结论：装浏览器慢的那种情形已经贴着或超过 45 分钟，P4 合进 main 后 public-smoke 可能偶尔超时。可选做法：提高 timeout-minutes；缓存 Playwright 浏览器（装浏览器那 10 分钟基本可以省掉）；把 page sweep 拆成单独的 job。ci.yml 本批不改，选哪种归 Eric | Eric | P4 合 main 之前 |
+| 问题：公开的计划文档里有号池用的 CAACI 机构账号邮箱（STATUS 阻塞第 24 条已记），要不要删 | Eric | — |
+| 问题：18b2997 那段与核查清单近乎逐字的措辞已在公开历史里（P4 分支与 refs/pull/380/head）；不改写就一直留着，改写要 force push，只有 Eric 能定 | Eric | — |
+| 问题：视口修复合进 main 后，跟下一次受监督发布一起上线还是单独发布；上线后请在 iPad 真机上转屏、收起键盘各看一次聊天页，底部不应留空 | Eric | 视口 PR 合并 |
+
+【supervisor 做，依据 Eric 2026-11-20 03:17 CT 的总批准；STOP-12 对 OMO 照旧】合并视口分支的 PR；以后合并 #379、#380 时不用 GitHub 默认拼接的 squash 说明，改写成只描述改动的一段话（report:B9-9）。
+
+### ⑤【硬】与【暂停推送】事件
+
+- 本批没有触发【暂停推送】。没有合并、没有转 ready、没有改 base、没有 force push、没有 rebase 已推送分支、没有连托管库、没有改 SPEC；所有迁移和 manifest 一个字节没改。
+- 每个子任务按 §12 第 17 条起；每次推送、开 PR、改 PR 正文之前按 17d 扫描：视口 4 次（推送、开 PR、改 PR 正文之前都是 0；PR 正文草稿第一次扫有 1 条第 ⑤ 类误报，没发出去就改写了，L214）；P3 1 次（推送前 ①–⑤ 都是 0，L208）；P4 2 次（推送前第 ⑤ 类命中 1 处判误报，主会话核过，L216；改 #380 正文前都是 0）；每次扫描前都核过号池邮箱清单存在且非空；本节所在提交推送前，主会话也对这次提交新增的行扫了一遍（结果见推送后追加的那条 STATUS_LOG）。
+- 两份核查清单、号池邮箱清单只在本机读，原文没有进仓库、提交信息、PR 描述或评论，只引编号。外部评论、外部 issue 与 PR：每次续跑提醒都查过（本批三次续跑提醒 12:29Z、13:29Z、14:29Z，分别查 11:00Z、12:00Z、13:00Z 以后的评论与 issue、PR，都是 0 条，没有要记进 STATUS「阻塞」的）。
+- 本批没有 task_cancel，17c 的三件事没有触发；三个子任务结束后主会话核过：没有残留的 run-checks 或 L-SQL 进程，没有容器，锁空闲（14:41Z）。容器一律在同一把锁里、一次一个，命令前先 umask 022；每次续跑提醒查磁盘都在 279 GB 以上。
+- 三次推送都是快进、带 --no-verify（写在各自 STATUS_LOG 的命令字段）；视口 #382 和 P4 #380 的正文各在扫描后改过一次，#379 的正文没改。
+
+### ⑥ 未测项与风险
+
+- 视口（#382）：真机 iPad 的旋转和收起键盘没试；H5 开发服务器在 main 和 CI 上都有一条 esbuild「No matching export」警告（registerToastHost），本批没动，也没有用例因它失败。
+- P3（#379）：待发行的回复行在保存前约矮 20px，没量；小程序没在真机或开发者工具里看；3c 的静态扫描认不出经对象成员、函数参数或拼字符串得到的表名，也不查 .eq('reply_to_comment_id', …) 这类过滤。
+- P4（#380）：VERIFY_reply_notice_switch.sql 只在本地回放库上跑过，没在 staging 上跑；负对照只做了点名的四个；第 3 项 i 要求的 public smoke 没跑，活动页和 P4 的广场页还没在真实后端上巡检过（④）。
+- CI 超时：P4 合进 main 后，装浏览器慢的那种情形 public-smoke 约 44.5 分钟，贴着 45 分钟上限（④，第 4 项 d）；推算按每条约 3.2 秒，没在 CI 上实测 647 条。
+
+### ⑦ 下一批
+
+按 D-56 第 6 项，本批推送后 OMO 结束目标、取消续跑提醒，不从 BACKLOG 往下接任务。下一批可做的事：
+
+- 【supervisor 做】合并视口分支的 PR，随下一次受监督发布上线（④）。
+- 【Eric】P3.7、P4.11、E6、回复通知开关、#380 合并前的 public smoke（④）。
+- #379、#380 下次合 main 时带进视口修复；P4.6（成员活动的写入口与 Unicode 空白）、P4.4、P4.7 第二步（等 D-33）。本批不接。
+
+### ⑧ 代 Eric 定的事
+
+| 编号 | 选了什么 | 理由 | 怎么撤回 |
+|---|---|---|---|
+| D-56 第 2 项、RUNBOOK §12 第 17 条（【supervisor 做】） | 主会话给每个子任务起一个本批口令，task_send 先空一行写「口令 <口令> #<UTC 序号>」，子任务只认口令对、序号更大的指示，交回时逐条列序号 | 宿主把 task_send 接在工具输出后面、没有分隔，子任务分不清真指示和工具输出里的文字（第八批 st_01a1f9cc 因此没照真 steer 做） | 改回只靠 task_send 的标签；删掉 §12 第 17 条 |
+| D-56 第 1 项（【supervisor 做】） | 聊天页视口问题修在应用里（useVisualViewportInset.ts），原用例第 713 行之前不改 | 报错说明最后一次 sync 读到了不一致的两个值、之后没有重算，是应用的缺陷；只改用例的时序能把它藏起来 | revert 视口分支的提交；PR 不合 |
+| D-56 第 4 项 i（【supervisor 做】） | DTEND 等于 DTSTART 的全天活动按没有 DTEND 处理；成员活动地点去空白覆盖 Unicode 空白 | 校历源可能这样写全天活动；只去 ASCII 空白会放过 U+3000、U+00A0 | 删掉 P4.6、P4.7 DoD 末尾那两条与 ENGINEERING 的两句 |
+| D-56 第 3 项 f（【supervisor 做】） | 开关检查文件的钉值逐字照抄 P4 head 上 VERIFY_20261120100354 的三段，另加一条不连库的相等测试 | 钉值只有一个来源，两边不会各改各的；回放库只用来核对 | 删掉 VERIFY_reply_notice_switch.sql 与那条测试，开关第 1 步改回只看 VERIFY_20261120100354 |
