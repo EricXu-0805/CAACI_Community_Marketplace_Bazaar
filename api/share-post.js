@@ -168,11 +168,11 @@ async function responseForRequest(req, boundary) {
     }
   }
 
-  const firstLine = truncate((post?.content || '').split('\n')[0], 60) || 'Illini Market · Campus Plaza'
+  const firstLine = truncate((post?.content || '').split('\n')[0], 60) || '玉米地 · 社区'
   const topicTitle = typeof post?.title === 'string' ? post.title.trim() : ''
   const headline = topicTitle ? truncate(topicTitle, 120) : firstLine
-  const title = post ? `${headline} — ${authorName || 'User'}` : 'Illini Market · Campus Plaza'
-  const desc = post ? (truncate(post.content || '', 160) || 'A post on Illini Market') : 'UIUC Campus Plaza · 校园广场'
+  const title = post ? `${headline} — ${authorName || 'User'}` : '玉米地 · 社区'
+  const desc = post ? (truncate(post.content || '', 160) || 'A post on Cornfield') : 'Chinese community in Illinois, now open in Champaign-Urbana. 伊利诺伊华人论坛，现开放香槟地区。'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(post?.images?.[0], fallbackImage, site)
   const destination = id ? `${site}/#/pages/post/index?id=${id}` : site
@@ -196,7 +196,7 @@ async function responseForRequest(req, boundary) {
 <meta property="og:image" content="${escapeHtml(image)}">
 <meta property="og:image:alt" content="${escapeHtml(title)}">
 <meta property="og:url" content="${escapedCanonical}">
-<meta property="og:site_name" content="Illini Market">
+<meta property="og:site_name" content="玉米地 Cornfield">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(desc)}">
@@ -204,7 +204,7 @@ async function responseForRequest(req, boundary) {
 <meta http-equiv="refresh" content="0; url=${escapeHtml(destination)}">
 <style>body{margin:0;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f2f2f7;color:#636366}</style>
 </head>
-<body><p lang="en">Loading Illini Market...</p></body>
+<body><p lang="en">Loading Cornfield...</p></body>
 </html>`
 
   return new Response(html, {

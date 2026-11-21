@@ -35,7 +35,7 @@
             <view class="head-name-row">
               <text class="head-name" role="button" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
               <UBadge v-if="post.is_official" variant="official" :label="t('plaza.official')" />
-              <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini" label="Illini" />
+              <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini" :label="t('profile.illiniVerified')" />
               <view v-if="post.is_pinned" class="badge-pinned"><text class="badge-pinned-label">{{ t('plaza.pinned') }}</text></view>
             </view>
             <text class="head-time">{{ formatTime(post.created_at) }}</text>
@@ -119,7 +119,7 @@
             lazy-load
             :alt="localize(pi.item.title_i18n, pi.item.title)"
           />
-          <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+          <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
           <view class="aic-body">
             <text class="aic-title">{{ localize(pi.item.title_i18n, pi.item.title) }}</text>
             <!-- SPEC 6.6: the price, whether the item can still be had, and whether it is the reader's own. -->
@@ -917,6 +917,8 @@ async function retryComments() {
     const rows = await fetchComments(requestPostId)
     if (!isCurrent()) return
     comments.value = rows
+    // A notification link whose first read failed still names its reply.
+    applyReplyAnchor()
   } catch (err: any) {
     if (!isCurrent()) return
     commentsError.value = true

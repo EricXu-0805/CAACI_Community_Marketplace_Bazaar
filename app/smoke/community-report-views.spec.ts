@@ -246,3 +246,32 @@ test('a notification link whose reply is not among the loaded ones says so', asy
   await expect(page.locator('.cs-item')).toContainText(UPDATE_REPLY.content)
   await expect(page.locator('.cs-item--anchor')).toHaveCount(0)
 })
+
+// The first read of the replies can fail. The link still names its reply, so the retry has to
+// finish what the link asked for: go to that reply, or say it is not among the ones loaded.
+const LINKED_REPLY = { ...UPDATE_REPLY, post_id: TOPIC.id, created_at: '2026-11-02T00:00:09.123456+00:00' }
+async function openLinkWithFailedReplies(page: Page, replyAt: string) {
+  await installTopicFixture(page)
+  const replies = { down: true }
+  await page.route('**/rest/v1/post_comments?**', route => route.fulfill(replies.down
+    ? answer({ code: '57014', message: 'canceling statement due to statement timeout' }, 500)
+    : answer([LINKED_REPLY])))
+  await page.goto(topicUrl(`&reply_at=${encodeURIComponent(replyAt)}`), { waitUntil: 'networkidle' })
+  const retry = page.locator('.cs-error .cs-retry')
+  await expect(retry).toBeVisible()
+  await expect(page.locator('.cs-item')).toHaveCount(0)
+  replies.down = false
+  await retry.click()
+  await expect(page.locator('.cs-item')).toContainText(LINKED_REPLY.content)
+}
+
+test('a notification link whose replies load on a retry still goes to its reply', async ({ page }) => {
+  await openLinkWithFailedReplies(page, LINKED_REPLY.created_at)
+  await expect(page.locator(`[id="reply-${LINKED_REPLY.id}"]`)).toHaveClass(/cs-item--anchor/)
+})
+
+test('a notification link whose replies load on a retry says so when its reply is not among them', async ({ page }) => {
+  await openLinkWithFailedReplies(page, '2026-11-09T09:09:09.000000+00:00')
+  await expect.poll(async () => (await announced(page)).at(-1)).toBe(text('plaza.replyNotFound'))
+  await expect(page.locator('.cs-item--anchor')).toHaveCount(0)
+})

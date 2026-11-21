@@ -120,7 +120,7 @@
                       <view v-for="item in card.items" :key="item.id" class="ch-item" role="button"
                         :aria-label="`${itemTitle(item)} ${itemPrice(item)}`" @click="openItem(item.id)">
                         <image v-if="itemThumb(item)" class="ch-thumb" :src="itemThumb(item)" mode="aspectFill" lazy-load />
-                        <view v-else class="ch-thumb u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+                        <view v-else class="ch-thumb u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
                         <text class="ch-item-t">{{ itemTitle(item) }}</text>
                         <text class="ch-price">{{ itemPrice(item) }}</text>
                       </view>
@@ -135,7 +135,7 @@
                       <view v-for="item in card.items" :key="item.id" class="ch-tile" role="button"
                         :aria-label="`${itemTitle(item)} ${itemPrice(item)}`" @click="openItem(item.id)">
                         <image v-if="itemThumb(item)" class="ch-tile-img" :src="itemThumb(item)" mode="aspectFill" lazy-load />
-                        <view v-else class="ch-tile-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+                        <view v-else class="ch-tile-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
                         <text class="ch-tile-t">{{ itemTitle(item) }}</text>
                         <text class="ch-price">{{ itemPrice(item) }}</text>
                       </view>

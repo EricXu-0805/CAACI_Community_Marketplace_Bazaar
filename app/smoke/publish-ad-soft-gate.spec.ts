@@ -31,7 +31,7 @@ const PROFILE = {
 }
 
 const AD_TITLE = 'Homework help service, guaranteed A, ask me'
-const AD_BODY = 'This reads like an ad for off-platform services. Illini Market is for students trading items on campus. Post anyway?'
+const AD_BODY = "This reads like an ad for off-platform services. Cornfield doesn't allow ads. Post anyway?"
 
 async function openPublish(page: Page, verdict: string) {
   const listingWrites: string[] = []

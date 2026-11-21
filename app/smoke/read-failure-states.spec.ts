@@ -352,6 +352,7 @@ function postRows(count: number, offset: number): unknown[] {
       id: `77777777-7777-4777-8777-${String(n).padStart(12, '0')}`,
       content: `Paged post ${n}`,
       comment_count: 0,
+      last_activity_at: POST_ROW.created_at,
     }
   })
 }
@@ -359,8 +360,20 @@ function postRows(count: number, offset: number): unknown[] {
 type PagedState = { pageRequests: Record<number, number>; failPagesFrom: number }
 
 /**
- * Serves `endpoint` a page at a time, keyed off the offset supabase-js puts in
- * the query string, so which page is being asked for is what decides the
+ * How many rows come before the page a read asks for. The follow list sends an
+ * offset. The plaza lists (P3.4) name the last row they have instead:
+ * `or=(<column>.lt.<at>,and(<column>.eq.<at>,id.lt.<id>))`, with no offset.
+ * postRows numbers its ids from 1, so the number in that id is the count.
+ */
+function rowsBefore(query: URLSearchParams): number {
+  const after = /\.lt\.[^,]+,and\(\w+\.eq\.[^,]+,id\.lt\.([^)]+)\)/.exec(query.get('or') || '')
+  const offset = Number.parseInt(after ? after[1].slice(-12) : query.get('offset') || '0', 10)
+  return Number.isNaN(offset) ? 0 : offset
+}
+
+/**
+ * Serves `endpoint` a page at a time, keyed off where the read says it
+ * starts (rowsBefore), so which page is being asked for is what decides the
  * outcome — both of these pages fire their page-0 request twice (onMounted,
  * then again once auth hydrates), and counting requests instead would fail an
  * initial load and never reach pagination at all. failPagesFrom: 0 is an
@@ -378,8 +391,7 @@ async function servePaged(
     const url = new URL(route.request().url())
     const path = `${url.pathname}${url.search}`
     if (url.pathname.endsWith(endpoint)) {
-      const offset = Number.parseInt(url.searchParams.get('offset') || '0', 10)
-      const pageIndex = Math.floor((Number.isNaN(offset) ? 0 : offset) / pageSize)
+      const pageIndex = Math.floor(rowsBefore(url.searchParams) / pageSize)
       state.pageRequests[pageIndex] = (state.pageRequests[pageIndex] ?? 0) + 1
       if (pageIndex >= state.failPagesFrom) {
         return route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
@@ -471,7 +483,7 @@ test('plaza Following keeps its posts when the next page fails and retries that 
   }))
   await page.route('**/rest/v1/posts**', route => {
     const query = new URL(route.request().url()).searchParams
-    asked.push({ offset: query.get('offset') || '0', authors: query.get('user_id') })
+    asked.push({ offset: String(rowsBefore(query)), authors: query.get('user_id') })
     return route.fallback()
   })
 

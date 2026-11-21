@@ -23,17 +23,18 @@ const thread = (postId: string) => {
   return { top, nested }
 }
 
-// Serves the two replies and records what the page writes.
-async function serveReplies(page: Page, postId: string) {
+// Serves the two replies and records what the page writes. A write is answered once `gate.hold` lets it go.
+async function serveReplies(page: Page, postId: string, gate: { hold?: Promise<void> } = {}) {
   const { top, nested } = thread(postId)
   const writes: Record<string, unknown>[] = []
-  await page.route('**/rest/v1/post_comments?**', route => {
+  await page.route('**/rest/v1/post_comments?**', async route => {
     const request = route.request()
     if (request.method() !== 'POST') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([nested, top]) })
     }
     const body = request.postDataJSON()
     writes.push(body)
+    await gate.hold
     return route.fulfill({
       status: 201, contentType: 'application/json',
       body: JSON.stringify({
@@ -101,4 +102,67 @@ test('the reply sheet in the community list sends the reply that was answered', 
   await sheet.locator('.ci-send').click()
   await expect.poll(() => writes.length).toBe(2)
   expect(writes[1]).toMatchObject({ parent_comment_id: top.id, reply_to_comment_id: top.id })
+})
+
+// The reply sheet shows a reply as soon as it is sent, under an id of its own making, and swaps in
+// the saved row when the server answers. Until then there is nothing the server could be told was
+// answered, so the reply offers no "Reply": not in the thread, not at its head, not in its menu.
+test('a reply that is still being sent cannot be answered until it is saved', async ({ page }) => {
+  await installTopicFixture(page)
+  await page.route('**/rest/v1/posts?**', route => route.fulfill({
+    status: 200, contentType: 'application/json', headers: { 'content-range': '0-0/1' }, body: JSON.stringify([UPDATE]),
+  }))
+  let release!: () => void
+  const holdNext = () => new Promise<void>(resolve => { release = resolve })
+  const gate = { hold: holdNext() }
+  const { top, nested, writes } = await serveReplies(page, UPDATE.id, gate)
+  await page.goto('/#/pages/plaza/index?view=all', { waitUntil: 'networkidle' })
+  await page.locator('.post-card').getByRole('button', { name: text('a11y.comment'), exact: true }).click()
+  const sheet = page.locator('.comment-sheet')
+  await expect(sheet.locator('.cs-item-child')).toContainText(nested.content)
+
+  // An answer inside the thread, held on its way to the server.
+  await sheet.locator('.cs-item-child .cs-reply-btn').click()
+  await sheet.locator('textarea').fill('Still on its way')
+  await sheet.locator('.ci-send').click()
+  await expect.poll(() => writes.length).toBe(1)
+  const pending = sheet.locator('.cs-item-child', { hasText: 'Still on its way' })
+  await expect(pending).toBeVisible()
+  await expect(pending.locator('.cs-reply-btn')).toHaveCount(0)
+  // The saved reply next to it can still be answered.
+  await expect(sheet.locator('.cs-item-child', { hasText: nested.content }).locator('.cs-reply-btn')).toHaveCount(1)
+  // Its menu still removes it, and offers no reply either.
+  await pending.press('ContextMenu')
+  const menu = page.locator('uni-actionsheet')
+  await expect(menu.getByText(text('plaza.delete'), { exact: true })).toBeVisible()
+  await expect(menu.getByText(text('plaza.reply'), { exact: true })).toHaveCount(0)
+  await page.locator('.uni-actionsheet__action .uni-actionsheet__cell').click()
+  await expect(page.locator('.uni-actionsheet_toggle')).toHaveCount(0)
+
+  // Saved: it is a reply like any other, and an answer to it names the id the server gave it.
+  release()
+  await expect(pending.locator('.cs-reply-btn')).toHaveCount(1)
+  await pending.locator('.cs-reply-btn').click()
+  await sheet.locator('textarea').fill('Now it can be answered')
+  await sheet.locator('.ci-send').click()
+  await expect.poll(() => writes.length).toBe(2)
+  expect(writes[1]).toMatchObject({ parent_comment_id: top.id, reply_to_comment_id: '44444444-4444-4444-8444-000000000101' })
+
+  // The same at the head of a thread: a new reply to the update, held.
+  await expect(sheet.locator('.cs-item-child', { hasText: 'Now it can be answered' }).locator('.cs-reply-btn')).toHaveCount(1)
+  gate.hold = holdNext()
+  await sheet.locator('textarea').fill('A new thread on its way')
+  await sheet.locator('.ci-send').click()
+  await expect.poll(() => writes.length).toBe(3)
+  const head = sheet.locator('.cs-item:not(.cs-item-child)', { hasText: 'A new thread on its way' })
+  await expect(head).toBeVisible()
+  await expect(head.locator('.cs-reply-btn')).toHaveCount(0)
+  release()
+  await expect(head.locator('.cs-reply-btn')).toHaveCount(1)
+
+  // Nothing that was sent named a reply by an id the server never issued.
+  for (const write of writes) {
+    expect(String(write.reply_to_comment_id ?? '')).not.toMatch(/^temp-/)
+    expect(String(write.parent_comment_id ?? '')).not.toMatch(/^temp-/)
+  }
 })

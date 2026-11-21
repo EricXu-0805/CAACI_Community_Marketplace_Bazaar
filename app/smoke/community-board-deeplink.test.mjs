@@ -166,9 +166,9 @@ test('a hidden topic is shared as a notice about itself: no title, no text and n
     goneState: { value: 'hidden' }, postId: { value: POST }, hiddenTopicShare,
   }
   assert.deepEqual(hook(postPage, 'onShareAppMessage', dependencies)(),
-    { title: 'HIDDEN · APP', path: `/pages/post/index?id=${POST}`, imageUrl: '/static/app-icon-512.png' })
+    { title: 'HIDDEN · APP', path: `/pages/post/index?id=${POST}`, imageUrl: '/static/app-icon-192.png' })
   assert.deepEqual(hook(postPage, 'onShareTimeline', dependencies)(),
-    { title: 'HIDDEN · APP', query: `id=${POST}`, imageUrl: '/static/app-icon-512.png' })
+    { title: 'HIDDEN · APP', query: `id=${POST}`, imageUrl: '/static/app-icon-192.png' })
 })
 
 test('mini-program temporary HTTP photos upload while owned draft URLs are reused in order', async () => {

@@ -2,6 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import ts from 'typescript'
+import { MINI_UNUSED_WEB_ASSETS } from '../mini-program-assets.mjs'
+import { MINI_SHARE_IMAGES } from '../../scripts/verify-miniprogram.mjs'
 
 const source = path => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8')
 const compile = input => `data:text/javascript;base64,${Buffer.from(ts.transpileModule(input, {
@@ -17,9 +19,21 @@ test('a hidden topic is shared without its title, its text or any of its images'
   const said = { 'plaza.hidden': 'HIDDEN', 'app.name': 'APP' }
   const id = '33333333-3333-4333-8333-333333333333'
   assert.deepEqual(hiddenTopicShare(id, key => said[key]), {
-    title: 'HIDDEN · APP', path: `/pages/post/index?id=${id}`, query: `id=${id}`, imageUrl: '/static/app-icon-512.png',
+    title: 'HIDDEN · APP', path: `/pages/post/index?id=${id}`, query: `id=${id}`, imageUrl: '/static/app-icon-192.png',
   })
-  assert.ok(readFileSync(new URL('../src/static/app-icon-512.png', import.meta.url)).length > 0)
+})
+
+// The card is only ever sent from the Mini Program, so its image has to be a file that package
+// contains: a PNG (WeChat takes no SVG there) which the build does not delete as web-only, and
+// which the check of the built package looks for (scripts/verify-miniprogram.mjs).
+test('the image on a hidden topic\'s share card is a small PNG the Mini Program package keeps', () => {
+  const image = hiddenTopicShare('33333333-3333-4333-8333-333333333333', key => key).imageUrl.replace(/^\//, '')
+  assert.match(image, /^static\/[\w-]+\.png$/)
+  assert.ok(!MINI_UNUSED_WEB_ASSETS.includes(image), `${image} is deleted from the WeChat package`)
+  assert.ok(MINI_SHARE_IMAGES.includes(image), `${image} is not looked for in the built package`)
+  // The main package has a size budget; this file is in it.
+  const bytes = readFileSync(new URL(`../src/${image}`, import.meta.url)).length
+  assert.ok(bytes > 0 && bytes <= 30 * 1024, `${image} is ${bytes} bytes`)
 })
 
 test('topic input keeps legacy updates nullable and rejects incomplete/invalid metadata', () => {

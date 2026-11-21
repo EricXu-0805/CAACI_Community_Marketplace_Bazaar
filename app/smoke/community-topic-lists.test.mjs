@@ -148,6 +148,52 @@ test('what stands in for an unreadable topic: hidden with the author\'s own copy
   assert.deepEqual(state.reported, [{ error: down, context: { tags: { source: 'post.gone_state' } } }])
 })
 
+// The "my topics" page's own load(), run with a double for everything it closes over.
+function myTopicsLoad(dependencies) {
+  const script = source('pages/my-topics/index.vue').match(/<script setup lang="ts">([\s\S]*?)<\/script>/)[1]
+  const ast = ts.createSourceFile('page.ts', script, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS)
+  const load = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'load')
+  assert.ok(load, 'the page declares load()')
+  const body = ts.transpileModule(`let loadEpoch = 0\n${load.getText(ast)}\nreturn load`, {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
+  }).outputText
+  return new Function(...Object.keys(dependencies), body)(...Object.values(dependencies))
+}
+
+// A list that could not be read shows the retry, and the failure is reported like the other
+// topic reads. One that fails after a newer read has started belongs to nobody and is dropped.
+test('my topics reports a list read that failed, once, under its own source', async () => {
+  const down = { code: '57014', message: 'canceling statement due to statement timeout' }
+  const reported = []
+  const page = { view: { value: 'mine' }, rows: { value: [] }, loading: { value: true }, loadError: { value: false } }
+  const answers = []
+  const load = myTopicsLoad({
+    ...page, currentUser: { value: { id: USER } }, awaitAuthReady: async () => {}, requireAuth: () => true,
+    fetchOwnTopics: () => answers.shift()(), fetchMarkedTopics: async () => [],
+    captureException: (error, context) => { reported.push({ error, context }) },
+  })
+
+  answers.push(() => Promise.reject(down))
+  await load()
+  assert.deepEqual([page.loading.value, page.loadError.value, page.rows.value], [false, true, []])
+  assert.deepEqual(reported, [{ error: down, context: { tags: { source: 'my-topics.load' }, level: 'warning' } }])
+
+  // The retry reads again; a read that works reports nothing.
+  answers.push(async () => [row('a', '2026-11-01T00:00:00Z')])
+  await load()
+  assert.deepEqual([page.loadError.value, page.rows.value.map(topic => topic.id)], [false, ['a']])
+
+  // Two reads in flight: the older one fails after the newer one has answered.
+  let fail
+  answers.push(() => new Promise((_, reject) => { fail = reject }), async () => [row('b', '2026-11-02T00:00:00Z')])
+  const older = load()
+  await load()
+  fail(down)
+  await older
+  assert.deepEqual([page.loadError.value, page.rows.value.map(topic => topic.id)], [false, ['b']])
+  assert.equal(reported.length, 1)
+})
+
 test('a list line is the title, or the first 40 characters of an update', () => {
   assert.equal(topicRowTitle({ title: '  Desk wanted  ', content: 'x' }), 'Desk wanted')
   assert.equal(topicRowTitle({ title: null, content: `${'字'.repeat(45)}\nsecond line` }), '字'.repeat(40))

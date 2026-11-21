@@ -227,7 +227,7 @@
                 <view class="pa-name-row">
                   <text class="pa-name" role="button" @click.stop="goSeller(post.user_id)">{{ post.profile?.nickname || t('app.user') }}</text>
                   <UBadge v-if="post.is_official" variant="official" :label="t('plaza.official')" />
-                  <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini" label="Illini" />
+                  <UBadge v-else-if="post.profile?.is_illini_verified" variant="illini" :label="t('profile.illiniVerified')" />
                   <view v-if="post.is_pinned" class="badge-pinned"><text class="badge-pinned-label">{{ t('plaza.pinned') }}</text></view>
                 </view>
                 <text class="pa-time">{{ formatTime(post.created_at) }}</text>
@@ -296,7 +296,7 @@
               lazy-load
               :alt="localize(pi.item.title_i18n, pi.item.title)"
             />
-            <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+            <view v-else class="aic-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
             <view class="aic-body">
               <text class="aic-title">{{ localize(pi.item.title_i18n, pi.item.title) }}</text>
               <text class="aic-price">{{ listingPriceLabel(pi.item, t) }}</text>
@@ -461,7 +461,7 @@
                 <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                 <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
               </view>
-              <text v-if="!commentingPost.locked_at" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
+              <text v-if="!commentingPost.locked_at && !isPendingComment(thread.parent)" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
             </view>
           </view>
         </view>
@@ -500,7 +500,7 @@
                   <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                   <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
                 </view>
-                <text v-if="!commentingPost.locked_at" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
+                <text v-if="!commentingPost.locked_at && !isPendingComment(child)" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
               </view>
             </view>
           </view>
@@ -656,7 +656,7 @@
             class="ca-img"
             mode="aspectFill"
           />
-          <view v-else class="ca-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+          <view v-else class="ca-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
           <view class="ca-body">
             <text class="ca-title">{{ localize(it.title_i18n, it.title) }}</text>
             <text class="ca-price">{{ listingPriceLabel(it, t) }}</text>
@@ -728,7 +728,7 @@
             mode="aspectFill"
             lazy-load
           />
-          <view v-else class="as-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">集</text></view>
+          <view v-else class="as-img u-thumb-ph u-thumb-ph--fill"><text class="u-thumb-ph-seal sm">玉</text></view>
           <view class="as-body">
             <text class="as-title-text">{{ localize(it.title_i18n, it.title) }}</text>
             <text class="as-price">{{ listingPriceLabel(it, t) }}</text>
@@ -1488,6 +1488,10 @@ const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
 const commentSubmitting = ref(false)
 let commentSheetEpoch = 0
+// A reply is in the list from the moment it is sent, under an id made up here ('temp-…'), until
+// the server's row replaces it. That id names nothing the server knows, so such a reply cannot be
+// answered yet: no reply button, no reply in its menu, and a tap that still arrives is ignored.
+const isPendingComment = (c: PostComment) => c.id.startsWith('temp-')
 // Sheet 打开时 input 不应自动 focus（避免键盘挡评论列表）。
 // inputFocused 由用户显式动作驱动：tap 输入框 / tap 评论 / tap "回复" / tap 长按菜单"回复"。
 // 关闭 sheet / 切评论 reset 回 false，保证下次打开时键盘不会自动起。
@@ -2361,7 +2365,7 @@ async function onSubmitComment() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
-  if (replyRestricted.value || commentingPost.value?.locked_at) return
+  if (replyRestricted.value || commentingPost.value?.locked_at || isPendingComment(c)) return
   replyTo.value = c
   inputFocused.value = true
 }
@@ -2428,9 +2432,10 @@ async function onCommentLongPress(c: PostComment) {
       }
     },
   })
-  // A closed update takes no replies, so its menu does not offer one.
+  // A closed update takes no replies, and a reply still being sent cannot be answered yet, so
+  // neither menu offers one.
   const actions: Array<{ label: string; run: () => void }> = [
-    ...(commentingPost.value?.locked_at ? [] : [{ label: t('plaza.reply'), run: reply }]),
+    ...(commentingPost.value?.locked_at || isPendingComment(c) ? [] : [{ label: t('plaza.reply'), run: reply }]),
     ...(isMine
       ? [{ label: t('plaza.delete'), run: confirmDelete }]
       : [

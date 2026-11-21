@@ -7,6 +7,7 @@
       <LanguageToggle class="auth-language" />
       <image class="logo-mark-img" :src="logoSrc" :alt="t('app.name')" mode="aspectFit" />
       <text class="app-name" role="heading" aria-level="1">{{ t('app.name') }}</text>
+      <text class="app-formerly">{{ t('app.formerly') }}</text>
       <text class="app-desc">{{ t('app.desc') }}</text>
     </view>
 
@@ -970,6 +971,9 @@ async function onSubmit() {
   font-family: var(--font-serif);
   font-size: 24px; font-weight: 600; color: var(--ink);
   margin-top: 16px; letter-spacing: -0.02em;
+}
+.app-formerly {
+  font-size: 12px; color: var(--text-secondary); margin-top: 4px;
 }
 .app-desc {
   font-size: 13px; color: var(--text-subtle); margin-top: 5px;

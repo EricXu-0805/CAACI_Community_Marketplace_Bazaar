@@ -82,6 +82,7 @@ import { useI18n } from '../../composables/useI18n'
 import { onAccountTransition } from '../../composables/accountScope'
 import { useTopicLists, topicRowTitle, type TopicListRow } from '../../composables/useTopicLists'
 import { formatTime, navigateBackOr } from '../../utils'
+import { captureException } from '../../utils/sentry'
 
 type View = 'mine' | 'watched' | 'saved'
 const VIEWS: View[] = ['mine', 'watched', 'saved']
@@ -146,9 +147,10 @@ async function load() {
       : await fetchMarkedTopics(userId, view.value === 'saved' ? 'save' : 'watch')
     if (epoch !== loadEpoch) return
     rows.value = next
-  } catch {
+  } catch (err) {
     if (epoch !== loadEpoch) return
     loadError.value = true
+    captureException(err, { tags: { source: 'my-topics.load' }, level: 'warning' })
   } finally {
     if (epoch === loadEpoch) loading.value = false
   }
@@ -156,7 +158,7 @@ async function load() {
 
 function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/profile/index' })) }
 function goSavedItems() { uni.redirectTo({ url: '/pages/my-items/index?tab=saved' }) }
-// A hidden topic opens too: its page shows the author their own text and the reason.
+// A hidden topic opens too: its page shows the author their own text under a general notice, and no reason.
 function openTopic(id: string) { uni.navigateTo({ url: `/pages/post/index?id=${encodeURIComponent(id)}` }) }
 </script>
 

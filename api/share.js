@@ -194,8 +194,8 @@ async function responseForRequest(req, boundary) {
   const usable = text => typeof text === 'string' && text.trim() && (preferredLang !== 'en' || !/[㐀-鿿ぁ-ヿ가-힣]/.test(text))
   const displayTitle = usable(translatedTitle) ? translatedTitle : item?.title
   const displayDescription = usable(translatedDescription) ? translatedDescription : item?.description
-  const title = item ? `${statusPrefix}${namePrefix}${displayTitle} · ${priceLabel}` : 'Illini Market · UIUC Community Marketplace'
-  const desc = item ? (truncate(displayDescription || '', 160) || `${priceLabel} on Illini Market`) : 'Buy, sell, and connect with the UIUC community. 校园二手交易与交流。'
+  const title = item ? `${statusPrefix}${namePrefix}${displayTitle} · ${priceLabel}` : '玉米地 · 社区'
+  const desc = item ? (truncate(displayDescription || '', 160) || `${priceLabel} on Cornfield`) : 'Chinese community in Illinois, now open in Champaign-Urbana. 伊利诺伊华人论坛，现开放香槟地区。'
   const fallbackImage = `${site}/static/app-icon-512.png`
   const image = safeImageUrl(item?.images?.[0], fallbackImage, site)
   // A well-formed id that reads back nothing is a deleted or hidden listing,
@@ -226,7 +226,7 @@ async function responseForRequest(req, boundary) {
 <meta property="og:image" content="${escapeHtml(image)}">
 <meta property="og:image:alt" content="${escapeHtml(title)}">
 <meta property="og:url" content="${escapedCanonical}">
-<meta property="og:site_name" content="Illini Market">
+<meta property="og:site_name" content="玉米地 Cornfield">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(desc)}">
@@ -234,7 +234,7 @@ async function responseForRequest(req, boundary) {
 <meta http-equiv="refresh" content="0; url=${escapeHtml(destination)}">
 <style>body{margin:0;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f2f2f7;color:#636366}</style>
 </head>
-<body><p lang="en">Loading Illini Market...</p></body>
+<body><p lang="en">Loading Cornfield...</p></body>
 </html>`
 
   return new Response(html, {
