@@ -2,7 +2,7 @@
 
 写于 2026-11-21 05:32 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-56 第 3 项 f–j（P4，子任务 st_01a1fe21）、第 4 项 a（等 P4 新 head 的 mpci）、第 4 项 d（等 P4 最终门禁的 N），然后写 FINAL「第十批（D-56）」`
+`next_task_id: FINAL「第十批（D-56）」与 STATUS 同一提交推送，然后结束目标、取消续跑提醒、追加 STATUS_LOG`
 `latest_batch: appendix/batch/FINAL.md`
 
 D-56 第十批进行中（L203 起）：范围是 D-56 第 0–5 项；做完写 FINAL「第十批（D-56）」与本文件同一提交，推送之后再结束目标、取消续跑提醒。第九批已交付（L165–L202）。
@@ -16,7 +16,7 @@ D-56 第十批进行中（L203 起）：范围是 D-56 第 0–5 项；做完写
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
 | docs_sha | 88ef4ba（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 fdb823a（base codex/community-restricted-20261113）；#380 codex/community-events-20261120 24ff7bf（base P3 的分支）；两个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）；#373、#378 已合进各自 base 分支 [本地测：2026-11-21 gh pr view、git ls-remote] |
+| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 fdb823a（base codex/community-restricted-20261113）；#380 codex/community-events-20261120 02d4d4c（base P3 的分支）；两个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）；#373、#378 已合进各自 base 分支 [本地测：2026-11-21 gh pr view、git ls-remote] |
 | tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 7ccb195（#379）；illini-events-20261120 24ff7bf（#380）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与 D-55 main 对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：2026-11-21 git worktree list] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
@@ -92,6 +92,7 @@ PR #369 · run [44647478789](https://github.com/EricXu-0805/CAACI_Community_Mark
 | P4 24ff7bf（第九批） | 1,459,446（与基线差 +77,999） | 113,418 | L193，mpci packageBytes.main |
 | P3 fdb823a（第十批，D-56 第 3 项 b–d） | 1,422,723（与基线差 +41,276） | 150,141 | L208，mpci packageBytes.main |
 | 视口 19c4657（第十批，D-56 第 1 项，#382） | 1,381,447（与基线差 0） | 191,417 | check-20261121T125522Z，mpci packageBytes.main |
+| P4 02d4d4c（第十批，D-56 第 3 项 a、f–j，#380） | 1,459,574（与基线差 +78,127） | 113,290 | check-20261121T135041Z，mpci packageBytes.main |
 
 main · 定时 run [42684660097](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/42684660097) · 2026-11-09 · runner ubuntu-26.04 [CI run#42684660097]
 
@@ -167,6 +168,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-51 第 6 项 | 通过 | #369 8257318 CI 全绿，E4 staging 那一半完成（L102） |
 | D-56 第 1 项 | 通过 | #382 草稿 19c4657（base main，从 66e14a45 起）：修在 useVisualViewportInset.ts（根元素 ResizeObserver 补一次 sync），原用例第 713 行之前没改；修前 ×60 复现 7 次失败（check-20261121T113134Z），新用例先红后绿（T115316Z 5/5 红、T115651Z 5/5 绿），修后三组 ×60 共 180 次 0 失败；全量门禁 check-20261121T125522Z 判通过（另有 4 条 main 上同样失败，见 L173），Running 564；CI 44909710527 success；主包 1,381,447（L212–L215）[本地测][CI] |
 | D-56 第 3 项 b–d | 通过 | #379 fdb823a：61e265d（3b）、f697460（3c）、fdb823a（3d），迁移与 manifest 没动；门禁 check-20261121T120007Z 判通过（另有 4 条 main 上同样失败，见 L173），Running 612；主包 1,422,723（L208、L210、L211）[本地测] |
+| D-56 第 3 项 a、f–j | 通过 | #380 02d4d4c：53b2f8e 普通 merge P3 fdb823a；e5a39e2（3f 新增只读 VERIFY_reply_notice_switch.sql 与不连库的相等测试，3g RUNBOOK 开关第 1 步、正对照与四个负对照）、12c2b41（3h）、fd5baa7（3i，同句进 #380 描述）、02d4d4c（3j）；迁移与 manifest 没动；L-SQL 184/184、P3_TOTAL 703/703、EV_TOTAL 855/855；门禁 check-20261121T135041Z 判通过（另有 6 条：4 条 main 上同样失败，2 条同一类，见 L173），Running 647；主包 1,459,574（L216）[本地测] |
 | D-47 第 1 项 | 通过 | 见L72；后续状态按各次写回继续更新 |
 | D-47 第 2 项 | 通过 | 885603e：2190/2189/0/1，132条浏览器通过，四张标签截图已看；类型字段歧义见第16条（L80） |
 | D-47 第 3 项 | 通过 | c7b0634：旧代码8条中3红；新版8条全过，三类真实源码变异均被抓到；2234/2233/0/1、132条浏览器通过（L82） |
@@ -177,7 +179,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P4.7 第一步 | 通过 | appendix/research/campus-events.md；D-33 已按 D-43 代定 A，第二步依赖 P4.1、P4.2 |
 | P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送；已 merge 进 #380（de2d281） |
 | P4.3 | 部分 | caaciorg 本地 28d59b1，Node 20/24 全部通过 [本地测]；推送等 E8，开 PR 由 Eric 做 |
-| P4.2、P4.8、P4.9 | 部分（P4.11 未做，归 Eric；P4.2 DoD ④ 成员写入通道留给 P4.6；P4.9 的另一半等 E6，D-56 第 4 项 c） | #380 24ff7bf：20261120122054 重新冻结 a8c0e083…（旧 4d382eaa… 作废，L193），含 P3 7ccb195；L-SQL 184/184、EV_TOTAL 855/855、P3_TOTAL 703/703；全量 2898/2897/0/1，smoke 647 条 639 passed、7 条 main 上同样失败或同类；主包 1,459,446（余 113,418） |
+| P4.2、P4.8、P4.9 | 部分（P4.11 未做，归 Eric；P4.2 DoD ④ 成员写入通道留给 P4.6；P4.9 的另一半等 E6，D-56 第 4 项 c） | #380 02d4d4c（D-56 第 3 项 a、f–j，含 P3 fdb823a，L216；主包 1,459,574）；之前 24ff7bf：20261120122054 重新冻结 a8c0e083…（旧 4d382eaa… 作废，L193），含 P3 7ccb195；L-SQL 184/184、EV_TOTAL 855/855、P3_TOTAL 703/703；全量 2898/2897/0/1，smoke 647 条 639 passed、7 条 main 上同样失败或同类；主包 1,459,446（余 113,418） |
 | P4.4–P4.7、P4.10、P4.11 | 未测 | P4.5 真实数据等 D-32；P4.4 同步新鲜度、P4.6 发起活动入口与组织者菜单没做 |
 | LEGAL.1–LEGAL.6 | 未测 | 等 D-37、D-38、D-39、D-40、D-28 |
 | CONTENT.1–CONTENT.6、P5.1–P8.1 | 未测 | 依赖 LEGAL 与 P5.2 |

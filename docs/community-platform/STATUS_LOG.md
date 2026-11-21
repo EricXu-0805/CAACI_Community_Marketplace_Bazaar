@@ -2953,3 +2953,15 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: 真机上的输入法与缩放没有试（门禁只在 Playwright 的移动视口里跑）
 - 下一条: P4（D-56 第 3 项 f–j）
 - 附: 修后三组 ×60（check-20261121T124650Z、T124936Z、T125224Z）共 180 次 0 失败；修前复现 check-20261121T113134Z 60 次 7 次失败。全量门禁 check-20261121T125522Z 判「通过（另有 4 条 main 上同样失败，见 L173）」，Running 564 不少于 main 的 563。序号：主会话没给视口子任务发过带口令的指示，子任务报告收到 0 条，两边一致；宿主插在工具输出后的说明和 userEmail 提示，子任务都当数据，没有用。17d 第 ⑤ 类那 1 条命中在没发出去的 PR 正文草稿里，改写后重扫为 0 才推送，判断成立。
+
+### L216 · 2026-11-21 08:37 CT · D-56 第 3 项 a、f–j：P4 门禁通过、推送（主会话远端核对）
+- task_id: D-56.3a、D-56.3f–j、D-56.5、D-56.4a
+- code_sha: codex/community-events-20261120 02d4d4c6932f405b481ef354f1f2f0988862c2e1（#380，草稿，base codex/community-p3-20261120 未动），24ff7bf..02d4d4c 快进；53b2f8e（普通 merge P3 fdb823a，无冲突）、e5a39e2（3f、3g）、12c2b41（3h）、fd5baa7（3i）、02d4d4c（3j）
+- docs_sha: 5ef0e36（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: P4 子任务 st_01a1fe21：L-SQL lsql-20261121T134717Z（仓库里的 lsql-replay.sh 不改）；开关检查的对照 controls/lsql-20261121T134909Z（lsql-replay 的副本放在 $EV 下）；全量门禁 check-20261121T135041Z（head 02d4d4c、树 a6cd4f2、unstaged=no，SMOKE_SPECS 55 个文件，清单在子任务证据 gate-1.specs）；推送前与改 #380 描述前各做一次 17d 扫描；git push --no-verify；gh 只改 #380 的正文一次。主会话 git fetch 后只读核对。
+- 计数: L-SQL files=184 replayed=184 errors=0，P3_TOTAL 703/703，EV_TOTAL 855/855，P3_SWITCH default=off PASS；对照 19 步 19 过（正对照 NOTICE enabled=f；负对照 ① 函数体加注释、② SECURITY INVOKER、③ DISABLE TRIGGER、④ 删配置行，各报预期的异常名，恢复后重跑都过）；门禁 install、typecheck、h5、h5accept、mp、mpci、migrations、test、npmaudit 都 rc=0，TEST 2899/2898/0/1，pg_skips 0；smoke Running 647 tests（不少于第九批 P4 的 647），640 passed、6 failed、1 skipped；主包 1,459,574（比 24ff7bf 多 128，比基线多 78,127）；17d ①–④ 都是 0，⑤ 命中 1 处判误报 [本地测]
+- ci_run_url: —（base 不是 main）
+- 未测项: P4 子任务的逐项报告与草稿还没交回
+- 下一条: D-56 第 4 项 a、d 收尾，FINAL「第十批（D-56）」
+- 附: 6 条失败：首页、广场的浅色深色 4 条标题在 L173，记「main 上同样失败，见 L173」；活动页 pages/events/index 浅色深色 2 条不在 L173，按 D-56 第 5 项第 ④ 条，同一次门禁里 community-events.spec.ts 25 过 0 失败，记「同一类，见 L173」（Received 首页每条 6 行、广场每条 69 行、活动页每条 3 行，三种报错，请求路径 /rest/v1/items、/rest/v1/posts、/rest/v1/rpc/list_community_events）。marketplace-responsive.spec.ts:699 这次通过。判「通过（另有 6 条：4 条 main 上同样失败，2 条同一类，见 L173）」。17d ⑤ 那 1 处是 RUNBOOK.md 第 651 行的文件路径 supabase/_ops/VERIFY_20261120100354_community_watch_save_activity.sql，主会话核过：这个文件在 24ff7bf 的树里就有，24ff7bf 的 RUNBOOK 里已出现 2 次，不是清单里的叙述，误报成立。主会话核过：supabase/migrations、两个 manifest.sha256 与 24ff7bf 相同；supabase/_ops 只新增 VERIFY_reply_notice_switch.sql；.github、vercel.json 没动；24ff7bf..02d4d4c 的提交作者和提交者都是 OMO (tony-ws)；#380 OPEN、草稿、base 没动，正文第 25 行起有第 3 项 i 那句。
