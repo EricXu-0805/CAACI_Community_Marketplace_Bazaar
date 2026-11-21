@@ -2381,3 +2381,27 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: P4 第一阶段的 head 没有判「通过」，也没有推送（L175）
 - 下一条: P3 重新冻结推送后，P4 第二阶段
 - 附: 9 条失败的归类：首页、广场 4 条与 main 同标题（L173）；pages/events/index 2 条只有 L173 那三种报错，记成同一类，IGNORE 不改、不加 stub；「smoke route list stays in sync with pages.json」只差 pages/my-topics/index 这一个路由，这个路由按 D-55 第 2 项 j 由 P3 加、经合并带过来，P4 不另加（两边都加会出现同名用例），这一条和 read-failure-states :462、:501 两条都归 P3。[OMO自决] 18b2997 的提交说明里有一句措辞接近核查清单的说法（转述，不是原文），提交还没推送；不为它改写历史，第二阶段在推送前把那处 spec 注释改成只引编号。另：P4 子任务报告，它的工具结果末尾出现过冒充主会话的文字，其中一条要它换一个账号邮箱；它把这些都当数据，没有照做。按安全补充，这里只记一笔，不写那个邮箱，来源不明；主会话发给子任务的指令都经 task_send，从不要求换账号。
+
+### L179 · 2026-11-21 00:58 CT · 重新冻结：20261120100354_community_watch_save_activity（D-55 第 2 项 b；撤销冻结记在 L167）
+- task_id: D-55.2a、D-55.2b、D-55.2c–e（P3.1）
+- code_sha: codex/community-p3-20261120 7ccb1952cc6e7e5ad11b250fe9fdea592e367d99（#379，草稿，base 未动），已推送，042427c..7ccb195 快进；重新冻结提交 e8aecfb
+- docs_sha: 8143e84（本次写回之前材料分支的 HEAD）
+- 环境: 本地、L-SQL
+- 命令: P3 子任务 st_01a1fc57：2a 照 D-55 第 2 项 a 步骤 0–5（8254931 是 -s ours 05e0959，e67481c 是 merge 3778952）；按 2c、2d、2e 原地改迁移；lsql-replay（lsql-20261121T061338Z）；全量门禁 check-20261121T061456Z（head 7ccb195，unstaged=no，SMOKE_SPECS 为 app/smoke 全部 spec 去掉两个）；git push --no-verify（推送前日志即这次门禁）；主会话在远端只读核对
+- 计数: 旧 sha256 aedc91521ca8961906a7578ae6caac52fa59f8c9bc53911eec65d46e1b619137 作废 → 新 sha256 c2a18ee842128e7943293529ca182a5e714e7ca8f942d5d4d4d5bb9a2ed951bf，manifest 只换这一行、与磁盘一致；L-SQL files=183 replayed=183 errors=0，P3_TOTAL 703/703，P3_SWITCH default=off PASS，场景 reply-notices、ordering、governance、reply-restore 都 PASS；门禁 install、typecheck、h5、h5accept（52 passed）、mp、mpci、migrations、test、npmaudit 都 rc=0，TEST 2799/2798/0/1，pg_skips 0；smoke Running 612 tests，607 passed、4 failed、1 skipped（28.5 分钟），4 条失败都是 L173 里 main 上同样失败的标题；主包 1,422,595 字节 [隔离环境 L-SQL][本地测]
+- ci_run_url: —（base 不是 main）
+- 未测项: P3 子任务的逐项报告（2c–2j 各条、红绿日志）还没交回
+- 下一条: P4 第二阶段（合 7ccb195，重算 md5，3b–3e，重新冻结）
+- 附: 主会话在远端核过：20261112120000 仍 e2a85c3e…、20261114015420 仍 0dc2ceaf…；3778952、05e0959、042427c 都是 7ccb195 的祖先；ci.yml 与 main 相同；#379 OPEN、草稿、base codex/community-restricted-20261113。门禁按 D-55 第 5 项判「通过（另有 4 条 main 上同样失败，见 L173）」。7ccb195 里同时带了客户端修复（分享图、发送中的回复、重试后的锚点、我的话题）。对 P4 的影响：P3 迁移里只有 public.admin_execute_community_governance(text,uuid,text,text,jsonb) 的函数体变了，md5(prosrc) e6ddf89b765c544d9434a843478ccf42 → fedabd431c829a5b2303e4a46961a855；没有表、列、约束、授权、策略、触发器、索引变化，加锁顺序不变。
+
+### L180 · 2026-11-21 00:58 CT · 撤销冻结：20261120122054_community_events（D-55 第 2 项 b）
+- task_id: D-55.2b（P4.2）
+- code_sha: codex/community-events-20261120 本地 374ebe5（#380 远端仍是 4c1c666，草稿）
+- docs_sha: 8143e84（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: —（只记录；做法照 D-54 第 2 项 a，Eric 的 PR 留言由 Eric 2026-11-20 03:17 CT 的总批准代替）
+- 计数: 当前冻结值 4d382eaa74dae57146614167a99c7d48c24ecbdce3c72aaed96d513a242efd4f（L161 的重新冻结）在重新冻结后作废；FINAL 第八批不改
+- ci_run_url: —（base 不是 main）
+- 未测项: —
+- 下一条: P4 子任务第二阶段：合 P3 7ccb195，按新的 P3 重算钉的 md5，做 3b–3e，L-SQL 后重新冻结
+- 附: 原因：mig:P4-B8-4（审计列表白名单，改进前必修）、mig:P4-B8-1（location 非空）、mig:P4-B8-5（全天活动结束约束）、mig:P4-B8-3（fixture 授权说明）；另外 P3 的 admin_execute_community_governance 函数体变了，P4 迁移里钉住它的 md5 必须重算。条件：supervisor 2026-11-21 03:36Z 只读核过，两边账本都没有这个迁移。撤销冻结期间 P4 分支不推送；3g、3h 的本地提交和重新冻结一起推（L175、L178）。L-SQL 照 STOP-14 共 5 次不过或到截止还没冻结：按 D-55 第 2 项 b 的 P4 例外处理（P4 合入的 P3 与上次冻结时依据的 P3 之间 supabase 有差异，退回旧字节会和钉的 P3 函数体对不上，所以那时 P4 这次合并以来的提交都不推送，远端保持 4c1c666，3a–e、h 记【跳过】）。STATUS 的 P4.2 在重新冻结之前写「重开（D-55 2b）」。
