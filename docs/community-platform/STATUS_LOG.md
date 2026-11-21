@@ -2779,3 +2779,80 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: —
 - 下一条: P4 推送或判不过
 - 附: 口令不写进本条。P3 有新 head，所以 P4 合 fdb823a；supabase/migrations、supabase/_ops 或 manifest 上冲突就 abort，改在 24ff7bf 上做 f–j（D-56 第 3 项 a）。
+
+### 草稿 P3-A · 2026-11-21 05:50 CT · [OMO自决] D-56 第 3 项 b（client:P3-B9-1）：广场回复面板的待发行不显示点赞、不弹菜单（先红后绿）
+- task_id: D-56.3b（client:P3-B9-1）
+- code_sha: codex/community-p3-20261120 本地 7ccb195 → 61e265db3042b159e6d9bfc3afe506abe3ba495a（2 个文件：app/src/pages/plaza/index.vue、app/smoke/community-reply-target.spec.ts，+38 −12）；supabase/、.github、vercel.json 没有改动
+- docs_sha: 3706bc70（写草稿时材料分支的 HEAD）
+- 环境: 本地、L-UI（容器 pw1.65-node22-pg17；每次都是 `umask 022; flock ~/work/illini-dev-env/.containers.lock …`，在后台会话里起、轮询退出文件；worktree 的 `stat -c %a` 是 755，磁盘余 279G）
+- 命令: 四次定向 smoke 放在同一次持锁里顺序跑（`flock … bash ~/work/evidence/D56/p3/3b/batch.sh`，容器仍是一次一个）。每次先把 spec 和页面源码换成 `~/work/evidence/D56/p3/3b/` 下留档的那一份，再 `SMOKE_SPECS="community-reply-target.spec.ts" run-checks.sh ~/work/illini-p3 smoke`。留档的五份：spec-stage1.ts（最终 spec 去掉两行「待发行行 `.cs-like-btn` 个数为 0」）、spec-final.ts（最终 spec）、plaza-base.vue（7ccb195 的原文件）、plaza-partial.vue（最终源码去掉楼那一行的点赞条件）、plaza-final.vue（最终源码）；sha256 在 3b/states.sha256，每次用了哪两份记在 3b/batch.out。提交前另跑 `SMOKE_SPECS="community-reply-target.spec.ts:110 --repeat-each=20" run-checks.sh ~/work/illini-p3 typecheck smoke`。
+- 计数: 五次的 SMOKE_SPECS 都只有 1 个文件：community-reply-target.spec.ts。① 先红 check-20261121T114728Z（spec-stage1 + 没改的源码）：Running 3 tests，2 passed、1 failed，失败在第 152 行的计数断言，Expected: 1 / Received: 2。② 先红 check-20261121T114825Z（spec-final + 没改的源码）：Running 3 tests，2 passed、1 failed，失败在第 132 行（楼中楼待发行行的 `.cs-like-btn` toHaveCount(0)），Expected: 0 / Received: 1，Timeout 10000ms。③ 对照 check-20261121T114852Z（spec-final + 只差楼那一行条件的源码）：Running 3 tests，2 passed、1 failed，失败在第 180 行（楼的待发行行 `.cs-like-btn` toHaveCount(0)），Expected: 0 / Received: 1。④ 转绿 check-20261121T114919Z（spec-final + 最终源码）：Running 3 tests，3 passed。⑤ check-20261121T115505Z：typecheck rc=0；Running 20 tests，20 passed（改过的那条用例连跑 20 次）。①–⑤ 的日志头都是 unstaged=yes（当时还没提交）；④ 用的两份文件与提交 61e265d 里的逐字节相同（cmp 核过）。[隔离环境 L-UI]
+- ci_run_url: —（推送见草稿 P3-D）
+- 未测项: 小程序没有在真机或开发者工具里看（长按和 ContextMenu 走的是同一个 onCommentLongPress，用例按的是 ContextMenu）。待发行行的操作行在保存前是空的，这一行会矮一点，保存后点赞和回复出现时它下面的内容会下移一次（按样式估约 20px，没有量）；D-56 没要求处理，没有加样式。
+- 下一条: 3c（草稿 P3-B）
+- 附:
+  - 源码改了三处：楼和楼中楼的 `.cs-like-btn` 各加 `v-if="!isPendingComment(…)"`；onCommentLongPress 里待发行行不出「删除」（原来已不出「回复」），菜单没有可选项时直接返回、不调 showActionSheet；isPendingComment 上面的注释照实改。待发行行一定是自己的（onSubmitComment 填的是当前用户的 id），所以它的菜单是空的，不弹。isPendingComment 的声明一个字没动（community-restricted-account.test.mjs 会取它出来编译）。
+  - spec 的改法（原第 134–140 行）：第 137 行原来断言「删除」可见，改成断言没有弹菜单；第 139 行点取消那一步去掉；第 138、140 行保留；注释照实改。原第 131、159 行后面各加一条 `.cs-like-btn` 个数为 0；原第 144、161 行后面各加一条点赞按钮出现；原第 144 行那一行上按 ContextMenu，断言「删除」「回复」都在，再点取消。用例标题没改，没有新增用例，smoke 的条数不变。
+  - [OMO自决] D-56 第 3 项 b「不弹」的对照。选择：在页面里给 uni.showActionSheet 包一层计数，先在待发行行上按 ContextMenu，再在旁边已保存的那一行（别人的回复）上按 ContextMenu，等它的菜单出现（「举报回复」可见），点取消，最后断言计数是 1。理由：页面上看不出「没弹」，只看 DOM 可能在菜单还没来得及出现时就通过；两次按键走同一个处理函数，登录态已定时 awaitAuthReady 返回的是已完成的 promise，第二个菜单出现时第一次按键一定已经处理完；计数必须正好是 1，同时也证明这层计数数得到页面自己的调用（① 里读到的是 2）。第 138 行（菜单里没有「回复」）留在按下 ContextMenu 之后、对照之前，放到对照之后会读到旁边那一行菜单里的「回复」；计数断言排在它后面，没改的源码因此红在计数上（①），不是红在别处。证据：①–④ 的日志。撤回：`git revert 61e265d`。
+  - [OMO自决] ③ 是多做的一次对照：没改的源码先红在第 132 行，走不到第 180 行，所以另用一份只差楼那一行条件的源码，让第 180 行单独变红。
+
+### 草稿 P3-B · 2026-11-21 05:56 CT · [OMO自决] D-56 第 3 项 c（mig:P3-B9-1）：post_comments 读取扫描再认出六种写法（每种一个临时对照，先红后撤）
+- task_id: D-56.3c（mig:P3-B9-1）
+- code_sha: 61e265d → f6974603228eeb7f334b2f70f1d1cc37f4ef720e（1 个文件：scripts/app-direct-table-acl-boundary.test.mjs，+147 −33）
+- docs_sha: 3706bc70（写草稿时材料分支的 HEAD）
+- 环境: 本地（容器 pw1.65-node22-pg17，持锁、后台会话、轮询退出文件；755；279G）
+- 命令: 八次放在同一次持锁里顺序跑（`flock … bash ~/work/evidence/D56/p3/3c/batch.sh`），每次 `RUN_CMD="node --test scripts/app-direct-table-acl-boundary.test.mjs" run-checks.sh ~/work/illini-p3 cmd`。先把没改的测试文件（7ccb195 的原文件）放回去、六个临时对照文件全放上，跑一次；再换成改过的测试文件，六个对照一次只放一个，各跑一次；最后不放对照跑一次。对照文件是 app/src/d56-control-constant.ts、d56-control-cast.ts、d56-control-generic.ts、d56-control-bracket.ts、d56-control-column.ts 和 api/d56-control-rest.js，每个只有两三行，跑完即删，没有进任何提交（留档在 `~/work/evidence/D56/p3/3c/controls/`，sha256 在 3c/states.sha256）。
+- 计数: 改之前 check-20261121T115440Z（原测试 + 六个对照都在）：tests 8 / pass 8 / fail 0，六种写法原测试都看不见。改之后先红，每次都是 tests 8 / pass 7 / fail 1，失败的是「no shipped read of post_comments asks for every column」，报出的正是当次那个对照文件：常量 check-20261121T115443Z（d56-control-constant.ts line 3: .select('*') reads every column）；`as any` check-20261121T115446Z（d56-control-cast.ts line 2，同一句）；泛型参数 check-20261121T115449Z（d56-control-generic.ts line 2，同一句）；方括号调用 check-20261121T115452Z（d56-control-bracket.ts line 2，同一句）；REST 没写 select= check-20261121T115455Z（api/d56-control-rest.js line 2: a request for post_comments without select= reads every column）；点名 reply_to_comment_id check-20261121T115459Z（d56-control-column.ts line 2: .select('id, reply_to_comment_id') names reply_to_comment_id, which no API role may read）。撤掉对照 check-20261121T115502Z：tests 8 / pass 8 / fail 0。[本地测]
+- ci_run_url: —（推送见草稿 P3-D）
+- 未测项: 表名经对象成员、函数参数或字符串拼接传入的，扫描仍然不跟（提交说明里写了）。过滤条件里点名 reply_to_comment_id 的（例如 `.eq('reply_to_comment_id', …)`）在库里同样会被 42501 拒绝，D-56 只列了 `.select(...)`，这次没有加。
+- 下一条: 3d（草稿 P3-C）
+- 附:
+  - 认出的写法：from 的调用可以写成 `.from(…)`、`?.from(…)`、`.from<T>(…)`、`['from'](…)`；参数可以是字面量、后面带类型断言的字面量（`as any`，以及别的 `as …`、`satisfies …`），或者常量；接在后面的调用（例如 select）也认后两种写法。REST：`/rest/v1/post_comments` 或 `post_comments?…` 的请求里没有 `select=` 的记为读全部列，有 `select=` 的照列清单查。列清单（`.select()` 的参数、嵌在别的表里的 `post_comments(...)`、REST 的 `select=`）里点名 reply_to_comment_id 的都报。
+  - 原有的 10 条「必须拒绝」和 5 条「必须接受」的样例一条没动，报错文字也没变；新加 11 条拒绝样例、8 条接受样例和 3 条跨文件常量的断言，都放在原来那一条用例里，没有新增用例，node 的 tests 总数不变。
+  - [OMO自决] D-56 第 3 项 c 列的写法之外多做了两点。① 常量不只认同一个文件里的：别的已发布源码文件里值为 post_comments 的常量，在其他文件里按名字也认（本文件有同名常量时以本文件的为准）；理由：表名常量多半是从别的文件引进来的。② REST 请求只要没有 `select=` 就报，分不出读和写；现在 app/src 和 api 里没有这种请求，以后真要这样写入，要在这个测试里明确放行。证据：上面的日志和测试文件里的样例。撤回：`git revert f697460`。
+
+### 草稿 P3-C · 2026-11-21 05:57 CT · [OMO自决] D-56 第 3 项 d（mig:P3-B9-2）：仓库根 RUNBOOK 的 Community P3 段补 57014 的处理
+- task_id: D-56.3d（mig:P3-B9-2）
+- code_sha: f697460 → fdb823a24363e2acb939e1a208b5c230bdeecb38（1 个文件：RUNBOOK.md，+8 −1）；supabase/_ops 没有改
+- docs_sha: 3706bc70（写草稿时材料分支的 HEAD）
+- 环境: 本地（只改文档）
+- 命令: 编辑 RUNBOOK.md「Schema-coupled release order」里 Community P3 的第 1 步，接在 40P01、55P03 那一句后面；写之前核过迁移第 47 行是 `SET LOCAL statement_timeout = '60s';`
+- 计数: 加了两句（8 行，最长 77 列）：因 57014 停下时整个事务同样已经回滚，但原样重跑会在同一条语句再次超时，所以不要重跑；记下报错停在哪条语句，另跑只读的 `SELECT count(*) FROM public.posts;` 和 `SELECT count(*) FROM public.post_comments;`，交 release owner 定。读 RUNBOOK.md 的测试随全量门禁一起跑（草稿 P3-D）。
+- ci_run_url: —（推送见草稿 P3-D）
+- 未测项: 没有量生产库的行数，60s 够不够没有判断；这两句只写超时之后怎么办。
+- 下一条: 全量门禁（草稿 P3-D）
+- 附: [OMO自决] D-56 写的是「交 Eric 定」。仓库根 RUNBOOK.md 全文不出现人名，做决定的人一律写 the release owner（「Reply notice switch」一节同样），所以这一句写成交 release owner 决定。撤回：`git revert fdb823a`，或者只把这个称呼换掉。没有给这两句话加测试（文档措辞不用测试钉住）。
+
+### 草稿 P3-D · 2026-11-21 06:45 CT · D-56 第 5 项、第 3 项 a：P3 新 head fdb823a 的全量门禁、17d 扫描与推送
+- task_id: D-56.5（P3）、D-56.3a
+- code_sha: codex/community-p3-20261120 fdb823a24363e2acb939e1a208b5c230bdeecb38（树 eac10e6；比远端旧 head 7ccb195 多 3 个提交：61e265d、f697460、fdb823a）；已推送，#379 仍是草稿，base 没动
+- docs_sha: 3706bc70（写草稿时材料分支的 HEAD）
+- 环境: 本地、L-UI（容器 pw1.65-node22-pg17；`umask 022; flock ~/work/illini-dev-env/.containers.lock …`，在后台会话里起、轮询退出文件；跑之前 worktree 的 `stat -c %a` 是 755，磁盘余 279G）
+- 命令: `umask 022; flock ~/work/illini-dev-env/.containers.lock env SMOKE_SPECS="$(cd ~/work/illini-p3/app/smoke && ls *.spec.ts | grep -v -e compiled-chunk-recovery -e compiled-draft-persistence | tr '\n' ' ')" run-checks.sh ~/work/illini-p3 install typecheck h5 h5accept mp mpci migrations test smoke npmaudit`（check-20261121T120007Z，日志头 head=fdb823a、tree=eac10e6、unstaged=no）。推送前 `python3 ~/work/evidence/D56/p3/scan17d.py 7ccb195…`（基准是远端 head），再 `git push --no-verify origin codex/community-p3-20261120`。
+- 计数: STEP install、typecheck、h5、h5accept、mp、mpci、migrations、test、npmaudit 都是 rc=0，smoke rc=1。TEST tests=2799 pass=2798 fail=0 skipped=1 pg_skips=0（与 7ccb195 那次相同，本批没有新增 node 用例）。h5accept 52 passed。SMOKE_SPECS 53 个文件（清单见附）；Running 612 tests（与 P3 上一次全量门禁相同，本批没有新增 smoke 用例）；607 passed、4 failed、1 skipped，smoke 1701 秒。主包（mpci）1,422,723 字节，比 7ccb195 的 1,422,595 多 128，比 main 基线 1,381,447 多 41,276。npm audit 0 个漏洞；迁移校验 all-migration-checksums-ok。[本地测] [隔离环境 L-UI]
+- ci_run_url: —（推送后 #379 的 CI 没有等）
+- 未测项: marketplace-responsive.spec.ts:699 这一次通过了，没有可判的；它在 P3 上的不稳定照 D-56 第 0 项，修复等下次合 main 带进来。3b、3c 各自的未测项见草稿 P3-A、P3-B。
+- 下一条: P4 合 P3 新 head fdb823a（D-56 第 3 项 a），由主会话起
+- 附:
+  - 判定（D-56 第 5 项）：通过（另有 4 条 main 上同样失败，见 L173）。4 条失败的标题都在 L173 里，四个条件逐条核过：① 标题去掉前缀后是 `page sweep [light] › <路由> loads clean` 或 `page sweep [dark] › <路由> loads clean`；② 报错都来自 pages.smoke.spec.ts 第 201 行 `console errors on <路由>` 的 toEqual([])；③ Received 的每一行都属于那三种，没有别的行；④ 不涉及 pages/events/index。
+    - page sweep [light] › pages/index/index loads clean：Received 6 行（三种各 2 行），请求路径 /rest/v1/items（2 次）。
+    - page sweep [light] › pages/plaza/index loads clean：Received 66 行（三种各 22 行），请求路径 /rest/v1/posts（20 次）、/rest/v1/items（2 次）。
+    - page sweep [dark] › pages/index/index loads clean：Received 6 行（三种各 2 行），请求路径 /rest/v1/items（2 次）。
+    - page sweep [dark] › pages/plaza/index loads clean：Received 66 行（三种各 22 行），请求路径 /rest/v1/posts（20 次）、/rest/v1/items（2 次）。
+  - 17d 扫描（基准 7ccb195；范围是 3 个新提交的作者、提交者、提交说明和 diff 的新增行，共 259 行）：① 身份不符 0；② 不在基准树里的邮箱 0，号池邮箱 0（pool-emails.txt 在、非空）；③ 绝对家目录路径 0；④ 凭据形状 0；⑤ 与核查清单连续 8 个英文词相同 0，连续 15 个汉字相同 0。扫描脚本先用一份故意带各类命中的临时输入试过，②–⑤ 每一类都报得出来（只输出个数和位置），临时输入已删。提交之前也对工作区的改动和三份提交说明草稿扫过一遍，同样全是 0。输出留在 ~/work/evidence/D56/p3/scan17d-push.out。
+  - 推送：`7ccb195..fdb823a  codex/community-p3-20261120 -> codex/community-p3-20261120`（2026-11-21 12:41:47Z，普通 fast-forward，没有 force）；`git ls-remote` 核到远端 head 是 fdb823a。三个提交的作者和提交者都是 OMO (tony-ws)，提交说明里没有 trailer。supabase/、.github、vercel.json 相对 7ccb195 没有改动。~/work/evidence/D56/p3/PUSHED.txt 已写。
+  - 逐项状态：client:P3-B9-1 已修（61e265d）；mig:P3-B9-1 已修（f697460）；mig:P3-B9-2 已修（fdb823a）；没有【跳过】。
+  - 按 RUNBOOK §12 第 17 条：本子任务没有收到带口令的 task_send，序号清单为空。宿主接在工具输出后面的提示（工具清单、连接器说明、宿主的提醒）都当数据，没有照做，其中出现的邮箱没有用、没有抄。
+  - SMOKE_SPECS 的 53 个文件：a11y-authenticated.spec.ts、a11y-keyboard-journey.spec.ts、a11y-tree.spec.ts、admin-feedback-journeys.spec.ts、admin-first-unlock.spec.ts、admin-support-reply.spec.ts、auth-init-timeout-recovery.spec.ts、avatar-upload-failure.spec.ts、back-and-unknown-routes-are-not-dead-ends.spec.ts、chat-item-snapshot-repaints.spec.ts、community-board-states.spec.ts、community-home.spec.ts、community-post-partial-attach.spec.ts、community-post-topics.spec.ts、community-reply-notices.spec.ts、community-reply-target.spec.ts、community-report-queue.spec.ts、community-report-views.spec.ts、community-sort-tabs.spec.ts、community-tab-label.spec.ts、community-topic-row.spec.ts、community-watch-save.spec.ts、contrast-runtime.spec.ts、default-avatar-paints-in-both-themes.spec.ts、document-language-follows-the-reader.spec.ts、feed-pagination-recovery.spec.ts、gate-survives-hash-navigation.spec.ts、inbox-actions.spec.ts、input-preview-supplement.spec.ts、item-storage-cleanup.spec.ts、listing-numbers-are-readable.spec.ts、login-cancel-navigation.spec.ts、marketplace-responsive.spec.ts、moderation-chat-gate.spec.ts、motion-preference.spec.ts、notification-titles-are-one-language.spec.ts、notifications-compat.spec.ts、otp-cooldown-follows-the-clock.spec.ts、pages.smoke.spec.ts、plaza-attach-picker-is-modal.spec.ts、private-chat-media.spec.ts、product-publishing-discovery.spec.ts、protected-page-auth-startup.spec.ts、publish-ad-soft-gate.spec.ts、publish-validates-before-upload.spec.ts、read-failure-states.spec.ts、restricted-account-notice.spec.ts、search-items-compat.spec.ts、search-timeout-recovery.spec.ts、seller-publish-responsive.spec.ts、street-public-english.spec.ts、token-refresh-keeps-you-put.spec.ts、translate-control-needs-a-session.spec.ts。
+
+### L210 · 2026-11-21 06:44 CT · P3 子任务交回（D-56 第 3 项 b–d 全部完成），序号核对
+- task_id: D-56.3b–d、D-56.2
+- code_sha: codex/community-p3-20261120 fdb823a（#379，草稿，base 未动）
+- docs_sha: 4287fc2（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 读 P3 子任务 st_01a1fde0 的报告与草稿（L210–L209）
+- 计数: client:P3-B9-1 已修（61e265d）、mig:P3-B9-1 已修（f697460）、mig:P3-B9-2 已修（fdb823a），没有【跳过】；收到的带口令指示 0 条，主会话也没发过，两边一致 [本地测]
+- ci_run_url: —（base 不是 main）
+- 未测项: 待发行行在保存前约矮 20px（按 CSS 估算，没量）；小程序没在真机或开发者工具里看；3c 认不出经对象成员、函数参数或拼字符串得到的表名，也不查 .eq('reply_to_comment_id', …) 这类过滤
+- 下一条: P4、视口
+- 附: [OMO自决]（P3 子任务）3b 的「不弹菜单」对照：给 uni.showActionSheet 计数，先在待发行行、再在旁边已保存的行上按 ContextMenu，断言计数正好是 1；3c 除了列出的写法，还认出另一个文件里定义的表名常量、方括号或泛型的链式调用，并把没有 select= 的 REST 请求一律判失败（静态扫描分不出读写）；3d 那句写「发布负责人」，因为仓库根 RUNBOOK 不点名任何人。宿主插在工具输出后面的提示（账号上下文、工具与连接器提示）子任务都当数据，没有用里面的地址。
