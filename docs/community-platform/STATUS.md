@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-21 03:06 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-21 03:11 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-55 第 1 项（印章，子任务）、第 2 项（P3，子任务）、第 3 项 g、h（P4，子任务；a–e 等 P3 重新冻结），第 0、3f、4 项（主会话）`
+`next_task_id: 无（第九批已交付；不从 BACKLOG 往下接，等下一条指示）`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-55 第九批进行中（L165 起）：范围是 D-55 第 0–5 项；做完写 FINAL「第九批（D-55）」与本文件同一提交，推送之后再结束目标、取消续跑提醒。第八批已交付（L143–L164）。
+D-55 第九批已交付（L165–L201）：FINAL「第九批（D-55）」与本文件同一提交。第八批已交付（L143–L164）。
 
 ## 版本
 
@@ -15,9 +15,9 @@ D-55 第九批进行中（L165 起）：范围是 D-55 第 0–5 项；做完写
 | code_sha | 37789526983b71d2ac154961cb4c7bd92104ce70（main 当前 HEAD，#372 的 squash，树与 f5dd044 相同；C-final 在它上面通过，L152–L153） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 085fa30（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 042427c（base codex/community-restricted-20261113）；#380 codex/community-events-20261120 4c1c666（base P3 的分支）；两个都是草稿，D-54 第 2、3 项已做完。已合进 main：#369、#371、#372、#374、#375、#376、#377；#373、#378 已合进各自 base 分支 [本地测：2026-11-20 gh pr view] |
-| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 042427c（#379，D-55 改动中）；illini-events-20261120 4c1c666（#380，D-55 改动中）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与 D-55 main 对照，只跑不提交） [本地测：2026-11-21 git worktree list] |
+| docs_sha | 88ef4ba（本次写回之前材料分支的 HEAD） |
+| 其余代码分支（远端 head） | #381 codex/community-brand-seal-20261121 c1cacb6（base main，CI run 44880544567 全绿）；#379 codex/community-p3-20261120 7ccb195（base codex/community-restricted-20261113）；#380 codex/community-events-20261120 24ff7bf（base P3 的分支）；三个都是草稿，D-55 第 1–3 项已做完。已合进 main：#369、#371、#372、#374、#375、#376、#377；#373、#378 已合进各自 base 分支 [本地测：2026-11-21 gh pr view、git ls-remote] |
+| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 7ccb195（#379）；illini-events-20261120 24ff7bf（#380）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与 D-55 main 对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：2026-11-21 git worktree list] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -223,3 +223,4 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 28. 上线进度（【supervisor 做】，L141、L146、D-54 第 0 项）：supervisor 独立核过第七批的 vite（#378）、#376、P1.11/P1.12 第 4 次、C-369、P1.8 级联；P3、P4 的核查发现在本机清单里（不进仓库，只引编号），按 D-54 第 2 项修。生产 15:04Z 应用 20261112120000 并 VERIFY；#369、#375、#374 依次 squash 进 main（ad986c9、e9c2604、4900722）；staging 15:14Z、生产 16:02Z 应用 20261114015420 并 VERIFY；#377 加 -s ours 合并 9be6a56 后 squash 进 main 05e0959。#375 在 15:08:01Z 改 base 之后于 15:08:27Z 被关闭、15:08:29Z 重开（L141 漏记，D-54 第 1 项 e）。生产 H5 仍是 7b18f20 的部署，没有发布。#372 由 OMO 手工合 main 05e0959（f5dd044，CI 44778423032 全绿）后由 supervisor squash 进 main 3778952；C-final 在 3778952 上 cfinal-1 通过（P1.11 3 passed、P1.12 1 passed，A/B/C 都未受限，L152–L153）。接下来是受监督发布（supervisor 做）。 D-55 第 0 项补：2026-11-20 17:24Z #372 squash 进 main（3778952），C-final 在 3778952 上通过，main 上 run 44783052160 七个 job 全过；2026-11-21 01:16Z supervisor 按 docs/SUPERVISED_RELEASE.md 把 3778952 发布到生产 H5（候选部署就绪、release readiness 通过后，Vercel 自己把两个生产域名指过去，supervisor 没有调 promote；www 与候选的 deployment-identity 都核到 3778952）；同一晚 supervisor 在 Supabase 生产后台把 Confirm signup、Reset password 两个认证邮件模板换成 3778952 的文件内容（正文 sha256 与 git 一致），SMTP 发件人名改成「玉米地 Cornfield」，发信地址和密钥没动。#374（15:32:29Z 改 base、15:32:31Z 关闭、15:32:33Z 重开）、#377（16:03:34Z、16:03:36Z、16:03:38Z）改 base 之后也各被关闭、重开过一次。账本：supervisor 2026-11-21 03:36Z 只读核过，生产 146 行、staging 199 行，都没有 20261120100354、20261120122054。
 29. E6：COMMUNITY_OFFICIAL_PROFILE_ID 没设之前，P3.5 的 set_post_official 和 P4.9 的 create_event_discussion 返回 409 official_profile_not_configured、不落库；set_post_featured、hide_event、unhide_event 不依赖它（D-54 第 1 项 b 更正）。设好后补这两项的另一半。
 30. P4.6 的产品问题：被隐藏或下架的成员活动仍占组织者两个名额之一，作者自己删掉讨论帖的不占，要不要改由 Eric 定（L140）。
+31. main 上同样失败、本批记录不修的 smoke 用例（D-55 第 5 项，L173、L192）：pages.smoke 首页、广场浅色深色 4 条（容器里解析不了 stub 的 supabase 地址；分支上 pages/my-topics/index、pages/events/index 的同类失败同理）；marketplace-responsive.spec.ts:699（main 3778952 上时过时不过，单跑 63 次失败 10 次）。这几条不按 BACKLOG §14 第 3 行停，修要基于 main，另起一项。

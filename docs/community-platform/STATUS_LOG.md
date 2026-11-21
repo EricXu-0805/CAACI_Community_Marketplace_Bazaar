@@ -2671,3 +2671,15 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
   - 原因没有坐实：失败时聊天页那个 fixed 盒子高 480，正好是 830 −（1180 − 830），也就是视口从 1180 缩到 830 之后底部仍留着 350px 的让位（useVisualViewportInset 算的 inset）。加了记录的副本（每次 resize 事件记下 clientHeight、innerHeight、visualViewport.height，比原用例多一次 page.evaluate 往返）在 main 上跑 40 次（check-20261121T085952Z），一次都没卡住，40 次都是 window.resize → visualViewport.resize，读到的都是 830。所以只能说和时序有关，哪一步读到了旧值没有量到。副本留在 ~/work/evidence/D55/p4/flake/d55-viewport-probe.spec.ts。这是 main 自己的代码和用例，建议另开一条从 main 起的修复，不在 #380 上改。
   - 阶段 A 那次门禁里不过的三条现在都通过：`smoke route list stays in sync with pages.json`、read-failure-states.spec.ts:462 和 :501；pages/my-topics/index、pages/event/detail/index 的浅色深色巡检也都过。
   - #380 的描述只用 `gh api -X PATCH` 改了正文，一次。改了：两条迁移的新 sha256 和作废的旧值、发布顺序（含本迁移应用之后「Reply notice switch」第 1 步怎么做）、D-55 的合并（本 PR 现在包含 P3 7ccb195）、D-55 的改动（只引编号）、D-55 的证据表、冻结说明、主包字节数、「没做的」里关于审计列表的一条。改前改后的正文在 ~/work/evidence/D55/p4/pr380-body-before-B.md、pr380-body-after-B.md。~/work/evidence/D55/p4/PHASEB.txt 已写。
+
+### L201 · 2026-11-21 03:11 CT · D-55 第九批收尾：FINAL「第九批（D-55）」与 STATUS 同一提交
+- task_id: D-55.6（收尾）
+- code_sha: 印章 c1cacb6（#381）；P3 7ccb195（#379）；P4 24ff7bf（#380）；都是草稿
+- docs_sha: 88ef4ba（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 把第九批报告追加到 appendix/batch/FINAL.md 末尾（八节，每项一行）；改 STATUS 的抬头、next_task_id、批次行、docs_sha、分支与 worktree 行，阻塞项加第 31 条；同一提交推送
+- 计数: D-55 第 0–5 项都已做完，没有【跳过】；两个迁移都已重新冻结（c2a18ee8…、a8c0e083…）[源码 SHA]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44880544567（#381）
+- 未测项: 真机与微信开发者工具、邮件客户端、后台审计页的浏览器查看
+- 下一条: 推送之后结束目标、取消续跑提醒 sch_fcd80faa62c5，再追加一条
+- 附: 两处只追加、不改的记录：L181–L188 的标题在追加时编号后面少了「 · 」，标题仍以「### Lnn」开头；L193 与 L197 记的是同一次 P4 重新冻结（20261120122054，1474eec，4d382eaa… → a8c0e083…），逐项细节以 L197 为准。遗留：一次性 worktree ~/work/evidence/D55/p3/red-e67481c 有未提交改动，不强删（L189）。第 2 项 b 的具名例外到本次推送为止。

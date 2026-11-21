@@ -835,3 +835,106 @@ D-54.5（C-final） ｜ 通过 ｜ 3778952（main，准备发布的提交） ｜
 | D-54 第 2 项 e（【supervisor 定】，待 Eric 确认） | 作者看不到管理员写的下架理由原文，只看一句通用说明 | 管理员写的自由文本可能含举报人信息或内部判断 | 恢复给作者看的理由（list_own_hidden_posts 重新返回 reason，客户端显示 SPEC 6.10 的「原因：{原因}」） |
 | D-54 第 2 项 m（【supervisor 定】，待 Eric 确认） | 成员路径 ends_at − starts_at ≤ 30 天；caaci、campus、partner 不设上限 | 防止成员活动长期挂在列表里；校历多场次活动要能跨更长时间 | 去掉 create_member_event 与 member guard 上的 30 天上限 |
 | D-54 第 2 项 c（【supervisor 定】） | 两种新通知由默认关闭的开关控制 | 迁移一应用，旧客户端和摘要邮件就会显示原始键（mig:P3-M1） | 把开关打开，或在以后的迁移里去掉开关 |
+
+## 第九批（D-55）
+
+按 DECISIONS D-55 第 0–5 项做（材料分支 f0e7bb87）。【硬】条照旧，只放开第 2 项 b 的具名例外（RUNBOOK §12 第 9c 条，只限 20261120100354 与 20261120122054）。【Eric 选】是 Eric 的选择，【supervisor 做】是 supervisor 依 Eric 2026-11-20 03:17 CT 的总批准代做或代定的事，OMO 都不做。supervisor 的核查清单只在 tony-ws 本机，本节只引编号。逐条细节在 STATUS_LOG L165–L201。`latest_batch` 不变。
+
+### ① 起止与 SHA 范围
+
+- 起止：2026-11-20 22:19 CT（D-55，材料分支 f0e7bb87）至 2026-11-21 03:11 CT。
+- docs_sha：f0e7bb8 → 本节所在提交。
+- main：3778952（#372 的 squash；2026-11-21 01:16Z 已由 supervisor 发布到生产 H5）。
+- 代码分支（都是草稿，没有转 ready、没有改 base、没有合并）：印章 codex/community-brand-seal-20261121 c1cacb6（#381，base main，从 3778952 起）；P3 codex/community-p3-20261120 042427c → 7ccb195（#379）；P4 codex/community-events-20261120 4c1c666 → 24ff7bf（#380，含 P3 7ccb195）。
+- 冻结迁移：20261112120000 仍是 e2a85c3e…、20261114015420 仍是 0dc2ceaf…；20261120100354 aedc9152… → c2a18ee8…（P3，L179）、20261120122054 4d382eaa… → a8c0e083…（P4，L193、L197）都已重新冻结，manifest 与磁盘一致；两个旧值作废，第八批 FINAL 不改；supervisor 2026-11-21 03:36Z 只读核过两条都不在 staging、生产的账本里，本批没有收到「进了账本」的通知。
+
+### ② 完成的任务
+
+```text
+D-55.6 ｜ 通过 ｜ —（不改代码） ｜ f0e7bb8 ｜ 本地 ｜ L165 ｜ create_goal 1 个；schedule_prompt list 为空后建 3600 秒续跑提醒 sch_fcd80faa62c5，始终只有 1 个 ｜ — ｜ — ｜ — ｜ D-55.0
+D-55.0 ｜ 通过 ｜ —（只改文档） ｜ 085fa30 ｜ 本地 ｜ L172 ｜ 先 gh pr view 核 #372、#374、#377（MERGED）与 #379、#380（OPEN 草稿）；照抄进 STATUS 阻塞第 1、28 条：3778952 发布到生产 H5、两个认证邮件模板与发件人名、#374 与 #377 改 base 后的关闭重开、账本只读核查 ｜ — ｜ — ｜ — ｜ D-55.3f
+D-55.3f ｜ 通过 ｜ —（只改文档） ｜ 085fa30 ｜ 本地 ｜ L171 ｜ BACKLOG P4.7 DoD 末尾追加 ④（campus 撤下与 unhide 同一条件）、⑤（没有 DTEND 的全天活动结束于下一个香槟本地 00:00，配 2027-03-14 夹具），原有条目一字不改；ENGINEERING §9.3 同步一句 ｜ — ｜ — ｜ — ｜ D-55.4
+D-55.4b–d ｜ 通过 ｜ —（只改文档） ｜ 085fa30 ｜ 本地 ｜ L169、L170、L172 ｜ b STATUS 阻塞第 1、4、14、28 条，worktree 行，CI 现状；c 追加更正 L156–L159 的 docs_sha（822c737）、L154 与 L157 是同一次重新冻结；d ENGINEERING §5.5 成员资格、授权两行、守卫 UPDATE 范围、保留词与链接两行，§5.3 两行的收件人与排除 ｜ — ｜ — ｜ — ｜ D-55.4e
+D-55.2（P3） ｜ 通过（P3.7 归 Eric、未做；P3.6 DoD ② 部分） ｜ 7ccb195（#379，草稿，base 未动；含 main 3778952） ｜ 9706043 之前 ｜ 本地、L-SQL ｜ L167、L179 ｜ 2a 照步骤 0–5：8254931（-s ours 05e0959）、e67481c（merge 3778952，42 个文件，supabase 没变）；2c–2e 原地改 20261120100354 后重新冻结 aedc9152… → c2a18ee8…（restore_content 补 answered_at、last_activity_at；post_comments 列授权说明与静态测试；锁顺序注释与仓库 RUNBOOK 的 P3 应用段）；2f–2j 客户端；L-SQL 183/183、P3_TOTAL 703/703、P3_SWITCH 默认关、四个场景 PASS；门禁 check-20261121T061456Z 全部 rc=0（smoke 除外），TEST 2799/2798/0/1，smoke 612 条 607 passed、4 条 main 上同样失败（L173）；主包 1,422,595（比 main 多 41,148，余 150,269） ｜ —（base 不是 main） ｜ 真机与微信开发者工具没跑 ｜ ④ P3.7 ｜ D-55.3
+D-55.1 ｜ 通过（等 supervisor 合并、发布、重贴模板） ｜ c1cacb6（#381，草稿，base main；从 3778952 起） ｜ 49ab77b 之前 ｜ 本地、CI ｜ L174、L190、L191 ｜ 6 个文件 7 处印章「集」改「玉」、send-illini-code.js:226 注释同改；brand-name-boundary 加「>集< 0 次、>玉< 正好 7 次」先红后绿；门禁 check-20261121T065555Z（不跑 h5accept、mp）各步 rc=0（smoke 除外），TEST 2664/2663/0/1，smoke 563 条 558 passed、4 条 main 上同样失败（L173）；主包 1,381,447（与 main 相同） ｜ run 44880544567 success（L191） ｜ 邮件在真实客户端里的样子 ｜ ④ supervisor 那一行 ｜ —
+D-55.3（P4） ｜ 通过（P4.11 归 Eric、未做） ｜ 24ff7bf（#380，草稿，base 未动；含 P3 7ccb195） ｜ b3ae372 之前 ｜ 本地、L-SQL ｜ L175–L178、L180、L193、L196–L200 ｜ 3g（18b2997）、3h（374ebe5）先红后绿；合 P3 7ccb195（17bce7b，只有 manifest 冲突、按磁盘重算）；按新 P3 重算钉的 md5；3b–3e 在同一提交 1474eec，20261120122054 重新冻结 4d382eaa… → a8c0e083…：审计白名单加 event_hidden、event_unhidden 与开关第 1 步一句、location 非空、全天结束约束、fixture 授权例外照实写明；先红 5/18、后绿 22/22；L-SQL 184/184、EV_TOTAL 855/855、P3_TOTAL 703/703、P3_SWITCH 默认关；P3、P4 都回放后 P3 VERIFY 停在 admin_list_moderation_audit_log，与 D-55 预计一致；门禁 check-20261121T073957Z 除 smoke 外 rc=0，TEST 2898/2897/0/1，smoke 647 条 639 passed、7 条 main 上同样失败或同类；第二次合并是空合并，这次就是最终门禁；主包 1,459,446（余 113,418） ｜ —（base 不是 main） ｜ 后台审计页里两种新事件只显示通用的一行，没在浏览器里看 ｜ ④ P4.11 ｜ —
+D-55.4a、4g ｜ 通过 ｜ — ｜ — ｜ 本地 ｜ 本节 ④、⑥ ｜ a：⑥ 写明 P3 没有 SPEC 6.10 的「申诉」按钮，④ 写清现有申诉流程缺什么；g：「另记」四件在 ⑥ 各一句，旧文件名、旧条目不改 ｜ — ｜ — ｜ — ｜ —
+D-55.4e ｜ 通过 ｜ 24ff7bf（3b 为 1474eec） ｜ 1becf2a 之前 ｜ 本地 ｜ L194 ｜ client:P4-m2、m5、m8、m13 没改部分的理由补记；client:P4-m10 由 3b 修掉、改记已修，第八批 ⑥「P4 分支改不了」不成立；gates:P3-P4-m1–m3 即本批 gates:B8-3、B8-2、B8-1；mig:P4-m9 两半的去向 ｜ — ｜ — ｜ — ｜ —
+D-55.4f ｜ 通过 ｜ main 3778952、c1cacb6、7ccb195、24ff7bf ｜ 1becf2a 之前 ｜ 本地 ｜ L195 ｜ P3.8 DoD ③：main 1,381,447（基线，L173）；印章 1,381,447（差 0）；P3 1,422,595（+41,148）；P4 1,459,446（+77,999，余 113,418，不少于 65,536） ｜ — ｜ — ｜ — ｜ —
+D-55.5 ｜ 通过（另有 main 上同样失败的用例，L173、L192） ｜ 同上 ｜ — ｜ 本地 ｜ L168、L173、L174、L179、L190、L192、L193 ｜ main 对照只在 ~/work/confirm-final-3778952 跑一次（47 个 spec，563 条：558/4/1）；三个最终 head 用同一条命令（SMOKE_SPECS 写在 $RC 同一行，Running N：印章 563、P3 612、P4 647），失败按用例标题对照；gates:B8-1–3 不改、写理由（L168）；public sweep 推算进 ④；L-SQL 见 D-55.2、D-55.3 两行 ｜ #381 run 44880544567 ｜ — ｜ — ｜ 收尾
+```
+
+### ③ [OMO自决] 清单
+
+| 编号 | 事项 |
+|---|---|
+| L167 | P4 迁移这次先不撤销冻结：第 3 项 g、h 在冻结状态下做、单独推送；P4 合了 P3 的新 head、要改迁移之前再记「撤销冻结」 |
+| L168 | gates:B8-1、B8-2 不改 run-checks.sh（同一批的证据要出自同一份脚本，中途换要停掉所有排队的门禁）；gates:B8-3 不改 scripts/admin-token-mint.test.mjs（门禁环境本来要求 umask 022，每次门禁前核 755） |
+| L165–L166 | 第 1 项与 main 对照交给一个子任务，第 2、3 项各一个子任务，各用自己的分支和目录，每个分支只由对应子任务推送；子任务不写材料分支，STATUS_LOG 草稿放证据目录，由主会话追加 |
+| L174 | 印章分支第一次门禁被调用方的超时中途终止、留下孤儿容器：主会话只停了自己的孤儿容器，改在后台会话重跑；给 P3、P4 子任务发了「门禁一律在后台会话里跑、从 eval 内核轮询」的规则 |
+| L175、L178 | P4 第一阶段（3g、3h）不单独推送：read-failure-states 与路由同步那三条归 P3、经合并带来，合进来之前判不了通过；3g、3h 与第二阶段的重新冻结一起推 |
+| L190 | 印章子任务三次在门禁没跑完时交回，第二次门禁、推送、开 PR 都由主会话做 |
+| L192 | marketplace-responsive.spec.ts:699 在 main 上也时过时不过（两个 head 各单跑 4 次，结果一致），按「main 上同样失败」记，不修、不挡 P4 推送；对 main 单跑一个 spec 是判归属，不是第二次 main 对照 |
+| L196、L198 | P4 合 P3 时 manifest 冲突按磁盘重算；mig:P4-B8-3 选「照实写明」夹具在事务外临时授权的例外，不改用夹具专用角色（那样写入就不是以 authenticated 身份跑） |
+| L169、L193 | L167 的 code_sha 写坏（rev-parse 一次传了三个 ref）另追加更正；L193（主会话）与 L197（子任务草稿）记的是同一次 P4 重新冻结，逐项细节以 L197 为准 |
+
+### ④ 等 Eric 或 supervisor 的清单
+
+| 要做的一件事 | 谁 | 解锁 |
+|---|---|---|
+| P3.7：在 staging、生产应用 20261120100354 并 VERIFY（照 E4 第 2 步核对本节 ① 的新 sha256）；之后把 #379 的 base 改到 main 跑 CI（STATUS 阻塞第 12 条；改 base 之前只普通 git merge origin/main，D-55 第 2 项 l） | Eric | #379 合并 |
+| P4.11：在 staging、生产应用 20261120122054 并 VERIFY（新 sha256 见 ①）；该库应用了 P4 之后 P3 的 VERIFY 按设计会失败，开关第 1 步改看 VERIFY_20261120122054（P4 分支仓库根目录 RUNBOOK.md） | Eric | #380 合并 |
+| E6：设 COMMUNITY_OFFICIAL_PROFILE_ID。没设之前 set_post_official 与 create_event_discussion 返回 409 `official_profile_not_configured`、不落库；set_post_featured、hide_event、unhide_event 不依赖它 | Eric | P3.5、P4.9 的另一半 |
+| 打开回复通知开关（private.community_reply_notice_config）：前提是 P3 迁移已应用、P3 的 H5 已发布、P3 版小程序也已发布；staging 与生产分开打开，各记一次；SQL 与核对步骤在仓库根目录 RUNBOOK.md「Reply notice switch」 | Eric（或 supervisor 在 Eric 具名批准后） | P3.3 上线 |
+| 内容下架的申诉：现有申诉流程只认封禁（submit_appeal、decide_appeal 作用在 public.suspensions 的 appeal_note 上），没有内容下架的申诉对象，也没有 decide_appeal 的恢复路径；P3 作者视图只写「如有异议，请联系站务」（report:B8-1） | Eric | P3.6 DoD ② |
+| 问题：要不要另设给作者看的下架理由选项（现在作者只看到一句通用说明） | Eric | P3.6 DoD ② |
+| 问题：成员活动结束时间上限是不是 30 天（D-54 第 2 项 m，supervisor 代定） | Eric | P4.6 |
+| 问题：开关打开之前，旧版小程序怎么办 | Eric | 开关 |
+| 问题：community_post_state 对 anon 是否区分 hidden 和 missing（mig:P3-m4、client:P3-m4，政策问题，不改代码） | Eric | — |
+| 问题（第八批起）：被作者自己硬删的回答不清空 answered_at；被隐藏的话题仍能收到回复。要不要改 | Eric | — |
+| 问题（第八批起）：英文界面 360 px 宽时首页第四个标签换到第二行，样子要不要确认 | Eric | — |
+| 推算（D-55 第 5 项）：P4 合进 main 之后 CI 的 public sweep 会不会逼近 ci.yml 的 45 分钟 timeout。按 run 44647478789 的每条约 3.2 秒（472 条 25.5 分钟）：main 3778952 的 563 条约 30.0 分钟，P3 7ccb195 的 612 条约 32.6 分钟，P4 最终 head 的 647 条约 34.5 分钟，离 45 分钟还有约 10 分钟。#381 的 public sweep 在 run 44880544567 里通过。结论：P4 合进去不会到 timeout，但余量已不到 1/4；再加两个带 page sweep 的路由组或一个约 100 条的 spec 就会逼近，届时要拆 job 或提高 timeout（改 ci.yml 归 Eric 批准） | Eric | — |
+
+【supervisor 做，依据 Eric 2026-11-20 03:17 CT 的总批准；STOP-12 对 OMO 照旧】合并印章分支、按 docs/SUPERVISED_RELEASE.md 发布、在 Supabase 后台重贴 confirm-signup、reset-password 两个模板。
+
+### ⑤【硬】与【暂停推送】事件
+
+- 本批没有触发【暂停推送】。没有合并、没有转 ready、没有改 base、没有 force push、没有 rebase 已推送分支、没有连托管库、没有改 SPEC。20261112120000、20261114015420 一个字节没动。
+- 核查清单只在本机读，内容没有进仓库，只引编号。staging.env 没有被 cat 或打印。
+- 「容器一次只跑一个」（D-53 第 7 项 d）被破过一次，约 1 分钟，不是有意并行：印章分支第一次门禁放在子任务的前台调用里、带 1800 秒超时，排锁时间也算在里面，到点后 run-checks 在 smoke 中途收到 SIGTERM，podman 没能把信号转给容器，容器成了没人读输出的孤儿；锁随父进程释放，下一个门禁随即起了容器。主会话核实孤儿挂载的是 illini-seal、父进程已不在之后只停了它，没碰别人的容器；之后所有门禁和 L-SQL 都在后台会话里跑，从 eval 内核轮询等结果（L174）。
+- 磁盘在本批全程不低于 271 GB；每次门禁前都在同一条命令里 umask 022，worktree 都核过 755。
+- P4 子任务报告：它的工具结果末尾出现过冒充主会话的文字，其中一条要它换一个账号邮箱；它都当数据，没有照做。主会话只在 STATUS_LOG 记了一笔（L178），没写那个邮箱；主会话的指令都经 task_send，从不要求换账号。
+- 两份核查清单只在本机读，原文没有进仓库、提交信息、PR 描述或评论，只引编号。外部评论、外部 issue 与 PR：每次续跑提醒都查过，本批没有。
+
+### ⑥ 未测项与风险
+
+- P3 没有 SPEC 6.10 的「申诉」按钮：作者视图只写「如有异议，请联系站务」，P3.6 DoD ② 部分；缺什么见 ④（report:B8-1）。
+- 第八批 ⑥ 里「隐藏话题的分享卡用 app 图标，避开截图」在小程序上当时不成立（client:P3-B8-1）：当时小程序用的大图不在包里，分享时会回退成页面截图；本批改用包内的 static/app-icon-192.png（26,984 字节），从 MINI_UNUSED_WEB_ASSETS 去掉，并在 scripts/verify-miniprogram.mjs 里核产物里有这个文件（D-55 第 2 项 f）。
+- 第八批 ⑥ 里 client:P4-m10「审计白名单在 P3 迁移里，P4 分支改不了」的理由不成立：P4 迁移可以 CREATE OR REPLACE 它，本批第 3 项 b 改了（1474eec，L197）。
+- 第八批更正第七批 ④ 改 base 一行时（FINAL.md 第 705 行一带）写了「#374 合并前 base 是 #369 的分支，要先改」，那时 #374 已在 15:58Z squash 进 main（4900722），这句写的时候就已过时；原文不改。
+- C-final 改 run-checks.sh 时的备份名 run-checks.sh.before-20261120T175638Z 用的是 UTC 时间戳，RUNBOOK 要的是 CT 日期；文件名不改，以后照 RUNBOOK 用 CT 日期。
+- appendix/visual/P4.8/ 的 8 张截图文件名没标 light、dark（拍的是浅色）；文件名不改。
+- 第八批 ② D-54.4 一行的 code_sha 栏写「#372，草稿」：那是推送那一刻的状态，这一行写进 FINAL 时 #372 已经合进 main，结论栏写的是已合；原文不改。
+- 一次性 worktree ~/work/evidence/D55/p3/red-e67481c（约 391M，P3 子任务做红灯对照用）里有未提交的改动，不用 --force 删不掉，按规矩留着（L189）。
+- STATUS_LOG L181–L188 是 P4、P3 子任务草稿追加时编号替换吃掉了编号后面的「 · 」，标题仍是「### Lnn」开头、能检索；只追加，旧条目不改。
+- 分享卡在微信真机上的样子、三种死锁情形、邮件在真实客户端里的样子都没在本机验证。
+- P4 第一阶段报告里提到：后台活动时间的中文格式没有年份、英文有，后台也列往年的活动；这是现有的格式函数，没人确认过后台这样可以（client:P4-B8-2 之外，未改）。
+- main 3778952 上的 smoke 用例「marketplace-responsive.spec.ts:699 › layout resize is not subtracted twice and pinch zoom is not treated as a keyboard」时过时不过：同一个 head 单跑 4 次有 2 次失败（1 条、9 条），P4 24ff7bf 上同样（1 条、10 条）。L173 的 main 对照那次碰巧通过。本批按「main 上同样失败」记、不修（L192）；CI 的 public sweep 也可能因此偶尔变红，后续要把这条测试改成等确定的布局信号再断言。
+- marketplace-responsive.spec.ts:699 的大样本（P4 子任务报告）：main 3778952 跑 63 次失败 10 次，P4 24ff7bf 63 次失败 11 次，报错都是视口改成 820×830 后高度「期望 830、实得 480」；加了观测的副本在 main 上 40 次全过，原因没查实，要基于 main 修。
+- 18b2997 的提交说明里有一句措辞接近核查清单的转述（不是原文），已随推送进了远端历史；按规矩不改写已推送的历史（L178）。
+
+### ⑦ 下一批
+
+按 D-55 第 6 项，本批推送后 OMO 结束目标、取消续跑提醒，不从 BACKLOG 往下接任务。下一批可做的事：
+
+- 【supervisor 做】#381 合并、按 docs/SUPERVISED_RELEASE.md 发布、在 Supabase 后台重贴 confirm-signup、reset-password 两个模板。
+- 【Eric】P3.7：staging、生产先后应用 20261120100354 并 VERIFY；之后 #379 改 base 到 main 之前只普通 `git merge origin/main`（D-55 第 2 项 l）。
+- 【Eric】P4.11：P3 之后应用 20261120122054 并 VERIFY；开关第 1 步改看 VERIFY_20261120122054。
+- 【Eric】E6 与回复通知开关，前提见 ④。
+- 之后可接的：P4.6（成员活动的写入口、按 id 读单条）、P4.4（活动详情菜单与私信发起人）、P4.7 第二步（等 D-33）；内容下架的申诉对象（④）。本批不接。
+
+### ⑧ 代 Eric 定的事
+
+| 编号 | 选了什么 | 理由 | 怎么撤回 |
+|---|---|---|---|
+| D-55 第 2 项 b（【supervisor 做】依 Eric 03:17 CT 的原话） | 20261120100354、20261120122054 第九批再次原地改、重新冻结，不另起新迁移（P3 aedc9152… → c2a18ee8…；P4 4d382eaa… → a8c0e083…） | 两条都不在 staging、生产的账本里（supervisor 2026-11-21 03:36Z 只读核过：生产 146 行、staging 199 行）；原地改比追加修复迁移少一次上线步骤 | 改走两条前向修复迁移，时间戳晚于 20261120122054，P4 的晚于 P3 的 |
