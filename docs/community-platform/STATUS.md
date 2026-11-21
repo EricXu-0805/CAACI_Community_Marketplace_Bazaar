@@ -16,7 +16,7 @@ D-56 第十批进行中（L203 起）：范围是 D-56 第 0–5 项；做完写
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
 | docs_sha | 88ef4ba（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 7ccb195（base codex/community-restricted-20261113）；#380 codex/community-events-20261120 24ff7bf（base P3 的分支）；两个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）；#373、#378 已合进各自 base 分支 [本地测：2026-11-21 gh pr view、git ls-remote] |
+| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 fdb823a（base codex/community-restricted-20261113）；#380 codex/community-events-20261120 24ff7bf（base P3 的分支）；两个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）；#373、#378 已合进各自 base 分支 [本地测：2026-11-21 gh pr view、git ls-remote] |
 | tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 7ccb195（#379）；illini-events-20261120 24ff7bf（#380）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与 D-55 main 对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：2026-11-21 git worktree list] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
@@ -165,7 +165,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | D-47 第 4 项 | 通过 | 2942e8e：在86ffd0e上9条中7红、2个对照通过，当前9/9；仅移除失败分支invalidatePosts的变异为1红1对照通过。完整单测2237/2236/0/1；没有应用源码变动，构建沿用L82（L83） |
 | D-47 第 5 项 | 通过，含冷启动补充 | 73cde94：空栈或取栈抛错不弹入站提示，页面恢复后正常；监听/计数/普通错误不变。旧实现43/39/4/0，修正后43/43；全量2208/2207/0/1。夹具修正单独8df14c5，#374合并adc6ee7后108/108及typecheck/mpci通过。依据属[OMO自决]，见L86、L88 |
 | D-47 第 7 项 | 通过 | #369、#374、#375、#370 的描述按各自最终 head 重写，包名加反引号，四个仍是草稿；D-49 没开 PR（L92） |
-| P3.1–P3.8 | 部分（P3.7 未做，归 Eric；P3.6 DoD ② 部分；client:P3-m8、m16、m17 部分，D-56 第 4 项 c） | #379 7ccb195：20261120100354 重新冻结 c2a18ee8…（旧 aedc9152… 作废，L179），已含 main 3778952；L-SQL 183/183、P3_TOTAL 703/703、开关默认关；全量 2799/2798/0/1，smoke 612 条 607 passed、4 条 main 上同样失败；主包 1,422,595；迁移里 last_activity_at、answered_at 两条列注释与现在的行为不符（只是注释，读这两列的代码只看是否为空），迁移已冻结不改，等下一条动到这两列的迁移顺手改（mig:P3-B9-3，D-56 第 3 项 e） |
+| P3.1–P3.8 | 部分（P3.7 未做，归 Eric；P3.6 DoD ② 部分；client:P3-m8、m16、m17 部分，D-56 第 4 项 c） | #379 fdb823a（D-56 第 3 项 b–d，L208；主包 1,422,723）；之前 7ccb195：20261120100354 重新冻结 c2a18ee8…（旧 aedc9152… 作废，L179），已含 main 3778952；L-SQL 183/183、P3_TOTAL 703/703、开关默认关；全量 2799/2798/0/1，smoke 612 条 607 passed、4 条 main 上同样失败；主包 1,422,595；迁移里 last_activity_at、answered_at 两条列注释与现在的行为不符（只是注释，读这两列的代码只看是否为空），迁移已冻结不改，等下一条动到这两列的迁移顺手改（mig:P3-B9-3，D-56 第 3 项 e） |
 | P4.7 第一步 | 通过 | appendix/research/campus-events.md；D-33 已按 D-43 代定 A，第二步依赖 P4.1、P4.2 |
 | P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送；已 merge 进 #380（de2d281） |
 | P4.3 | 部分 | caaciorg 本地 28d59b1，Node 20/24 全部通过 [本地测]；推送等 E8，开 PR 由 Eric 做 |

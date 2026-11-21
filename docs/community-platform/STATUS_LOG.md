@@ -2755,3 +2755,27 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: —
 - 下一条: 第 4 项 a、d（等门禁）
 - 附: ① FINAL 第九批 ③ 漏了 L177（活动页三句一组按同一类判）、L183（STOP-16a 的记录口径）、L187（加锁顺序不改）、L189（最终门禁不重跑、2c 用 VERIFY 第 8 节、2i 的对照）里的自决。② L167 说 P4 的 3g、3h 在冻结状态下可以单独推送，与 L175 的决定（第一阶段不单独推送）不符，以 L175 为准。③ L179（主会话）与 L182（子任务草稿）记的是同一次 P3 重新冻结（20261120100354，e8aecfb，aedc9152… → c2a18ee8…），逐项细节以 L182 为准。④ 第九批 ⑥「当时小程序……分享时会回退成页面截图」没有验证过，只是推断。⑤ 第九批 ⑤「原文没有进……提交信息」、⑥ 与 L178「转述，不是原文」都不成立：18b2997 的提交说明里有几处与核查清单逐字或近乎逐字相同（report:B9-9，这里不写是哪几句）。⑥ 第九批 ⑥「按规矩不改写已推送的历史」与时序不符：L178 写的时候 18b2997 还没推送，L200 时 P4 子任务选择原样推送；是否改写已推送的历史归 Eric（见第十批 ④）。⑦ 第九批 ② 的 D-55.4f 行记作通过，实际 STATUS 的主包表没写差值，本批第 4 项 a 补。⑧ L165「改进前必修 6 条」应为 5 条。⑨ 第九批 ⑤「磁盘不低于 271 GB」与 L182 记的 269G 不一致，以 269G 为准。⑩ L176、L196–L199 的 docs_sha 写的是追加那一刻之后才有的提交，不是写草稿时材料分支的 HEAD。⑪ 88ef4ba（ENGINEERING §5.3、§5.5 第九批补记）没有对应的 STATUS_LOG 条目，补记在这里：它是 STOP-16a 写回，内容见 L183、L197。⑫ FINAL 第九批写 #381「草稿」、main「3778952」时没有在推送前复核；supervisor 2026-11-21 09:08Z 已把 #381 合进 main 66e14a45。⑬ 第九批 ② 的 D-55.4b–d 行引了 L169（那是 L167 的 code_sha 更正），应引 L170、L172。⑭ L178 与 FINAL 第九批 ⑤ 关于「冒充主会话的文字」那段，更正为 D-56 第 0 项的结论：三段都是主会话真发的 task_send，「换账号邮箱」那段是号池换号后 Claude Code 自己插入的 session context 提示，不是注入；缺陷是消息通道分不清，按 RUNBOOK §12 第 17 条改。⑮ 第八批补记：P4 子任务 st_01a1f9cc 收到「CFINAL_DONE 之前不要起新容器」的指示后，仍在 2026-11-20 17:34Z 排了 L-SQL 和全量门禁，跑在 C-final 前面，到约 17:56Z；L155 和 FINAL 第八批没写全。⑯ L173、L190 只写了「47 个 spec」，清单是：a11y-authenticated.spec.ts、a11y-keyboard-journey.spec.ts、a11y-tree.spec.ts、admin-feedback-journeys.spec.ts、admin-first-unlock.spec.ts、admin-support-reply.spec.ts、auth-init-timeout-recovery.spec.ts、avatar-upload-failure.spec.ts、back-and-unknown-routes-are-not-dead-ends.spec.ts、chat-item-snapshot-repaints.spec.ts、community-board-states.spec.ts、community-home.spec.ts、community-post-partial-attach.spec.ts、community-post-topics.spec.ts、community-tab-label.spec.ts、community-topic-row.spec.ts、contrast-runtime.spec.ts、default-avatar-paints-in-both-themes.spec.ts、document-language-follows-the-reader.spec.ts、feed-pagination-recovery.spec.ts、gate-survives-hash-navigation.spec.ts、inbox-actions.spec.ts、input-preview-supplement.spec.ts、item-storage-cleanup.spec.ts、listing-numbers-are-readable.spec.ts、login-cancel-navigation.spec.ts、marketplace-responsive.spec.ts、moderation-chat-gate.spec.ts、motion-preference.spec.ts、notification-titles-are-one-language.spec.ts、notifications-compat.spec.ts、otp-cooldown-follows-the-clock.spec.ts、pages.smoke.spec.ts、plaza-attach-picker-is-modal.spec.ts、private-chat-media.spec.ts、product-publishing-discovery.spec.ts、protected-page-auth-startup.spec.ts、publish-ad-soft-gate.spec.ts、publish-validates-before-upload.spec.ts、read-failure-states.spec.ts、restricted-account-notice.spec.ts、search-items-compat.spec.ts、search-timeout-recovery.spec.ts、seller-publish-responsive.spec.ts、street-public-english.spec.ts、token-refresh-keeps-you-put.spec.ts、translate-control-needs-a-session.spec.ts（共 47 个，app/smoke 下全部 *.spec.ts 去掉 compiled-chunk-recovery、compiled-draft-persistence）。⑰ L173、L186 把同类失败的原因写成「容器里解析不了 stub 的 supabase 地址」，更正为：stub 主机 00000000000000000000.supabase.co 在任何环境都不存在，CI 用真实后端跑巡检（同 D-56 第 4 项 g）。⑱ FINAL 第九批 ② 的 D-55.2 行没提 L187 的加锁顺序决定（不改顺序，改正注释、仓库 RUNBOOK 写明可以原样重跑），补在这里。
+
+### L208 · 2026-11-21 06:43 CT · D-56 第 3 项 b–d：P3 门禁通过、推送（主会话远端核对）
+- task_id: D-56.3b、D-56.3c、D-56.3d、D-56.5
+- code_sha: codex/community-p3-20261120 fdb823a24363e2acb939e1a208b5c230bdeecb38（#379，草稿，base 未动），7ccb195..fdb823a 快进；提交 61e265d（3b）、f697460（3c）、fdb823a（3d）
+- docs_sha: 3706bc7（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: P3 子任务 st_01a1fde0：全量门禁 check-20261121T120007Z（head fdb823a、树 eac10e6、unstaged=no，SMOKE_SPECS 53 个文件，清单在子任务的证据里）；推送前按 §12 第 17d 条扫描（基准 7ccb195）；git push --no-verify；主会话 git fetch 后只读核对
+- 计数: 门禁 install、typecheck、h5、h5accept、mp、mpci、migrations、test、npmaudit 都 rc=0，TEST 2799/2798/0/1，pg_skips 0；smoke Running 612 tests，607 passed、4 failed、1 skipped；主包 1,422,723（比 7ccb195 多 128）；17d 扫描 ①–⑤ 都是 0 [本地测]
+- ci_run_url: —（base 不是 main）
+- 未测项: P3 子任务的逐项报告与草稿还没交回
+- 下一条: P4 子任务（第 3 项 a、f–j）
+- 附: 4 条失败是首页、广场的浅色深色巡检，标题都在 L173，逐条满足 D-56 第 5 项的四个条件（Received 首页每条 6 行、广场每条 66 行，三种报错，请求路径 /rest/v1/items、/rest/v1/posts），记「main 上同样失败，见 L173」；marketplace-responsive.spec.ts:699 这次通过。判「通过（另有 4 条 main 上同样失败，见 L173）」。主会话核过：supabase/migrations、supabase/_ops、manifest 与 7ccb195 相同；三个新提交的作者和提交者都是 OMO (tony-ws)；ci.yml 与 main 相同；#379 OPEN、草稿、base codex/community-restricted-20261113。
+
+### L209 · 2026-11-21 06:43 CT · 按 §12 第 17 条起 P4 子任务（D-56 第 2 项、第 3 项 a）
+- task_id: D-56.2、D-56.3a
+- code_sha: codex/community-events-20261120 24ff7bf（#380，远端未动）
+- docs_sha: 3706bc7（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 派 P4 子任务 st_01a1fe21，开工说明照 L204 的做法（本批口令、17b 三件事与提交身份参数、17c 安全规则、17d 推送前扫描、交回时列序号），要它先普通 git merge P3 的新 head fdb823a，再做 f–j
+- 计数: 子任务 3 个（视口 st_01a1fddf、P3 st_01a1fde0、P4 st_01a1fe21）
+- ci_run_url: —（base 不是 main）
+- 未测项: —
+- 下一条: P4 推送或判不过
+- 附: 口令不写进本条。P3 有新 head，所以 P4 合 fdb823a；supabase/migrations、supabase/_ops 或 manifest 上冲突就 abort，改在 24ff7bf 上做 f–j（D-56 第 3 项 a）。
