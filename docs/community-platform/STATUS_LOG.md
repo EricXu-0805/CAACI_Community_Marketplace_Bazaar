@@ -2540,3 +2540,15 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: 邮件在真实客户端里的样子（重贴两个模板归 supervisor）
 - 下一条: P4 第二阶段
 - 附: 按 D-55 第 5 项判「通过（另有 4 条 main 上同样失败，见 L173）」。别的「集」没动，法律正文归 LEGAL.2。合并、发布、在 Supabase 后台重贴 confirm-signup、reset-password 两个模板由 supervisor 做。[OMO自决] 印章子任务三次在门禁没跑完时交回，第二次门禁、推送、开 PR 都由主会话做（子任务已停，同一分支同一时间只有主会话推送）。
+
+### L191 · 2026-11-21 01:54 CT · #381 CI 全绿（D-55 第 1 项，补 L190）
+- task_id: D-55.1
+- code_sha: codex/community-brand-seal-20261121 c1cacb6e8201d04bb60d4b978780ec017b9d879f（#381，OPEN、草稿、base main）
+- docs_sha: 49ab77b（本次写回之前材料分支的 HEAD）
+- 环境: CI
+- 命令: gh run view 44880544567；gh pr view 381
+- 计数: run 44880544567 conclusion=success；Type-check=success (9 steps); Build H5=success (13 steps); Smoke (public page sweep)=success (12 steps); Build mp-weixin=success (10 steps); Boundary regressions=success (13 steps); Smoke (protected staging account)=skipped (0 steps); Production release readiness=skipped (0 steps) [CI]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44880544567
+- 未测项: 邮件在真实客户端里的样子
+- 下一条: P4 第二阶段
+- 附: protected staging account 那个 job 在 PR 上按 ci.yml 本来就跳过，和 main 上一样。合并、发布、重贴两个认证邮件模板归 supervisor。
