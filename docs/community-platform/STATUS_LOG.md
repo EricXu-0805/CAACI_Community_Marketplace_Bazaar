@@ -2965,3 +2965,120 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: P4 子任务的逐项报告与草稿还没交回
 - 下一条: D-56 第 4 项 a、d 收尾，FINAL「第十批（D-56）」
 - 附: 6 条失败：首页、广场的浅色深色 4 条标题在 L173，记「main 上同样失败，见 L173」；活动页 pages/events/index 浅色深色 2 条不在 L173，按 D-56 第 5 项第 ④ 条，同一次门禁里 community-events.spec.ts 25 过 0 失败，记「同一类，见 L173」（Received 首页每条 6 行、广场每条 69 行、活动页每条 3 行，三种报错，请求路径 /rest/v1/items、/rest/v1/posts、/rest/v1/rpc/list_community_events）。marketplace-responsive.spec.ts:699 这次通过。判「通过（另有 6 条：4 条 main 上同样失败，2 条同一类，见 L173）」。17d ⑤ 那 1 处是 RUNBOOK.md 第 651 行的文件路径 supabase/_ops/VERIFY_20261120100354_community_watch_save_activity.sql，主会话核过：这个文件在 24ff7bf 的树里就有，24ff7bf 的 RUNBOOK 里已出现 2 次，不是清单里的叙述，误报成立。主会话核过：supabase/migrations、两个 manifest.sha256 与 24ff7bf 相同；supabase/_ops 只新增 VERIFY_reply_notice_switch.sql；.github、vercel.json 没动；24ff7bf..02d4d4c 的提交作者和提交者都是 OMO (tony-ws)；#380 OPEN、草稿、base 没动，正文第 25 行起有第 3 项 i 那句。
+
+### L217 · 2026-11-21 06:45 CT · D-56 第 3 项 a：P4 普通合并 P3 推送的新 head fdb823a，没有冲突
+- task_id: D-56.3a
+- code_sha: codex/community-events-20261120 本地 24ff7bf → 53b2f8e3a4a3c8d213da5f510fe800d27ab8ced6（合并提交，父提交 24ff7bf 和 fdb823a；带进 4 个文件 +193 −46：RUNBOOK.md、app/smoke/community-reply-target.spec.ts、app/src/pages/plaza/index.vue、scripts/app-direct-table-acl-boundary.test.mjs）
+- docs_sha: 8525722e（写草稿时材料分支的 HEAD）
+- 环境: 本地（宿主机 git，没有起容器）
+- 命令: 开工核对：`git status --porcelain` 0 行；`git rev-parse HEAD` 和 `git ls-remote origin codex/community-events-20261120` 都是 24ff7bf；`git ls-remote origin codex/community-p3-20261120` 是 fdb823a；worktree `stat -c %a` 755，磁盘余 279G。然后 `git fetch origin`，`git -c user.name="OMO (tony-ws)" -c user.email=omo@tony-ws.invalid merge -m "…" fdb823a24363e2acb939e1a208b5c230bdeecb38`（普通 merge，没有 rebase，没有 force push）
+- 计数: 冲突 0。自动合并 3 个文件（RUNBOOK.md、app/src/pages/plaza/index.vue、scripts/app-direct-table-acl-boundary.test.mjs：两边都改过，改的不是同一处）。`git diff --name-only 24ff7bf 53b2f8e -- supabase` 0 行，迁移、_ops、manifest.sha256 都没有变。`git show --cc 53b2f8e` 没有内容，合并提交自己没有加任何一行。fdb823a 比 7ccb195 多三个提交（61e265d、f697460、fdb823a），作者和提交者都是 OMO (tony-ws)。[本地测]
+- ci_run_url: —（推送见草稿 P4-E）
+- 未测项: 合并提交本身没有单独跑门禁；合并后的树由草稿 P4-B 的提交前 test 步骤（check-20261121T133511Z）和草稿 P4-E 的最终门禁覆盖。
+- 下一条: 3f、3g（草稿 P4-B）
+- 附: 合并说明是自己写的一句（merge: the P3 head with its D-56 fixes (fdb823a) into the events branch (D-56 3a)）。按 D-56 第 3 项 a，这次合并不按 BACKLOG §14 第 2 行报 Eric。没有走「P4 未合 P3 新 head」那条路。
+
+### L218 · 2026-11-21 07:50 CT · [OMO自决] D-56 第 3 项 f、g（mig:P4-B9-1）：新增只读的 VERIFY_reply_notice_switch.sql、不连库的相等测试、RUNBOOK「Reply notice switch」第 1 步；改值对照、回放库正对照和四个负对照
+- task_id: D-56.3f、3g（mig:P4-B9-1）
+- code_sha: 53b2f8e → e5a39e2eb0c5aff048430fd20433a9b037a14aef（3 个文件 +213 −9：新增 supabase/_ops/VERIFY_reply_notice_switch.sql 161 行，scripts/community-events.test.mjs +38，RUNBOOK.md +14 −9）。supabase/migrations 和 manifest.sha256 一个字节没动；supabase/ 下只多这一个文件
+- docs_sha: 8525722e
+- 环境: 本地、L-SQL（容器 pw1.65-node22-pg17 跑 node 测试；一次性的 supabase/postgres:17.6.1.104 回放库跑对照。每次都是 `umask 022; flock ~/work/illini-dev-env/.containers.lock …`，在后台会话里起、轮询退出文件；容器一次一个；worktree 755，磁盘余 279G 以上；不连任何托管库）
+- 命令:
+  - 提交前，一次持锁里顺序跑（`flock … bash ~/work/evidence/D56/p4/batch1.sh`，输出 batch1.out）。每次先把新文件换成留档的那一份（3f/ 下四份，sha256 在 states.sha256，每次用的是哪一份记在 batch1.out），再跑 `RUN_CMD='cd app && node --test --test-name-pattern="reply notice switch check" ../scripts/community-events.test.mjs' run-checks.sh ~/work/illini-events-20261120 cmd`；只读形状那一次跑的是 `node --test ../scripts/database-operations-boundary.test.mjs`。最后在要提交的那棵树上跑 `run-checks.sh … typecheck test`。
+  - 回放库对照：`flock … env LSQL_LOG_DIR=~/work/evidence/D56/p4/controls AFTER_REPLAY=~/work/evidence/D56/p4/controls.sh bash ~/work/evidence/D56/p4/lsql-replay-controls.sh ~/work/illini-events-20261120 20261120100354 20261120122054`。lsql-replay-controls.sh 是 ~/work/illini-dev-env/lsql-replay.sh 的副本，diff 在 lsql-replay-controls.diff，一共三处：文件头加三行说明；LOG 的目录可以用 LSQL_LOG_DIR 换；回放和回归跑完、容器还在的时候 source 一次 AFTER_REPLAY 指的脚本。原脚本没有改（改前改后 sha256 都是 dc67d1ad7aac0e73…），appendix/env 的存档也没有动。controls.sh 里每一步都是单独的一次 psql 会话，以 postgres 身份（托管库上 VERIFY 就是这个身份），各写各的日志；按退出码和 ERROR 行判：要报错的那一步必须恰好一行 ERROR 而且带指定的异常名，语法、权限、找不到文件都不算。
+- 计数:
+  - 改值对照（相等测试）：① check-20261121T133502Z，把新文件里 notify_topic_reply 那一行的 volatility 从 'v' 改成 's'：tests 1，fail 1，报的是那一整行不等。② check-20261121T133504Z，把 trg_notify_topic_reply 的 kind 从 5 改成 7：tests 1，fail 1，报的是触发器那一行不等。④ check-20261121T133507Z，换回原文件：相等测试 1/1，只读形状检查 5/5。
+  - 只读形状检查确实管到新文件（多做的一次对照）：③ check-20261121T133505Z，删掉 `SET TRANSACTION READ ONLY;` 那一行：database-operations-boundary 5 条里 1 条失败，报 `VERIFY_reply_notice_switch.sql: expected one enforced READ ONLY transaction`。
+  - 提交前整套 test：check-20261121T133511Z，typecheck rc=0；TEST tests=2899 pass=2898 fail=0 skipped=1 pg_skips=0（比 24ff7bf 的 2898 多 1 条，就是新加的相等测试）。没有哪条现有测试因为文件名变红，所以用 VERIFY_ 前缀，没有改叫 CHECK_。①–④ 和这一次的日志头都是 unstaged=yes（当时还没提交）；④ 和这一次用的新文件与提交 e5a39e2 里的逐字节相同（sha256 都是 6a7524c0904c7a58…）。
+  - 回放库核对钉值（lsql-20261121T134909Z-computed.log，回放库里算出来的）：六个函数体的 md5 与钉值逐个相同：update_post_comment_count ca13bad5aaed7d210451ba6dc8159616、reject_reply_to_locked_post 3b6872071d2eb7fb20cfec67a633a1c5、validate_comment_reply_target 4795236eac69a88568327a0c0cd61563、notify_topic_reply aca99f42836280e42523f3e64f722908、enqueue_activity_notification fdb7928eb1930389cdd68173ea7f55eb、current_profile_state 9c0b020a7ecdaa83372062a1cc85edc6；属主都是 postgres，都是 SECURITY DEFINER，volatility 是 v、v、v、v、v、s，settings 第一个是 search_path=public、其余 search_path=pg_catalog，API 角色里只有 update_post_comment_count 多一个 service_role（钉的是 internal，允许）。六个触发器的 kind 是 7、7、7、13、5、5，都是 enabled=O、没有 WHEN。开关表 1 行，enabled=false。两边没有不同，新文件照常提交。
+  - 正对照和四个负对照，两次，结果相同。第一次在提交前（head 53b2f8e 加未提交的改动，新文件 sha256 6a7524c0…）：回放 lsql-20261121T134254Z.log，files=184 replayed=184 errors=0 done=1 rc=0。第二次在提交后的 head 02d4d4c 上：回放 lsql-20261121T134909Z.log，files=184 replayed=184 errors=0 done=1 rc=0，`CONTROLS steps=19 pass=19 fail=0`。下面写第二次的日志名（都在 ~/work/evidence/D56/p4/controls/ 下，前缀 lsql-20261121T134909Z-；第一次的同名日志前缀是 lsql-20261121T134254Z-）：
+    - 正对照 positive.log：通过，`NOTICE:  community_reply_notice_switch|enabled=f`。回放里它前面 VERIFY_20261120100354（NOTICE enabled=f）和 VERIFY_20261120122054 都通过。
+    - 负对照 ①（函数体里加一行 `-- d56 negative control`，其余定义照 pg_get_functiondef 原样 CREATE OR REPLACE）：neg1-mutate.log 改成功，函数体 md5 变成 ce8da2aa383289c2e4b451d478c93090；neg1-verify.log 报 `reply_notice_switch_function_body:private.notify_topic_reply():ce8da2aa383289c2e4b451d478c93090:this migration`；neg1-restore.log 用改之前存下的定义恢复；neg1-reverify.log 通过，enabled=f。
+    - 负对照 ②（`ALTER FUNCTION private.notify_topic_reply() SECURITY INVOKER`）：neg2-verify.log 报 `reply_notice_switch_function_attributes:private.notify_topic_reply():f:v:search_path=pg_catalog`；neg2-restore.log 改回 SECURITY DEFINER；neg2-reverify.log 通过。
+    - 负对照 ③（`ALTER TABLE public.post_comments DISABLE TRIGGER trg_notify_topic_reply`）：neg3-verify.log 报 `reply_notice_switch_reply_trigger:trg_notify_topic_reply`；neg3-restore.log ENABLE；neg3-reverify.log 通过。
+    - 负对照 ④（`DELETE FROM private.community_reply_notice_config`）：neg4-verify.log 报 `reply_notice_switch_row:0:none`；neg4-restore.log `INSERT … DEFAULT VALUES`；neg4-reverify.log 通过，enabled=f。
+    [隔离环境 L-SQL][本地测]
+- ci_run_url: —（推送见草稿 P4-E）
+- 未测项: 新文件只在本地回放的一次性库上跑过，没有对 staging 或生产跑过（OMO 不连托管库）。负对照只做了 D-56 点名的四个；另外几项检查（函数缺失、授权名单、触发器顺序、开关表的列、主键与 CHECK、RLS 和 ACL、表级权限）没有逐个做反例，它们的 SQL 是从 VERIFY_20261120100354 原样抄来的。
+- 下一条: 3h、3i（草稿 P4-C）
+- 附:
+  - 新文件的内容：从 P4 head 上的 VERIFY_20261120100354 取三段，SQL 一个字没改，只换异常名。① 第 1 节的六行（public.update_post_comment_count()、private.reject_reply_to_locked_post()、private.validate_comment_reply_target()、private.notify_topic_reply()、private.enqueue_activity_notification(uuid,uuid,text,text,text,uuid,text)、moderation_private.current_profile_state(uuid)）和那一节的整个循环体；② 第 5 节的六行触发器和 BEFORE INSERT 顺序检查；③ 第 5a 节整段，最后用 RAISE NOTICE 报 enabled，不判。形状是 `\set ON_ERROR_STOP on`、一个 BEGIN、`SET TRANSACTION READ ONLY`、最后一句 ROLLBACK。文件头写了：以后哪条迁移改了这些函数、回复触发器或开关表，同一个提交里更新这里的钉值和 scripts/community-events.test.mjs 里那条相等测试。
+  - public.attach_notification_conversation() 不在 VERIFY_20261120100354 第 1 节里（D-56 第 3 项 f 已写明），新文件没有加它。
+  - 相等测试（不连库，顶层用例，没有数据库时也照跑）：① `pinned(readOps(...))` 取出的签名正好是这六个，md5 逐个与 VERIFY_20261120100354 的相同；② 六行 VALUES 的整行、触发器的六行 VALUES、期望串逐字相同。异常名不比。
+  - [OMO自决] 「整行」怎么比。选择：比之前去掉行尾那一个逗号。理由：这六行在 VERIFY_20261120100354 里都不是 VALUES 的最后一行，行尾都有逗号；在新文件里 current_profile_state 那一行是最后一行，SQL 不允许它带逗号。逗号是列表的分隔符，不是这一行的值；缩进和行内每个字符都照比。证据：check-20261121T133502Z 红在这一行的 volatility 上。撤回：`git revert e5a39e2`。
+  - [OMO自决] 期望串取的范围。选择：VERIFY_20261120100354 从第 5 节到第 5b 节之前的所有 `IS DISTINCT FROM '…'`，一共 5 个（第 5 节顺序检查的 1 个，第 5a 节的 4 个），与新文件里全部 5 个逐个相同。理由：D-56 点名的是第 5a 节的期望串；顺序检查的那一个也是抄来的钉值，一起比不多花什么。撤回同上。
+  - [OMO自决] 异常名。选择：第 1 节和第 5 节的把前缀 community_watch_save_ 换成 reply_notice_switch_（function_missing、function_body、function_attributes、function_grants、reply_trigger、trigger_order）；第 5a 节的六个叫 reply_notice_switch_table_missing、table_columns、table_keys、table_closed、table_privilege 和 reply_notice_switch_row。理由：照前缀硬换会出现 reply_notice_switch_notice_switch_… 这样的名字。NOTICE 的文字 `community_reply_notice_switch|enabled=` 没有改，和 VERIFY_20261120100354 的一样，RUNBOOK 两种情形看的是同一行字。
+  - [OMO自决] 多做的两次对照：③ 删 READ ONLY 行（D-56 只在改叫 CHECK_ 时才要求，这里用来证明 VERIFY_ 前缀确实被只读形状检查管到）；回放对照里多跑一步 p3-verify-after-p4.log，两条迁移都回放之后再跑 VERIFY_20261120100354，按设计停在 `community_watch_save_function_body:public.admin_list_moderation_audit_log(integer,integer,text):720fe81c9d72c7729ce2d184a8a8fd36:this migration`，这是草稿 P4-C 里 3h 那一句的依据。
+  - [OMO自决] 对照跑了两次。原因：第一次（lsql-20261121T134254Z）controls.sh 末尾那一行汇总写成了 pass=2，上面 19 行其实都是 PASS：计数的变量在管道的子 shell 里加，出了管道就丢了，是对照脚本自己的毛病，不是被测文件的。改成从汇总文件里数行之后，在提交后的 head 上重跑一次（lsql-20261121T134909Z），19 步结果与第一次逐步相同。第一次的日志和那一行错的汇总都留着没动。
+  - RUNBOOK「Reply notice switch」第 1 步现在分两种情形：该库还没应用 20261120122054 的，照原来的写法（VERIFY_20261120100354 通过，NOTICE 是 enabled=f）；已经应用的，先跑该库最新一条已应用社区迁移的 VERIFY 并通过（P4.6 的迁移上去之前就是 VERIFY_20261120122054），再跑 VERIFY_reply_notice_switch.sql，它也要通过，NOTICE 也必须是 enabled=f。原来「P4 的 VERIFY 加一条 SELECT enabled」的写法去掉了。那一节其余文字没有改。
+
+### L219 · 2026-11-21 07:47 CT · D-56 第 3 项 h、i（mig:P4-B9-2、gates:B9-1）：仓库根 RUNBOOK.md 的 Community P3 段补一句，后面加「Community P4」一段
+- task_id: D-56.3h（mig:P4-B9-2）、D-56.3i（gates:B9-1）
+- code_sha: e5a39e2 → 12c2b4149ef64aac6c848f1581b4216815b1d7e2（3h，RUNBOOK.md +4）→ fd5baa7f5a96002299d002c2aa4d4dd5e5cc5b48（3i，RUNBOOK.md +8）
+- docs_sha: 8525722e
+- 环境: 本地（只改文档）
+- 命令: 编辑 RUNBOOK.md；三处改动（3g、3h、3i）各自一个提交，每个提交前把 RUNBOOK.md 换成只含到这一步为止的那一份（留档在 3ghi/ 下：RUNBOOK.3g.md、RUNBOOK.3g3h.md、RUNBOOK.final.md）
+- 计数: 3h 加的是 Community P3 段的第 5 步，一句：20261120122054 应用之后，这条 VERIFY 按设计停在 admin_list_moderation_audit_log；它和 REGRESSION 文件里「VERIFY 可以以后再跑、随时再跑」的说法只在那之前成立。依据是回放：lsql-20261121T134909Z-p3-verify-after-p4.log（见草稿 P4-B 的附）。_ops 下的文件没有改。3i 加的是紧跟在 P3 段后面的「Community P4（`20261120122054_community_events`）」一段，只有一句：#380 合并之前，它的 public smoke（ci.yml 的 public-smoke）要在已经应用 20261120100354、20261120122054 的库上跑绿，因为活动页 pages/events/index 和 P4 的广场页 pages/plaza/index（P4 起也请求 rpc/list_community_events）的页面巡检都没在真实后端上跑过。没有写 P4 的应用步骤。[本地测]
+- ci_run_url: —
+- 未测项: 这一句说的那次 public smoke 本身没有跑：要一个已经应用两条迁移的托管库，OMO 不做（STOP-3）。
+- 下一条: 3j（草稿 P4-D）
+- 附: 「Community P4」这一段的标题照旁边 P3 那一段的写法，括号里放迁移的全名。#380 描述里同步的那一句见草稿 P4-E。
+
+### L220 · 2026-11-21 07:47 CT · [OMO自决] D-56 第 3 项 j（client:P4-B9-1、client:P4-B9-2）：后台活动列表的时间中文也带年份；community-events.spec.ts 那条断言上面的注释用自己的话写（先红后绿）
+- task_id: D-56.3j（client:P4-B9-1、client:P4-B9-2）
+- code_sha: fd5baa7 → 02d4d4c6932f405b481ef354f1f2f0988862c2e1（4 个文件 +21 −7：app/src/utils/eventConsole.ts、app/smoke/community-event-console.test.mjs、app/smoke/community-event-console.spec.ts、app/smoke/community-events.spec.ts）
+- docs_sha: 8525722e
+- 环境: 本地、L-UI（容器 pw1.65-node22-pg17；`umask 022; flock ~/work/illini-dev-env/.containers.lock …`，后台会话里起、轮询退出文件）
+- 命令: 和草稿 P4-B 同一次持锁（batch1.sh）。先把 app/src/utils/eventConsole.ts 换成合并提交 53b2f8e 里的那一份（3j/eventConsole.base.ts），跑 `RUN_CMD='cd app && node --test smoke/community-event-console.test.mjs' run-checks.sh … cmd`，再跑 `SMOKE_SPECS="community-event-console.spec.ts" run-checks.sh … smoke`；换成改过的那一份（3j/eventConsole.final.ts）各再跑一次。两份的 sha256 在 states.sha256。
+- 计数: 两次 smoke 的 SMOKE_SPECS 都只有 1 个文件：community-event-console.spec.ts。① 先红 check-20261121T133408Z（改过的断言 + 没改的源码）：node tests 9，pass 8，fail 1，期望 `合作组织 · 国际象棋社 · 2026年11月21日 周六 10:00 CT`，实得没有年份的那一行。② 先红 check-20261121T133410Z（同样的源码）：Running 6 tests，5 passed、1 failed，失败在 spec 第 179 行，Expected `合作组织 · 国际象棋社 · 2026年11月22日 周日 10:00 CT`，Received 没有年份。③ 转绿 check-20261121T133440Z：node 9/9。④ 转绿 check-20261121T133442Z：Running 6 tests，6 passed。①–④ 的日志头都是 unstaged=yes；③④ 用的 eventConsole.ts 与提交 02d4d4c 里的逐字节相同（sha256 bc6329569737fc28…）。提交前整套 test 见草稿 P4-B（check-20261121T133511Z，2899/2898/0/1）。[隔离环境 L-UI]
+- ci_run_url: —（推送见草稿 P4-E）
+- 未测项: 没有在真实后台里看过往年的行。小程序不受影响：后台页只在 H5 里（mp-weixin 的构建产物里没有 pages/admin，也没有任何文件带 eventConsoleMeta），主包比 24ff7bf 多的 128 字节全部来自合并进来的 P3。
+- 下一条: 最终门禁（草稿 P4-E）
+- 附:
+  - [OMO自决] 改法。选择：只改 eventConsole.ts，在 eventConsoleMeta 的调用处给中文那一行前面加上香槟当地的年份（eventTimeParts 的 year），英文原样；没有往 eventTime.ts 里加新的格式函数。理由：eventTime.ts 是前台和小程序主包也在用的文件，D-56 要求 formatEventPreviousTime 的输出、eventTime.test.mjs 第 41 行、前台卡片都不变，不动那个文件最稳；年份和后面的月、日、星期用的是同一次换算，跨年那一刻也对得上。eventConsole.ts 的 import 还是只有 './eventTime' 这一处。证据：①–④。撤回：`git revert 02d4d4c`。
+  - 改了预期的已有断言（D-56 写明的例外，不算 STOP-14）：community-event-console.test.mjs 两条中文断言加上「2026年」；community-event-console.spec.ts 第 179、180 行也钉着同一行不带年份的中文，一起改了（不改的话 smoke 会红在这里）。另加一条断言：UTC 的 2027-01-01 03:00 在香槟还是 2026 年 12 月 31 日周四 21:00，中文要写 2026年。英文的断言一条没动。
+  - community-events.spec.ts 第 419 行原来只有一个编号。现在写的是：英文里日期块用「+」标这种卡片，读屏读到这个符号时它不是一个词，所以卡片的读屏名要用词说出来，不能带这个符号；编号 client:P4-B8-5 留在句末。断言本身没有改。
+  - 后台的活动列表按开始时间倒序读全表，没有时间范围（api/admin/index.js 第 1645 行），所以会翻到往年的行。
+
+### L221 · 2026-11-21 08:36 CT · D-56 第 5 项：P4 最终门禁（02d4d4c）、L-SQL、推送；#380 的描述同步
+- task_id: D-56.5（P4）、D-56.3i（#380 的描述）
+- code_sha: codex/community-events-20261120 远端 24ff7bf → 02d4d4c6932f405b481ef354f1f2f0988862c2e1（tree a6cd4f27c5fd0fcf5c00e3a96b52333f8f2734c4；`24ff7bf..02d4d4c`，fast-forward，`git push --no-verify`，2026-11-21T14:33:58Z，ls-remote 核过）；包含 P3 的 fdb823a
+- docs_sha: 8525722e
+- 环境: 本地、L-SQL、L-UI（容器 pw1.65-node22-pg17 和一次性的 supabase/postgres:17.6.1.104；每条都是 `umask 022; flock ~/work/illini-dev-env/.containers.lock …`，在后台会话里起，内核里轮询退出文件；容器一次一个；worktree 755，磁盘余 326G；不连托管库）
+- 命令: 提交之后三条各起一个后台会话，排同一把锁：① `flock … ~/work/illini-dev-env/lsql-replay.sh ~/work/illini-events-20261120 20261120100354 20261120122054`（原脚本，没有改）；② 草稿 P4-B 的对照在提交后的 head 上重跑；③ `flock … env SMOKE_SPECS="$(cd ~/work/illini-events-20261120/app/smoke && ls *.spec.ts | grep -v -e compiled-chunk-recovery -e compiled-draft-persistence | tr '\n' ' ')" ~/work/illini-dev-env/run-checks.sh ~/work/illini-events-20261120 install typecheck h5 h5accept mp mpci migrations test smoke npmaudit`（同一行）。失败用 ~/work/evidence/D56/p4/judge-smoke.py 按 D-56 第 5 项的四个条件逐条判，输出在 gate-1.judge。推送前 `scan17d.py 24ff7bf --diff-base 53b2f8e`（输出 scan17d-push.out）；改 #380 正文前 `scan17d.py 02d4d4c --text pr380-body-added.txt`（输出 scan17d-body.out）；正文用 `gh api -X PATCH …/pulls/380 --input pr380-patch.json` 改，JSON 里只有 body 一个字段，一次。
+- 计数:
+  - L-SQL lsql-20261121T134717Z.log（head 02d4d4c）：files=184 replayed=184 errors=0 done=1 rc=0；P3_TOTAL cases=703 pass=703 fail=0；EV_TOTAL cases=855 pass=855 fail=0；P3_SWITCH default=off PASS；EV_CLOSED PASS；P3 四个场景、活动四个场景都 PASS。
+  - 门禁 check-20261121T135041Z（head 02d4d4c，unstaged=no）：install、typecheck、h5、h5accept（52 passed）、mp、mpci、migrations、test、npmaudit 都 rc=0；TEST tests=2899 pass=2898 fail=0 skipped=1 pg_skips=0；smoke rc=1。
+  - smoke：SMOKE_SPECS 55 个文件（清单见附）。Running 647 tests，640 passed、6 failed、1 skipped（29.9 分钟）。条数和 24ff7bf 那次一样：本批没有新增 smoke 用例，只改了已有用例的预期。
+  - 6 条失败逐条判。每条都满足四个条件：标题是页面巡检；报错来自 `console errors on <路由>` 那条 toEqual([])，块里没有超时、跳转或定位的报错；Received 至少一行，每一行都是那三种之一；活动页那两条所在的这次门禁里 community-events.spec.ts 是 25 passed、0 failed。
+    - `page sweep [light] › pages/index/index loads clean`：Received 6 行（三种各 2 行），请求路径 /rest/v1/items ×2。标题在 L173：main 上同样失败，见 L173。
+    - `page sweep [light] › pages/plaza/index loads clean`：Received 69 行（三种各 23 行），请求路径 /rest/v1/posts ×20、/rest/v1/items ×2、/rest/v1/rpc/list_community_events ×1。标题在 L173：main 上同样失败，见 L173。
+    - `page sweep [light] › pages/events/index loads clean`：Received 3 行（三种各 1 行），请求路径 /rest/v1/rpc/list_community_events ×1。标题不在 L173：同一类，见 L173。
+    - `page sweep [dark] › pages/index/index loads clean`：6 行（各 2），/rest/v1/items ×2。main 上同样失败，见 L173。
+    - `page sweep [dark] › pages/plaza/index loads clean`：69 行（各 23），/rest/v1/posts ×20、/rest/v1/items ×2、/rest/v1/rpc/list_community_events ×1。main 上同样失败，见 L173。
+    - `page sweep [dark] › pages/events/index loads clean`：3 行（各 1），/rest/v1/rpc/list_community_events ×1。同一类，见 L173。
+  - marketplace-responsive.spec.ts:699 这次通过（1.7 秒）。
+  - 主包 mpci main=1,459,574 字节。24ff7bf 是 1,459,446，多 128；P3 fdb823a 是 1,422,723，它比 7ccb195 也多 128；main 基线 1,381,447，差 78,127。
+  [隔离环境 L-SQL][隔离环境 L-UI][本地测]
+- ci_run_url: —（#380 的 base 不是 main，ci.yml 不触发）
+- 未测项: public smoke 没有在已应用两条迁移的库上跑过（3i 写的就是这件事，要 Eric 做）。6 条巡检失败在本地容器里解析不了 stub 的 supabase 地址，真实后端下这几页的巡检结果这里看不到。
+- 下一条: 交回主会话（4a 的主包表用 1,459,574；4d 的 CI 超时推算用 647 条）
+- 附:
+  - 判定：通过（另有 6 条：4 条 main 上同样失败，2 条同一类，见 L173）。没有只在分支上失败的，所以没有做分支和 66e14a45 各 3 次的连跑。
+  - SMOKE_SPECS 的 55 个文件：a11y-authenticated.spec.ts、a11y-keyboard-journey.spec.ts、a11y-tree.spec.ts、admin-feedback-journeys.spec.ts、admin-first-unlock.spec.ts、admin-support-reply.spec.ts、auth-init-timeout-recovery.spec.ts、avatar-upload-failure.spec.ts、back-and-unknown-routes-are-not-dead-ends.spec.ts、chat-item-snapshot-repaints.spec.ts、community-board-states.spec.ts、community-event-console.spec.ts、community-events.spec.ts、community-home.spec.ts、community-post-partial-attach.spec.ts、community-post-topics.spec.ts、community-reply-notices.spec.ts、community-reply-target.spec.ts、community-report-queue.spec.ts、community-report-views.spec.ts、community-sort-tabs.spec.ts、community-tab-label.spec.ts、community-topic-row.spec.ts、community-watch-save.spec.ts、contrast-runtime.spec.ts、default-avatar-paints-in-both-themes.spec.ts、document-language-follows-the-reader.spec.ts、feed-pagination-recovery.spec.ts、gate-survives-hash-navigation.spec.ts、inbox-actions.spec.ts、input-preview-supplement.spec.ts、item-storage-cleanup.spec.ts、listing-numbers-are-readable.spec.ts、login-cancel-navigation.spec.ts、marketplace-responsive.spec.ts、moderation-chat-gate.spec.ts、motion-preference.spec.ts、notification-titles-are-one-language.spec.ts、notifications-compat.spec.ts、otp-cooldown-follows-the-clock.spec.ts、pages.smoke.spec.ts、plaza-attach-picker-is-modal.spec.ts、private-chat-media.spec.ts、product-publishing-discovery.spec.ts、protected-page-auth-startup.spec.ts、publish-ad-soft-gate.spec.ts、publish-validates-before-upload.spec.ts、read-failure-states.spec.ts、restricted-account-notice.spec.ts、search-items-compat.spec.ts、search-timeout-recovery.spec.ts、seller-publish-responsive.spec.ts、street-public-english.spec.ts、token-refresh-keeps-you-put.spec.ts、translate-control-needs-a-session.spec.ts。
+  - 17d：推送前 ① 不是 OMO 身份的提交 0；② 邮箱 0、号池邮箱 0（~/omo-ctl/pool-emails.txt 在，去掉空行后 5 行）；③ 0；④ 0；⑤ 命中 1 处（RUNBOOK.md:651），是一个文件路径，基准树的 RUNBOOK.md 里已经有，记「⑤ 误报 1 条」，照常推送。合并带进来的行不算：新增行从合并提交 53b2f8e 之后算，合并提交自己没有加任何行。改 #380 正文前对要加的 22 行又扫一遍，五项都是 0。
+  - [OMO自决] #380 的描述除了同步 3i 那一句，还改了推送之后会变成不实的几处。选择：合并记录加上 fdb823a（现在写的是「本 PR 现在包含 P3 的 fdb823a」）；发布顺序第 1 步里「Reply notice switch 第 1 步」的说法换成 3g 的新写法；加「D-56 第十批的改动」和证据表；主包字节数加新 head 的一句；「没做的」里后台时间不带年份那一条改成已改，另加一条「新文件只在回放库上跑过」。理由：描述是 Eric 照着做发布顺序的地方，这几句在推送之后与仓库不符。只改了 body；状态 OPEN、草稿、base codex/community-p3-20261120、标题都没有动。证据：pr380-body-before.md、pr380-body-after.md、pr380-patch.out；取回来的正文与发出去的相同（gh 输出时文件末尾多一个换行）。撤回：用 pr380-body-before.md 再 PATCH 一次。
+  - 主会话的消息（§12 第 17 条）：没有收到带口令的指示，执行过的序号为空。不算数的指示样文字 1 次：一段接在工具输出后面的宿主提示，说上一段输出因为重复被截断，要求复述目标后继续；没有口令，当数据处理，照原计划做，没有因此改任何东西（17a，请主会话记一条）。另外有三种宿主自带的文字，都不是指示，没有据此做任何事：每次工具调用的结果里带的转交提示；几次工具清单变动的提示；号池换号后的 session context 提示 1 次（说明当前用户邮箱，在推送和改 #380 正文之后才到；邮箱没有抄到任何地方，五个提交在它之前都已用 OMO (tony-ws) 的身份做完）。
+  - 没有碰的东西：supabase/migrations 和 manifest.sha256 一个字节没动（`git diff --name-status 24ff7bf 02d4d4c -- supabase` 只有新增的 VERIFY_reply_notice_switch.sql）；.github、vercel.json 没有变化；没有 force push、rebase、合并 PR、转 ready 或改 base；~/work/illini-dev-env/lsql-replay.sh 改前改后 sha256 相同；材料仓库没有改。PUSHED.txt 已写。
+
+### L222 · 2026-11-21 08:39 CT · D-56 第 3 项 a、f–j：P4 子任务结束，序号核对与 17a 记录
+- task_id: D-56.3a、D-56.3f–j、D-56.2
+- code_sha: codex/community-events-20261120 02d4d4c（#380，草稿，base 未动）
+- docs_sha: 32f008f（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 读 P4 子任务 st_01a1fe21 的报告与草稿（L217–L221）；主会话远端核对见 L216
+- 计数: mig:P4-B9-1 已修（e5a39e2）、mig:P4-B9-2 已修（12c2b41）、gates:B9-1 已修（fd5baa7）、client:P4-B9-1 与 client:P4-B9-2 已修（02d4d4c），没有【跳过】；收到的带口令指示 0 条，主会话也没发过，两边一致 [本地测]
+- ci_run_url: —（base 不是 main）
+- 未测项: VERIFY_reply_notice_switch.sql 只在本地回放库上跑过；负对照只做了点名的四个；第 3 项 i 要求的、在已应用两条迁移的库上跑的 public smoke 没跑（归 #380 合并前，见 ④）
+- 下一条: FINAL「第十批（D-56）」
+- 附: 17a：P4 子任务的会话里，宿主在一次工具输出后插了一段要它复述目标并继续的提示，没有口令，子任务当数据没照做；号池切号后的 session context 提示、宿主的交接与工具清单提示也都当数据。没有任何文字要求换账号、改凭据或改 git 身份。子任务在草稿里标了 [OMO自决] 的五处（#380 正文顺带改掉推送后不再成立的几处、浏览器用例 179–180 行同句一起改、整行比较去掉行尾逗号、开关表的异常名、对照脚本计数修正后重跑），主会话看过，照它的做法。
