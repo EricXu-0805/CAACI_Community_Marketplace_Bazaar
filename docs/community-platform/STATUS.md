@@ -91,6 +91,7 @@ PR #369 · run [44647478789](https://github.com/EricXu-0805/CAACI_Community_Mark
 | P3 7ccb195（第九批） | 1,422,595（与基线差 +41,148） | 150,269 | L179，mpci packageBytes.main |
 | P4 24ff7bf（第九批） | 1,459,446（与基线差 +77,999） | 113,418 | L193，mpci packageBytes.main |
 | P3 fdb823a（第十批，D-56 第 3 项 b–d） | 1,422,723（与基线差 +41,276） | 150,141 | L208，mpci packageBytes.main |
+| 视口 19c4657（第十批，D-56 第 1 项，#382） | 1,381,447（与基线差 0） | 191,417 | check-20261121T125522Z，mpci packageBytes.main |
 
 main · 定时 run [42684660097](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/42684660097) · 2026-11-09 · runner ubuntu-26.04 [CI run#42684660097]
 
