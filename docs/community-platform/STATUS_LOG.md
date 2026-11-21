@@ -2405,3 +2405,126 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: —
 - 下一条: P4 子任务第二阶段：合 P3 7ccb195，按新的 P3 重算钉的 md5，做 3b–3e，L-SQL 后重新冻结
 - 附: 原因：mig:P4-B8-4（审计列表白名单，改进前必修）、mig:P4-B8-1（location 非空）、mig:P4-B8-5（全天活动结束约束）、mig:P4-B8-3（fixture 授权说明）；另外 P3 的 admin_execute_community_governance 函数体变了，P4 迁移里钉住它的 md5 必须重算。条件：supervisor 2026-11-21 03:36Z 只读核过，两边账本都没有这个迁移。撤销冻结期间 P4 分支不推送；3g、3h 的本地提交和重新冻结一起推（L175、L178）。L-SQL 照 STOP-14 共 5 次不过或到截止还没冻结：按 D-55 第 2 项 b 的 P4 例外处理（P4 合入的 P3 与上次冻结时依据的 P3 之间 supabase 有差异，退回旧字节会和钉的 P3 函数体对不上，所以那时 P4 这次合并以来的提交都不推送，远端保持 4c1c666，3a–e、h 记【跳过】）。STATUS 的 P4.2 在重新冻结之前写「重开（D-55 2b）」。
+
+### L181 2026-11-20 22:24 CT · P3 合 main：先 `-s ours` 记下 05e0959，再合 3778952（D-55 第 2 项 a）
+- task_id: D-55.2a
+- code_sha: codex/community-p3-20261120 8254931b238c9ddab6521e0f6a6aa1a76d9f53fe（`git merge -s ours 05e09593`，父 042427c、05e0959，树 5af84347 不变）→ e67481c5072cd54e4364b124d2af9b2656f17aa3（合 3778952，父 8254931、3778952，树 f46e4120）；随 7ccb195 一起推送（见「P3 门禁与推送」那条）
+- docs_sha: 9706043（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 第 0 步 `git rev-parse HEAD`、`git status --porcelain`；第 1 步 `git rev-parse 05e09593^{tree} 9be6a56^{tree}`、`git merge-base --is-ancestor 9be6a56 HEAD`、`git merge -s ours 05e09593`；第 2 步 `git merge --no-ff --no-commit 3778952`；第 3 步 `git diff --cached 042427c -- supabase/migrations supabase/_ops`，以及 `git diff --cached --name-only 042427c` 对 `git diff --name-only 05e09593 3778952`，两条都符合后 `git commit --no-edit`；第 5 步宿主机 `node --test scripts/brand-name-boundary.test.mjs`（node v22.23.5），并在 `git diff 3778952 HEAD` 的新增行里检索旧品牌名和徽章旧说法；`gh api -X PATCH …/pulls/379` 只改 body
+- 计数: HEAD 是 042427c7…（与远端相同，工作区干净）；两棵树都是 385f7a41db94cf6b0446491f5a9e326c099c2030；9be6a56 是 HEAD 的祖先；第 1 步前后树相同；第 2 步没有冲突（自动合并 9 个文件）；暂存区对 042427c 在 supabase/migrations、supabase/_ops 下的差异 0 字节；两份文件名清单相同，各 42 个；brand-name-boundary 3 / 3 / 0 / 0；P3 相对 main 新增的行里「Illini 集市」「Illini Market」和徽章旧说法 0 处，第 5 步没有要改的界面文字 [本地测]
+- ci_run_url: —（PR 的 base 不是 main）
+- 未测项: 合并后的全量门禁和同一次推送一起做，见「P3 门禁与推送」那条
+- 下一条: 2c–2e
+- 附: 没有 rebase，没有 `revert -m 1`，没有直接合 origin/main；第 4 步的退路没有用到。合完以后 05e0959、3778952 都是 P3 的祖先（D-55 第 2 项 l：以后改 base 之前只普通 merge origin/main）。合并后 app-icon-192.png 是 26,984 字节，app-icon-512.png 是 147,560 字节。#379 的描述在合并记录后面加了一段：base 分支没有 #372，diff 里暂时多出 3778952 的 42 个文件，改 base 到 main 以后消失；其余文字逐字节没变（PATCH 前后各取了一份比对）。
+
+### L182 2026-11-21 00:13 CT · 重新冻结：20261120100354_community_watch_save_activity（D-55 第 2 项 b–e）
+- task_id: D-55.2b、D-55.2c、D-55.2d、D-55.2e（P3.1）
+- code_sha: codex/community-p3-20261120 e8aecfb6bf4708bf4d9733a5773578db4572aaf9（e67481c → e8aecfb），随 7ccb195 推送（快进 `042427c..7ccb195`，没有 force push）；草稿 PR #379，base codex/community-restricted-20261113 没动
+- docs_sha: 9706043（本次写回之前材料分支的 HEAD）
+- 环境: 本地、L-SQL
+- 命令: 迁移文件上有上次冻结时加的只读位（0444），L167 已记撤销冻结，`chmod u+w` 后原地改，重新冻结时 `chmod 444` 放回。先写测试并在没改的迁移上看它红：scripts/community-watch-save.test.mjs 加一组（夹具里放「迁移前就被隐藏」的回复，迁移、经 admin_execute_mutation 恢复，再按 VERIFY 第 8 节的原文查询计数，并查「待回答」列表）；REGRESSION 加第四个场景 reply-restore（真实链路：成员回复、takedown_content、把话题放回回填会写的状态、restore_content）。红的那次放在一次性 worktree（e67481c 加新测试）：`lsql-replay.sh <一次性 worktree> 20261120100354` 与 `run-checks.sh <一次性 worktree> install cmd smoke mpci`。改迁移、VERIFY（只换一个 md5）、REGRESSION、RUNBOOK.md；`lsql-replay.sh ~/work/illini-p3 20261120100354`；`RUN_CMD` 跑四个数据库测试文件和静态测试；manifest.sha256 只替换这一行；提交；在提交后的 head 上再跑一次 L-SQL 和全量门禁。容器步骤都在 `umask 022; flock ~/work/illini-dev-env/.containers.lock …` 里，起容器前 worktree 权限 755、磁盘 269G 以上
+- 计数: 旧 sha256 aedc91521ca8961906a7578ae6caac52fa59f8c9bc53911eec65d46e1b619137 作废；新 sha256 c2a18ee842128e7943293529ca182a5e714e7ca8f942d5d4d4d5bb9a2ed951bf（manifest 第 186 行，其余 185 行没变，`sha256sum -c manifest.sha256` 通过）。20261112120000（e2a85c3e…5a92c）、20261114015420（0dc2ceaf…aed5d3）一个字节没动。先红：lsql-20261121T045639Z `files=183 replayed=183 errors=1 done=0 rc=3`，P3_TOTAL 703/703、P3_SWITCH default=off PASS、三个旧场景 PASS，之后新场景报「the restored reply answers its topic and moves it forward: got NULL, wanted active:1:true:true」（answered_at 仍为空）；check-20261121T045818Z 的数据库测试里新用例红在 `'0:1:0' !== '0:0:0'`（VERIFY 第 8 节的三个计数，unanswered=1，即重跑 VERIFY 会报 community_watch_save_backfill:0:1:0）。转绿：lsql-20261121T060904Z（改完的迁移第 1 次回放）与提交后的 lsql-20261121T061338Z 都是 `files=183 replayed=183 errors=0 done=1 rc=0`，`P3_TOTAL cases=703 pass=703 fail=0`，`P3_SWITCH default=off PASS`，四个场景 PASS；check-20261121T061105Z 的 node 测试 243 / 243 / 0 / 0（含四个数据库测试文件）。STOP-14 的 5 次只用了 1 次 [隔离环境 L-SQL][本地测]
+- ci_run_url: —（PR 的 base 不是 main）
+- 未测项: 没应用到任何托管库（OMO 不连托管库）。「恢复以后再跑一遍 VERIFY」在夹具库里跑的是 VERIFY 第 8 节的原文查询（测试从 VERIFY 文件里取这段 SQL），不是整份 VERIFY：夹具库是窄表结构，跑不了第 1–7 节；整份 VERIFY 照旧只在 L-SQL 里紧跟迁移跑一次，REGRESSION 里核的是这个话题在第 8 节条件下的计数为 0。死锁的三种情形（删话题、删账号、管理员下架）本子任务没有复现，注释和 RUNBOOK 的写法照 D-55 第 2 项 e
+- 下一条: 主会话把 STATUS 的 P3.1 改回去并写新 sha256；P4 合 7ccb195 后重算钉的 md5（`~/work/evidence/D55/p3/REFROZEN.txt`）
+- 附: 改了什么。① restore_content 恢复回复：UPDATE … RETURNING 多取回复的 user_id、created_at；对话题的那一条 UPDATE 除 comment_count + 1 外，last_activity_at 取 greatest(原值, 回复的 created_at)，answered_at 取 coalesce(原值, 回复者不是楼主时回复的 created_at)，和 update_post_comment_count 对新回复的写法一致。② 迁移头加一句：post_comments 多了一列 API 角色没有 SELECT 授权的列，`select=*` 会报 42501，客户端必须列出列名。③ 加锁顺序的注释改成：这个顺序只防住和在途回复的死锁；删话题、删账号、管理员下架仍可能和迁移死锁，任一方被回滚，迁移是单个事务，停在 40P01 或 55P03 时可以原样重跑。加锁顺序本身没改（另有一条写理由）。④ 仓库根目录 RUNBOOK.md「Schema-coupled release order」在 D-49 那段之后加「Community P3（20261120100354）」：先 staging 后生产，各自 PRECHECK → 应用 → VERIFY；停在 40P01 或 55P03 时整个事务已回滚，原样重跑；应用后开关保持关闭，打开照「Reply notice switch」。⑤ 先红时那条断言里 `answered_at = replied_at` 遇到空值会让整串变成 NULL，改成 `IS NOT DISTINCT FROM`，红的时候读得出是哪一位不对，断言的意思没变。
+
+### L183 2026-11-21 00:13 CT · [OMO自决] STOP-16a：第九批 P3 迁移相对 ENGINEERING §5.3 改变的对象
+- task_id: D-55.2c（STOP-16a 记录）
+- code_sha: e8aecfb6bf4708bf4d9733a5773578db4572aaf9
+- docs_sha: 9706043（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: —（只记录；从 SQL 文本按回放库 `md5(prosrc)` 的口径逐个重算本迁移发的 14 个函数体，和 VERIFY 钉的值逐个对上；回放里的 VERIFY 再核一遍）
+- 计数: 新对象 0 个；行为改变的对象 1 个（函数体）；VERIFY 钉值改 1 处；REGRESSION 场景 3 → 4 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: 主会话把下面第 ① 点补进 ENGINEERING §5.3
+- 附: ① public.admin_execute_community_governance(text,uuid,text,text,jsonb) 的 restore_content、target_type = comment 一支：恢复一条回复时对所属话题多写两列，last_activity_at = greatest(last_activity_at, 回复的 created_at)，answered_at = coalesce(answered_at, 回复者 <> 楼主时回复的 created_at)；comment_count + 1 照旧。函数多了两个局部变量 restored_author、restored_at；签名、SECURITY DEFINER、search_path、属主、授权都没变。md5(prosrc) e6ddf89b765c544d9434a843478ccf42 → fedabd431c829a5b2303e4a46961a855。② 本迁移发的函数体共 14 个，其余 13 个，以及改名保留的旧分发函数、被调用的辅助函数，md5 都没变；表、列、约束、索引、授权、策略、触发器都没变；加锁语句没变。③ 只改了注释的两处：迁移头（`select=*` 与 42501）、LOCK TABLE 上方的说明。④ VERIFY 只换了第 ① 点那一个 md5；PRECHECK 没改；REGRESSION 多一个场景，回放日志多一行 `P3_SCENARIO|reply-restore|PASS`。
+
+### L184 2026-11-20 23:02 CT · D-55 第 2 项 d 的对照：临时加一处跨行的 select('*')，静态测试变红后撤掉
+- task_id: D-55.2d（mig:P3-B8-2）
+- code_sha: 对照只在一次性 worktree 和提交前的工作区里出现过，没有进任何提交；测试本身在 e8aecfb（scripts/app-direct-table-acl-boundary.test.mjs）
+- docs_sha: 9706043（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 临时建文件 app/src/d55-2d-control.ts，内容是 `useSupabase().supabase` 换行 `.from('post_comments')` 换行 `.select('*')`；宿主机 `node --test scripts/app-direct-table-acl-boundary.test.mjs` 先不带、再带这个文件各跑一次，然后删掉文件并核 `git status`；一次性 worktree 里带着这个文件在容器里再跑一次（check-20261121T045818Z 的 cmd 步）
+- 计数: 不带对照 8 / 8 / 0；带对照 8 / 7 / 1，失败的是「no shipped read of post_comments asks for every column」，报「app/src/d55-2d-control.ts line 4: .select('*') reads every column」（宿主机与容器相同）；撤掉后工作区里没有这个文件；提交后的门禁里这条测试通过 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: —
+- 附: 这条静态测试扫 app/src（.ts、.vue、.js）和 api/（.js、.mjs、.ts，不含测试文件）。认得出的写法：`.from('post_comments')` 之后的整条调用链（跨行、中间夹注释或别的调用都算）里的 `.select('*')`、列名里夹着 `*`、不带参数的 `.select()`；列名写成同文件常量或模板串时展开后再看；嵌入写法 `post_comments(*)`；REST 写法 `post_comments?…select=*`。列名看不出来（变量）或 `.from('post_comments')` 后面什么都没接的，也判失败。测试自带 10 个必须拒绝、5 个必须放行的样例，并要求在真实源码里至少认出 4 处带列名的读取，免得哪天搜不到东西还显示通过。
+
+### L185 2026-11-21 00:13 CT · P3 客户端修复（D-55 第 2 项 f–j）
+- task_id: D-55.2f、D-55.2g、D-55.2h、D-55.2i、D-55.2j
+- code_sha: codex/community-p3-20261120 7ccb1952cc6e7e5ad11b250fe9fdea592e367d99（e8aecfb → 7ccb195，没有改 supabase/ 下的任何文件），已推送
+- docs_sha: 9706043（本次写回之前材料分支的 HEAD）
+- 环境: 本地（容器 localhost/illini-dev:pw1.65-node22-pg17）
+- 命令: 先写测试。先红放在一次性 worktree（e67481c 加新测试；另留两份没改的旧 spec 副本 read-failure-states.before.spec.ts、pages.smoke.before.spec.ts）：`run-checks.sh <一次性 worktree> install cmd smoke mpci`（check-20261121T045818Z），之后补写的一条单元用例再在旧页面上跑一次（check-20261121T060856Z）。转绿在 ~/work/illini-p3：`run-checks.sh ~/work/illini-p3 cmd smoke mpci`（check-20261121T061105Z；RUN_CMD 跑 12 个 node 测试文件和 pages.smoke 的路由清单用例，SMOKE_SPECS 是 community-reply-target、community-report-views、community-watch-save、read-failure-states 四个）。提交后的全量门禁见下一条
+- 计数: 先红 check-20261121T045818Z：node tests 81 / pass 74 / fail 7（其中属于客户端的 4 条：分享图 3 条，my-topics 上报 1 条）；路由清单旧副本 1 failed、改后 1 passed；smoke Running 56 tests，6 failed、50 passed（3.3m）；mpci rc=1「mini-program share image static/app-icon-192.png is missing」。check-20261121T060856Z：tests 117 / pass 116 / fail 1。转绿 check-20261121T061105Z：node 243 / 243 / 0 / 0，路由清单 1 passed，smoke Running 43 tests、43 passed（1.6m），mpci rc=0。主包（mpci）：042427c 1,394,113 → e67481c 1,395,514（合 main 多 1,401；这个数取自一次性 worktree 的 CI 环境构建，按 verify-miniprogram 的算法逐文件求和）→ 7ccb195 1,422,595（多 27,081：分享图 26,984，代码 97）；预算 1,572,864，余 150,269；main 3778952 是 1,381,447 [本地测]
+- ci_run_url: —（PR 的 base 不是 main）
+- 未测项: 分享卡在微信里实际显示成什么没有真机验证，核到的是产物里有这张 PNG、路径和 imageUrl 对得上。发送中的回复不给「回复」只在 H5 的回复面板和单元用例里测过，小程序真机没跑。P4 合并以后的主包由 P4 子任务量（按第八批 P4 的 1,430,773 加 28,482 估算约 1,459,255，余约 113,609，是估算不是实测）
+- 下一条: 主会话写 STATUS 的 P3.8 DoD ③（D-55 第 4 项 f）时用上面的主包数
+- 附: 逐项的先红和转绿。
+  - 2f：hiddenTopicShare().imageUrl 改成 /static/app-icon-192.png，MINI_UNUSED_WEB_ASSETS 去掉它；app-icon-512.png 仍在清单里，scripts/mini-program-assets.test.mjs 对它的断言没动。node 单测把 imageUrl 去掉开头的「/」和清单比，并要求它是不超过 30 KB 的 PNG、在 verify-miniprogram 的核对名单里；「产物里有这个文件」写进 scripts/verify-miniprogram.mjs（新常量 MINI_SHARE_IMAGES），mp、mpci 和 CI 的 Build mp-weixin 都会跑。红：单测报「static/app-icon-512.png is deleted from the WeChat package」，旧构建的 mpci 报缺图；绿：产物里 static/app-icon-192.png 26,984 字节。
+  - 2g：回复面板里 id 以 `temp-` 开头的行（楼和楼中楼）不渲染「回复」，长按菜单里没有「回复」，onCommentTap 收到这样的行直接返回。红：community-reply-target.spec.ts:110 在旧页面上发送中的行有「回复」按钮（期望 0，实际 1）；单元用例里 replyTo 被设成了临时行。绿：两处都过；用例最后逐条核过发出的请求，没有一条的 reply_to_comment_id 或 parent_comment_id 以 `temp-` 开头。话题页（pages/post）不放乐观行，没有这个问题，没改。
+  - 2h：retryComments 成功后调 applyReplyAnchor；my-topics 的 load() 失败时 captureException(err, { tags: { source: 'my-topics.load' }, level: 'warning' })；那条注释改成「作者在通用说明下看到自己的原文，不显示理由」。红：community-report-views.spec.ts:268（重试后那条回复没有定位标记）、:273（重试后没有「找不到这条回复」的提示）；community-topic-lists.test.mjs 新用例（没有上报）。绿：都过。注释没有测试。
+  - 2i：删掉恒为真的 `topic-rows-empty` 计数断言（原用例保留对跳转登录页的断言，改了标题）。新用例：my-topics 在屏上，另一个标签页换成账号 B 登录（往认证存储里写 B 的会话，再在认证广播频道发 SIGNED_IN），B 的列表请求由测试扣住；扣住期间页面显示加载中、没有行；放行后出现 B 的行；整个过程用 MutationObserver 盯着，空状态一次都没进过 DOM。保持窗口用「请求被扣住到放行」界定，没有用固定时长的等待。这条在没改的页面上本来就过（那条发现说的是没测到，不是页面有错），所以先红用的是对照：在一次性 worktree 里去掉监听器里的 `loading.value = true`，用例变红（空状态出现过，期望 false 实际 true）。
+  - 2j：read-failure-states.spec.ts 的 servePaged 和请求记录器都改用同一个函数，从游标（`id.lt.<id>`）推算已经给出的行数，没有游标时才读 offset；postRows 补了 last_activity_at。pages.smoke.spec.ts 的 PAGES 加 pages/my-topics/index。红：没改的副本 :462、:501 都是「Expected > 0, Received 0」；路由清单用例在旧副本上失败。绿：read-failure-states 13 / 13，路由清单通过。
+  - 顺带改的两处测试：app/smoke/community-restricted-account.test.mjs 的夹具要把页面里的 isPendingComment 一起装进去（不装的话原有 4 条「reply selection」用例会报未定义）；community-watch-save.spec.ts 的新用例自己再装一次 routeWebSocket，因为 mock-session-network-boundary 那条测试按文件核「种了假会话就必须拦住 WebSocket」。
+
+### L186 2026-11-21 00:56 CT · P3 门禁与推送：7ccb195（D-55 第 5 项）
+- task_id: D-55.5（P3）、D-55.2k
+- code_sha: codex/community-p3-20261120 7ccb1952cc6e7e5ad11b250fe9fdea592e367d99（树 3cc3c5e9），已推送：`git push --no-verify origin codex/community-p3-20261120`，快进 `042427c..7ccb195`，没有 force push；草稿 PR #379 仍是草稿，base codex/community-restricted-20261113 没动
+- docs_sha: 9706043（本次写回之前材料分支的 HEAD）
+- 环境: 本地（容器 localhost/illini-dev:pw1.65-node22-pg17）、L-SQL
+- 命令: `lsql-replay.sh ~/work/illini-p3 20261120100354`（提交后的 head），再 `env SMOKE_SPECS="$(cd ~/work/illini-p3/app/smoke && ls *.spec.ts | grep -v -e compiled-chunk-recovery -e compiled-draft-persistence | tr '\n' ' ')" ~/work/illini-dev-env/run-checks.sh ~/work/illini-p3 install typecheck h5 h5accept mp mpci migrations test smoke npmaudit`；`git push --no-verify`（推送前日志 check-20261121T061456Z；宿主机 pre-push 的 PG 环境问题照旧）；`gh api -X PATCH …/pulls/379` 只改 body
+- 计数: check-20261121T061456Z，日志头 head=7ccb195 tree=3cc3c5e9 unstaged=no：install、typecheck、h5、h5accept、mp、mpci、migrations、test、npmaudit rc=0，smoke rc=1。`TEST tests=2799 pass=2798 fail=0 skipped=1 pg_skips=0`；h5accept 52 passed；npm audit 0。smoke：53 个 spec 文件，`Running 612 tests using 1 worker`，607 passed、4 failed、1 skipped，28.5 分钟（这一步 1716 秒）。4 条失败的标题与 main 3778952 那次（check-20261121T042305Z，563 条里 4 failed）逐字相同：`page sweep [light] › pages/index/index loads clean`、`page sweep [light] › pages/plaza/index loads clean`、`page sweep [dark] › pages/index/index loads clean`、`page sweep [dark] › pages/plaza/index loads clean`。按 D-55 第 5 项记「通过（另有 4 条 main 上同样失败）」。L-SQL：lsql-20261121T061338Z `files=183 replayed=183 errors=0 done=1 rc=0`，P3_TOTAL 703/703，P3_SWITCH default=off PASS。主包（mpci）1,422,595，余 150,269 [本地测][隔离环境 L-SQL]
+- ci_run_url: —（PR 的 base 不是 main；推送后 `gh pr checks 379` 只有一条 Supabase Preview，状态是 skipping）
+- 未测项: 这 4 条在容器里过不了（解析不了桩的 Supabase 地址），在 CI 上的结果要等 P3 的 base 改到 main 以后看；那条 skipped 是要真实账号的登录巡检，照旧不在本机跑
+- 下一条: P4 合 7ccb195；主会话在 STATUS 阻塞项里记这 4 条
+- 附: ① 4 条失败的控制台错误只有三种，和 main 那次相同：`Error resolving “00000000000000000000.supabase.co”: Name or service not known`；`pageerror: Fetch API cannot load https: /00000000000000000000.supabase.co/rest/v1/…`（首页是 items，广场是 posts 和 items）；`Failed to load resource: Error resolving “00000000000000000000.supabase.co”: Name or service not known`。② 新加进巡检的 pages/my-topics/index 浅色、深色都通过，没有用到「main 上没有的路由按同一类记」那条。③ SMOKE_SPECS 的 53 个文件（app/smoke 下共 55 个，去掉 compiled-chunk-recovery、compiled-draft-persistence）（文件名都省去 .spec.ts）：a11y-authenticated、a11y-keyboard-journey、a11y-tree、admin-feedback-journeys、admin-first-unlock、admin-support-reply、auth-init-timeout-recovery、avatar-upload-failure、back-and-unknown-routes-are-not-dead-ends、chat-item-snapshot-repaints、community-board-states、community-home、community-post-partial-attach、community-post-topics、community-reply-notices、community-reply-target、community-report-queue、community-report-views、community-sort-tabs、community-tab-label、community-topic-row、community-watch-save、contrast-runtime、default-avatar-paints-in-both-themes、document-language-follows-the-reader、feed-pagination-recovery、gate-survives-hash-navigation、inbox-actions、input-preview-supplement、item-storage-cleanup、listing-numbers-are-readable、login-cancel-navigation、marketplace-responsive、moderation-chat-gate、motion-preference、notification-titles-are-one-language、notifications-compat、otp-cooldown-follows-the-clock、pages.smoke、plaza-attach-picker-is-modal、private-chat-media、product-publishing-discovery、protected-page-auth-startup、publish-ad-soft-gate、publish-validates-before-upload、read-failure-states、restricted-account-notice、search-items-compat、search-timeout-recovery、seller-publish-responsive、street-public-english、token-refresh-keeps-you-put、translate-control-needs-a-session。④ 门禁那一行不是单独的一次 `flock`：改完以后的检查、重新冻结、两次提交、提交后的 L-SQL 和这一行门禁，放在同一个脚本里、在同一次 `umask 022; flock ~/work/illini-dev-env/.containers.lock bash <脚本>` 里依次做（脚本在后台会话里跑，本子任务在回合里等它结束），SMOKE_SPECS 和 run-checks 在同一条命令里。这样做是因为排一次锁要等一小时左右，而撤销冻结期间不该空等；日志头的 head、tree、unstaged=no 和 `Running 612 tests` 可以核对。⑤ 最终门禁就是这一次：它跑在最后推送的这个 head 上，之后 head 没动，没有再跑第二遍。⑥ 本批 P3 只推送了这一次，2c–2e 和 2f–2j 一起推（D-55 第 2 项 b）。#379 的描述加了「第九批（D-55）修订」一节和 5 行证据，冻结那段写了新 sha256，第八批、第七批的值标作废，主包那段换成新数。⑦ 另记一件原有的事，不是本批引起的：开发服务器的日志里有一行 esbuild 依赖预扫的报错「No matching export in "src/composables/useAppToast.ts" for import "registerToastHost"」，main 那次的 smoke 日志里同样有，不影响用例结果，本批没动。
+
+### L187 2026-11-21 00:13 CT · [OMO自决] mig:P3-B8-3 的加锁顺序不改，写明理由（D-55 第 2 项 e）
+- task_id: D-55.2e（mig:P3-B8-3）
+- code_sha: e8aecfb6bf4708bf4d9733a5773578db4572aaf9
+- docs_sha: 9706043（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: —（只记录；读迁移里各语句拿锁的先后，和 admin_token_authorization_v2 读哪张表）
+- 计数: 加锁语句 0 处改动；注释 1 处、RUNBOOK 1 段 [源码 e8aecfb]
+- ci_run_url: —
+- 未测项: 没有在本机复现死锁，也没有试改后的顺序
+- 下一条: —
+- 附: 自决：规则 D-55 第 2 项 e「按清单把加锁顺序改成一致【OMO自决】」。不改的理由有三条。① 把两张后台表和 profiles 提到最前面，能消掉删账号、管理员下架这两种死锁，但那两张后台表会从迁移一开始就被独占，一直到回填和建索引做完；后台鉴权（admin_token_authorization_v2 要读角色动作表）这段时间都得等。现在它们是在回填和建索引之后才被锁的，挡住后台的时间短得多。② 删话题那一种怎么排都消不掉：删话题先拿话题再拿回复，在途回复先拿回复再拿话题，迁移只能和其中一个同向。③ 不改的代价已经写清楚并且可操作：死锁时被回滚的可能是任一方；迁移是单个事务，停在 40P01 或 55P03 时什么都没留下，原样重跑即可（迁移里的注释和 RUNBOOK.md 的「Community P3」一段都写了）。另外，不改顺序就不用为这一处再多一轮回放和重新冻结的风险。
+
+### L188 2026-11-21 00:56 CT · 第九批 P3 与测试项的逐项状态
+- task_id: D-55.2c–2j（mig:P3-B8-1–3、client:P3-B8-1–5、test:B8-1）
+- code_sha: e8aecfb6bf4708bf4d9733a5773578db4572aaf9、7ccb1952cc6e7e5ad11b250fe9fdea592e367d99（都已推送）
+- docs_sha: 9706043（本次写回之前材料分支的 HEAD）
+- 环境: 本地、L-SQL
+- 命令: —（汇总；证据见前面几条）
+- 计数: 9 项里 9 项已修；其中 mig:P3-B8-3 的「加锁顺序改成一致」那一半自决不改；记【跳过】的 0 项 [本地测]
+- ci_run_url: —
+- 未测项: 见前面几条
+- 下一条: P4 合 7ccb195
+- 附: 一行一项，只写编号。
+  - mig:P3-B8-1（改进前必修）已修（e8aecfb）：restore_content 恢复回复时补 answered_at、last_activity_at；测试先红后绿（数据库测试与 L-SQL 新场景）。
+  - mig:P3-B8-2（小）已修（e8aecfb）：迁移头加说明；静态测试禁止对 post_comments 用 `select('*')`、不带列名的 `.select()`，跨行的链认得出来；对照变红后撤掉。
+  - mig:P3-B8-3（小）已修注释与 RUNBOOK（e8aecfb）；加锁顺序不改，自决，理由见上一条。
+  - client:P3-B8-1（改进前必修）已修（7ccb195）：分享图改用 app-icon-192.png，不进清单；verify-miniprogram 核产物里有它。
+  - client:P3-B8-2（改进前必修）已修（7ccb195）：`temp-` 开头的行不给「回复」；不会发出 reply_to_comment_id 为临时 id 的请求。
+  - client:P3-B8-3（小）已修（7ccb195）：retryComments 成功后调 applyReplyAnchor。
+  - client:P3-B8-4（小）已修（7ccb195）：删掉恒为真的断言，补换号用例；先红用对照。
+  - client:P3-B8-5（小）已修（7ccb195）：my-topics 的 load() 失败上报 `my-topics.load`；注释改正。
+  - test:B8-1（改进前必修）已修（7ccb195）：read-failure-states 按游标推算页号；PAGES 加 pages/my-topics/index。只在 P3 上修，经合并带到 P4。
+
+### L189 · 2026-11-21 01:06 CT · P3 子任务交回（D-55 第 2 项全部完成）
+- task_id: D-55.2
+- code_sha: codex/community-p3-20261120 7ccb195（#379，草稿，base 未动）
+- docs_sha: 9706043（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 读 P3 子任务 st_01a1fc57 的最终报告与草稿（L181–L188）
+- 计数: 提交 8254931（-s ours 05e0959）、e67481c（merge 3778952）、e8aecfb（2c–2e 与重新冻结）、7ccb195（2f–2j）；一次推送 042427c..7ccb195；L-SQL 五次机会用了一次；mig:P3-B8-1、B8-2 已修，B8-3 注释与仓库 RUNBOOK 已修、加锁顺序不改；client:P3-B8-1–5、test:B8-1 已修 [本地测]
+- ci_run_url: —（base 不是 main）
+- 未测项: 微信里分享卡在真机上的样子；三种死锁情形没有在本地复现
+- 下一条: P4 第二阶段
+- 附: [OMO自决]（P3 子任务）最终门禁没有在推送后重跑，因为 check-20261121T061456Z 跑的就是推送的 head 和树，head 之后没动；加锁顺序不改，因为把两张后台表提前会在回填和建索引期间挡住后台登录检查，任何顺序都去不掉删话题那一种情形，所以改正注释、在仓库 RUNBOOK 写明可以原样重跑；2c 的「再跑一遍 VERIFY」用的是 VERIFY 第 8 节自己的查询（夹具库的表结构跑不了整份文件）；2i 原来就是对的，红灯来自去掉一行的对照。遗留：一次性 worktree ~/work/evidence/D55/p3/red-e67481c（约 391M，有未提交的改动，不用 --force 删不掉），按规矩不强删，留着，记在这里。
