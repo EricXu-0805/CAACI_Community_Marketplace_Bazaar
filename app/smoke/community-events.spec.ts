@@ -416,7 +416,8 @@ test.describe('events for an English reader', () => {
     await expect(card).not.toHaveAttribute('aria-label', named('Nov 24'))
     const spoken = copy['events.runsOnSpoken'].replace('{date}', 'Nov 24')
     await expect(card).toHaveAttribute('aria-label', named(spoken))
-    // client:P4-B8-5
+    // In English the date block marks such a card with a "+". A mark like that is no word when a screen reader
+    // comes to it, so the name of the card has to say it in words and must not carry the mark (client:P4-B8-5).
     expect(spoken).not.toContain(copy['events.runsOn'])
   })
 })

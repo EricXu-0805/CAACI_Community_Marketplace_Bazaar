@@ -176,7 +176,7 @@ test.describe('for an administrator whose device is not on Champaign time', () =
 
   test('a Chinese console words the same start the Chinese way', async ({ page }) => {
     await unlock(page, 'operator', 'zh')
-    await expect(card(page, PARTNER).locator('.card-meta')).toHaveText(`${copyZh['events.filter.partner']} · 国际象棋社 · 11月22日 周日 10:00 CT`)
-    await expect(card(page, MEMBER).locator('.card-meta')).toHaveText(`${copyZh['events.filter.member']} · 11月27日 周五 10:00 CT`)
+    await expect(card(page, PARTNER).locator('.card-meta')).toHaveText(`${copyZh['events.filter.partner']} · 国际象棋社 · 2026年11月22日 周日 10:00 CT`)
+    await expect(card(page, MEMBER).locator('.card-meta')).toHaveText(`${copyZh['events.filter.member']} · 2026年11月27日 周五 10:00 CT`)
   })
 })

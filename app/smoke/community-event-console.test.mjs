@@ -113,15 +113,18 @@ test('a title of line breaks or tabs alone is still a title to the database, and
 
 test('the line under a title gives the source, the organizer and the start in Champaign time, without a part the row lacks', () => {
   // 16:00 UTC is 10:00 on Saturday in Champaign. The administrator's device is not asked (SPEC 6.7.8).
-  assert.equal(eventConsoleMeta(row('partner'), 'zh', '合作组织'), '合作组织 · 国际象棋社 · 11月21日 周六 10:00 CT')
+  // Both languages name the year: the list is not limited to the coming months.
+  assert.equal(eventConsoleMeta(row('partner'), 'zh', '合作组织'), '合作组织 · 国际象棋社 · 2026年11月21日 周六 10:00 CT')
   assert.equal(eventConsoleMeta(row('partner'), 'en', 'Partners'), 'Partners · Chess Club · Sat, Nov 21, 2026 10:00 AM CT')
   assert.equal(eventConsoleMeta(row('campus', { organizer_name: 'University Library' }), 'en', 'Campus'),
     'Campus · University Library · Sat, Nov 21, 2026 10:00 AM CT')
   // A member's event names no organizer, and a CAACI row need not: the separator goes with the part.
-  assert.equal(eventConsoleMeta(row('member'), 'zh', '网友发起'), '网友发起 · 11月21日 周六 10:00 CT')
+  assert.equal(eventConsoleMeta(row('member'), 'zh', '网友发起'), '网友发起 · 2026年11月21日 周六 10:00 CT')
   assert.equal(eventConsoleMeta(row('caaci'), 'en', 'CAACI'), 'CAACI · Sat, Nov 21, 2026 10:00 AM CT')
   // In daylight time 15:00 UTC is 10:00 there.
   assert.equal(eventConsoleMeta(row('caaci', { starts_at: '2027-07-10T15:00:00Z' }), 'en', 'CAACI'), 'CAACI · Sat, Jul 10, 2027 10:00 AM CT')
+  // The year is Champaign's too: 03:00 UTC on New Year's Day is still the evening of the 31st there.
+  assert.equal(eventConsoleMeta(row('caaci', { starts_at: '2027-01-01T03:00:00Z' }), 'zh', 'CAACI 主办'), 'CAACI 主办 · 2026年12月31日 周四 21:00 CT')
 })
 
 test('no time in the events tab is worded by the clock of the device', () => {

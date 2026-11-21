@@ -4,7 +4,7 @@
  * is not sent into a refusal; the rules are the ones the three event actions
  * apply (ENGINEERING 9.7).
  */
-import { formatEventPreviousTime } from './eventTime'
+import { eventTimeParts, formatEventPreviousTime } from './eventTime'
 
 type Language = 'zh' | 'en'
 export type EventConsoleAction = 'create_event_discussion' | 'hide_event' | 'unhide_event'
@@ -43,12 +43,22 @@ export function eventConsoleOrganizer(row: EventConsoleRow, lang: Language): str
 }
 
 /**
+ * When a row starts, with its year in Chinese as in English. The console lists every event, newest start first,
+ * with no limit on how far back or ahead, so the same day of two different years can stand on one screen; the
+ * Chinese text of formatEventPreviousTime leaves the year out. The year is the one in Champaign, like the rest.
+ */
+function eventConsoleStart(value: string, lang: Language): string {
+  const when = formatEventPreviousTime(value, lang)
+  return lang === 'zh' ? `${eventTimeParts(value).year}年${when}` : when
+}
+
+/**
  * The line under a row's title: its source, its organizer and when it starts. A part the row does not have is
  * left out with its separator. The start is in Champaign time whatever the administrator's device is set to,
  * and says so (SPEC 6.7.8).
  */
 export function eventConsoleMeta(row: EventConsoleRow, lang: Language, source: string): string {
-  return [source, eventConsoleOrganizer(row, lang), formatEventPreviousTime(row.starts_at, lang)].filter(Boolean).join(' · ')
+  return [source, eventConsoleOrganizer(row, lang), eventConsoleStart(row.starts_at, lang)].filter(Boolean).join(' · ')
 }
 
 /** The buttons of a row, in the order they are shown. `owner` is whether the administrator may open discussions. */
