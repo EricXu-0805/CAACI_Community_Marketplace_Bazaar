@@ -66,6 +66,24 @@ test('member migration does not reissue unrelated community objects', () => {
   }
 })
 
+// The app and SQL must keep the same explicit whitespace policy.
+test('client EVENT_SPACE contract matches the migration code points', () => {
+  const parse = value => {
+    const codes = new Set(value.includes(' ') ? [32] : [])
+    for (const match of value.matchAll(/\\u([0-9A-F]{4})(?:-\\u([0-9A-F]{4}))?/g)) {
+      const first = parseInt(match[1], 16), last = match[2] ? parseInt(match[2], 16) : first
+      for (let code = first; code <= last; code++) codes.add(code)
+    }
+    return [...codes].sort((a, b) => a - b)
+  }
+  const sql = /regexp_replace\([^\n]*?, '(\[[^']+\])\+'/.exec(readMigration(MIGRATION))
+  const client = /EVENT_SPACE\s*=\s*\/(\[[^\n]+?\])\+\/g/.exec(appSource())
+  assert.ok(sql, 'migration whitespace class')
+  assert.ok(client, 'item7 must export EVENT_SPACE as the specified global regex')
+  assert.deepEqual(parse(sql[1]), CODES)
+  assert.deepEqual(parse(client[1]), parse(sql[1]))
+})
+
 test('P4.6 member event server', { skip: SKIP }, async t => {
   const db = startMemberEventsDatabase()
   const { sql, as, attempt, createEvent } = db

@@ -19,10 +19,17 @@ type EventWindow = 'upcoming' | 'past'
 const HANDOFF_MS = 5 * 60_000
 const shown: Partial<Record<EventWindow, { at: number; rows: Map<string, CommunityEvent> }>> = {}
 let reader = 0
-onAccountTransition(() => {
-  reader += 1
+let listVersion = 0
+let memberSwitch: { readonly at: number; readonly value: boolean } | undefined
+function invalidateEventLists() {
+  listVersion += 1
   shown.upcoming = undefined
   shown.past = undefined
+}
+onAccountTransition(() => {
+  reader += 1
+  memberSwitch = undefined
+  invalidateEventLists()
 })
 
 function withoutBlocked(rows: CommunityEvent[]): CommunityEvent[] {
@@ -62,6 +69,20 @@ export function useCommunityEvents() {
   const { currentUser, awaitAuthReady } = useAuth()
   const moderation = useModeration()
 
+  async function memberEventsOpen(): Promise<boolean> {
+    // D-57 requires every failed prerequisite or RPC response to stay closed.
+    const ready = await awaitAuthReady().then(() => true, () => false)
+    if (!ready) return false
+    const mine = reader
+    const age = memberSwitch ? Date.now() - memberSwitch.at : 60_000
+    if (memberSwitch && age >= 0 && age < 60_000) return memberSwitch.value
+    const value = await supabase.rpc('community_member_events_open')
+      .then(({ data, error }) => !error && data === true, () => false)
+    if (mine !== reader) return false
+    memberSwitch = { at: Date.now(), value }
+    return value
+  }
+
   async function listEvents(window: EventWindow = 'upcoming'): Promise<CommunityEvent[]> {
     // Who is reading decides what is left out, so the session is settled and the block list read first.
     // A list that cannot be checked against the block list fails; it is not shown unfiltered.
@@ -71,13 +92,14 @@ export function useCommunityEvents() {
       if (!gate.ok) throw new Error('moderation_gate_unavailable')
     }
     const mine = reader
+    const version = listVersion
     const { data, error } = await supabase.rpc('list_community_events', {
       region_in: ACTIVE_REGION, window_in: window, limit_in: 200,
     })
     if (error) throw error
     const rows = (data || []) as CommunityEvent[]
     // Rows that come back after the account changed are not kept for the next reader.
-    return mine === reader ? keepCommunityEvents(window, rows) : withoutBlocked(rows)
+    return mine === reader && version === listVersion ? keepCommunityEvents(window, rows) : withoutBlocked(rows)
   }
 
   /** One event by id, or null when readers no longer get it (hidden, withdrawn, or out of both windows). */
@@ -116,5 +138,5 @@ export function useCommunityEvents() {
     }
   }
 
-  return { listEvents, findEvent, findTopicEvent }
+  return { listEvents, findEvent, findTopicEvent, memberEventsOpen, invalidate: invalidateEventLists }
 }
