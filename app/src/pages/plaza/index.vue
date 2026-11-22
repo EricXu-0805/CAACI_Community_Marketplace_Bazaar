@@ -437,7 +437,7 @@
           :aria-label="localize(thread.parent.content_i18n, thread.parent.content)"
           aria-keyshortcuts="Shift+F10"
           @keydown="onCommentKeyboardMenu($event, thread.parent)"
-          @touchstart="commentLongPress.onTouchstart(thread.parent)"
+          @touchstart="!isPendingComment(thread.parent) && commentLongPress.onTouchstart(thread.parent)"
           @touchend="commentLongPress.onTouchend"
           @touchcancel="commentLongPress.onTouchcancel"
           @touchmove="commentLongPress.onTouchmove"
@@ -476,7 +476,7 @@
             :aria-label="localize(child.content_i18n, child.content)"
             aria-keyshortcuts="Shift+F10"
             @keydown="onCommentKeyboardMenu($event, child)"
-            @touchstart="commentLongPress.onTouchstart(child)"
+            @touchstart="!isPendingComment(child) && commentLongPress.onTouchstart(child)"
             @touchend="commentLongPress.onTouchend"
             @touchcancel="commentLongPress.onTouchcancel"
             @touchmove="commentLongPress.onTouchmove"
@@ -3097,6 +3097,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   align-items: center;
   gap: 12px;
   margin-top: 4px;
+  min-height: var(--space-6);
 }
 .cs-like-btn {
   display: flex;
