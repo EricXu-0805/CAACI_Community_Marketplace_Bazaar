@@ -7,6 +7,8 @@
 
 D-57 第十一批进行中（L226 起）：前置脚本已自测通过；P3、P4 服务端、视口后续分别执行，主会话负责材料和后续 P4 客户端。截止 2026-11-24 12:00 CT，按 D-57 收尾。第十批已交付，FINAL 第十批原文不改。
 
+用号更正（2026-11-21 21:47 CT，L232，覆盖 D-57 第 10 项原上限）：所有 Claude 槽位与 ChatGPT login-3 的 7d 上限统一 85%。Claude 默认 default → account-2 → account-5 → account-4，account-3 已过期最后；default 超过 85%，重置前暂排 account-4 后。ChatGPT 优先 login-3，default/login-2 已过期。用量与停下通知归 supervisor，OMO 不查用量、不切号或模型。
+
 ## 第十一批开工背景（D-57 第 0 项，逐字照录）
 
 - 第十批验收：supervisor 做了五个维度的独立核查（视口代码、视口复现、P3、P4、报告与第 17 条），blocker、major 配反驳方，最后由覆盖审阅逐条核 26 条发现。没有阻断项。在 tony-ws 自己的目录里复现了：main 66e14a45 上 marketplace-responsive.spec.ts:699 60 次失败 16 次（都在第 705 行，期望 830、实得 480）；19c4657 上三组 ×60 共 180 次 0 失败；新用例去掉修复后 10/10 红在第 803 行；和聊天、键盘、视口相关的 13 个 spec 在修复前后结果相同；小程序产物里没有 ResizeObserver。P4 的 VERIFY_reply_notice_switch.sql 正对照和四个负对照 37 步 37 过，L-SQL 184/184、P3_TOTAL 703/703、EV_TOTAL 855/855。26 条里 22 条已修；process:B9-1、process:B9-2、report:B9-2 只做了一部分（本条第 1、2、9 项）；mig:P3-B9-3 按 D-56 只记录。
@@ -22,7 +24,7 @@ D-57 第十一批进行中（L226 起）：前置脚本已自测通过；P3、P4
 | code_sha | 9171976e94c4c7e96522f0a9ff475452fc24eb51（main，#382 于 2026-11-21 16:09:20Z squash 合并，树与 19c4657 相同；生产发布由 supervisor 完成，D-57 第 0 项） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 62d7751（本次写回之前材料分支的 HEAD） |
+| docs_sha | 99dd903（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #379 codex/community-p3-20261120 fdb823a（base codex/community-restricted-20261113）；#380 codex/community-events-20261120 02d4d4c（base P3 的分支）；两个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）；#373、#378 已合进各自 base 分支 [本地测：2026-11-21 gh pr view、git ls-remote] |
 | tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 7ccb195（#379）；illini-events-20261120 24ff7bf（#380）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与 D-55 main 对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：2026-11-21 git worktree list] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
@@ -225,7 +227,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 
 16. D-47.2：SPEC只给了“守则/指南”标签和社区守则名称，未定义帖子类型字段。当前按官方精选帖标题中的“社区守则/Community guidelines”识别守则，其他显示指南；这不是稳定元数据规则，标题改名/其他守则文档如何分类仍需明确。近期活动的两个key继续等P4.8，不提前实现。
 
-17. 用号按 D-52 第 0 项（2026-11-13 18:10「子任务只用 ChatGPT 打头的类别」那条已由 D-51 第 1 项解除，L95「admin、board 不用」由 D-52 第 0 项作废）：default（admin）、account-2（board）不设 60% 上限，用到额度耗尽；account-5、account-4 和 ChatGPT 两个号仍按 60%；顺序 default → account-2 → account-5 → account-4，切 ChatGPT 由 supervisor 做，OMO 不改顺序、不切模型。停下条件：default、account-2 都用尽，其余号也都到 60%。
+17. 用号按 supervisor 2026-11-21 21:47 CT 更正（L232）：所有 Claude 槽位及 ChatGPT login-3 的 7d 上限统一 85%。Claude 默认顺序 default → account-2 → account-5 → account-4；default 已超过 85%，重置前暂放 account-4 后，重置后由 supervisor 移回首位；account-3 登录过期最后。ChatGPT 优先 login-3，default、login-2 已过期。用量由 supervisor 查看；OMO 不查用量、不切号、不切模型、不改 ~/.omo。所有号到 85% 时，以 supervisor 通知为准停下并按 D-51 第 1 项收尾。
 
 18. BRAND.7（E12）：已完成（D-53 第 0 项 d，supervisor 代做）。supervisor 2026-11-20 约 03:22 CT promote 预览 dpl_3bG2SKTAmQsa7jEmScy2cHHpnk1y，新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`curl … | grep -c 玉米地` 为 6；回退用 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6。BRAND.7 的 DoD ④ 完成。「转发 · CSSA」的虚构活动按 Eric 2026-11-19 的选择保留。D-37（董事会同意）仍未拿到，LEGAL.1 照旧开着，这是 Eric 的取舍。
 19. 给运维的提醒（D-52 第 4 项 g，更正 L105 的说法）：本地镜像 supabase/postgres 17.6.1.104（和生产的数据库版本一样）上，用 postgres 或 supabase_admin 登录，再 `SET ROLE` 到 anon、authenticated 或 service_role 去调用没有 EXECUTE 权限的函数，后端会 SIGSEGV、整库重启；以 authenticator 登录（也就是走 PostgREST）是正常的 42501。所以 App 用户大概率触发不了，运维会话会。托管库上的 supautils 和 PostgREST 版本可能和本地不同，这一点没核；OMO 没碰任何托管库。可选的镜像版本 17.6.1.167：核查方在这个版本上没复现崩溃。

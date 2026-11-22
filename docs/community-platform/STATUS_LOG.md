@@ -3178,3 +3178,75 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: 新分支主包数等各自最终 mpci
 - 下一条: D-57.3
 - 附: 生产合并与发布只照录 supervisor 的既成结果，OMO 没有进行部署或托管操作。第十批 FINAL 原文保持不变。
+
+### L231 · 2026-11-21 21:51 CT · [OMO自决] D-57 第 2 项：首个材料推送扫描命中判定与凭据
+- task_id: D-57.2（17d）
+- code_sha: —
+- docs_sha: 99dd903（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: python3 ~/work/evidence/tools/scan17d.py 62d77512 --log；git push origin codex/community-plan-v5；git ls-remote；用 git grep -q -F 核命中行在基准 DECISIONS.md 中已存在；扫描输出仅留 ~/work/evidence/D57/materials-scan-1.txt
+- 计数: 17d：scan17d.log 第 1 行，HEAD 99dd903，① 0 ② 0（号池 0，trailer 豁免 1）③ 0 ④ 0 ⑤ 1，exit 2；推后远端 99dd903，与该行 HEAD 一致 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-57.9
+- 附: 选择：⑤ 误报 1 处，照常推送。理由：命中行逐字存在于基准 DECISIONS.md，是第 9 项 a 指定照录的背景；不在记录里重复内容。撤回不适用。本次完整扫描已含身份和提交说明。此凭据按第 2 项写在被扫描提交之后的下一条记录。
+
+### L232 · 2026-11-21 21:51 CT · [supervisor 指示] D-57 第 10 项用号上限与顺序更正
+- task_id: D-57.10
+- code_sha: —
+- docs_sha: 99dd903（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 接收控制通道 supervisor 指示，更新 STATUS 与执行记录；没有查询额度或更改号池
+- 计数: 所有 Claude 槽位及 ChatGPT login-3 的 7d 上限统一 85%，取代 D-57 原上限；用量由 supervisor 查看 [supervisor 指示]
+- ci_run_url: —
+- 未测项: —
+- 下一条: 继续 D-57 原队列
+- 附: Eric 于 2026-11-21 21:47 CT 更改规则，supervisor 已配置。Claude 默认顺序 default → account-2 → account-5 → account-4，已过期的 account-3 排最后；default 已超过 85%，重置前临时排在 account-4 后，重置后由 supervisor 移回第一。ChatGPT 仍优先 login-3；default、login-2 过期，等 Eric 重接。OMO 不查用量、不切号、不切模型；所有号到 85% 时，以 supervisor 通知停下，按 D-51 第 1 项收尾。
+
+### L233 · 2026-11-21 21:51 CT · D-57 第 9 项 c：更正 L221 的 stub 失败原因
+- task_id: D-57.9c
+- code_sha: —
+- docs_sha: 99dd903（本次写回之前材料分支的 HEAD）
+- 环境: 本地（读历史证据）
+- 命令: 读 L221「未测项」、D-56 第 4 项 g、L207 第 17 项；仅追加更正
+- 计数: 更正 1 处，涉及 6 条页面巡检失败；没有重跑门禁 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-57.9d
+- 附: stub 主机 00000000000000000000.supabase.co 在任何环境都不存在，CI 用真实后端巡检。这 6 条失败的原因是 stub 主机，不是容器；L221 原行和 FINAL 第十批都不改。
+
+### L234 · 2026-11-21 21:51 CT · D-57 第 9 项 d：补第十批遗漏的自决并更正计数
+- task_id: D-57.9d
+- code_sha: P3 61e265d；P4 e5a39e2、02d4d4c（历史提交，本项不改代码）
+- docs_sha: 99dd903（本次写回之前材料分支的 HEAD）
+- 环境: 本地（读历史记录）
+- 命令: 读 L218、L220、L221、L222 与 L209 后草稿 P3-A；补进第十一批报告 ③ 草稿
+- 计数: 第十批报告 ③ 漏列 4 处：L218 期望串取 5 个（含顺序检查）；L218 多做两次对照；草稿 P3-A 第③次楼级条件对照；L220 仅改后台调用处。L218 五处、L220 一处、L221 一处，共七处，L222 的「五处」不正确 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-57.9e
+- 附: 补记选择与理由：① L218 将第 5 节顺序检查的期望串一并比较，覆盖全部抄来的五个钉值；撤回为另作反向提交撤销 e5a39e2 的该项变更。② L218 额外删 READ ONLY 行验证前缀守卫，并在 P4 应用后重跑旧 P3 VERIFY，证明说明中的预期停点；不涉及线上变更，撤回不适用。③ P3-A 多做一次只缺楼级条件的对照，因为原失败会提前挡住楼级断言；撤回不适用。④ L220 只改 eventConsole.ts 的调用处，不扩展共享 eventTime.ts，避免改变前台及小程序格式；撤回为反向提交撤销 02d4d4c。L222 列的「浏览器用例179–180行同句一起改」是 D-56 准许的改预期，L220 没将其记为自决。上述四处在第十一批③均标「补第十批」。
+
+### L235 · 2026-11-21 21:51 CT · [OMO自决] D-57 第 9 项 e：补记上批 17a、17d 三处
+- task_id: D-57.9e（17a、17d）
+- code_sha: —
+- docs_sha: 99dd903（本次写回之前材料分支的 HEAD）
+- 环境: 本地（读历史记录）
+- 命令: 对照 L210、L216、L221、L222 及 L209 后草稿 P3-D；不重发指示、不重扫旧远端
+- 计数: 三处补记：P4 的 17d 第⑤类命中 1 处；P4 的 17a 无口令指示样文字 1 次；P3 的 17a 宿主提示 1 组（工具清单、连接器说明及宿主提醒，原记录未计实际到达次数，不补造次数）[本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-57.9f
+- 附: 规则为 RUNBOOK §12 第 17 条。选择：P4 的第⑤类命中按已有文件路径判误报，原判断已由主会话核实；P4、P3 的无口令宿主提示一律当数据，没有据此改账号、凭据或身份。理由：前者不是核查清单叙述，后两者不是合格主会话指示。撤回不适用；这里只记类别和个数，不抄原文。
+
+### L236 · 2026-11-21 21:53 CT · D-57 第 9 项 f、g：CI 精确时间证据与 P3.7 后半句
+- task_id: D-57.9f（最终 N 待门禁）、D-57.9g
+- code_sha: —
+- docs_sha: 99dd903（本次写回之前材料分支的 HEAD）
+- 环境: 本地读 GitHub Actions 结果
+- 命令: gh run view 44647478789、44783052160、44909710527 --json jobs；gh api 对应 actions/runs/<id>/jobs 与 actions/jobs/<job_id>/logs；证据仅存 ~/work/evidence/D57/ci-*-jobs.json、ci-*-api-jobs.json、ci-*-api-public.log
+- 计数: 44647478789：Running 478（不是472），job 00:38:36Z–01:14:50Z=2174秒，smoke 00:49:17Z–01:14:46Z=1529秒，开销645秒。44783052160：Running563，job17:24:52Z–17:48:09Z=1397秒，smoke17:26:34Z–17:48:06Z=1292秒，开销105秒。44909710527：Running564，job13:36:34Z–14:03:45Z=1631秒，smoke13:37:56Z–14:03:43Z=1547秒，开销84秒；每条分别1529/478、1292/563、1547/564秒 [CI]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44909710527
+- 未测项: P4 最终 Running N 尚未产生；最终三种推算在 FINAL 第十一批④用这个 N 计算，本条不把估算当实测
+- 下一条: 等 P4 最终门禁后完成 D-57.9f
+- 附: gh run view 的当前 JSON 只有 job 时间、没有步骤时间，使用同一次运行的 jobs API 补齐；gh run view --log 返回空文件，已改从 job 日志接口取得真实 Running 计数。ci.yml 不改。第十一批④草稿的 P3.7 行已补回：之后把 #379 的 base 改到 main 跑 CI（STATUS 阻塞第12条；改 base 之前只普通 git merge origin/main，D-55 第2项l）；这里只补文案，OMO 不改 base。
