@@ -3879,3 +3879,39 @@ a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin
 - 未测项: 两个最终门禁仍在运行或排队
 - 下一条: 最终门禁完成后写回结果
 - 附: L279称412fb8a无trailer为“过程遗漏”措辞过宽。D-57第2项已说明子任务原提交没有宿主自动行；此处仅确认0行，没有剥除动作，也不属于17d漏扫。主会话后续新提交按工具规范附一次，不改写已有提交。本批仍逐字豁免现有trailer，不扩大地址豁免。
+
+### L283 · 2026-11-22 09:41 CT · D-57 第2项：材料a96f516推送回执
+- task_id: D-57.2、D-57.11
+- code_sha: P4 a7a46e5；视口56f83cd
+- docs_sha: a96f516
+- 环境: 本地、远端
+- 命令: git commit --no-verify；python3 ~/work/evidence/tools/scan17d.py 7cef5aa --log；git push origin HEAD:codex/community-plan-v5；git ls-remote
+- 计数: 17d：scan17d.log第14行，HEAD a96f516，①0 ②0（trailer豁免1）③0 ④0 ⑤0，exit0；1提交、192新增行；远端匹配；旧日志前缀、SPEC旧行逐字不变 [本地测]
+- ci_run_url: —
+- 未测项: P4与视口后续最终验收尚未完成
+- 下一条: D-57.11
+- 附: 推送钩子识别纯文档，跳过可执行门禁；本次push没有使用--no-verify。扫描记录在本条补记，符合D-57第2项的下一条写回方式。
+
+### L284 · 2026-11-22 09:41 CT · D-57 第11项：第二轮P4门禁及未通过项
+- task_id: D-57.11
+- code_sha: a7a46e5
+- docs_sha: a96f516
+- 环境: L-UI，本地容器
+- 命令: 沿用L276的56文件SMOKE_SPECS完整清单；run-checks install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；check-20261122T144407Z
+- 计数: TEST2965/2964/0/1、pg_skips0；smoke Running717、707过9败1跳过；其他九步rc0；主包1472398、余100466，event分包31499。磁盘前347122151424、后347071188992字节 [本地测]
+- ci_run_url: —
+- 未测项: 8条巡检失败仍需按四条件逐项核对；通知回退测试再次失败，整体尚不能推送；699六十轮、最终head的L-SQL和对照尚未完成
+- 下一条: D-57.11 修正通知与收藏测试
+- 附: 通知失败是同一getByText同时命中无障碍播报副本和原生toast；运行时两个节点已带正确文本，没有漏提示证据。首轮收藏失败则在aria-pressed已经为true时只记录到关注请求；post/index.vue先更新乐观状态，再await setTopicMark。两处修测试同步边界，保留行为断言，不加retries或超时，不以L173豁免。
+
+### L285 · 2026-11-22 09:41 CT · [OMO自决] D-57 第11项：旧用例的断言修正和负对照排队
+- task_id: D-57.11
+- code_sha: a7a46e5加未提交测试及临时变异
+- docs_sha: a96f516
+- 环境: 本地；后台容器等待共享锁
+- 命令: SMOKE_SPECS="community-reply-notices.spec.ts community-watch-save.spec.ts:210" run-checks smoke；文件清单community-reply-notices.spec.ts、community-watch-save.spec.ts，共2文件；日志标签toast-save-negative-20261122T154025Z
+- 计数: 预期Running3；结果尚未返回；后台bash_826，完成文件由monitor订阅 [未测]
+- ci_run_url: —
+- 未测项: 两个漏提示、一个漏收藏写入的负对照；恢复生产字节后的两文件绿测
+- 下一条: 恢复临时变异，检查指纹，再跑绿测
+- 附: 选择：两个通知断言限定实际原生toast，并同时核精确文字和可见性；收藏断言用expect.poll等到原样的两个写请求。依据：运行时重名节点及乐观状态先于请求的源代码顺序均已观察。临时移除提示、短路save写入来证明断言会红，证据和原文件指纹记在本机reply-notice-debug.md；恢复后只提交测试。撤回用git revert测试提交；不改应用的无障碍提示或乐观交互。LSP未安装，按本批规则不新增依赖、不提问，使用容器typecheck。

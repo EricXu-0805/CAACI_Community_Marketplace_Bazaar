@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-22 08:55 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-22 09:41 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-57.11（P4最终全量门禁、699六十次和预算，之后冻结与单次推送）`
+`next_task_id: D-57.11（修正通知与收藏测试边界，负对照和绿测后重做最终门禁）`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-57 第十一批进行中（L226 起）：50/61项已完成。P3已推送597b7fa；P4首轮全量发现WXSS标签选择器，a7a46e5已修、定向节点2/2通过，修后全量正在跑。另两条旧用例首次失败，原断言各连跑3次全部通过；不作main同类豁免，最终门禁仍须通过。此前新smoke64条与旧列表2条通过，四张最终发起页截图已推送。列表头像受旧图片边界限制未加。视口后续本地56f83cd，新spec二十轮80过、messages二十跳过；应用双栏在820宽不可达，记录未覆盖；最终门禁排队中。P4和视口后续均未推送。截止2026-11-24 12:00 CT；本批完成后停，不接BACKLOG。第十批原文不改。
+D-57 第十一批进行中（L226 起）：50/63项已完成。P3已推送597b7fa；P4在a7a46e5的第二轮TEST2965/2964/0/1，smoke717/707/9/1，尚不能推送。通知测试同时匹配无障碍播报和原生toast；首轮收藏测试在乐观状态更新后抢先检查请求，两处正在做断言修正及负对照，不以main同类豁免。WXSS标签选择器已修。此前新smoke64条与旧列表2条通过，四张最终发起页截图已推送。列表头像受旧图片边界限制未加。视口后续本地56f83cd，新spec二十轮80过、messages二十跳过；820宽双栏不可达，记录未覆盖；最终门禁运行中。P4和视口后续均未推送。截止2026-11-24 12:00 CT；本批完成后停，不接BACKLOG。第十批原文不改。
 
 用号更正（2026-11-21 21:47 CT，L232，覆盖 D-57 第 10 项原上限）：所有 Claude 槽位与 ChatGPT login-3 的 7d 上限统一 85%。Claude 默认 default → account-2 → account-5 → account-4，account-3 已过期最后；default 超过 85%，重置前暂排 account-4 后。ChatGPT 优先 login-3，default/login-2 已过期。用量与停下通知归 supervisor，OMO 不查用量、不切号或模型。
 
@@ -24,7 +24,7 @@ D-57 第十一批进行中（L226 起）：50/61项已完成。P3已推送597b7f
 | code_sha | 9171976e94c4c7e96522f0a9ff475452fc24eb51（main，#382 于 2026-11-21 16:09:20Z squash 合并，树与 19c4657 相同；生产发布由 supervisor 完成，D-57 第 0 项） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 7cef5aa（本次写回之前材料分支的 HEAD） |
+| docs_sha | a96f516（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #379 codex/community-p3-20261120 597b7fa（base codex/community-restricted-20261113，D-57已推送，L254–L256）；#380 codex/community-events-20261120 02d4d4c（base P3 的分支，本批尚未推送）；两个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）；#373、#378 已合进各自 base 分支 [本地测：P3见L254–L256；其余为2026-11-21核对记录] |
 | tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 597b7fa（#379）；illini-events-20261120 a7a46e5（#380，本地，修后最终门禁中）；illini-viewport-consumers 56f83cd（本地，最终门禁排队）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树已核；其余为2026-11-21记录] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
@@ -193,7 +193,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P4.3 | 部分 | caaciorg 本地 28d59b1，Node 20/24 全部通过 [本地测]；推送等 E8，开 PR 由 Eric 做 |
 | P4.2、P4.8、P4.9 | 部分（P4.11 未做，归 Eric；P4.2 DoD ④ 成员写入通道由 20261122035253 打开，等应用；P4.9 的另一半等 E6，D-56 第 4 项 c） | #380 02d4d4c（D-56 第 3 项 a、f–j，含 P3 fdb823a，L216；主包 1,459,574）；之前 24ff7bf：20261120122054 重新冻结 a8c0e083…（旧 4d382eaa… 作废，L193），含 P3 7ccb195；L-SQL 184/184、EV_TOTAL 855/855、P3_TOTAL 703/703；全量 2898/2897/0/1，smoke 647 条 639 passed、7 条 main 上同样失败或同类；主包 1,459,446（余 113,418） |
 | P4.4、P4.5、P4.7、P4.10、P4.11 | 未测 | P4.5 真实数据等 D-32；P4.4 同步新鲜度及其余真人验收照原依赖 |
-| P4.6 | 部分，进行中 | D-57本地a7a46e5（客户端c800a99，含P3 597b7fa）；185条回放及31项对照通过；H5已走通发起、取消、举报和私信，完整新spec64条及旧列表2条通过（L263–L269）。首轮全量发现WXSS标签选择器，a7a46e5已修，定向节点2/2通过；最终全量复核中。列表头像受旧图片边界限制，未加（L268）。真机/开发者工具、wechat-seccheck真跑、staging S-1归Eric；前提为staging三条迁移、开关打开、已验证校园邮箱的合成账号 |
+| P4.6 | 部分，进行中 | D-57本地a7a46e5（客户端c800a99，含P3 597b7fa）；185条回放及31项对照通过；H5已走通发起、取消、举报和私信，完整新spec64条及旧列表2条通过（L263–L269）。WXSS已修，第二轮节点2964过1跳过；smoke仍有通知断言失败，修正与最终复核未完成（L284–L285）。列表头像受旧图片边界限制，未加（L268）。真机/开发者工具、wechat-seccheck真跑、staging S-1归Eric；前提为staging三条迁移、开关打开、已验证校园邮箱的合成账号 |
 | LEGAL.1–LEGAL.6 | 未测 | 等 D-37、D-38、D-39、D-40、D-28 |
 | CONTENT.1–CONTENT.6、P5.1–P8.1 | 未测 | 依赖 LEGAL 与 P5.2 |
 
