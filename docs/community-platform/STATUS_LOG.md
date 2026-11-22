@@ -4115,3 +4115,201 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 最终三个P4验证结果；审阅结论
 - 下一条: D-57.12 完成QA矩阵后按17条启动审阅
 - 附: 审阅使用p3.diff、p4-c106e23.diff、viewport.diff和changed-files-final.txt。旧p4.diff仅保留为头像前历史，不交给审阅当最终版本。证据和差异仅在本机；不向仓库添加原始日志。
+
+### L302 · 2026-11-22 12:41 CT · D-57：上一轮材料推送的扫描回执
+- task_id: D-57.2
+- code_sha: —
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: 本地、GitHub元数据
+- 命令: git commit --no-verify；scan17d.py 0669586 --log；git push --no-verify；git ls-remote
+- 计数: 17d：scan17d.log 第18行，HEAD2967c6c，①0 ②0（trailer豁免1）③0 ④0 ⑤0，exit0；提交1、新增212行；远端SHA与扫描HEAD一致 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-57.11 最终证据写回
+- 附: 2967c6c2550b0221756889396784fe0cb7ddbc1e已推送；这条回执按第2项写进下一次状态记录。
+
+### L303 · 2026-11-22 12:41 CT · D-57 第11项：最终P4全部本地门禁按规则通过
+- task_id: D-57.11
+- code_sha: c106e23b08025aa4a8194a5db0018fe2a1a627f4
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: 本地容器L-UI/L-SQL；同一flock锁；后台
+- 命令: L300完整57文件SMOKE_SPECS，check-20261122T173858Z；SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60"（1文件），check-20261122T182329Z；最终185链lsql-20261122T182602Z，p4-lsql-final-c106e23-20261122T173857Z
+- 计数: TEST2965/2964/0/1、pg_skips0；smoke721/712/8/1，smoke rc1，其余10个STEP rc0；699重复60/60；SQL185/185 errors0，P3_TOTAL703/703，EV_TOTAL855/855，MEV_TOTAL25/25，CONTROL_TOTAL31/31。mpci主包1473057、余99807 [本地测]
+- ci_run_url: —
+- 未测项: 小程序真机、真实seccheck、staging S-1、托管应用与开关；尚未推送P4
+- 下一条: D-57.11 冻结、扫描、推送
+- 附: 八败仅为light/dark首页、广场、events、event/create，Received分别6、69、6、3条，内容仅规定的三类stub错误；首页/广场四条见L173，另四条同类；events25/25满足附加条件。avatar4、member64、reply-notices2、reply-target6、watch-save8全部过，699/767均过。回复开关off、新开关复原false。全量磁盘前346780188672、后346670362624；六十轮前346670354432、后346769702912；SQL前346769694720、后346754236416字节。旧四迁移与02d4d4c逐字一致；移除唯一新增行后manifest与原版逐字一致。
+
+### L304 · 2026-11-22 12:41 CT · D-57：按第17条启动唯一只读审阅
+- task_id: D-57.12、D-57.1
+- code_sha: P3 597b7fa；P4 c106e23；视口56f83cd
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: 后台deep-high子任务；三棵detached、locked审阅目录
+- 命令: omo-steer.sh new d57-gate-c106e23；check pending-d57-gate-c106e23；前台读取；task；bind；check st_01a2048a；完成文件monitor
+- 计数: 派出前check：pending-d57-gate-c106e23 9 600；派出后check：st_01a2048a 9 600；QA矩阵27项均有本地证据，审阅结论待回传
+- ci_run_url: —
+- 未测项: 审阅尚未完成；没有把启动当成通过
+- 下一条: D-57.9f、D-57.9h
+- 附: 初始说明含17b三件事、只读和停下规则、17d脚本与--log要求。口令没有写入本条或任何证据文件；没有额外指定model。此时没有发出steer序号，完结时另核序号回执。
+
+### L305 · 2026-11-22 12:41 CT · D-57 第9f项：按最终721条重算CI
+- task_id: D-57.9f、D-57.11
+- code_sha: c106e23
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: GitHub只读时间戳；本地计算
+- 命令: 沿用L281的gh run view <id> --json jobs及对应actions/jobs API；(overhead + smokeSeconds * 721 / sampleN) / 60
+- 计数: run44647478789：2174秒job、1529秒smoke、645秒开销、478条，估49.19分；44783052160：1397/1292/105秒、563条，估29.33分；44909710527：1631/1547/84秒、564条，估34.36分；最好29.33、最坏49.19，最坏超过45分4.19分 [本地计算]
+- ci_run_url: —
+- 未测项: 这些是线性估算，不是新CI实跑；workflow未改
+- 下一条: D-57.9h
+- 附: 已写入本批FINAL私稿④，正式报告待统一提交。另更正ENGINEERING补记中自己误写的新增occurrence_count=1：旧P4迁移第233行已有该条件，本批沿用，仅替换地点规整相等条件并增加状态说明条件；迁移未改。
+
+### L306 · 2026-11-22 12:41 CT · D-57 第9h项：逐次smoke文件清单补全
+- task_id: D-57.9h
+- code_sha: 见逐行HEAD；未提交测试和临时变异见原记录
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: 本地日志索引，仅摘要；原始日志留本机
+- 命令: 核本批三个工作目录的check主日志及-smoke.log，按运行逐行列文件名；没有重跑任何门禁
+- 计数: 48次：46次有完整smoke STEP回执，2次中断；不把阶段红灯、变异红灯或中断合并成通过计数
+- ci_run_url: —
+- 未测项: 040320与064818没有完整结束计数；后者只输出8个文件的执行进度
+- 下一条: D-57.11 等审阅后冻结推送
+- 附: 下面每行列SMOKE_SPECS涉及的完整文件名，不省略大清单；筛选和重复参数见对应原记录。064818的输入48文件与同HEAD的085747续跑一致，Running均569；中断前只执行到部分文件，不能记成8文件门禁。初期红灯含探针修正，最终成功判据以各最终head为准。
+
+| 运行日志 | 范围 / HEAD | 文件数 | Running；pass/fail/skipped | smoke rc | SMOKE_SPECS 文件清单 |
+|---|---|---:|---|---|---|
+| check-20261122T034714Z | viewport 9171976 | 1 | 5；0/5/0 | 1 | viewport-inset-consumers.spec.ts |
+| check-20261122T035003Z | P3 5ae88f6 | 1 | 5；2/3/0 | 1 | community-reply-target.spec.ts |
+| check-20261122T035118Z | viewport 9171976 | 1 | 5；3/1/1 | 1 | viewport-inset-consumers.spec.ts |
+| check-20261122T035232Z | P3 5ae88f6 | 1 | 5；2/3/0 | 1 | community-reply-target.spec.ts |
+| check-20261122T035337Z | viewport 9171976 | 1 | 5；1/3/1 | 1 | viewport-inset-consumers.spec.ts |
+| check-20261122T035500Z | P3 5ae88f6 | 1 | 1；0/1/0 | 1 | community-reply-target.spec.ts |
+| check-20261122T035725Z | viewport 9171976 | 1 | 5；3/1/1 | 1 | viewport-inset-consumers.spec.ts |
+| check-20261122T035758Z | P3 5ae88f6 | 1 | 5；4/1/0 | 1 | community-reply-target.spec.ts |
+| check-20261122T035951Z | viewport 9171976 | 1 | 100；80/0/20 | 0 | viewport-inset-consumers.spec.ts |
+| check-20261122T040320Z | P3 5ae88f6 | 1 | 6；中断，无完整结论 | 未写回 | community-reply-target.spec.ts |
+| check-20261122T063815Z | P3 5ae88f6 | 1 | 6；5/1/0 | 1 | community-reply-target.spec.ts |
+| check-20261122T063954Z | viewport 9171976 | 1 | 60；60/0/0 | 0 | marketplace-responsive.spec.ts |
+| check-20261122T064357Z | viewport 412fb8a | 1 | 60；60/0/0 | 0 | marketplace-responsive.spec.ts |
+| check-20261122T064641Z | P3 5ae88f6 | 1 | 6；5/1/0 | 1 | community-reply-target.spec.ts |
+| check-20261122T064818Z | viewport 412fb8a | 48 | 569；中断，无完整结论 | 未写回 | a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-home.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts viewport-inset-consumers.spec.ts |
+| check-20261122T072647Z | P3 5ae88f6 | 1 | 2；2/0/0 | 0 | community-reply-target.spec.ts |
+| check-20261122T073432Z | P3 597b7fa | 53 | 616；611/4/1 | 1 | a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-home.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts |
+| check-20261122T082251Z | P3 597b7fa | 1 | 60；60/0/0 | 0 | marketplace-responsive.spec.ts |
+| check-20261122T085747Z | viewport 412fb8a | 48 | 569；563/4/2 | 1 | a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-home.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts viewport-inset-consumers.spec.ts |
+| check-20261122T094309Z | P4 7c9ffb4 | 1 | 64；0/64/0 | 1 | community-member-events.spec.ts |
+| check-20261122T105951Z | P4 e3eae3a | 1 | 4；4/0/0 | 0 | zz-member-event-before.spec.ts |
+| check-20261122T113052Z | P4 e3eae3a | 1 | 6；6/0/0 | 0 | community-member-events.spec.ts |
+| check-20261122T114759Z | P4 e3eae3a | 1 | 10；10/0/0 | 0 | community-member-events.spec.ts |
+| check-20261122T115816Z | P4 e3eae3a | 1 | 1；1/0/0 | 0 | zz-member-form-probe.spec.ts |
+| check-20261122T120704Z | P4 e3eae3a | 1 | 52；52/0/0 | 0 | community-member-events.spec.ts |
+| check-20261122T122706Z | P4 e3eae3a | 1 | 6；5/1/0 | 1 | community-member-events.spec.ts |
+| check-20261122T124103Z | P4 e3eae3a | 1 | 1；1/0/0 | 0 | zz-restriction-overlay-probe.spec.ts |
+| check-20261122T124645Z | P4 e3eae3a | 2 | 9；9/0/0 | 0 | restricted-account-notice.spec.ts zz-restriction-overlay-probe.spec.ts |
+| check-20261122T125443Z | P4 e3eae3a | 2 | 14；14/0/0 | 0 | community-member-events.spec.ts restricted-account-notice.spec.ts |
+| check-20261122T130741Z | P4 e3eae3a | 1 | 4；4/0/0 | 0 | community-member-events.spec.ts |
+| check-20261122T132331Z | P4 e3eae3a | 1 | 2；0/2/0 | 1 | community-events.spec.ts |
+| check-20261122T132705Z | P4 e3eae3a | 2 | 66；66/0/0 | 0 | community-events.spec.ts community-member-events.spec.ts |
+| check-20261122T134303Z | P4 7e61541 | 56 | 717；706/10/1 | 1 | a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-event-console.spec.ts community-events.spec.ts community-home.spec.ts community-member-events.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts |
+| check-20261122T142737Z | viewport 412fb8a | 1 | 100；80/0/20 | 0 | viewport-inset-consumers.spec.ts |
+| check-20261122T143612Z | P4 7e61541 | 2 | 6；6/0/0 | 0 | community-reply-notices.spec.ts community-watch-save.spec.ts |
+| check-20261122T144407Z | P4 a7a46e5 | 56 | 717；707/9/1 | 1 | a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-event-console.spec.ts community-events.spec.ts community-home.spec.ts community-member-events.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts |
+| check-20261122T152833Z | viewport 56f83cd | 48 | 569；563/4/2 | 1 | a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-home.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts viewport-inset-consumers.spec.ts |
+| check-20261122T160703Z | P4 a7a46e5 | 2 | 3；0/3/0 | 1 | community-reply-notices.spec.ts community-watch-save.spec.ts |
+| check-20261122T160852Z | P4 a7a46e5 | 2 | 10；10/0/0 | 0 | community-reply-notices.spec.ts community-watch-save.spec.ts |
+| check-20261122T161609Z | P4 d7d11f4 | 56 | 717；708/8/1 | 1 | a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-event-console.spec.ts community-events.spec.ts community-home.spec.ts community-member-events.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts |
+| check-20261122T170116Z | P4 d7d11f4 | 1 | 60；60/0/0 | 0 | marketplace-responsive.spec.ts |
+| check-20261122T171100Z | P4 d7d11f4 | 1 | 4；0/4/0 | 1 | community-event-avatar.spec.ts |
+| check-20261122T171530Z | P4 d7d11f4 | 1 | 4；0/4/0 | 1 | community-event-avatar.spec.ts |
+| check-20261122T171903Z | P4 d7d11f4 | 2 | 6；6/0/0 | 0 | community-event-avatar.spec.ts community-events.spec.ts |
+| check-20261122T172855Z | P4 d7d11f4 | 1 | 2；0/2/0 | 1 | community-events.spec.ts |
+| check-20261122T173112Z | P4 d7d11f4 | 2 | 6；6/0/0 | 0 | community-event-avatar.spec.ts community-events.spec.ts |
+| check-20261122T173858Z | P4 c106e23 | 57 | 721；712/8/1 | 1 | a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-event-avatar.spec.ts community-event-console.spec.ts community-events.spec.ts community-home.spec.ts community-member-events.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts |
+| check-20261122T182329Z | P4 c106e23 | 1 | 60；60/0/0 | 0 | marketplace-responsive.spec.ts |
+
+### L307 · 2026-11-22 12:56 CT · D-57 第11项：审阅通过，成员活动迁移冻结
+- task_id: D-57.11、D-57.12
+- code_sha: c106e23b08025aa4a8194a5db0018fe2a1a627f4
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: 本地只读审阅、哈希核对
+- 命令: st_01a2048a审阅回执；对照已计算SHA与manifest；不重跑已完成门禁
+- 计数: 独立审阅APPROVE/high，无阻断；26项本地PASS、messages一项允许跳过、人工/托管一项范围外；序号收到0、主会话发出0、无效指示0 [审阅]
+- ci_run_url: —
+- 未测项: 真人/托管验收；发布回执待下条
+- 下一条: D-57.11 扫描后单次快进推送
+- 附: 20261122035253_community_member_events.sql 冻结，sha256=97adefdd8d62a50442c6e7bd8e0d1a0bf5cc52b3ad7ba962a5f205244f625298，与manifest相同。推送后不再改。更正L303：完整门禁共10个STEP，smoke以外九步rc0，不是十步。Running721=旧647+main1+P3新增3+member64+avatar4+新路由巡检2；TEST2965=2899+main1+本批65。审阅未改代码、运行测试或访问托管库；STATUS两处阶段措辞在发布时更新。
+
+### L308 · 2026-11-22 12:58 CT · [OMO自决] D-57 第17d项：P4三处代码命中按误报放行
+- task_id: D-57.2、D-57.11
+- code_sha: c106e23
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: 本地统一扫描、只读Git核对
+- 命令: scan17d.py 02d4d4c --diff-base 02ee57b --diff-base 7e61541 --text PR_BODY_FINAL.md --log；git cat-file -e；git grep -q -F
+- 计数: 17d：scan17d.log 第19行，HEADc106e23，①0 ②0（号池0，trailer豁免7）③0 ④0 ⑤3，exit2；提交10、新增3407行；未漏扫 [本地测]
+- ci_run_url: —
+- 未测项: 此时尚未推送，推后另核远端SHA
+- 下一条: D-57.11 单次推送
+- 附: ⑤三处分别是RUNBOOK公开验证器路径、测试中的三个公开函数名、PRECHECK中的旧约束SQL；五次静默基准查询全部rc0，内容属于代码引用或SQL而非清单叙述，按17d允许，撤回不适用。不抄清单内容。审阅三个自有目录均clean，逐个unlock及普通worktree remove均rc0，没有force；审阅报告与diff仍在本机保留。
+- 过程更正: 本条首次追加因文件尾空行不匹配而失败，调用处未阻断后续推送；扫描与五项误报核对已先完成，推送已成功。本条补写该决定；追加器现保留尾空行并在apply_patch失败时中止，不再连带执行后续动作。
+
+### L309 · 2026-11-22 13:01 CT · D-57 第11项：P4已单次快进推送
+- task_id: D-57.11
+- code_sha: c106e23b08025aa4a8194a5db0018fe2a1a627f4
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: 本地Git、GitHub元数据
+- 命令: git push --no-verify origin c106e23b08025aa4a8194a5db0018fe2a1a627f4:refs/heads/codex/community-events-20261120；推前全量check-20261122T173858Z；推后git ls-remote、gh pr view
+- 计数: 一次快进02d4d4c..c106e23，exit0；远端SHA等于scan17d.log第19行HEAD；①0 ②0（trailer豁免7）③0 ④0 ⑤3，exit2，三处误报已见L308。#380 OPEN/draft=true，base保持P3 [本地测]
+- ci_run_url: —（base非main）
+- 未测项: 三迁移真实后端public smoke、托管应用和开关
+- 下一条: D-57.11 更新PR正文
+- 附: 旧正文已存档pr380-before-c106e23.md，更新前重新读取并确认内容与归档一致。冻结记录在推送前L307完成；未合并、转ready或改base。
+
+### L310 · 2026-11-22 13:03 CT · D-57 第11项：#380发布前提正文已更新
+- task_id: D-57.11
+- code_sha: c106e23
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: GitHub元数据
+- 命令: scan17d.py c106e23 --text PR_BODY_FINAL.md --log；gh api --method PATCH pulls/380（只传body）
+- 计数: 17d：scan17d.log 第20行，HEADc106e23，①0 ②0（trailer豁免0）③0 ④0 ⑤0，exit0；提交0、正文145行。REST回执body逐字匹配；OPEN/draft=true/base P3/head c106e23均保持 [本地测]
+- ci_run_url: —
+- 未测项: 三迁移实际应用、开关与真实后端public smoke
+- 下一条: D-57.9b 更新最终版本状态
+- 附: 正文明确P4.6、三迁移顺序及完整SHA、默认关闭和四个开启前提、合并前public smoke、两个CI探测对新函数的要求。旧正文归档保留；未发评论。
+
+### L311 · 2026-11-22 13:05 CT · D-57 第2项：四分支推送与扫描逐项相符
+- task_id: D-57.2
+- code_sha: P3 597b7fa；P4 c106e23；视口56f83cd
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: 本地Git reflog与扫描JSONL
+- 命令: git config core.logAllRefUpdates；四分支git reflog show --date=iso-strict --format="%H %gd %gs"；按03:32:56Z以后update by push逐SHA核scan17d.log
+- 计数: core.logAllRefUpdates=true；材料推送10次、有扫描记录10次；视口后续1/1；P3 1/1；P4 1/1；合计13/13，无缺口 [本地测]
+- ci_run_url: —
+- 未测项: 本报告与关闭日志的未来推送不提前计数，将按第2项另记实际回执
+- 下一条: D-57.12 最终约束审计
+- 附: 截点严格是本批开工后、写FINAL提交前。材料对应扫描行1/2/3/4/5/11/12/14/15/18；视口16；P3推前6/7；P4推前19；后续正文扫描也保留，均exit0或已逐条判⑤误报的exit2。不得把只扫描未推送的候选当成实际推送。
+
+### L312 · 2026-11-22 13:05 CT · D-57 第9b项：最终分支与主包表写回
+- task_id: D-57.9b
+- code_sha: main9171976e；P3 597b7fa；P4 c106e23；视口56f83cd
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: GitHub元数据与已完成mpci
+- 命令: gh pr view 370/379/380/382/383 --json state,mergeCommit,baseRefName,isDraft,headRefOid；git ls-remote；更新STATUS版本及P4.6行
+- 计数: #370/379/380/383均OPEN草稿，base分别main/restricted/P3/main；#382已MERGED到9171976e。主包：main/视口1381447，P3 1422771，P4 1473057；P4余99807 [本地测]
+- ci_run_url: —
+- 未测项: P4.6 DoD⑥仍待真人和staging；P4.2历史行按D-57第11项其余不动
+- 下一条: D-57.12 同提交发布报告
+- 附: 修正审阅指出的STATUS旧进行中措辞；保留已有历史数据，不把本地验收写成线上完成。
+
+### L313 · 2026-11-22 13:10 CT · D-57 第12项：FINAL与STATUS联合收尾准备
+- task_id: D-57.12
+- code_sha: P3 597b7fa；P4 c106e23；视口56f83cd
+- docs_sha: 2967c6c（本次写回之前材料分支的HEAD）
+- 环境: 本地材料、独立审阅
+- 命令: 编入FINAL第十一批八节；保留旧FINAL；准备git diff --check及历史前缀检查；随后git commit --no-verify、scan17d.py 2967c6c --log、git push --no-verify
+- 计数: 43条固定格式结果覆盖本批子项；三个代码分支已交付；独立审阅APPROVE；13次既有远端更新均有有效扫描
+- ci_run_url: —
+- 未测项: 本次材料提交与推送回执在后续日志补记；目标/提醒尚未关闭；真人和托管事项见FINAL④⑥
+- 下一条: 联合提交推送后关闭本批，不接BACKLOG
+- 附: 本条不预写尚未执行的提交、扫描或关闭成功。提交门槛为最后材料检查通过；FINAL与STATUS必须在同一提交。
+
+- 附（提交检查）: git diff --check首次发现两处新增尾部空行；保留历史前缀，调整本次未提交报告的尾部，状态日志追加本行后再查。

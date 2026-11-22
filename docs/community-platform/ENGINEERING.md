@@ -558,7 +558,7 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 - 新表 `private.community_member_event_config` 只有 `singleton=true` 一行，`enabled` 默认 false；启用 RLS，并撤销 PUBLIC、anon、authenticated、service_role 对表的全部权限，由 owner 操作开关。`public.community_member_events_open()` 是返回 boolean 的 STABLE、SECURITY DEFINER 函数，search_path 为 pg_catalog、statement_timeout 为 3s；只给 anon、authenticated EXECUTE，缺行也返回 false。
 - 成员活动 INSERT 在开关关闭时返回 `member_events_closed`（P0001）。取消自己的活动不检查开关；不带状态说明的取消也不受发帖限制。已经成功的同账号、同 post_id 重试可以返回原关联，不再创建第二份。
 - N 规整把 U+0009–000D、0020、0085、00A0、1680、2000–200A、2028、2029、202F、205F、3000、FEFF 的连续空白替换成一个普通空格，再去掉两端普通空格。RPC 将标题和地点按 N 写入；UPDATE 的状态说明 `status_note` 按 N 处理，空白结果变成 NULL。讨论帖正文仍交给帖子路径处理，不用 N 重排正文。
-- `community_events_member_shape` 增加 `occurrence_count=1`；地点要求非 NULL、等于 N(location)、长度 1–80；状态说明为 NULL 或等于 N(status_note)。标题和地点的长度、链接及保留词检查以规整后的值为准。
+- `community_events_member_shape` 沿用既有的 `occurrence_count=1`；本次把地点的去空格相等条件改为等于 N(location)，保留非 NULL、长度 1–80，并增加状态说明为 NULL 或等于 N(status_note)。标题和地点的长度、链接及保留词检查以规整后的值为准。
 - 本迁移授予 authenticated 以下三项，成员写入继续受现有 RLS 和触发器约束：
 
 ```sql
