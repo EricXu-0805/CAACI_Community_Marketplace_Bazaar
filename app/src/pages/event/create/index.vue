@@ -39,7 +39,7 @@
               </view>
               <!-- #endif -->
               <!-- #ifndef H5 -->
-              <picker :mode="part" :value="draft[timeFields[field][part]]" :disabled="submitting"
+              <picker class="me-date-picker" :mode="part" :value="draft[timeFields[field][part]]" :disabled="submitting"
                 :aria-label="`${t(`events.form.${field}`)} ${t(`events.form.${part}`)}`"
                 @change="draft[timeFields[field][part]] = $event.detail.value">
                 <view class="me-control" role="button">{{ draft[timeFields[field][part]] || t(`events.form.${part}`) }}</view>
@@ -196,7 +196,7 @@ async function submit() {
 .me-control:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .me-content { min-height: 132px; resize: vertical; }
 .me-date-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
-.me-date-row picker { min-width: 0; }
+.me-date-picker { min-width: 0; }
 .me-hint { font-size: 13px; line-height: 20px; color: var(--ink-soft); }
 .me-error { color: var(--danger); font-size: 14px; line-height: 22px; overflow-wrap: anywhere; }
 .me-state { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); padding: var(--space-8) var(--space-4); text-align: center; }
