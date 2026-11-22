@@ -3298,3 +3298,106 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: 更正后的双宽度结果等待后台通知；全量门禁未开始；编辑器typescript-language-server缺失，未安装新依赖，容器typecheck仍须运行
 - 下一条: D-57.4a
 - 附: [OMO自决] 选择：高度场景从手机取消按钮改为在可见菜单项按Escape关闭，两处长按场景仍点击手机取消。理由：桌面运行快照中菜单已打开却没有可见Cancel；当前uni-h5在宽高均至少500px时隐藏取消组，App.vue原有键盘增强已支持Escape。没有改应用来迎合测试，没有增加超时或重试，没有删改高度、位移、菜单和动作数量断言。撤回：反向修改这两处测试交互；原超时日志保留。
+
+### L241 · 2026-11-22 01:38 CT · D-57 第 2 项：第三次材料推送扫描凭据
+- task_id: D-57.2
+- code_sha: —
+- docs_sha: d4797fd（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: python3 ~/work/evidence/tools/scan17d.py 83a7b67 --log；git push origin codex/community-plan-v5；git ls-remote
+- 计数: 17d：scan17d.log 第 3 行，HEAD d4797fd，① 0 ② 0（号池0，trailer豁免1）③ 0 ④ 0 ⑤ 0，exit 0；提交1，新增50行；推后远端d4797fd与扫描HEAD一致 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-57.4 最终门禁
+- 附: 随本次P3实质进展补记，没有为记账单独起推送。
+
+### L242 · 2026-11-22 01:38 CT · D-57 第 3 项：P3 固定 main 普通合并的证据写回
+- task_id: D-57.3（P3）
+- code_sha: fdb823a → 5ae88f6
+- docs_sha: d4797fd；执行时材料62d77512
+- 环境: 本地
+- 命令: 子任务st_01a20159的P3-A；开工status、rev-parse、ls-remote；fetch；显式OMO身份merge --no-ff 9171976e；逐项diff、show --cc、sha256、merge-base
+- 计数: 开工本地与远端fdb823a、工作区0行、权限755。五项：① migrations/_ops差异0，两份manifest字节不变，P3迁移sha256 c2a18ee842128e7943293529ca182a5e714e7ca8f942d5d4d4d5bb9a2ed951bf，supabase只改邮件模板两文件；② combined diff 0行；③ 9文件+66/-8；④ .github和vercel.json与9171976e相同；⑤ 9171976e为合并提交祖先，rc0。证据为~/work/evidence/D57/p3/STATUS_DRAFT.md草稿P3-A [本地测]
+- ci_run_url: —
+- 未测项: 最终门禁和推送另记；#379仍为草稿、base不动
+- 下一条: D-57.4
+- 附: 本条补录子任务已经完成的合并核查；主会话接手后核了两文件完整差异，后续应用修复不触碰上述保护文件。
+
+### L243 · 2026-11-22 01:38 CT · D-57 第 4 项：修复前失败与测量器纠正
+- task_id: D-57.4a、D-57.4b
+- code_sha: 5ae88f6（应用未改，测试已扩展）
+- docs_sha: d4797fd；执行时材料62d77512
+- 环境: L-UI，本机容器
+- 命令: SMOKE_SPECS=community-reply-target.spec.ts（1文件），check-20261122T035003Z-smoke.log和check-20261122T035232Z-smoke.log；高度补证SMOKE_SPECS=community-reply-target.spec.ts:110（1文件），check-20261122T035500Z-smoke.log；原始记录见P3-B至P3-D
+- 计数: 前两次各Running5、2过3败。有效高度差：71.421875→94.609375，差23.1875px；1280楼中楼后方y 541.96875→565.15625、楼731.1875→754.375。390补证楼中楼y 527.96875→551.15625、楼717.1875→740.375，差均23.1875px。触摸完整红证据：top/nested pending各light/heavy/timers=1/1/1，saved各2/2/2 [隔离环境 L-UI]
+- ci_run_url: —
+- 未测项: 修复前完整双宽度旅程曾因测试环境切换超时，没把超时当成应用的高度证据
+- 下一条: D-57.4 最终门禁
+- 附: [OMO自决] 页面resize混入了键盘基线变化，首次390楼中楼y差111.8125px作废；后来改成独立宽度describe，未加超时、重试或删原断言。首次触摸clock未暂停的1499ms窗作废，pauseAt后才取完整2/2红证据。跟随元素选择正常流中的末尾标签，因为待发行行是最后一行。撤回为反向修改对应测试。
+
+### L244 · 2026-11-22 01:38 CT · D-57 第 4 项：P3 修复、绿测与最终门禁启动
+- task_id: D-57.4a、D-57.4b、D-57.4门禁
+- code_sha: 597b7f（本地，尚未推送）
+- docs_sha: d4797fd（本次写回之前材料分支的 HEAD）
+- 环境: L-UI；工作树755、umask022、共享flock
+- 命令: 双宽度SMOKE_SPECS="community-reply-target.spec.ts --grep=pending"（1文件），check-20261122T072647Z；触摸结果见check-20261122T064641Z。git commit本地提交后，以53文件SMOKE_SPECS执行run-checks install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；后台外层日志~/work/evidence/D57/p3/final-gate-20261122T073431Z.log，完成文件为该路径加.exit
+- 计数: 双宽度Running2、2过0败；390与1280的楼及楼中楼height均95.421875→95.421875，四组高度差0。390后方y 553.59375/744.4375、1280后方y 567.59375/758.4375，保存前后都相同，四组位移差0。触摸top/nested pending各0/0/0、saved各1/1/1，均过。八张截图已逐张查看，保存在~/work/evidence/D57/p3/green-layout-20261122T072647Z。双宽度运行磁盘前后347072708608/347076337664字节 [隔离环境 L-UI]
+- ci_run_url: —
+- 未测项: 当前最终门禁待回报，预期Running616=612+main1+本批3；TEST预期2800=2799+品牌边界1。699六十轮、mpci新字节数及推送尚未完成；小程序只构建、未看真机
+- 下一条: D-57.4 扫描推送 P3 并更新正文
+- 附: [OMO自决] 应用只改三行：两处touchstart先判断待发状态，动作行min-height使用已有--space-6；共享useLongPress及其他调用方不变。截图中待发动作仍不渲染，保存后原位出现。每个宽度独立后，测量器去掉单元素数组与两层无用遍历，四条高度/位移阈值断言不变；测试纯代码247行，最终全量会验证该整理。绿测时应用字节与此提交一致。17c补充：取消P3后的非阻塞flock -n检查也已返回0；回执仍缺20261122063720，维持L239记录。
+
+SMOKE_SPECS 完整清单（53文件，空格连接后作为同一条命令的环境前缀）：
+    a11y-authenticated.spec.ts
+    a11y-keyboard-journey.spec.ts
+    a11y-tree.spec.ts
+    admin-feedback-journeys.spec.ts
+    admin-first-unlock.spec.ts
+    admin-support-reply.spec.ts
+    auth-init-timeout-recovery.spec.ts
+    avatar-upload-failure.spec.ts
+    back-and-unknown-routes-are-not-dead-ends.spec.ts
+    chat-item-snapshot-repaints.spec.ts
+    community-board-states.spec.ts
+    community-home.spec.ts
+    community-post-partial-attach.spec.ts
+    community-post-topics.spec.ts
+    community-reply-notices.spec.ts
+    community-reply-target.spec.ts
+    community-report-queue.spec.ts
+    community-report-views.spec.ts
+    community-sort-tabs.spec.ts
+    community-tab-label.spec.ts
+    community-topic-row.spec.ts
+    community-watch-save.spec.ts
+    contrast-runtime.spec.ts
+    default-avatar-paints-in-both-themes.spec.ts
+    document-language-follows-the-reader.spec.ts
+    feed-pagination-recovery.spec.ts
+    gate-survives-hash-navigation.spec.ts
+    inbox-actions.spec.ts
+    input-preview-supplement.spec.ts
+    item-storage-cleanup.spec.ts
+    listing-numbers-are-readable.spec.ts
+    login-cancel-navigation.spec.ts
+    marketplace-responsive.spec.ts
+    moderation-chat-gate.spec.ts
+    motion-preference.spec.ts
+    notification-titles-are-one-language.spec.ts
+    notifications-compat.spec.ts
+    otp-cooldown-follows-the-clock.spec.ts
+    pages.smoke.spec.ts
+    plaza-attach-picker-is-modal.spec.ts
+    private-chat-media.spec.ts
+    product-publishing-discovery.spec.ts
+    protected-page-auth-startup.spec.ts
+    publish-ad-soft-gate.spec.ts
+    publish-validates-before-upload.spec.ts
+    read-failure-states.spec.ts
+    restricted-account-notice.spec.ts
+    search-items-compat.spec.ts
+    search-timeout-recovery.spec.ts
+    seller-publish-responsive.spec.ts
+    street-public-english.spec.ts
+    token-refresh-keeps-you-put.spec.ts
+    translate-control-needs-a-session.spec.ts
