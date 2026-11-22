@@ -763,3 +763,43 @@ test('a healthy socket with a silently missed message heals the visible chat wit
   expect(seededPolls).toEqual([])
   expect(fixture.sends()).toBe(0)
 })
+
+test('a layout height that settles after the last viewport event still clears the inset', async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1180 })
+  await seedMarketplace(page)
+  // Registered ahead of every app listener: once the flag is set, no later
+  // viewport event can reach the page's own handlers.
+  await page.addInitScript(() => {
+    const state = { withhold: false, withheld: 0 }
+    ;(window as any).__viewportEvents = state
+    const gate = (event: Event) => {
+      if (!state.withhold) return
+      state.withheld++
+      event.stopImmediatePropagation()
+    }
+    window.addEventListener('resize', gate, true)
+    window.visualViewport?.addEventListener('resize', gate)
+    window.visualViewport?.addEventListener('scroll', gate)
+  })
+  await page.goto(`/#/pages/chat/index?id=${CONV}`)
+  await expect(page.locator('.message-list')).toHaveAttribute('aria-live', 'polite')
+  const threadHeight = async () => Math.round((await page.locator('.chat-thread').boundingBox())!.height)
+  await expect.poll(threadHeight).toBe(1180)
+  // WebKit sometimes delivers its last resize event with the new visual
+  // height while layout still has the old one. Give the page exactly that
+  // reading, and make it the final viewport event it ever receives.
+  await page.evaluate(() => {
+    Object.defineProperty(window.visualViewport!, 'height', { configurable: true, get: () => 830 })
+    window.visualViewport!.dispatchEvent(new Event('resize'))
+    ;(window as any).__viewportEvents.withhold = true
+  })
+  await expect(page.locator('.chat-page-wrap')).toHaveClass(/kb-up/)
+  await expect.poll(threadHeight).toBe(830)
+  // Layout now really shrinks to the same height, and the events that the
+  // browser fires for it are withheld. The page has to notice by itself.
+  await page.setViewportSize({ width: 820, height: 830 })
+  await expect.poll(() => page.evaluate(() => document.documentElement.clientHeight)).toBe(830)
+  await expect.poll(() => page.evaluate(() => (window as any).__viewportEvents.withheld)).toBeGreaterThan(0)
+  await expect.poll(threadHeight).toBe(830)
+  await expect(page.locator('.chat-page-wrap')).not.toHaveClass(/kb-up/)
+})

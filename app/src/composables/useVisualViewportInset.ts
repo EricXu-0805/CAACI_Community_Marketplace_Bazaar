@@ -11,6 +11,7 @@ export function useVisualViewportBounds() {
   const visibleHeight = ref<number | null>(null)
   // #ifdef H5
   let viewport: VisualViewport | null = null
+  let layoutObserver: ResizeObserver | null = null
   function sync() {
     if (!viewport || Math.abs(viewport.scale - 1) > 0.01) {
       inset.value = 0
@@ -27,12 +28,22 @@ export function useVisualViewportBounds() {
     viewport?.addEventListener('resize', sync)
     viewport?.addEventListener('scroll', sync)
     window.addEventListener('resize', sync)
+    // WebKit can deliver its last resize event while layout still has the
+    // previous height, then finish that layout with no further viewport
+    // event, which used to leave the old inset in place. The root box is the
+    // layout viewport here (html is height: 100%), so observing it reruns
+    // sync() after every layout that changes the height read above.
+    if (typeof ResizeObserver !== 'undefined') {
+      layoutObserver = new ResizeObserver(sync)
+      layoutObserver.observe(document.documentElement)
+    }
     sync()
   })
   onUnmounted(() => {
     viewport?.removeEventListener('resize', sync)
     viewport?.removeEventListener('scroll', sync)
     window.removeEventListener('resize', sync)
+    layoutObserver?.disconnect()
   })
   // #endif
   return { bottomInset: inset, visibleHeight }

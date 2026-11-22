@@ -152,7 +152,7 @@ function page(titleZh, titleEn, subZh, subEn) {
 .card{max-width:360px;text-align:center;padding:32px 24px}
 .seal{display:inline-block;width:44px;height:44px;line-height:44px;border-radius:11px;background:#C74A2F;color:#fff;font-weight:700;font-size:22px;margin-bottom:16px}
 h1{font-size:19px;margin:0 0 6px}p{font-size:13px;color:#8B8478;line-height:1.6;margin:0}</style>
-</head><body><div class="card"><div class="seal">集</div>
+</head><body><div class="card"><div class="seal">玉</div>
 <h1>${titleEn} · <span lang="zh">${titleZh}</span></h1><p>${subEn}<br><span lang="zh">${subZh}</span></p></div></body></html>`
   return new Response(html, {
     status: 200,
@@ -174,7 +174,7 @@ function confirmPage(token) {
 .seal{display:inline-block;width:44px;height:44px;line-height:44px;border-radius:11px;background:#C74A2F;color:#fff;font-weight:700;font-size:22px;margin-bottom:16px}
 h1{font-size:19px;margin:0 0 6px}p{font-size:13px;color:#8B8478;line-height:1.6;margin:0 0 20px}
 button{appearance:none;border:0;border-radius:10px;background:#C74A2F;color:#fff;font-size:15px;font-weight:600;padding:12px 28px;cursor:pointer}</style>
-</head><body><div class="card"><div class="seal">集</div>
+</head><body><div class="card"><div class="seal">玉</div>
 <h1>Unsubscribe · <span lang="zh">退订邮件提醒</span></h1>
 <p>Click below to stop receiving Cornfield email reminders.<br><span lang="zh">点击下方按钮，将不再收到玉米地的邮件提醒。</span></p>
 <form method="POST" action="${action}"><button type="submit">Confirm unsubscribe · <span lang="zh">确认退订</span></button></form>
