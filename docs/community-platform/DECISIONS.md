@@ -690,6 +690,391 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
      - 推送之后再结束目标、取消续跑提醒，然后追加一条 STATUS_LOG 记这两件事；推送前不写成已做。不从 BACKLOG 往下接任务，等下一条指示。
      - 到 2026-11-23 12:00 CT 还没做完：没开工的记【跳过】；已开工的跑完当前门禁，按第 5 项判为通过才推送，判不过的不推送这一步的提交（BACKLOG §0.5 第 1 条），在 STATUS_LOG 记下停在哪一步和日志名，再收尾。
      - 仓库仍是公开的，安全补充照旧。`~/omo-ctl/review-b8-findings.md`、`review-b9-findings.md` 的原文不写进仓库文件、提交信息、PR 描述或 PR 评论；子任务可以读。代码注释和提交说明用自己的话写清改了什么、为什么，可以附编号，但不照抄清单里的句子（第九批的 18b2997 就是照抄，report:B9-9）；推送前照 RUNBOOK §12 第 17d 条扫一遍。
+- **D-57 第十一批：P4.6 网友发起活动（新迁移，开关默认关）、把 main 合进 P3 和 P4、第十批核查的收尾、口令与推送前扫描改成脚本、主会话改用 ChatGPT 打头**（2026-11-21 CT，Claude（Eric 自己账号上的 supervisor 会话）按 D-43 定并写入）：依据是 Eric 2026-11-20 03:17 CT 原话「可以，所有东西我都批准了，你继续弄吧，反正还有额度，直接猛攻」，以及 2026-11-21 19:42 CT「你这两天可以把我的gpt账号也接进去」、19:54 CT「但是优先先多跑我账号的额度，我现在还有reset卡」。【硬】条照旧高于本条，本条不放开任何【硬】条：20261112120000、20261114015420、20261120100354（c2a18ee8…）、20261120122054（a8c0e083…）和 manifest 里已有的行一个字节都不改；本批的数据库改动只在一条新迁移里，manifest 只追加一行。本条写明的非【硬】例外只有：第 3 项的合并不按 BACKLOG §14 第 2 行报 Eric；第 4、5、6、7 项改已有断言或计数的预期（各项写明的那几处，第 5 项是 b 加强的那条测试）；第 6 项 g 改 REGRESSION_20261120122054 的两处（不算 STOP-14 的删断言或跳测试）；第 7 项在 SPEC §11「P4 活动」表末尾追加 key；第 8 项推送 BACKLOG §1 表外的视口后续分支（名字照写，不按 RUNBOOK §3 改日期）；第 4、8、11 项门禁的判法沿用 D-56 第 5 项，main 对照的一次性 worktree 改用 9171976e（第 11 项），RUNBOOK §3「全部 rc=0」和 BACKLOG §0.3「smoke 0 failed」对它认可的那几条不适用；第 11 项里 pages.smoke.spec.ts 只因第 7 项加了一行路由，它的页面巡检仍照 D-56 第 5 项判（新路由 pages/event/create/index 满足 ①–③ 的算同一类），不算 STOP-14 要修到过的「本批改过的 spec」。其余规则一条都不放开。用号照 D-52 第 0 项，额度照第 10 项。本条下发前过了两轮独立审阅，按审阅意见改过。
+  0. **背景（照抄进 STATUS；照抄前用 `gh pr view <号> --json state,mergeCommit,baseRefName,isDraft` 核一遍）。**
+     - 第十批验收：supervisor 做了五个维度的独立核查（视口代码、视口复现、P3、P4、报告与第 17 条），blocker、major 配反驳方，最后由覆盖审阅逐条核 26 条发现。没有阻断项。在 tony-ws 自己的目录里复现了：main 66e14a45 上 marketplace-responsive.spec.ts:699 60 次失败 16 次（都在第 705 行，期望 830、实得 480）；19c4657 上三组 ×60 共 180 次 0 失败；新用例去掉修复后 10/10 红在第 803 行；和聊天、键盘、视口相关的 13 个 spec 在修复前后结果相同；小程序产物里没有 ResizeObserver。P4 的 VERIFY_reply_notice_switch.sql 正对照和四个负对照 37 步 37 过，L-SQL 184/184、P3_TOTAL 703/703、EV_TOTAL 855/855。26 条里 22 条已修；process:B9-1、process:B9-2、report:B9-2 只做了一部分（本条第 1、2、9 项）；mig:P3-B9-3 按 D-56 只记录。
+     - 第十批核查新发现的两处过程缺陷：① §12 第 17a 条的口令文件都是 1 字节（主会话用 tool.bash 的 env 参数传口令，没传进去），本批没发过带口令的 steer，所以没有后果；② §12 第 17d 条的扫描在材料分支 13 次推送里只跑过一次，是 1ba07e5 那次（倒数第二次），只扫了它新增的 124 行，没扫提交说明（%B），没核 ①（身份）；最后一次 d81ca04 没有扫描记录。本条第 1、2 项改成脚本，RUNBOOK §12 第 17a、17d 条 supervisor 已同步改写。
+     - 上线进度【supervisor 做】（UTC）：2026-11-21 16:09:20 把 #382 squash 进 main（9171976e，树与 19c4657 相同）；main 上 run 44922991731 七个 job 全过。Claude Code 的 auto mode 先拦下了一次 create_deployment（当时什么都没建）；Eric 2026-11-21 19:41 CT 在会话里批「Yes, release it」后，按 docs/SUPERVISED_RELEASE.md 发布：create_deployment 一次得到 dpl_9KmHcWZx3f2TUKKSLxuVc62QwZRu，32 秒就绪，Vercel 自己把两个生产域名指了过去，没有调 promote；www 的 deployment-identity 用新 nonce 核到 9171976e，根域 308 跳 www；之后 background-jobs 每分钟 check-in ok。候选唯一 URL 那一项没核（Chrome 扩展没连上）。回滚目标是 dpl_DQwi8Z（66e14a45）。iPad 真机检查仍归 Eric。
+     - 模型与号池【supervisor 做】（2026-11-22 02:19Z 前后，在 tony-ws 上，主会话空闲、没有子任务时）：Eric 的 ChatGPT 号以 login-3 接进 chatgpt-subscription（device code 登录，走 legacy 路线），排在 default、login-2 前面（这两个登录已过期）；Eric 的 OpenAI API key 存进 provider openai（Eric 自己在 TUI 里贴的，supervisor 没经手），按 token 计费，不进任何自动链；~/.omo/agent/settings.json 的 retry.fallbackChains 加了 `chatgpt-subscription/gpt-6-astra → anthropic-subscription/claude-opus-5-5`；~/.omo/omo.json 的 categories 改成对象写法（原来的 `provider/model:档位` 字符串写法只有第一个模型生效，Claude 兜底从 2026-11-13 起一直没进运行链），deep-high、deep-low、ultrabrain、unspecified-high、unspecified-low、architect、visual-engineering 都改成 ChatGPT 打头、Claude 兜底，另加 `exclude_models: ["openai/*"]`；`omo doctor --models` 核过 7 个类别的首行都是 chatgpt-subscription/… -> anthropic-subscription/…、没有 openai；主会话经控制 socket 的 set_model 切到 chatgpt-subscription/gpt-6-astra xhigh（只改本会话，settings.json 的 defaultModel 不变）；Claude 号池顺序改成 account-2 → account-5 → account-4 → default → account-3：default 本周 7d 已用约 88%，先用余量多的号。D-52 第 0 项对 default 不设上限，Eric 2026-11-19 定的顺序是 default 打头，这次调序由 supervisor 代定，写进 ⑧；default 重置后由 supervisor 改回 default → account-2 → account-5 → account-4。备份是 ~/.omo/agent/settings.json.before-20261121-gpt-first 和 ~/.omo/omo.json.before-20261121-gpt-first，改前改后的 doctor 输出在 ~/omo-ctl/models-*.txt；RUNBOOK §10 那张表 supervisor 已追加 2026-11-21 的五行。OMO 不改 ~/.omo、不切模型、不改号的顺序（第 10 项）。
+  1. **口令文件（process:B9-1 的后续；RUNBOOK §12 第 17a 条）。**
+     - 现状（supervisor 2026-11-21 在 tony-ws 只读 `stat -c '%n %s %a'` 核过，没读内容）：`~/.cache/omo-steer/` 下 st_01a1fddf、st_01a1fde0、st_01a1fe21 三个文件都是 1 字节、权限 600，mtime 2026-11-21 11:30:28Z。`openssl rand -hex 4` 的口令是 8 个字符，加换行应是 9 字节。原因：主会话用 tool.bash 的 env 参数把口令传给 shell，env 没传进去，写进文件的是空串加换行。三个子任务都没收到带口令的 steer（L210、L215、L222），所以本批没有后果；但会话压缩或换号后主会话读不回口令，17a 的设计落空。
+     - 新写法：口令在 shell 里生成并直接落盘，任何一步都不经 env 参数或 shell 变量传值。写成 `~/work/evidence/tools/omo-steer.sh`（OMO 自己的目录，不进仓库，权限 700；目录用 `OMO_STEER_DIR` 可换，默认 ~/.cache/omo-steer），三个子命令：
+       - `new <名字>`：`umask 077`；`mkdir -p` 目录并 `chmod 700`；目标 `pending-<名字>` 已存在就报错退出；`openssl rand -hex 4 > <目标>.tmp`，核 `stat -c %s` 是 9、`grep -qxE '[0-9a-f]{8}'` 返回 0、`stat -c %a` 是 600，三样都对才 `mv` 成目标，否则删 .tmp 退出 1。
+       - `bind <名字> <task_id>`：`mv pending-<名字> <task_id>`（目标已存在就报错），再核一次 9、格式、600。
+       - `check <文件名>`：参数是 `pending-<名字>` 或 task_id，只核 9、格式、600。
+       三个子命令都只输出一行「文件名 字节数 权限」和退出码，任何情况下不输出口令。
+     - 用法：派子任务之前 `omo-steer.sh new <名字>`，再 `omo-steer.sh check pending-<名字>`，通过才往下做；写开工说明时 `cat` 那个 pending 文件读一次，把读到的 8 个字符原样写进开工说明；口令只出现在主会话的上下文和开工说明里，不另抄到任何文件、笔记或 STATUS_LOG，不凭记忆重敲，不另起口令；派出拿到 task_id 后 `bind`，再 `check <task_id>`。之后每次 task_send 之前、每次会话压缩或换号之后，先 `check <task_id>` 再 `cat` 读回。`cat` 口令文件只在主会话的前台 bash 调用里做，不在后台会话、monitor 或任何带 tee、日志的命令里做。派出前 `check` 不过的，不派，换一个名字重新 `new`；派出后 `check` 不过的，这条 steer 不发，照 17c 取消该子任务、用新口令重起，STATUS_LOG 记 [OMO自决]（17a）。
+     - 先自测：`OMO_STEER_DIR=$(mktemp -d)` 跑 new、`check pending-<名字>`、bind、`check <task_id>` 各一次，再把临时文件截成 1 字节跑 check，必须报错；输出只有文件名、字节数、权限；跑完删临时目录。自测输出（不含口令）记进 STATUS_LOG。
+     - 记录：STATUS_LOG「按 §12 第 17 条起子任务」那一条，写每个子任务两次 `check` 的输出行（文件名、9、600），不写口令。第十批的三个 1 字节文件不改不删（task_id 不复用，不会撞名）；追加一条 STATUS_LOG 写明它们为什么是 1 字节、为什么本批没有后果。
+     - §12 第 17a 条里「同时记在 `~/.cache/omo-steer/<task_id>`（先 `umask 077`，权限 600…）」一句，supervisor 已改成指向这个脚本，并写明「`check` 通过（9 字节、权限 600）才派子任务、才发 steer（派出前核 pending 文件，派出后核 task_id 文件）」和读口令文件只在前台 bash 里做。
+  2. **推送前扫描（process:B9-2 的后续；RUNBOOK §12 第 17d 条）。**
+     - 现状：第十批材料分支推送 13 次（778f0cb … d81ca04，13 个提交，作者和提交者都是 OMO (tony-ws)）。STATUS_LOG 只有 L224、L225 记了一次推送前扫描，范围是 1ba07e5 新增的 124 行：没扫提交说明（%B），没核 ①（身份），d81ca04 那次推送没有扫描记录。代码分支的扫描由三个子任务各写一份（~/work/evidence/D56/viewport、p3、p4 下的 scan17d.py，分别 150、119、133 行，sha256 各不相同）。
+     - 宿主 trailer：材料分支上 80 个提交（最早 50192c11，2026-11-13；第十批 13 个全有）的提交说明末尾，是宿主自动加的一行 `Co-authored-by: sisyphus-dev-ai <…users.noreply.github.com>`。这个地址不在任何树里（supervisor 在 d81ca048、fdb823a2、02d4d4c6、9171976e 上 `git grep -c -F` 都是 0），所以照 ② 扫 %B，材料分支每次推送都会命中。子任务在代码分支上的新提交没有这一行（第十批 P3、P4、视口的新提交里都是 0 个）；P3、P4 历史里的 55、75 个来自更早批次、已在远端，不算新增。
+     - 决定（代 Eric 定，写进 FINAL ⑧）：② 豁免这一整行，不剥掉。理由：它是宿主提交时加的，剥掉要么改宿主配置（不在本仓库，也不在 OMO 的授权范围里），要么改写 80 个已推送的提交（force push，STOP-6a【硬】）；只放过逐字相同的这一行，同域名的其他地址照样命中。撤回：删掉 ② 的这条例外和 ~/work/evidence/tools/scan17d-trailer.txt。
+     - §12 第 17d 条的改动（supervisor 已写）：① 范围写明「每个分支每次推送都扫，包括材料分支；材料分支的 <基准> 是推送前它的远端 head」。② 加例外：提交说明最后一段（trailer 段）里，整行逐字等于 `~/work/evidence/tools/scan17d-trailer.txt` 那一行的不算命中，另报「② trailer 豁免 N 行」。这个文件 OMO 自己建：先 `mkdir -p ~/work/evidence/tools && chmod 700 ~/work/evidence/tools`，再 `umask 077; git -C ~/work/illini-docs log -1 --format=%B 50192c11 | grep -E '^Co-authored-by: sisyphus-dev-ai <[^>]+>$' > ~/work/evidence/tools/scan17d-trailer.txt`，核 `wc -l` 是 1，不打印内容；这个地址不进仓库、STATUS_LOG、提交说明。③ 合并带进来的行仍不算；但合并提交自己有内容的（`git show --cc --format= <合并提交>` 的输出非空；不带 `--format=` 时它总会先打印提交头和提交说明），那些行算新增。
+     - 脚本：`~/work/evidence/tools/scan17d.py`（OMO 自己的目录，不进仓库，也不进 appendix/env；~/omo-ctl/ 归 supervisor，不放那里）。以 ~/work/evidence/D56/p4/scan17d.py 为底（已有 --diff-base、--text、--worktree，只输出个数和「文件:行号」），另两份多出的检查有就并进来，再加下面这些：
+       - 读 scan17d-trailer.txt 做 ② 的逐字豁免；文件不在或不是正好 1 行的，② 判为没扫，退出码 1。
+       - `--diff-base` 可以给多次（P4 本批可能有两次合并，第 3 项）。
+       - `--pool-file`、`--findings-glob`：默认是 ~/omo-ctl/pool-emails.txt 和 ~/omo-ctl/review-b*-findings.md，只在 `--selftest` 里换成临时文件。
+       - `--log`：每跑一次往 `~/work/evidence/tools/scan17d.log` 追加一行：UTC 时间、目录、分支、<基准> 与 HEAD（各 7 位）、提交数、新增行数、①–⑤ 各项个数、trailer 豁免数、退出码、脚本自身 sha256 前 16 位。只写个数和 sha，不写命中的内容。
+       - `--selftest`：在 `mktemp -d` 的临时仓库里每类放一条该命中的样例（非 OMO 身份的提交；一个基准树以外、以 example.com 结尾的地址，临时生成；号池样例；`/home/<名字>/` 路径；`ghp_` 前缀；清单样例），再放一行逐字等于 trailer 的（必须豁免）和一行只改了用户名的 trailer（必须命中）。脚本加 `--trailer-file`：默认 ~/work/evidence/tools/scan17d-trailer.txt，只在 --selftest 里换成临时目录下一行合成的 trailer（形状照真实那一行，地址临时生成、以 example.com 结尾）；真实的 trailer 文件只核存在且正好 1 行，内容不进临时仓库；每项都按预期报出才算通过。只用合成数据：号池样例是一行临时生成的合成地址（同样以 example.com 结尾、不在任何树里），清单样例是一段 8 个以上英文词的合成句，各写进临时目录里的文件，用 `--pool-file`、`--findings-glob` 指给脚本；真实的 ~/omo-ctl/pool-emails.txt 只核存在、非空、去掉空行后的行数，review-b*-findings.md 只核文件数，内容不进临时仓库。临时目录用 trap 在退出时删除。自测结果（只有个数）记进 STATUS_LOG。
+       - 提交范围：`git rev-list <基准>..HEAD --not <每个 --diff-base 合并提交的第二个父提交>`（P3 是 9171976e；P4 是 9171976e 和 P3 的新 head）。① 和 ② 的提交说明只查这个范围里的提交，合并提交本身在内。合并带进来的 main 提交（9171976e、66e14a45：作者和提交者都不是 OMO，提交说明末尾的 Co-Authored-By 地址不在基准树里）和 P3 的提交已经在远端，不算新提交。新增行是这个范围里每个非合并提交各自 diff 的新增行，加上每个合并提交 `git show --cc --format=` 的输出。--selftest 再加两条：合并进来一个非 OMO 身份、提交说明带合成地址的提交，① ② 都不报；同一个提交不经合并直接提交，① ② 都报。
+       三份旧脚本留在原处不动。RUNBOOK §3 的表加 ~/work/evidence/tools 一行。
+     - 用法：每次推送、开 PR、改 PR 正文、发 [OMO] 评论之前，在要推的目录里跑 `python3 ~/work/evidence/tools/scan17d.py <基准> [--diff-base <合并提交> ...] [--text <正文文件>] --log`。退出码 1 不推送；退出码 2（只有 ⑤）逐条判，误报照 ⑤ 记。推送后 `git ls-remote origin <分支>` 的 sha 必须等于 scan17d.log 里这个分支最后一行的 HEAD；不等，说明推了没扫过的提交，STATUS_LOG 记 [OMO自决]（17d），下一次推送前把这段补扫。
+     - 证明跑过：① 每条带推送的 STATUS_LOG 条目写「17d：scan17d.log 第 <行号> 行，HEAD <sha7>，① n ② n（trailer 豁免 n）③ n ④ n ⑤ n，exit n」；材料分支那一次的记录写不进被扫的那个提交，就写进下一条 STATUS_LOG。② 批末收尾那条另做一次核对：先 `git -C ~/work/illini config core.logAllRefUpdates`（空或 true）；再对材料、视口后续、P3、P4 四个分支各跑 `git -C ~/work/illini reflog show --date=iso-strict --format='%H %gd %gs' refs/remotes/origin/<分支>`，取本批开工之后、写 FINAL 那个提交之前的每个「update by push」，每个 sha 的前 7 位都要在 scan17d.log 里找到 HEAD 相同、退出码 0 或 2 的一行；四个分支各报「推送 N 次、有扫描记录 N 次」。reflog 里没有记录的，报「无法核对」并写原因，不算通过。FINAL 第十一批 ⑤ 照抄这四组数。写 FINAL 的那次推送，和之后记「结束目标、取消提醒」的那次推送，各在 scan17d.log 里留一行，推送后核 ls-remote 等于该行的 HEAD；前一次的结果写进最后那条 STATUS_LOG，后一次只留在 scan17d.log。不为它们另起推送。
+  3. **把 main 9171976e 普通合进 P3、P4（D-55 第 2 项 l）。**
+     - 依据：D-55 第 2 项 l（以后只普通 `git merge`）；D-56 第 5 项写明视口修复「等 P3、P4 下次合 main 时带进来」。#382 已由 supervisor 在 2026-11-21 16:09:20Z squash 进 main 9171976e（树 7298f7be，与 19c4657 相同；main 上 run 44922991731 success）。这次合并由本条指定，不按 BACKLOG §14 第 2 行报 Eric。
+     - P3（~/work/illini-p3）：开工核对 `git status --porcelain` 0 行，`git rev-parse HEAD` 与 `git ls-remote origin codex/community-p3-20261120` 都是 fdb823a2；`git fetch origin`；`git -c user.name="OMO (tony-ws)" -c user.email=omo@tony-ws.invalid merge --no-ff -m "<自己写的一句>" 9171976e`。合的是固定的 9171976e，不是 origin/main；main 再前进不跟。先合 main，再做第 4 项的 a、b。
+     - P4（~/work/illini-events-20261120）：开工核对同上，HEAD 与 `git ls-remote origin codex/community-events-20261120` 都是 02d4d4c6；不等 P3，`git fetch origin` 后用同样的身份参数普通 merge 9171976e，然后做第 5、6、7 项。P3 推送新 head 之后、跑第 11 项的门禁之前，再普通 merge 这个 head（它已含 9171976e）；P3 本批没有新 head 的（门禁判不过、或者 a、b 都记【跳过】），不做第二次合并。第 11 项的门禁只跑一次，在最后一次合并之后。
+     - supervisor 在本机用 `git merge-tree --write-tree` 试过，没动任何分支：fdb823a2 合 9171976e 没有冲突，自动合并了 api/notification-digest.js，相对 fdb823a2 改 9 个文件、+66 −8（api/ 四个，supabase/email-templates/ 两个，scripts/brand-name-boundary.test.mjs，app/src/composables/useVisualViewportInset.ts，app/smoke/marketplace-responsive.spec.ts）；02d4d4c6 直接合 9171976e 也没有冲突，相对 02d4d4c6 改的是同样 9 个文件、+66 −8，.github 和 vercel.json 与 9171976e 相同；把 P3 的合并结果再合进 02d4d4c6 也没有冲突。这几棵合并后的树在 api/ 和 supabase/email-templates/ 里都是 7 个「>玉<」、0 个「>集<」，新的 brand-name 测试应该能过。
+     - 冲突处理照 D-56 第 3 项 a：落在 supabase/migrations、supabase/_ops 或 manifest.sha256 上的，`git merge --abort`，按 §14 第 14 行停这次合并，STATUS 阻塞写「P3（或 P4）未合 main 9171976e」，那个分支在合并前的 head 上接着做其余各项；P4 第二次合并（P3 新 head）冲突落在这些地方的，同样 abort，STATUS 阻塞写「P4 未合 P3 新 head」，P4 在第一次合并之后的 head 上接着做。i18n、pages.json 照 §14 第 15 行；其他代码冲突两边都留，解完跑全量。
+     - 每次合完都核下面五样，写进 STATUS_LOG：① `git diff --name-only <合并前 head> <合并提交> -- supabase/migrations supabase/_ops` 0 行；两个 manifest.sha256 逐字节不变；20261120100354 的 sha256 仍是 c2a18ee8…（P3、P4），20261120122054 仍是 a8c0e083…（P4）；合 9171976e 时 supabase/ 下只有 email-templates 的两个文件变（来自 #381），P4 合 P3 新 head 时 supabase/ 下 0 个文件变。② `git show --cc --format= <合并提交>` 的输出为空；不空的，逐行列出并照 17d 扫。③ `git diff --stat <合并前 head> <合并提交>`：合 9171976e 是上面那 9 个文件，P4 合 P3 新 head 是 P3 第 4 项改的那几个文件；多了或少了，写明原因。④ .github、vercel.json 与 9171976e 相同。⑤ `git merge-base --is-ancestor 9171976e <新 head>` 返回 0；P4 第二次合并另核 P3 新 head 也是新 head 的祖先。
+     - 对门禁的影响：合完以后 marketplace-responsive.spec.ts:699 和 :767 在 P3、P4 上都必须 0 失败，修复已经在分支上，D-56 第 5 项「main 上同样不稳定，见 D-56 第 0 项」对这两条不再适用；最终 head 上另跑一组 `SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60"`，要 60 次 0 失败。Running N：P3 不少于 613（612 + 第 767 行那 1 条），P4 不少于 648（647 + 1），再多出来的用本批新增的用例解释。TEST 预计各多 1 条（brand-name-boundary 新增的「email seals use 玉…」），用 `git diff` 解释增减。主包：合进来的代码都在 H5 条件编译里或不进小程序，P3 的 mpci 主包应与合并前相同（1,422,723），不同就写明来源；P4 只在第 11 项的门禁量一次，差值按第 7 项解释（合进来的部分预计为 0）。
+     - 17d：合并带进来的行不算新增（`--diff-base <合并提交>`，P4 两次合并各给一个）。#379 的 diff 会多出 main 的改动，base 不改（改 base 是 P3.7 之后的事）。两个 PR 的正文里有推送之后不再成立的句子的（例如合并记录），照 L221 只改 body，改之前先过 17d。
+  4. **P3 的两处小项（迁移和 manifest 不动）。**
+     - 顺序：P3 先合 main（见第 3 项），再做 a、b，门禁通过后推送。P4 不等 P3，只在第 11 项门禁之前合 P3 推送的新 head（第 3 项）。
+     - a. 待发行行（id 以 temp- 开头）的高度跳动。fdb823a 上 app/src/pages/plaza/index.vue 第 454–460 行（楼）和第 493–499 行（楼中楼）的 `.cs-actions` 里，点赞和回复两个元素都被 `v-if` 去掉了，这一行比保存后矮；草稿 P3-A 按样式估约 20px，没量过，以测试量到的差值为准（`.cs-actions` 节点两种状态下都在，它的 margin-top 不算进高度差）。真行回来时它下面的内容会往下跳一次。要求：待发行行留出和保存后一样的高度，但仍不渲染 .cs-like-btn、.cs-reply-btn（3b 的 `toHaveCount(0)` 断言照旧）；改法【OMO自决】，新增 CSS 只用 App.vue 已有的 token、不写 hex（STOP-10，D-35 已定 A）。测试加在 app/smoke/community-reply-target.spec.ts 现有那条用例里：楼中楼和楼两处，release 之前和之后各量一次待发行行的 boundingBox 高度，以及紧接在它后面那一行的 y（后面没有行的，量它下面第一个可见元素，或者在 fixture 里给它后面补一行，做法【OMO自决】），断言前后差都不超过 1px。先在没改的源码上跑一次看它红，记下量到的差值和日志名；再转绿。小程序只构建，不看真机。
+     - b. 待发行行按住仍会震动。app/src/composables/useLongPress.ts 第 89–98 行：touchstart 时调 `vibrateShort('light')`，1.5 秒到点时调 `vibrateShort('heavy')`，然后才调 onCommentLongPress；待发行行的菜单是空的、不弹（3b），可两次震动照样发生。要求：在待发行行上按住，既不震动，也不起计时器；useLongPress 的其他调用方（ChatThread、首页、帖子页、个人页、广场帖子卡片）行为不变。改法【OMO自决】（例如模板里待发行行不绑 commentLongPress，或给 useLongPress 加一个可选的「这一下要不要识别」判断）；改 useLongPress 的，写明为什么不影响那五处。测试：在 app/smoke/community-reply-target.spec.ts 末尾加一个单独的 test.describe，在里面 `test.use({ hasTouch: true })`（不放在文件顶层，免得改变同文件其他用例的环境），touchstart 照 app/smoke/community-report-views.spec.ts 第 134–145 行的做法（`dispatchEvent('touchstart')`）。先在页面里给 uni.vibrateShort 包一层、按 type 计数。在待发行行上 touchstart，然后在超过 1.5 秒阈值的保持窗口里断言 heavy 仍是 0（用 page.clock 快进 1600ms，或 expect.poll 带 2 秒保持窗口；不用 waitForTimeout）。再在旁边已保存的那一行上 touchstart，等它的菜单出现，点取消。断言 light、heavy 各正好 1 次，都来自已保存的那一行。广场的两种行共用同一个 commentLongPress，touchstart 一开头会 clear() 上一次的计时器，所以要先等过阈值再按已保存的行；没改的源码上应是 light 2、heavy 2（待发行行的计时器到点也会震），先红，日志名记下。新增的用例条数加进 Running，写明加了几条。
+     - 门禁照 D-56 第 5 项那一行（全量，含 h5accept、mp），判法照 D-56 第 5 项，细则见第 11 项「失败的判法」，再加第 3 项写的 699 ×60 一组。推送前照新的 17d 扫，基准是远端 head fdb823a2，`--diff-base <合并提交>`。#379 不转 ready、不改 base。
+  5. **P4 的两处小项（迁移和 manifest 不动）。**
+     - 顺序：P4 先照第 3 项普通 merge 9171976e，再做 a、b。迁移文件和 manifest 一个字节不动。
+     - a. 仓库根 RUNBOOK.md「Reply notice switch」一节，02d4d4c 第 706–707 行的「VERIFY can be run again afterwards; it reports the switch and does not judge it.」：第 1 步已经分成两种情形，这句没说是哪个文件，而在已应用 20261120122054 的库上重跑 VERIFY_20261120100354 会按设计报错。改成点名：没应用 20261120122054 的库，是 `supabase/_ops/VERIFY_20261120100354_community_watch_save_activity.sql`；已经应用的，是 `supabase/_ops/VERIFY_reply_notice_switch.sql`；两者都只报开关、不判。只改这一句。P3 分支上的同一句（fdb823a 第 683 行，那里只有一种情形）不改。supervisor 核过：`git grep -n 'run again afterwards' -- scripts app/smoke` 是 0，没有测试钉这句。
+     - b. supabase/_ops/VERIFY_reply_notice_switch.sql 文件头第 14–17 行说 scripts/community-events.test.mjs 那条测试「holds this file equal to VERIFY_20261120100354」。实际那条测试（第 616 行起）只比六个签名的 md5、两组 VALUES 行和 5 个期望串，不比检查逻辑本身（例如 `routine.owner <> 'postgres'`、`t.tgqual IS NULL`、BEFORE INSERT 顺序那条查询、开关表的 has_table_privilege 循环）。选加强测试，文件头跟着写准：
+       - 测试从两个文件各取三段检查逻辑：第 1 节从 `) AS known(` 到第一个 `END LOOP;`；第 5 节从 `) AS target(` 到下一节开头（P3 文件是 `-- 5a.`，新文件是 `-- 3.`）；开关表那段从 `IF pg_catalog.to_regclass('private.community_reply_notice_config')` 起，P3 文件到 `-- 5b.` 为止，新文件到 `END;` 之前。每段去掉 `--` 注释和空行，把 `RAISE EXCEPTION '<名字>` 里的名字统一换成一个占位，然后逐字相等。取段的写法【OMO自决】，但要覆盖上面列的这些检查。supervisor 用这个口径在 02d4d4c 上比过，三段都相等。
+       - 两个对照，各自临时改新文件、看测试红、撤掉，日志名都记下：把 `t.tgqual IS NULL` 改成 `t.tgqual IS NOT NULL`；删掉 `OR routine.owner <> 'postgres'`。
+       - 文件头那一句改成：这条测试让这里的钉值和检查逻辑与 VERIFY_20261120100354 保持一致，异常名和注释不比。SQL 正文不改：`git diff 02d4d4c -- supabase/_ops/VERIFY_reply_notice_switch.sql` 里只能有以 `--` 开头的行。test 函数还是一条，TEST 条数不因此变。
+     - 门禁和推送并入第 11 项：第 3、5、6、7 项都在本地提交之后，照第 11 项只跑一次门禁、只推送一次（P3 有新 head 的，第二次合并也在门禁之前）。第 6、7 项都记了【跳过】的，照第 11 项跑门禁，推送第 3、5 项的提交。本项的正对照（照 L218 用 $EV 下 lsql-replay 副本的做法，回放 20261120100354、20261120122054 之后跑 VERIFY_reply_notice_switch.sql，NOTICE 必须是 enabled=f）放在第 6 项 h 一起跑；SQL 正文没变，四个负对照不重做，STATUS_LOG 写明这个理由；第 6 项记了【跳过】的，第 11 项的 L-SQL 改跑 `$LSQL ~/work/illini-events-20261120 20261120100354 20261120122054`，回放后单独跑这条正对照。#380 不转 ready、不改 base；正文里关于开关第 1 步的句子，在第 11 项改 #380 描述时同步，改之前先过 17d。
+  6. **P4.6 服务端：一条新迁移打开成员写入通道，开关默认关。**
+     分支 codex/community-events-20261120，目录 ~/work/illini-events-20261120。
+
+     开工核对：
+     - 第 3 项的第一次合并（9171976e）和第 5 项都在本地提交之后再做本项。开工时工作区要干净，HEAD 是第 5 项的最后一个提交；第 5 项 a、b 都记了【跳过】的，是第 3 项的合并提交；第 3 项也没合成的，是 02d4d4c6。STATUS_LOG 记下这个 sha。合并带进来的是 9171976e（之后可能再加 P3 的新 head，第 3 项），迁移和 _ops 都没变（第 3 项①已核），下面钉的 md5 与 02d4d4c6 上相同。
+     - 本项开工时取一次 `date -u +%Y%m%d%H%M%S`，下称 <MTS>，写进 STATUS_LOG，以后不再重取。新迁移和 PRECHECK、VERIFY、REGRESSION 的文件名、e 的测试都用这一个值。<MTS> 不是 BACKLOG §0.2 的 $TS（那个带 T 和 Z，只用于证据文件名）。
+     - 20261120100354、20261120122054 和 manifest 里已有的行，一个字节都不动（9c【硬】）。
+     - _ops 只准改 REGRESSION_20261120122054 的两处（见 g）。本项只新建 PRECHECK_<MTS>、VERIFY_<MTS>、REGRESSION_<MTS> 三个文件。VERIFY_20261120122054、PRECHECK_20261120122054 不改；VERIFY_reply_notice_switch.sql 本项不改（第 5 项 b 只改了它的文件头注释，SQL 正文不变）。
+
+     a. 新迁移 supabase/migrations/<MTS>_community_member_events.sql。只写下面这些，顺序照写：
+     1. 文件头写四件事：这条迁移做什么；发布顺序（该库已应用 20261120122054 且 VERIFY_20261120122054 通过 → PRECHECK_<MTS> → 本迁移 → VERIFY_<MTS>）；开关默认关；谁能打开（见 f③）。
+     2. `BEGIN; SET LOCAL lock_timeout = '5s'; SET LOCAL statement_timeout = '60s';`
+     3. 漂移守卫 DO 块，照 20261120122054 开头的写法：
+        - private.community_events_member_guard() 的 md5(prosrc) = ec91e9bd0c1be76895d1adba1227af8c；
+        - public.create_member_event(uuid,text,text,jsonb) 的 md5(prosrc) = 9a22a3c4dc3326b90a29160466416887（两个值取自 02d4d4c6 上 VERIFY_20261120122054 第 1 节）；
+        - VERIFY_20261120122054 第 2a 节的六个条件都为假；
+        - public.community_events 里 source_type='member' 的行数是 0。
+        任一不符就 `RAISE EXCEPTION 'community_member_events_precondition:<哪一项>'`。改写函数之前，照 ENGINEERING §5.0 第 5 条用 git log、git grep 证明 main 上没有这两个函数更新的定义，结果记进 STATUS_LOG。
+     4. 开关表 private.community_member_event_config，逐项照 20261120100354 的 private.community_reply_notice_config 写：
+        - 两列：singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton)；enabled boolean NOT NULL DEFAULT false；
+        - INSERT DEFAULT VALUES；ENABLE ROW LEVEL SECURITY；REVOKE ALL FROM PUBLIC, anon, authenticated, service_role；不建 policy。
+     5. 公开读函数 public.community_member_events_open() RETURNS boolean：
+        - LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog SET statement_timeout = '3s'；
+        - 函数体 `SELECT coalesce((SELECT config.enabled FROM private.community_member_event_config AS config WHERE config.singleton), false)`；
+        - 先 REVOKE ALL FROM PUBLIC, anon, authenticated, service_role，再 GRANT EXECUTE TO anon, authenticated。
+     6. 空白规则：全迁移只用一个字符类，下称 <W>，逐字写作下面这一行（83 个字节，全是可打印 ASCII：左方括号，13 个「反斜杠 u 加四位大写十六进制」的 PostgreSQL 正则转义，其中 0009 到 000D、2000 到 200A 是两个区间，000D 后面一个半角空格代表 U+0020，最后右方括号；文件里不放任何不可见字符，也不放 U+007F 以上的空白字符）：
+        `[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]`
+        码位清单（26 个）：U+0009–U+000D、U+0020、U+0085、U+00A0、U+1680、U+2000–U+200A、U+2028、U+2029、U+202F、U+205F、U+3000、U+FEFF。上面这一行可以用这条命令生成（输出一行），与上面逐字节比对：`python3 -c 'B=chr(92);p=["0009-","000D"," ","0085","00A0","1680","2000-","200A","2028","2029","202F","205F","3000","FEFF"];print("["+"".join(x if x==" " else B+"u"+x.rstrip("-")+("-" if x.endswith("-") else "") for x in p)+"]")'`。往文件里写时用这条命令的输出拼进去，不手敲：supervisor 起草本条时就遇到过，敲出来的转义被工具换成了真字符。
+        - 规整式 N(x) = `pg_catalog.btrim(pg_catalog.regexp_replace(x, '<W>+', ' ', 'g'), ' ')`，<W> 原样代入：连续空白折成一个半角空格，再去掉两端。
+        - N 只用在 7、8、9 列的五处（7 的 location、status_note，8 的 title_in、event_in ->> 'location'，9② 的 NEW.status_note），五处除自变量外逐字相同。
+     7. 换掉 community_events_member_shape：DROP 再 ADD 同名约束，写成一条 ALTER 带两个子句或两条 ALTER 都行，以回放通过为准。
+        - 原有各项照 20261120122054 逐字保留（约束里那两行注释可以照新规则改写），只把 `location = pg_catalog.btrim(location)` 换成 `location = N(location)`；
+        - 末尾加 `AND (status_note IS NULL OR status_note = N(status_note))`；
+        - 表上约束总数仍是 37。
+     8. CREATE OR REPLACE public.create_member_event：签名、SECURITY INVOKER、search_path、错误码都与 20261120122054 相同。函数体只改两句：`title_value := N(title_in)`；`location_value := N(event_in ->> 'location')`。
+     9. CREATE OR REPLACE private.community_events_member_guard()：属性不变，函数体只改两处。
+        - ① INSERT 分支的第一句：开关没开（`NOT coalesce((SELECT enabled FROM private.community_member_event_config WHERE singleton), false)`）就 `RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'member_events_closed'`。用 P0001，PostgREST 回 HTTP 400（55 类会回 500）；create_member_event 的异常处理对 P0001 只吞 duplicate_post，其余原样抛出。UPDATE 分支（取消、说明）不看开关。
+        - ② UPDATE 分支在算 sets_note 之前，先执行 `NEW.status_note := nullif(N(NEW.status_note), '')`。
+        - 名额规则一字不改：未取消、讨论帖未被删、未结束的活动算 2 场之一。STATUS 阻塞第 30 条按现状，由 supervisor 代定，待 Eric 确认。
+     10. 三条授权，逐字照 20261120122054 注释里写的：
+        - `GRANT EXECUTE ON FUNCTION public.create_member_event(uuid, text, text, jsonb) TO authenticated;`
+        - `GRANT INSERT (source_type, source_key, organizer_user_id, discussion_post_id, starts_at, ends_at, location, registration_mode) ON TABLE public.community_events TO authenticated;`
+        - `GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO authenticated;`
+        不给 anon、service_role，不给 DELETE。
+     11. COMMENT：community_events 表和 create_member_event 改成「通道由本迁移打开，受开关约束」；新表、新函数各写一句。最后 COMMIT。
+
+     本迁移不碰的对象：posts 和 post_comments 上的触发器；list_community_events；任何 admin_ 开头的函数；VERIFY_reply_notice_switch.sql 钉住的六个函数；private.community_reply_notice_config。
+
+     b. supabase/_ops/PRECHECK_<MTS>_community_member_events.sql：
+     - 只读形状：`\set ON_ERROR_STOP on`，一个 BEGIN，SET TRANSACTION READ ONLY，最后 ROLLBACK。
+     - 断言 a3 的全部条件，另加三条：开关表不存在；community_member_events_open() 不存在；member_shape 的约束文字等于 VERIFY_20261120122054 里那一行。
+     - 异常名前缀 community_member_events_precheck_。
+
+     c. supabase/_ops/VERIFY_<MTS>_community_member_events.sql：整份抄 02d4d4c6 上的 VERIFY_20261120122054，只改下面这些：
+     - 第 1 节：member_guard、create_member_event 两行换新 md5，create_member_event 的 api_roles 改成 'authenticated'；新加 public.community_member_events_open() 一行（'this migration', true, 's', 'search_path=pg_catalog|statement_timeout=3s', 'anon,authenticated'）。
+     - 第 2 节改三行：
+       - community_events_member_shape 那一行；
+       - public.community_events 的 authenticated INSERT 一行，列为 discussion_post_id,ends_at,location,organizer_user_id,registration_mode,source_key,source_type,starts_at；
+       - authenticated UPDATE 一行，列为 cancelled_at,status_note。
+     - 第 2a 节整段换成「正好这样打开」：authenticated 能执行 create_member_event，anon、service_role 不能；anon 对 community_events 没有任何 INSERT、UPDATE 列。
+     - 新加第 2c 节查开关表：表存在；两列和各自默认值；主键和 CHECK；RLS 开着、0 条 policy；ACL 只有属主；属主是 postgres；正好一行。最后 `RAISE NOTICE 'community_member_events_switch|enabled=%'`，只打印，不判。
+     - 其余 SQL 行逐字不改；第 1 节、第 2a 节里说通道关着的注释（例如「create_member_event is executable by nobody … opened by a later migration」「the member write channel is closed」）改成说明本迁移打开通道、受开关约束，别的注释不改。md5 一律用回放库里算出来的值。异常名前缀换成 community_member_events_。
+     - 文件头写明：以后哪条迁移改了这些对象，就在同一个提交里更新这里和 e① 的相等测试。
+
+     d. supabase/_ops/REGRESSION_<MTS>_community_member_events.sql：
+     - 只在 L-SQL 跑，文件头写明不得在托管库跑；助手函数照 REGRESSION_20261120122054 开头的写法。
+     - 每条用例一个子事务，最后汇总一行 `MEV_TOTAL <通过>/<总数>`。
+     - 开关默认关。除「开关」那几条外，每条用例都在自己的子事务里先执行 `UPDATE private.community_member_event_config SET enabled = true WHERE singleton`，随子事务一起回滚。
+     至少包括这些用例：
+     - 开关：表里默认 false；anon 和 authenticated 调 community_member_events_open() 都得 false。开关关着时，已验证成员发起报 `P0001:member_events_closed`，posts 没有多出一行。在事务里打开后发起成功，帖子和活动 1:1。再关上，已有的活动仍能取消。
+     - 地点规整：
+       - chr(9)||'ARC' 存成 'ARC'；'ARC'||chr(12288) 存成 'ARC'；chr(160)||'ARC'||chr(160) 存成 'ARC'；
+       - 'Grainger'||chr(10)||'Library' 存成 'Grainger Library'；'A'||chr(8232)||'B' 存成 'A B'；
+       - 只有 chr(9)||chr(10)||chr(12288)||chr(160)||chr(65279) 的报 `22023:member_event_location_invalid`；
+       - 规整后 81 字的报同一个错；前后带 U+3000 的 80 字通过。
+     - 标题规整：chr(12288)||'周六羽毛球'||chr(12288) 存成 '周六羽毛球'；带换行的标题折成一行。
+     - 表约束单独成立：在子事务里 `ALTER TABLE public.community_events DISABLE TRIGGER community_events_member_guard`，插入地点为 chr(12288)||'ARC' 的成员行，报 23514，约束名是 community_events_member_shape；status_note 为 chr(160)||'x' 的同样报。子事务回滚。
+     - 说明规整：chr(12288)||'改期'||chr(9) 存成 '改期'；随取消写入的纯空白说明存成 NULL。
+     - 授权：开关打开时，直接 INSERT 报 `42501:member_event_rpc_required`；开关关着时，直接 INSERT 报 `P0001:member_events_closed`；UPDATE starts_at 和 DELETE 都报 42501。
+     - 名额（现行规则）：已有两场未结束时，第三场报 `23514:member_event_active_limit`。管理员对其中一场 hide_event 之后仍报；它的话题被隐藏之后也仍报。作者硬删其中一场的话题后，第三场成功；取消一场后也成功。
+     - 限流：一小时内已有 10 条帖子时发起，报 `P0001:rate_limit_posts_hour`，什么都没写。
+     - 删号：先读 api/auth/delete-account.js 的删除顺序，在子事务里照它删掉一个有活动的成员。之后 community_events 里此人的行数为 0，anon 和 authenticated 调 list_community_events 都看不到（ENGINEERING §13 缺口 12）。
+
+     e. 测试：
+     - 新增 scripts/fixtures/community-member-events-database.mjs（先 `startEventsDatabase()`，再执行新迁移）和 scripts/community-member-events.test.mjs。d 的主要场景各写一条。scripts/fixtures/community-events-database.mjs 不改。
+     - 新夹具在新迁移之后不得调用会执行 CLOSE_CHANNEL 的助手：community-events-database.mjs 的 `as()` 和 `together()` 对 authenticated 会先 GRANT、最后 REVOKE 那三条授权并提交，新迁移之后这会收回迁移给的授权。所以已提交的写入一律用 `as(…, { channel: false })`；并发用例在新夹具里另写一个不开不关授权的 together（照原实现，去掉 OPEN_CHANNEL、CLOSE_CHANNEL，同样开两个真连接）。开关默认关：要发起的用例先用一条已提交的 UPDATE 把开关设成 true，在 finally 里改回 false。新夹具最后加一条断言：三条授权仍在（用 has_function_privilege、has_column_privilege 读回）。
+     - 两条并发用例，用上面那个 together：同一成员已有一场时同时发起两场，正好一场成功，另一场报 member_event_active_limit；同一个 post_id_in 同时提交两次，只得到一对帖子和活动。
+     - 不连库的静态测试：
+       - ① VERIFY_<MTS> 和 VERIFY_20261120122054 逐行比较：除 c 列出的那几行和第 2a、2c 节以外，各节 VALUES 的整行逐字相同（比法照 L218：去掉行尾逗号，异常名不比）；变了的行正好是 c 列的那几行。
+       - ② 新迁移里 <W> 只有一种写法，那一段只含 0x20–0x7E 的字符，并且逐字节等于 a6 那一行（83 字节）；N 的五处除自变量外逐字相同；新迁移、VERIFY_<MTS> 和 app/src/utils/communityEvents.ts 里，码位清单上除换行（U+000A）和半角空格（U+0020）以外的 24 个码位都不以原字符出现。
+       - ③ 新迁移不含这些串：post_comments、notify_topic_reply、community_reply_notice_config、enqueue_activity_notification、update_post_comment_count、validate_comment_reply_target、reject_reply_to_locked_post、current_profile_state、list_community_events、admin_。
+     - 现有的 scripts/community-events.test.mjs，本项一条都不改（第 5 项 b 加强的那条除外）。它的夹具只到 20261120122054，最后那条「通道关着」照旧成立。
+     - 先写测试，在没有新迁移的树上跑红，日志名记下；再加迁移，转绿。
+
+     f. 仓库根 RUNBOOK.md，只增改下面三处，不删已有步骤：
+     - ①「Community P4」段：
+       - 补发布顺序：先 PRECHECK_20261120122054、应用、VERIFY_20261120122054；VERIFY 通过后，再 PRECHECK_<MTS>、应用、VERIFY_<MTS>。VERIFY_<MTS> 的 NOTICE 必须是 `community_member_events_switch|enabled=f`。
+       - 补一句：<MTS> 应用之后，VERIFY_20261120122054 按设计会停在<h 实测到的第一条报错原文>。
+       - #380 合并前 public smoke 那一句，改成要在已应用 20261120100354、20261120122054、<MTS> 三条迁移的库上跑绿。
+     - ②「Reply notice switch」第 1 步「已经应用」那一条改成：先跑最新一条已应用社区迁移的 VERIFY。<MTS> 应用之前是 VERIFY_20261120122054，之后是 VERIFY_<MTS>_community_member_events.sql。然后照旧跑 VERIFY_reply_notice_switch.sql。
+     - ③ 新增「Member events switch」一节，结构照 Reply notice switch：
+       - 写开关的作用；
+       - 谁能打开：release owner，或他点名批准的人；
+       - 打开前四条都要成立：该库的 VERIFY_<MTS> 通过且 NOTICE 是 enabled=f；举报值班已经有人（DECISIONS D-28：网友发起活动的举报 48 小时内处理）；读这个库的 H5 部署已经含 P4.6 客户端；含 P4.6 的小程序版本已发布，或 release owner 已决定旧版怎么办。staging 先开。
+       - 给出打开、核对、关闭三段 SQL。核对的标准：表里一行，值为 true；三个 API 角色都读不到表；`SELECT public.community_member_events_open()` 返回 true。
+       - 写明关闭只停新发起，取消照常。
+       - 顶部速查表加一行。
+
+     g. REGRESSION_20261120122054 只改两处。本条授权这两处，不算 STOP-14 说的删断言或跳测试。
+     - ① 第 0 部分 `DO $closed$` 的块体外面包一层判断：`pg_catalog.to_regclass('private.community_member_event_config') IS NOT NULL` 时 `RAISE NOTICE 'EV_CLOSED|SKIP|member_event_config'`；否则执行原块体。判断条件与 ② 相同，不读 CLI 台账。原块体（从 BEGIN 到 END）逐字不改；它成了嵌套块，只在它末尾的 END 后面补一个分号。
+     - ② 三条临时 GRANT 之后加一个 DO 块：private.community_member_event_config 存在时，在本事务里把开关设成 true。
+     - 先单独提交这两处。跑这次 L-SQL 时工作区里还不能有新迁移文件（lsql-replay 读的是工作区）。在这个提交上跑 `$LSQL ~/work/illini-events-20261120 20261120100354 20261120122054`，要看到 EV_CLOSED|PASS，EV_TOTAL 与 L221 相同（855/855）。
+     - 加了新迁移以后要看到 EV_CLOSED|SKIP|member_event_config，其余用例全过，EV_TOTAL 仍是 cases=855、pass=855、fail=0：第 0 部分只用 pg_temp.expect，不写 ev_results，不计入 EV_TOTAL。EV_TOTAL 有任何变化，都按下一条处理。
+     - 除这两处外，REGRESSION_20261120122054 有任何用例在新迁移之后变红，或 EV_TOTAL 变了：不改那条用例，先查是不是 a 要求的改动造成的，记进 STATUS_LOG，交 supervisor。
+
+     h. L-SQL 和对照：
+     - 跑 `$LSQL ~/work/illini-events-20261120 20261120100354 20261120122054 <MTS>`，要 files=185 replayed=185 errors=0 done=1 rc=0。报 P3_TOTAL、EV_TOTAL、MEV_TOTAL、P3_SWITCH、EV_CLOSED 和 VERIFY_<MTS> 的 NOTICE。
+     - 照 L218 的做法，把 ~/work/evidence/D56/p4/lsql-replay-controls.sh 复制到 ~/work/evidence/D57/ 下用；原脚本和 appendix/env 的存档都不改。回放完依次跑：
+       - VERIFY_reply_notice_switch.sql：通过，NOTICE 是 enabled=f（第 5 项的正对照）；
+       - VERIFY_20261120122054：报错，把第一条报错原文记下（f① 要用）；
+       - VERIFY_<MTS>：通过，NOTICE 是 `community_member_events_switch|enabled=f`。
+     - 开关的正对照：`UPDATE private.community_member_event_config SET enabled = true` 之后跑 VERIFY_<MTS>，必须通过，NOTICE 是 enabled=t；改回 false 再跑一次，NOTICE 是 enabled=f。
+     - 六个负对照，每个单独做：改动、跑 VERIFY_<MTS>、看到指定异常名，再恢复、重跑通过。
+       - ① REVOKE EXECUTE ON create_member_event FROM authenticated → 函数授权那一项；
+       - ② GRANT UPDATE (location) TO authenticated → 列权限那一项；
+       - ③ DELETE FROM private.community_member_event_config → 开关行那一项；
+       - ④ member_shape 换回 btrim 版 → 约束那一项；
+       - ⑤ GRANT SELECT ON private.community_member_event_config TO anon → 开关 ACL 那一项；
+       - ⑥ 把 private.community_events_member_guard() 函数体里检查开关的那一句删掉，再 CREATE OR REPLACE（其余照原样）→ 函数体那一项，并点名 community_events_member_guard。
+       报出别的错误都不算负对照成立。
+
+     i. ENGINEERING §5.0 第 1 条要同步的：
+     - manifest.sha256 只追加一行：`git diff 02d4d4c6 -- supabase/migrations/manifest.sha256` 只能看到一行新增；
+     - README「数据库迁移清单」的计数句从 184 改成 185，分项数从磁盘重数；
+     - scripts/release-migration-count-boundary.test.mjs 从 184 改成 185。
+     另外：scripts/verify-public-read-schema.mjs 加对 rpc/community_member_events_open 的探测（POST {}，要 200 且返回布尔值），同步改 scripts/public-read-schema.test.mjs。
+  7. **P4.6 客户端：活动页「发起」入口、发起页、详情页的发起人菜单、私信与举报。**
+     同一分支和目录，排在第 6 项的迁移在本地提交之后做。第 6 项记了【跳过】的，本项也记【跳过】。
+
+     共用代码：
+     - app/src/utils/communityEvents.ts 加两样：EVENT_SPACE，写成 JS 正则字面量，方括号那一段与第 6 项 a6 那一行逐字相同，写入时同样用 a6 那条命令的输出拼进去，不手敲（这种反斜杠 u 转义在 JS 正则里含义相同；不能写成 \s，\s 不含 U+0085）；normalizeEventText(s)，与 N 同义（连续空白折成一个半角空格，再去两端）。
+     - 第 6 项 e 的静态测试再加一条：从迁移里解析 <W> 的码位集合，从这个文件解析 EVENT_SPACE 的码位集合，两者必须相等（都是 26 个）。
+     - 链接和保留词的客户端预检照 member guard 的两条正则写，不分大小写，SQL 里的 \y 写成 \b。
+
+     app/src/composables/useCommunityEvents.ts 加 memberEventsOpen()：
+     - 调 `rpc('community_member_events_open')`；
+     - 按账号缓存 60 秒，onAccountTransition 时清空；
+     - 任何错误都当 false。
+
+     新文件 app/src/composables/useMemberEventWrites.ts，只许 app/src/pages/event/ 下的页面引用。加一条静态测试：app/src 里别的文件 import 它就失败。这样它不进主包。
+     - createMemberEvent，调用顺序以下面列的为准（与 usePlaza.createPost 不同：那里标题的 checkContent 在 assertWritesAllowed 之前，这里三样 checkContent 都放在 assertWritesAllowed 之后）：
+       1. awaitAuthReady，要求已登录，captureAccountRequest；
+       2. assertWritesAllowed（D-49）；
+       3. 没验证校园邮箱，就在本地报 member_event_not_eligible。读法用应用里现有的那一种，不新增 RPC；
+       4. 用 normalizeEventText 规整标题和地点；
+       5. 本地校验：标题 1–60 字；正文去两端后 1–2000 字；地点 1–80 字；标题、正文、地点都不含链接；标题和地点不含保留词；开始时间晚于现在且不超过 60 天；结束时间可以为空，不为空时不早于开始、不超过开始后 30 天；
+       6. checkContent 分别查标题、正文、地点（kind 'post'）；
+       7. `remoteModerate(标题+'\n'+正文+'\n'+地点)`，flagged 就停；
+       8. `mpTextGate(同一段文字, 3, token)`；
+       9. `rpc('create_member_event', { post_id_in, title_in, content_in, event_in: { starts_at, ends_at, location } })`。
+       - 时间用 ISO 串；表单选的日期时间按 America/Chicago 解释，用 campusWallClockToInstant 转。
+       - 结果未知（超时、断网）时保留同一个 post_id_in，草稿里记 outcomeUncertain，重试仍用这个 id。成功后清掉草稿。
+     - cancelMemberEvent(id)：
+       - 只发 `{ cancelled_at }`，条件 `.eq('id', id).eq('organizer_user_id', 当前账号)`，取回 id 和 cancelled_at；
+       - 不写 status_note（SPEC 6.7.10「原因不必填」）；
+       - 不调 assertWritesAllowed，也不调 remoteModerate（D-49：取消自己的活动不受限制）；
+       - 成功后让 useCommunityEvents 的列表缓存失效。
+     - 错误码映射：照 SPEC §11 那一段映射到 i18n key；member_events_closed 映射到 events.err.closed；rate_limit_posts_hour、rate_limit_posts_day、duplicate_post 用现有的 friendlyErrorMessage。
+     - 仓库里登记 rpc 名单的测试（如果有）照现有写法加两条，不删别的。
+
+     app/src/pages/events/index.vue：memberEventsOpen() 为 true 时才显示下面这些入口：
+     - 手机顶栏右侧的文字按钮「发起」；
+     - H5 宽度 ≥768 时，主栏标题行右侧的描边按钮「发起活动」，以及侧栏 S2「想发起活动？」（列出 SPEC 6.7.1 第 7 条的三条限制，再放按钮）；
+     - SPEC 6.7.12 第一行空态里的第三个链接，以及「网友发起」筛选为 0 时的「发起活动」。
+     为 false 时这些都不出现。这一点是相对 SPEC 6.7.4 的改动，写进 ⑧。
+     点按：
+     - 没登录：走现有登录；
+     - 已登录但没验证校园邮箱：弹底部面板「验证校园邮箱后可以发起活动」加「去验证」（跳 /pages/illini-verify/index）。面板沿用现有组件，具体做法【OMO自决】；
+     - 受限账号：用 assertWritesAllowed 的现有提示；
+     - 其余：navigateTo /pages/event/create/index。
+
+     新页面 app/src/pages/event/create/index.vue：
+     - pages.json：在分包 root pages/event 的 pages 里加 `{ "path": "create/index", "style": { "navigationStyle": "custom" } }`；在 H5 的 `#ifndef MP-WEIXIN` 块里，紧挨 detail 加 pages/event/create/index。
+     - app/smoke/pages.smoke.spec.ts 的路由表加这一条，那条「路由表与 pages.json 同步」的测试要过。这个文件只加这一行，不改用例；它的页面巡检怎么判见第 11 项。
+     - 表单五个字段照 SPEC 6.7.10 的表，中文占位和地点下方的提示逐字照抄。
+     - 打开页面时：开关没开，显示 events.err.closed 和返回；没登录，走登录；没验证，显示 needVerify 和「去验证」。
+     - post_id 在打开表单时用 createClientMessageId() 生成。草稿 key 是 events_create_draft_v1，用 writeAccountPrivateStorage 存，字段里加 postId；把这个 key 登记进 app/src/api/accountLocalPrivacy.ts 的清单，清除时机与 plaza_composer_draft_v1 相同（ENGINEERING §5.2）。
+     - 错误显示在对应字段下方。成功后 `uni.redirectTo` 到 /pages/event/detail/index?id=<event_id>。
+     - 只用 App.vue 已有的 token，不写 hex 字面量（STOP-10）。
+
+     app/src/pages/event/detail/index.vue（只改网友发起的活动）：
+     - 发起人卡（SPEC 6.7.6 第 7 行）：头像、昵称、校园邮箱已验证徽章、「私信」。再加 6.7.9 的次要按钮「私信发起人」（events.cta.dmOrganizer）。看的人就是发起人时，这两处都不显示。私信照 pages/seller/index.vue 的 contactSeller：ensureLoaded、isBlocked、getOrCreateDirectConversation，再 navigateTo /pages/chat/index?id=。
+     - 页头右侧加一个菜单按钮（6.7.6 第 13 行），用 showActionSheet：
+       - 所有来源都有「复制链接」（文字用已有的 events.cta.copyLink）：H5 用 window.location.origin，小程序用 config/runtime 的 BASE_URL，后面拼 `/#/pages/event/detail/index?id=<id>`，复制后 toast 用仓库已有的 events.linkCopied（即 SPEC §11 的 events.copied，文案相同，不另加 key）；
+       - 网友发起的活动、看的人已登录且不是发起人时，加「举报」：理由列表照 pages/post/index.vue 的 promptReport 里话题那一组，调 useModeration().reportTarget('post', discussion_post_id, 理由)，成功后 toast report.thanksCommunity；
+       - 看的人是发起人、活动既没取消也没结束时，加「取消活动」：用 uni.showModal，content 用 events.cancelConfirm。按钮文字照 D-50：中文 confirmText「取消活动」、cancelText「保留」；英文 confirmText "Confirm"、cancelText "Keep"（key 见下面 i18n）。确认后调 cancelMemberEvent，用返回的 cancelled_at 更新本页的行，页面显示 events.status.cancelled。
+     - 不做两件事：改时间和地点（SPEC 6.7.10，V5 不支持）；活动页上的「删除」。作者删讨论帖照旧在话题页做，删后活动隐藏、名额释放，第 6 项 d 有这条用例。
+     - 列表卡片上发起人的 20px 头像（6.7.3）用现有 UAvatar。如果 scripts/community-events-boundary.test.mjs 因此变红：不改那条测试，不加头像，STATUS_LOG 记一条。
+
+     i18n：
+     - zh.ts、en.ts 加 SPEC §11「P4 活动」里本项用到、仓库里还没有的 key，文字照 SPEC。仓库里已有同义 key 的用已有的，不另加（例如 SPEC 的 events.copied 就是仓库的 events.linkCopied；复制链接用已有的 events.cta.copyLink）。
+     - SPEC 里没有的 key 新加：表单标签、占位、地点提示、「去验证」；菜单里的「举报」「取消活动」两项；侧栏 S2 的标题「想发起活动？」和三条限制（照 SPEC 6.7.1 第 7 条）；取消弹窗的两个按钮（中文「取消活动」「保留」，英文 "Confirm" "Keep"）；events.err.closed（中文「网友发起活动还没有开放」，英文 "Organizing events isn't open yet."）；本地校验里 SPEC 没有文案的三种：events.err.titleRequired（「请填写标题」/ "Add a title."）、events.err.contentInvalid（「请填写说明，最多 2000 字」/ "Add details, up to 2,000 characters."）、events.err.endInvalid（「结束时间不能早于开始时间，也不能晚于开始后 30 天」/ "The end can't be before the start or more than 30 days after it."）。开始时间不在未来 60 天内的（包括早于现在），用 SPEC 已有的 events.err.timeRange。这些新 key 追加到 SPEC §11「P4 活动」表的末尾，每行注明「（D-57）」，已有的行一字不改；SPEC 只在材料分支上，这一步照第 11 项在材料分支做。
+     - 中英 key 要一一对应，i18n parity 测试要过。
+
+     测试：
+     - node：新文件 app/smoke/community-member-event-writes.test.mjs，照现有 *.test.mjs 的编译加桩做法。要断言：
+       - 发起时的调用顺序正好是 assertWritesAllowed → checkContent → remoteModerate（文字含标题、正文、地点）→ mpTextGate → rpc；
+       - flagged 时 rpc 调用 0 次；
+       - 结果未知后重试，post_id_in 相同；
+       - 取消时不调 assertWritesAllowed、不调 remoteModerate，请求体只有 cancelled_at；
+       - SPEC §11 列的每个错误码和 member_events_closed 都映射到正确的 key。
+       normalizeEventText 的用例覆盖 U+0009、U+000A、U+2028、U+3000、U+00A0、U+FEFF 和「只有空白」。
+     - smoke：新文件 app/smoke/community-member-events.spec.ts，用路由拦截喂数据，390 和 1280 两个宽度都跑。用例：
+       - 开关为 false 时，三处入口都不出现；带保持窗口，并以开关为 true 时出现作对照；
+       - 开关为 true：没登录点「发起」到登录页；未验证弹出面板，「去验证」到 illini-verify；已验证到发起页；
+       - 每一种本地校验错误都显示对应 key 的文案（SPEC 有原文的用原文），rpc 调用 0 次；
+       - 提交成功时正好调一次 create_member_event，参数正确，跳到详情页；
+       - 第一次请求中断后重试，post_id_in 不变；
+       - 服务端返回 member_event_active_limit、member_events_closed 时，显示对应文案；
+       - 详情页：发起人看得到「取消活动」，看不到「举报」和「私信发起人」；别人正好相反；
+       - 取消后请求体只有 cancelled_at，页面显示「发起人已取消这场活动」；
+       - 受限账号的发起人仍能取消。
+       发起页的浅色、深色截图存到 appendix/visual/P4.6/，命名照 BACKLOG §0.4。先在没改客户端的树上跑这个 spec，看它红，日志名记下。
+
+     小程序：
+     - mp、mpci 都要过。
+     - 主包按 CI 环境量，与 P4 02d4d4c 的 1,459,574 比，差值写进 STATUS 主包表。
+     - 目标是主包 ≤ 1,507,328（余量 64 KiB，D-46 第 4 项）。超了先把只给分包用的代码挪进 pages/event；挪不动就在 ④ 写明，照常推送。超过 1,572,864 就不推送（verify-miniprogram 也会拦）。
+     - pages/event 分包不超过 1.6 MiB。
+
+     DoD ⑥ 本批只做到三样：H5 在 L-UI 里走一遍发起和取消；mp 构建通过；mpTextGate 的调用有 node 测试。下面这些都归 Eric，P4.6 记「部分」：
+     - 在小程序真机或开发者工具里走一遍；
+     - wechat-seccheck 真跑一次；
+     - 在 staging 上做 S-1。
+     它们的前提是：staging 已有三条迁移，staging 的开关已打开，有一个已验证校园邮箱的合成账号。
+  8. **视口后续分支（从 main 9171976e）：改正注释，钉住 html 高度这个前提，给另外四处 inset 消费者补只靠观察者恢复的用例。**
+     - 背景：useVisualViewportInset.ts（9171976e）第 31–35 行的注释写「The root box is the layout viewport here (html is height: 100%)」，读起来像本仓库的规则。实际出处是 @dcloudio/uni-h5（3.0.0-4080420251103001）的 style/framework/base.css 第 6–12 行 `html, body { width: 100%; height: 100% }`；App.vue 第 1952–1961 行对 html、body 和 uni 外壳那几层只加了 `min-height: 100%`（另有 overscroll-behavior、background），没有设 height。ResizeObserver 能在布局高度变化时回调，靠的就是这条上游样式：哪天 uni-h5 去掉它，根元素的高度会跟着内容走，观察者就不再触发，而现在没有用例会因此变红。
+     - 另外四处用到这个 composable 的地方：pages/messages/index.vue 第 2、243 行（宽屏两栏的 kb-up 与 `--chat-bottom-inset`）、pages/index/index.vue 第 582–585 行（筛选面板的 bottom 与 `--filter-visible-height`）、pages/plaza/index.vue 第 820–828 行（评论面板与发帖框）、pages/post/index.vue 第 381–384 行。拦下视口事件、只靠观察者恢复的用例只有 marketplace-responsive.spec.ts 第 767 行那一条，而且只测聊天页；supervisor 在本机实测过，messages 两栏在没有修复的源码上同样失败。
+     - 分支：`umask 022; git -C ~/work/illini fetch origin; git -C ~/work/illini worktree add -b codex/community-viewport-consumers-20261121 ~/work/illini-viewport-consumers 9171976e`。名字照写，不按 RUNBOOK §3 改成建分支当天的 CT 日期；起点固定 9171976e，不跟 origin/main；前缀符合 STOP-6b；本条授权推送这一个 BACKLOG §1 表外的分支。RUNBOOK §3 表加一行。
+     - ① 注释：写明 html 的 `height: 100%` 来自 uni-h5 的 framework/base.css（App.vue 只加了 min-height），观察根元素靠的就是这一条。只改注释，代码一个字符不动。
+     - ② 新 spec 文件 app/smoke/viewport-inset-consumers.spec.ts。marketplace-responsive.spec.ts 一行都不动。第一条用例钉住前提：视口 820×1180 和 820×830 两档，各断言 `Math.round(document.documentElement.getBoundingClientRect().height)` 等于 `document.documentElement.clientHeight`。断言的是这个性质，不是某一条 CSS 的写法。对照【OMO自决】，要真的能变红（例如注入一段让 html 高度随内容、并让内容比视口高的样式），撤掉，日志名记下。
+     - ③ 四条用例，照第 767 行的写法：addInitScript 在页面任何监听之前挂好拦截；在 820×1180 打开页面和要测的那块；把 visualViewport.height 伪成 830、发一个 resize，然后拦下之后所有 window 和 visualViewport 的 resize、scroll；断言那块先按 inset 350 摆放；再 setViewportSize 820×830，等 clientHeight 变成 830；断言拦下的事件数大于 0、那块回到 inset 0。四处分别是：messages 两栏（打开第一条会话；`.page` 的 kb-up 消失、`--chat-bottom-inset` 回到 0px、发送按钮底边不超过 830）；首页筛选面板（Filters 对话框 bottom 回到 0、底边不超过 830、顶边不小于 0）；广场评论面板（820 宽下够得到发帖框的，也测发帖框；bottom 回到 0、底边不超过 830）；帖子页 post/index（bottom 回到 0、高度等于 830）。用哪个元素、怎么打开【OMO自决】，写明理由。
+     - 先红后绿：临时把 useVisualViewportInset.ts 换成 66e14a45 的版本（没有观察者）跑一次，四条都要红在「回到 inset 0」那一步，不能红在打开面板或更前面的断言上，日志名记下；换回 9171976e 的版本再跑一次，全绿。哪一处在没有观察者时也不红（例如那一页恢复时另有事件到达），不硬造：这一条记【跳过】，STATUS_LOG 写事件顺序和读到的值，其余照做。
+     - 不加 waitForTimeout，不改 playwright 配置，STOP-14 照旧。复跑：`SMOKE_SPECS="viewport-inset-consumers.spec.ts --repeat-each=20"` 0 失败；`marketplace-responsive.spec.ts:699` 和 `:767` 各 ×60 一组，0 失败。
+     - 门禁照 D-56 第 5 项那一行（全量，含 h5accept、mp），判法照 D-56 第 5 项，细则见第 11 项「失败的判法」；main 对照沿用 L173（9171976e 相对 3778952 只多了 #381、#382，页面巡检用到的代码不变）。Running N 不少于 564，多出来的条数等于新 spec 的用例数；TEST 应与 main 相同（2664/2663/0/1）；mpci 主包应是 1,381,447，差 0。推送前照新的 17d 扫，基准 9171976e。推送后开草稿 PR，base main，描述写原因、做法和证据；合并由 supervisor 做。iPad 真机检查仍按 D-56 ④ 归 Eric。
+  9. **第十批报告与文档的更正（材料分支；STATUS_LOG 只追加；FINAL 第十批不改，更正写进第十一批）。**
+     - a. STATUS 第 28 条：D-56 第 0 项要求「照抄进 STATUS」，现在第 28 条里「D-56 第 0 项：」之后是转述。五条里第 2 条（核查清单在 ~/omo-ctl/review-b9-findings.md，「改进前必修 / 潜在 / 小」各怎么处理）和第 5 条（D-55 第 5 项「控制台错误只有一句」写错了；main 3778952 30 次失败 4 次，P4 30 次失败 6 次，期望 830 实得 480；L177、L192 两处判法追认）整条没有。第 1 条的复现数字也没有：P4 24ff7bf TEST 2898/2897/0/1、pg_skips 0、smoke 647 条 640 passed / 6 failed / 1 skipped、主包 1,459,446；P3 7ccb195 TEST 2799/2798/0/1、主包 1,422,595；L-SQL 184/184，P3_TOTAL 703/703，EV_TOTAL 855/855；30 条里 25 条已修。第 3 条缺「改前核过与 3778952 的文件相同」和「background-jobs 每分钟 check-in ok」。改法：把第 28 条「D-56 第 0 项：」之后那一段，换成 DECISIONS D-56 第 0 项五条的原文（d81ca048 第 642–646 行，逐字，含编号和数字）；前面的内容不动，`git diff` 只动这一段。照抄前照第 0 项自己的要求用 gh pr view 核一遍。
+     - b. STATUS 现状：版本表 code_sha 改成 9171976e；「其余代码分支」里 #382 改成已合并（2026-11-21 16:09:20Z squash 进 main 9171976e）；主包表加 main 9171976e 一行（树与 19c4657 相同，1,381,447，差 0，引 L213），以及本批视口后续、P3、P4 的新 head。改前 `gh pr view 382 --json state,mergeCommit` 核一遍。
+     - c. 追加一条 STATUS_LOG 更正 L221：它的「未测项」写「6 条巡检失败在本地容器里解析不了 stub 的 supabase 地址」，又把原因归到容器，和 D-56 第 4 项 g、L207 ⑰ 相反。更正为：stub 主机 00000000000000000000.supabase.co 在任何环境都不存在，CI 用真实后端跑巡检；这 6 条失败的原因是 stub 主机，不是容器。
+     - d. FINAL 第十批 ③ 漏记的 [OMO自决]（STATUS_LOG 里标了、③ 里没列）：L218 的「期望串取 5 个（含第 5 节顺序检查那一个）」和「多做的两次对照（删 READ ONLY 那一行；两条迁移都回放后再跑 VERIFY_20261120100354）」；L209 之后草稿 P3-A 的「③ 多做一次、只差楼那一行条件的对照」；L220 的「改法：只改 eventConsole.ts 的调用处，不往 eventTime.ts 加格式函数」。另外，L222 写「子任务在草稿里标了 [OMO自决] 的五处」，实际 L218 五处、L220 一处、L221 一处，共七处；L222 列的五处里「浏览器用例 179–180 行同句一起改」在 L220 里写的是 D-56 准许的改预期，不是 [OMO自决]，而上面那三处漏了。写进第十一批 ③（标「补第十批」），并追加一条 STATUS_LOG 汇总更正。
+     - e. 17a、17d 的 [OMO自决] 补记。§12 第 17 条要求 17a（收到不算数的指示文字）和 17d（命中）各在 STATUS_LOG 记一条 [OMO自决]。视口有 L214；P4 的 17d ⑤ 命中（RUNBOOK.md:651，L216、L221）和 17a（宿主要它复述目标并继续的那段，L221、L222）都没有标 [OMO自决] 的条目；P3 的宿主提示（L210、L209 之后的草稿 P3-D：工具清单、连接器说明）和视口 L214 是同一类，也没标。追加一条 [OMO自决] STATUS_LOG：规则 17a、17d，列这三处的类别和个数，不写内容；选择和理由照原条目，撤回不适用。
+     - f. FINAL 第十批 ④ 的 CI 推算写错了，在第十一批 ④ 重写，数字都用 `gh run view <id> --json jobs` 的 startedAt、completedAt，命令记进 STATUS_LOG。supervisor 已核：run 44647478789 是 Running 478 tests（472 passed、6 skipped），不是 472 条；public-smoke 这个 job 从 00:38:36Z 到 01:14:50Z 共 36m14s，smoke 那一步 25m29s，整段开销 10m45s（10.75 分钟；装浏览器那一步本身 10m00s），不是「约 10 分钟」；按每条约 3.2 秒，647 条 34.5 分钟加 10.75 分钟约 45.25 分钟，已经超过 45 分钟，不是「贴着」。run 44783052160 的开销是 job 23m17s 减 smoke 21m32s，等于 1m45s（D-56 写的 1m42s 只算了 smoke 之前那一段），563 条约 2.3 秒一条；#382 的 run 44909710527 是 564 条、smoke 25m47s（约 2.7 秒一条），开销 1m24s。重写时用本批 P4 最终门禁的 Running N（合 main 再加本批新增的用例，会大于 648），三个 run 的每条耗时和开销各算一次，列出最坏和最好；结论写「最坏情形超过 45 分钟」。ci.yml 不改，选哪种做法仍归 Eric。
+     - g. FINAL 第十批 ④ 的 P3.7 行丢了第九批那一行的后半句。第十一批 ④ 的 P3.7 行补回：「之后把 #379 的 base 改到 main 跑 CI（STATUS 阻塞第 12 条；改 base 之前只普通 git merge origin/main，D-55 第 2 项 l）」。
+     - h. 本批每一次 smoke 照旧在 STATUS_LOG 写 SMOKE_SPECS 的文件清单和文件数（D-56 第 4 项 f）。
+  10. **子任务的模型和额度。**
+     子任务的模型只看类别（用 subagent_type 时看对应的 agent）：先用 ~/.omo/omo.json 的 categories.<类别>.models，再接 omo 内置链。它不继承主会话的模型，链用完也不回落到主会话的模型，会以 failure_kind `model_chain_exhausted` 结束。本批照下面做：
+     - 开工先跑一次只读的 `omo doctor --models`，输出只存 $EV/D57/，不进仓库。下面 7 个类别里首行不是「chatgpt-subscription/… -> anthropic-subscription/…」的，那个类别本批不用，STATUS_LOG 记一行。
+     - 派子任务只写 category，从 deep-high、deep-low、ultrabrain、unspecified-high、unspecified-low、architect、visual-engineering 这 7 个里挑（第 0 项已用 doctor 核过：ChatGPT 打头、Claude 兜底）。不写 model 参数；不用 quick（没改成对象写法，Claude 兜底没核过）、writing、artistry 和第 0 项没核过的其他类别，也不用 subagent_type plan-consultant。
+     - 子任务因为 model_chain_exhausted、登录或额度类错误结束：按 D-51 第 1 项记进失败子任务表（task_id、类别、报错里列出的每个模型和原因、重置时刻），换一个类别再派一次；再失败就由主会话自己做。同一件事最多改派一次。
+     - 主会话或子任务出现「Model fallback … -> anthropic-subscription/…」、号池换号或额度提示：照常做，在 STATUS_LOG 记一行（UTC 时刻、从哪个模型到哪个模型）。不切模型，不用 /model、/fallback、/login、/account、/gpt-account、/claude-account，不改 ~/.omo。
+     - 用号与额度照 D-52 第 0 项，本项只改其中「ChatGPT 的两个号仍按 60%」那一句：
+       - Claude：default、account-2 不设 60% 上限，用到额度耗尽为止；account-5、account-4 到 60% 为止。
+       - ChatGPT：Eric 2026-11-21 19:54 CT 原话「但是优先先多跑我账号的额度，我现在还有reset卡」，所以 login-3 本批不设 60% 线，用到 omo 自己在 95% 时绕开为止；绕开之后各类别和主会话自动落到 Claude 那一级（supervisor 已改好链，第 0 项），OMO 不用做任何切换，照常派子任务。default、login-2 登录已过期，等 Eric 重登，不算可用。
+       - 用量由 supervisor 每 30 分钟查一次，到线时由 supervisor 调号的顺序或通知 OMO。OMO 不自己查用量，不切号，不切模型。
+       - 停下以 supervisor 的通知为准，条件照 D-52 第 0 项：default、account-2 都用尽，account-5、account-4 也到 60%（本批 login-3 以 omo 绕开为限）。停下时照 D-51 第 1 项，把已完成的部分写进 STATUS 和 FINAL。
+     - RUNBOOK §12 第 17 条（口令、开工说明、17d 扫描）照旧。换到 Claude 号以后插入的 session context 提示照 17b 当数据。
+  11. **P4 的门禁、冻结、推送和材料分支的文档。**
+     第 3 项的合并（P3 有新 head 的，两次合并都在内）和第 5、6、7 项都在本地提交之后做本项；本项写的是 P4 最终 head 的一次门禁、冻结、一次推送与收尾。第 6、7 项都记了【跳过】的，照本项跑门禁、推送第 3、5 项的提交，不做冻结。P3、视口后续分支的门禁写在第 4、8 项，判法用本项「失败的判法」。
+
+     执行规则：
+     - 子任务照 RUNBOOK §12 第 17 条起，用号照 D-52 第 0 项。
+     - 同一分支同一时间只让一个子任务推送。
+     - 容器一次只跑一个，用同一把锁。新建 worktree 和跑 run-checks 之前都先 `umask 022`，并核 worktree 权限是 755。
+     - 门禁一律在后台会话里起，轮询结果。
+
+     全量门禁：
+     - 命令：`SMOKE_SPECS="$(cd ~/work/illini-events-20261120/app/smoke && ls *.spec.ts | grep -v -e compiled-chunk-recovery -e compiled-draft-persistence | tr '\n' ' ')" $RC ~/work/illini-events-20261120 install typecheck h5 h5accept mp mpci migrations test smoke npmaudit`。
+     - TEST 行必须是 fail=0 skipped=1 pg_skips=0，tests 不少于 2899 加合并带进来的（预计 1 条，第 3 项）和本批新增的条数。
+     - smoke 日志里 `Running N` 的 N 不少于 648（647 加合并带进来的第 767 行那 1 条）加本批新增。N 少了，说明 SMOKE_SPECS 没生效，这次不算，重跑。
+     - STATUS_LOG 写 SMOKE_SPECS 的文件清单和文件数。
+     - L-SQL 和各项对照照第 6 项 h（开关的正对照、第 5 项的正对照、六个负对照）。
+
+     失败的判法（第 4、8 项同样用）：
+     - 照 D-56 第 5 项（四条「同一类」条件，对照 L173）。D-56 第 5 项里「在 66e14a45 的一次性 worktree 上连跑 3 次」那一步，本批改用 9171976e：三个分支都从 9171976e 起或已合进它，66e14a45 是修复前的 main，拿它对照会把视口类问题错判成「main 上同样不稳定」。
+     - marketplace-responsive.spec.ts:699 和 :767：P4 已合进 9171976e（第 3 项），修复已在分支上，这两条必须 0 失败；最终 head 上另跑一组 `SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60"`，60 次 0 失败。
+     - 本批新增的 spec，以及本批改过用例本身的 spec，失败的必须修到过（STOP-14）。pages.smoke.spec.ts 只因第 7 项在路由表加了一行，不算这里说的改过的 spec：它的页面巡检仍照 D-56 第 5 项的四个条件判（第 ④ 条只对 pages/events/index）；新路由 pages/event/create/index 的浅色、深色两条满足 ①–③ 的，记「同一类，见 L173」。
+
+     冻结：
+     - 推送前在 STATUS_LOG 写「<MTS>_community_member_events.sql 冻结」和它的 sha256，要与 manifest 里那一行相同。
+     - 推送之后这条迁移照 9c 不再改，要改就另起新迁移。
+
+     推送：
+     - 17d 扫描通过后（基准是远端 head 02d4d4c6，每次合并各给一个 `--diff-base`），快进推送到 codex/community-events-20261120，用 `git push --no-verify`，命令字段写推送前那次 run-checks 的日志名。
+     - #380 仍是草稿，不转 ready，不改 base。
+     - 改 #380 的描述（改前扫 17d，旧正文存档），写进这几件事：P4.6 已在本分支；三条迁移的应用顺序和 sha256；成员活动开关默认关，以及打开的四个前提；#380 合并前 public smoke 要在已应用三条迁移的库上跑绿；CI 的 verify-deployed-rpcs（community_member_events_open）和 verify-public-read-schema（rpc/community_member_events_open）都要求 staging 已应用 <MTS>，create_member_event 在 20261120122054 就已存在。
+
+     材料分支的文档：
+     - STATUS：
+       - 从「P4.4–P4.7、P4.10、P4.11」那一行拆出 P4.6 单列一行，记「部分」，DoD ⑥ 等 Eric；原行改成「P4.4、P4.5、P4.7、P4.10、P4.11」，第三列去掉 P4.6 那半句；
+       - 「P4.2、P4.8、P4.9」那一行第二列里的「P4.2 DoD ④ 成员写入通道留给 P4.6」改成「P4.2 DoD ④ 成员写入通道由 <MTS> 打开，等应用」，这一行其余不动；
+       - 阻塞第 30 条后补一句「D-57 按现行规则实现，supervisor 代定，待 Eric 确认」；
+       - 阻塞第 32 条改成三条迁移；
+       - 新增一条阻塞：成员活动开关在 staging、生产打开，归 Eric 或他点名批准的人，前提是 D-28 的举报值班已经有人。
+     - ENGINEERING：§5.5 末尾加「第十一批（D-57）补记」（STOP-16a），列开关表、community_member_events_open()、member_events_closed（P0001）、member_shape 的变化、标题/地点/说明的 N 规整、三条授权。§9.9 末段「面向用户的错误码」列表末尾加 `member_events_closed`（P0001，D-57）；上面那张同步错误码表不改。
+     - SPEC：§11「P4 活动」表末尾追加第 7 项新加的 key，每行注明「（D-57）」，已有的行一字不改；key 名和文字与 P4 最终 head 的 zh.ts、en.ts 一致。
+     - BACKLOG 不改。
+  12. **顺序和收尾。**
+     - 先做第 1、2 项（写好脚本、自测通过），然后才起子任务、才推送任何分支，材料分支也一样。
+     - 代码分支：
+       - P3：合 9171976e（第 3 项）→ 第 4 项 a、b → 门禁（第 4 项）→ 推送。
+       - P4：合 9171976e（第 3 项）→ 第 5 项 a、b → 第 6 项 → 第 7 项，都在本地提交；P3 推送了新 head 的，再普通 merge 它（第 3 项）；然后照第 11 项只跑一次门禁（含 L-SQL、开关的正对照、第 5 项的正对照和第 6 项 h 的负对照），冻结，推送一次。第 6、7 项都记了【跳过】的，照第 11 项跑门禁，推送第 3、5 项的提交。
+       - 视口后续分支（第 8 项）单独做，可以和 P3、P4 同时开工。
+       - 容器一次一个、用同一把锁（D-53 第 7 项 d），门禁一律在后台会话里起；新建 worktree 和每次跑 run-checks 之前先 `umask 022`，并核 `stat -c %a` 是 755。
+     - 每个子任务照 §12 第 17 条起（口令用 omo-steer.sh：派出前 `check` pending 文件，派出后 `check` task_id 文件，输出记进 STATUS_LOG）；开工说明写明新的 17d 用法（脚本路径、--log、推送后核 ls-remote 等于最后一行 HEAD）。
+     - 文档更正随时可做；主包表等各 head 的 mpci 跑完；CI 推算等 P4 最终门禁跑完（用 P4 的 Running N）。
+     - 收尾：FINAL「第十一批（D-57）」与 STATUS 同一个提交推送。⑤ 写四个分支（材料、视口后续、P3、P4）各「推送 N 次、有扫描记录 N 次」以及批末 reflog 核对的结论（第 2 项「证明跑过」②）；⑧ 见下。不转 ready、不改 base、不合并；合并视口后续 PR 由 supervisor 做。截止时间和到点的处理照 D-56 第 6 项的写法。
+     FINAL「第十一批（D-57）」，八节格式：
+     - ④ 先把第十批 ④ 里仍没做完、仍等 Eric 的逐行照列（P3.7：照 E4 第 2 步核 c2a18ee8…，后半句照第 9 项 g 补回；E6；打开回复通知开关和它的前提；#380 合并前在已应用三条迁移的库上跑 public smoke；内容下架的申诉；第九批起的那组问题；STATUS 阻塞第 24 条的号池邮箱；18b2997 的公开措辞；iPad 真机检查），已经做完的（例如视口修复上线）不列。再列这些：
+       - P4.11 现在包括 <MTS>：照 E4 第 2 步核 sha256，应用顺序见仓库 RUNBOOK 的 Community P4 段，之后开关第 1 步看 VERIFY_<MTS>；
+       - 成员活动开关：staging、生产各开一次，前提是 f③ 的四条；
+       - D-28；
+       - DoD ⑥ 的小程序部分和 S-1。
+       ④ 里还要列问题：阻塞第 30 条的名额规则；SPEC 列为 P6 的「7 天新建上限」要不要提前（作者硬删话题会同时释放名额和 044 的小时计数，「建—删」可以反复）；staging 要不要准备一个已验证校园邮箱的合成账号；CI public-smoke 的超时（第十批 ④）随本批新增用例更紧；按 token 计费的 OpenAI API key 要不要做主会话最后一级兜底（现在不进任何自动链）；ChatGPT 的 default、login-2 要不要重登；宿主给提交加的 sisyphus-dev-ai trailer 要不要在宿主那边关掉（本批 17d 逐字豁免，不剥）。
+     - ⑧ 写本条代 Eric 定的事，每条写选了什么、理由、怎么撤回：17d 的 trailer 豁免、不剥（第 2 项）；口令写法（第 1 项）；Claude 号池的临时顺序（第 0 项；撤回：default 重置后由 supervisor 改回 default → account-2 → account-5 → account-4）；四处观察者用例的取法与【跳过】标准（第 8 项）；P3 预留高度与长按不震动的做法（第 4 项）；开关检查测试比到逻辑（第 5 项 b）；开关和公开读函数（撤回：另起迁移，去掉开关检查）；<W> 的码位和 N 的折叠规则；开关关着时报 P0001 member_events_closed（PostgREST 回 400，55 类会回 500）；说明在取消时规整、纯空白存 NULL；REGRESSION_20261120122054 的两处改动；开关关时入口不显示；客户端取消不带说明；名额规则不改；SPEC §11 追加的 key。除开关、号池顺序和 17d 的 trailer 豁免（撤回照第 2 项）外，其余都用 git revert 撤回；口令写法撤回的是 RUNBOOK 第 17a 条的改动，omo-steer.sh 留着不用。
+
+     目标与收尾：
+     - 用 create_goal 设目标，范围是本条第 0–11 项，完成线是 FINAL 第十一批和 STATUS 在同一个提交推送。
+     - 按 D-42 第 8 项建一个 3600 秒的续跑提醒，先 list，只留一个。
+     - 推送之后再结束目标、取消提醒，然后追加一条 STATUS_LOG 记这两件事。
+     - 不从 BACKLOG 往下接任务。
+     - 到 2026-11-24 12:00 CT 还没做完：没开工的记【跳过】；已开工的跑完当前门禁，判为通过才推送；判不过的不推送这一步的提交（BACKLOG §0.5 第 1 条），STATUS_LOG 记下停在哪一步和日志名。
 
 ## 待定
 
