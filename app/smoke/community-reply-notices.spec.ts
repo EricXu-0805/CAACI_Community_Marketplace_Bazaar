@@ -48,7 +48,9 @@ test('when the list could not look its topics up, a tapped line still finds out 
 
   down = false
   await lines.nth(1).click()
-  await expect(page.getByText(text('notif.targetGone'), { exact: true })).toBeVisible()
+  const goneToast = page.locator('.uni-simple-toast__text')
+  await expect(goneToast).toHaveText(text('notif.targetGone'))
+  await expect(goneToast).toBeVisible()
   await expect(page).toHaveURL(/pages\/notifications\/index/)
   await lines.nth(0).click()
   await expect(page).toHaveURL(new RegExp(`pages/post/index\\?id=${TOPIC.id}&reply_at=`))
@@ -106,7 +108,9 @@ test('reply notices are merged per watched topic, name the replier, and open the
 
   // The hidden or deleted topic keeps its line; a tap says it is gone and stays here.
   await lines.nth(2).click()
-  await expect(page.getByText(text('notif.targetGone'), { exact: true })).toBeVisible()
+  const goneToast = page.locator('.uni-simple-toast__text')
+  await expect(goneToast).toHaveText(text('notif.targetGone'))
+  await expect(goneToast).toBeVisible()
   await expect(page).toHaveURL(/pages\/notifications\/index/)
   await expect.poll(() => read).toEqual([id(4)])
 
