@@ -68,6 +68,34 @@ for (const width of [390, 1280]) {
       await expect(page.locator('[data-test="events-empty"]').getByRole('button', { name: organize })).toBeVisible()
     })
 
+    test('the list renders while the creation switch response is pending', async ({ page }, testInfo) => {
+      const fixture = await installMemberEvents(page)
+      fixture.rows = [fixture.member]
+      let releaseSwitch: (() => void) | undefined
+      const heldSwitch = new Promise<void>(resolve => { releaseSwitch = resolve })
+      let listRequested = false
+      await page.route('**/rest/v1/rpc/community_member_events_open', async route => {
+        await heldSwitch
+        await route.fallback()
+      })
+      await page.route('**/rest/v1/rpc/list_community_events', async route => {
+        listRequested = true
+        await route.fallback()
+      })
+      try {
+        await page.goto('/#/pages/events/index', { waitUntil: 'domcontentloaded' })
+        await expect.poll(() => listRequested).toBe(true)
+        await expect(page.getByText('Saturday badminton', { exact: true })).toBeVisible()
+        await expect(page.getByRole('button', { name: organize })).toHaveCount(0)
+        await page.screenshot({ path: testInfo.outputPath(`events-list-pending-${width}-light-en.png`), animations: 'disabled' })
+        releaseSwitch?.()
+        await expect(page.getByRole('button', { name: organize }).first()).toBeVisible()
+        await page.screenshot({ path: testInfo.outputPath(`events-list-open-${width}-light-en.png`), animations: 'disabled' })
+      } finally {
+        releaseSwitch?.()
+      }
+    })
+
     test('a guest follows the existing login flow', async ({ page }) => {
       await installMemberEvents(page, { reader: 'guest' })
       await openFresh(page, 'pages/events/index')

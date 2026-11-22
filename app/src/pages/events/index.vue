@@ -162,9 +162,10 @@ async function load() {
   const mine = ++epoch
   loading.value = (past.value ? pastRows.value : rows.value).length === 0
   loadError.value = false
-  const open = await memberEventsOpen()
-  if (mine !== epoch) return
-  creationOpen.value = open
+  creationOpen.value = false
+  void memberEventsOpen().then(open => {
+    if (mine === epoch) creationOpen.value = open
+  })
   try {
     const next = await listEvents(past.value ? 'past' : 'upcoming')
     if (mine !== epoch) return

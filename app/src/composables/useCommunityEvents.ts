@@ -77,8 +77,8 @@ export function useCommunityEvents() {
     const age = memberSwitch ? Date.now() - memberSwitch.at : 60_000
     if (memberSwitch && age >= 0 && age < 60_000) return memberSwitch.value
     const value = await supabase.rpc('community_member_events_open')
-      .then(({ data, error }) => !error && data === true, () => false)
-    if (mine !== reader) return false
+      .then(({ data, error }) => !error && typeof data === 'boolean' ? data : undefined, () => undefined)
+    if (mine !== reader || value === undefined) return false
     memberSwitch = { at: Date.now(), value }
     return value
   }

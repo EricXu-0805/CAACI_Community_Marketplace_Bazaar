@@ -58,3 +58,23 @@ for (const [field, value] of [
     assert.equal(await useCommunityEvents().memberEventsOpen(), false)
   })
 }
+
+test('failed member switch reads are retried immediately after recovery', async t => {
+  for (const [field, value] of [
+    ['switchError', { message: 'unavailable' }],
+    ['switchThrow', new TypeError('fetch failed')],
+    ['switchValue', 'true'],
+  ]) {
+    await t.test(field, async child => {
+      const { state, load } = await memberWorld(child)
+      const previous = state[field]
+      state[field] = value
+      const { useCommunityEvents } = await load('composables/useCommunityEvents.ts')
+      const events = useCommunityEvents()
+      assert.equal(await events.memberEventsOpen(), false)
+      state[field] = previous
+      assert.equal(await events.memberEventsOpen(), true)
+      assert.equal(state.calls.length, 2)
+    })
+  }
+})
