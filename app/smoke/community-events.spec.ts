@@ -133,7 +133,7 @@ for (const size of [PHONE, DESKTOP]) {
       deviceScaleFactor: size.scale, isMobile: size.mobile, hasTouch: size.mobile,
     })
 
-    test('the list: one card for each source, named in words, with its state, and no picture', async ({ page }) => {
+    test('the list: one card for each source, named in words, with its state, and no event artwork', async ({ page }) => {
       const served = await serve(page)
       await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
       await expect(cards(page).first()).toBeVisible({ timeout: 15_000 })
@@ -173,8 +173,8 @@ for (const size of [PHONE, DESKTOP]) {
       // An event that ends the day it starts carries no multi-day mark, and the card's name says its date in words.
       await expect(card.locator('.evc-on')).toHaveCount(0)
       await expect(card).toHaveAttribute('aria-label', '迎新晚会 · 11月21日 · 周六 10:00 · Illini Union · CAACI 主办')
-      // v1 renders no image of any source, and opens no web view.
-      await expect(page.locator('.ev-main img, .ev-main uni-image, .ev-main uni-web-view, .ev-main iframe')).toHaveCount(0)
+      // Member profile avatars are allowed; event artwork and web views are not.
+      await expect(page.locator('.ev-main img:not(.evc-avatar, .evc-avatar *), .ev-main uni-image:not(.evc-avatar, .evc-avatar *), .ev-main uni-web-view, .ev-main iframe')).toHaveCount(0)
 
       await page.screenshot({ path: `${SHOTS}/events-${size.width}-zh.png`, animations: 'disabled' })
       const audit = await visualAudit(page, `P4.8 events-${size.width}-zh`, { include: '.secondary-content' })

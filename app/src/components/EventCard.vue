@@ -1,8 +1,9 @@
 <template>
   <!--
     One event, the same card for every source (SPEC 6.7.5): a date block, the
-    title, when and where, then the source in words and the state. No picture:
-    v1 renders no image of any source. The home block uses the compact form.
+    title, when and where, then the source in words and the state. Member
+    metadata includes its profile avatar; event artwork is not rendered.
+    The home block uses the compact form.
   -->
   <view :class="['evc', { 'evc-off': state === 'cancelled', 'evc-compact': compact }]" role="button" tabindex="0"
     :data-event-id="event.id" :data-source="event.source_type" :data-state="state" :aria-label="label"
@@ -17,7 +18,11 @@
       <text class="evc-when">{{ when }}</text>
       <view class="evc-tags">
         <text class="evc-tag" data-test="event-source">{{ source }}</text>
-        <text v-if="event.source_type === 'member' && event.organizer_nickname" class="evc-who">{{ event.organizer_nickname }}</text>
+        <view v-if="event.source_type === 'member' && event.organizer_nickname" class="evc-author">
+          <UAvatar class="evc-avatar" :src="event.organizer_avatar_url" :owner="event.organizer_user_id"
+            :fallback="isDark ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'" aria-hidden="true" />
+          <text class="evc-who">{{ event.organizer_nickname }}</text>
+        </view>
         <text v-if="stateKey" class="evc-tag evc-tag-st" data-test="event-state">{{ t(stateKey) }}</text>
       </view>
     </view>
@@ -27,13 +32,16 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import UAvatar from './UAvatar.vue'
 import { useI18n } from '../composables/useI18n'
+import { useTheme } from '../composables/useTheme'
 import { eventDateBlock, eventSourceLabel, eventState, eventTitle, type CommunityEvent, type EventState } from '../utils/communityEvents'
 import { formatEventListTime } from '../utils/eventTime'
 
 const props = defineProps<{ event: CommunityEvent; now: number; compact?: boolean }>()
 const emit = defineEmits<{ (event: 'open', id: string): void }>()
 const { t, tc, lang } = useI18n()
+const { isDark } = useTheme()
 
 const language = computed(() => (lang.value === 'zh' ? 'zh' : 'en'))
 const state = computed(() => eventState(props.event, props.now))
@@ -82,6 +90,8 @@ const label = computed(() => {
 }
 .evc-when { font-size: 13px; line-height: 18px; color: var(--ink-quiet); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .evc-tags { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.evc-author { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.evc-avatar { width: var(--space-5); height: var(--space-5); border-radius: 50%; flex: none; }
 /* SPEC 6.7.1 rule 2: until D-35 every source label is neutral; the words tell the sources apart. */
 .evc-tag {
   font-size: 12px; line-height: 18px; padding: 0 var(--space-2); border-radius: var(--radius-xs);
