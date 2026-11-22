@@ -3606,3 +3606,140 @@ SMOKE_SPECS 完整清单（53文件，空格连接后作为同一条命令的环
 - 未测项: 新界面及其交互的验收仍待完成
 - 下一条: D-57.7 活动列表入口及账号门禁
 - 附: 图片只用合成数据、留在本机。前一轮64个失败现场先归档；拍摄完删除临时截图spec，不进入提交和最终用例数。已查看手机列表浅色、桌面列表浅色、手机详情深色、桌面详情深色；继承既有米白/暗色页面与控件，不另设主题。
+
+### L262 · 2026-11-22 07:14 CT · D-57 第2项：补记前次材料推送回执
+- task_id: D-57.2
+- code_sha: e3eae3a
+- docs_sha: 98af2f9
+- 环境: 本地、GitHub
+- 命令: scan17d.py 5c17b82 --log；git push --no-verify origin codex/community-plan-v5；git ls-remote（前次已执行，本条追记）
+- 计数: scan17d.log第11行，HEAD98af2f9，提交2、新增125行；①0 ②0（号池0、trailer豁免2）③0 ④0 ⑤1，incomplete0、exit2；远端98af2f9e5d8ab21a8c82fc4bf461953272179c71与扫描HEAD相同 [本地测]
+- ci_run_url: —
+- 未测项: 本条没有新增代码推送
+- 下一条: D-57.7 客户端
+- 附: 唯一命中仍是2ef9044的STATUS_LOG.md:3578，L260已逐行人工判为公开命令记录的⑤误报；扫描规则未改。两次本地提交合为这一次材料推送。
+
+### L263 · 2026-11-22 07:14 CT · D-57 第7项：入口开关及账号门禁
+- task_id: D-57.7
+- code_sha: e3eae3a加未提交UI
+- docs_sha: 98af2f9
+- 环境: L-UI、本地容器
+- 命令: typecheck；SMOKE_SPECS="community-member-events.spec.ts --grep='closed entries|guest follows|unverified member'" run-checks smoke；文件清单community-member-events.spec.ts，共1文件；check-20261122T113052Z.log
+- 计数: typecheck rc0；390和1280各3条，smoke6/6通过 [本地测]
+- ci_run_url: —
+- 未测项: 完整smoke和小程序
+- 下一条: D-57.7 发起表单
+- 附: [OMO自决] 未验证提示沿用uni.showActionSheet，title用events.needVerify，唯一业务选项用events.goVerify并导航验证页；没有另造面板。开关关时连空态入口一起隐藏，开时有正对照。手机与桌面入口截图已查看；H5≥768的标题按钮和S2均受同一开关控制。
+
+### L264 · 2026-11-22 07:14 CT · D-57 第7项：发起表单与日期控件
+- task_id: D-57.7
+- code_sha: e3eae3a加未提交UI
+- docs_sha: 98af2f9
+- 环境: L-UI、本地容器
+- 命令: typecheck；SMOKE_SPECS="community-member-events.spec.ts --grep-invert='closed entries|guest follows|unverified member|can cancel|another member'" run-checks smoke；文件清单community-member-events.spec.ts，共1文件；check-20261122T120704Z.log；前置10条检查check-20261122T114759Z.log，诊断1条check-20261122T115816Z.log
+- 计数: 最后typecheck rc0、smoke52/52通过；390和1280各浅深两套中文发起页，共4张截图均已查看 [本地测]
+- ci_run_url: —
+- 未测项: 小程序实际操作、wechat-seccheck、staging S-1
+- 下一条: D-57.7 详情操作
+- 附: [OMO自决] H5用原生input/textarea，小程序用现有input/textarea/picker。真实渲染发现uni会改写标签选择器，原生textarea没有取得预期高度，改为纯class选择器；WebKit空日期控件会画出似有内容的提示，改为显式日期/时间占位。私有草稿保留postId及outcomeUncertain，账号切换和离页会使旧回调失效。临时诊断spec已删除；截图在本机D57/p4-client/form-20261122T120704Z，最后复制到材料时再核对应版本。
+
+### L265 · 2026-11-22 07:14 CT · D-57 第7项：受限提示遮挡取消菜单的实测修复
+- task_id: D-57.7
+- code_sha: e3eae3a加未提交UI
+- docs_sha: 98af2f9
+- 环境: L-UI、本地容器
+- 命令: typecheck cmd smoke；首次SMOKE_SPECS="community-member-events.spec.ts --grep='can cancel|another member'"；层级对照zz-restriction-overlay-probe.spec.ts；回归文件清单community-member-events.spec.ts、restricted-account-notice.spec.ts，共2文件；日志check-20261122T122706Z.log、check-20261122T124103Z.log、check-20261122T124645Z.log、check-20261122T125443Z.log
+- 计数: 首次详情5/6通过，受限作者手机取消失败；两次DOM层级对照均为移出前不可点击、移出后可点击、恢复后不可点击。最后typecheck rc0、smoke14/14通过；同轮节点332条331通过、1条失败，原因及补做见L266 [本地测]
+- ci_run_url: —
+- 未测项: 完整分支门禁；本机无独立Chrome及LSP，渲染用规定WebKit，类型用vue-tsc
+- 下一条: D-57.7 实际举报、私信及表单可访问名称
+- 附: [OMO自决] 常驻受限提示继承toast容器的z5000，挡住原生z999菜单；只在H5把常驻提示移到容器外、层级设500，瞬时toast保持原层级。另修错误呈现helper对SDK错误形状的过度收窄，两次类型失败后类型检查通过。最初行数快算误计块注释，曾拆组件，按正确口径复核后撤回；原结构保留，当前239行纯代码。临时对照文件已删除。没有force click、等待补丁或旧断言变更；手机取消和两档详情截图已查看，10张保存在本机detail-20261122T125443Z。
+
+### L266 · 2026-11-22 07:14 CT · D-57 第7项：举报与私信实际操作、可访问名称
+- task_id: D-57.7
+- code_sha: e3eae3a加未提交UI
+- docs_sha: 98af2f9
+- 环境: L-UI、本地容器
+- 命令: typecheck；RUN_CMD="cd app && node --test smoke/core-keyboard-a11y.test.mjs smoke/i18n-key-parity.test.mjs"；SMOKE_SPECS="community-member-events.spec.ts --grep='another member|submission sends'" run-checks cmd smoke；文件清单community-member-events.spec.ts，共1文件；check-20261122T130741Z.log
+- 计数: typecheck rc0；节点27/27；smoke4/4通过。两档均实际选举报理由，核报告对象为讨论帖及成功提示；实际点私信，核direct会话写入的两个账号和导航id [本地测]
+- ci_run_url: —
+- 未测项: 真实外部服务、小程序真机、staging S-1
+- 下一条: D-57.7 完整双宽度smoke及截图
+- 附: L265的单个节点失败来自新表单两种小程序控件缺aria-label，已补齐；H5原生字段也显式命名，填表通过可访问名称定位。两张举报面板截图已查看并保存在本机actions-20261122T130741Z。全部网络响应由合成夹具拦截，没有向任何人发送消息或报告。
+
+### L267 · 2026-11-22 07:14 CT · D-57 第7项：中英文案及错误映射
+- task_id: D-57.7
+- code_sha: e3eae3a加未提交UI
+- docs_sha: 98af2f9
+- 环境: L-UI、本地容器与源码核对
+- 命令: L266的i18n-key-parity.test.mjs；对照DECISIONS D-57第7项逐项核表单、占位、菜单、取消按钮、S2和新增错误文案；错误映射节点证据见L257–L259
+- 计数: 中英key检查在27/27节点检查中通过；closed、titleRequired、contentInvalid、endInvalid文案与D-57一致；既有复制链接及通用限流文案沿用原key [本地测]
+- ci_run_url: —
+- 未测项: SPEC新增key表按第9项在材料分支追加；完整P4门禁待做
+- 下一条: D-57.7 完整双宽度smoke及截图
+- 附: STATUS当前42/60；详情权限、受限取消与本地H5发起已经走通，P4.6仍为部分。小程序真机/开发者工具、wechat-seccheck真跑和staging S-1归Eric，前提照D-57；未把本地夹具当成这些验收。
+
+### L268 · 2026-11-22 07:33 CT · [OMO自决] D-57 第7项：列表头像受旧运行时边界限制
+- task_id: D-57.7
+- code_sha: e3eae3a加未提交UI
+- docs_sha: 98af2f9
+- 环境: L-UI、本地容器
+- 命令: typecheck；RUN_CMD="cd app && node --test ../scripts/community-events-boundary.test.mjs"；SMOKE_SPECS="community-events.spec.ts --grep='the list: one card'" run-checks cmd smoke；文件清单community-events.spec.ts，共1文件；check-20261122T132331Z.log
+- 计数: typecheck rc0、静态3/3；旧列表场景0/2，两档都在原第177行失败：图片节点期望0、实得4 [本地测]
+- ci_run_url: —
+- 未测项: 列表20px头像不交付；详情头像保留
+- 下一条: D-57.7 完整双宽度smoke与移除后对照
+- 附: D-57点名的静态检测允许UAvatar，但现有运行时断言更严格。按第11项不改旧断言及D-43自决，撤回列表头像；没有用别的渲染办法绕开图片边界。EventCard.vue恢复到尝试前sha256 8b80f40aa04de402737647c40e21b7ab673fa32b48bd1ad274536c460af0175b。此限制进入FINAL④和⑧。
+
+### L269 · 2026-11-22 07:33 CT · D-57 第7项：完整新smoke与最终截图通过
+- task_id: D-57.7
+- code_sha: e3eae3a加未提交UI
+- docs_sha: 98af2f9
+- 环境: L-UI、本地容器
+- 命令: typecheck；RUN_CMD="cd app && node --test smoke/restricted-account-actions.test.mjs smoke/core-keyboard-a11y.test.mjs smoke/i18n-key-parity.test.mjs ../scripts/community-events-boundary.test.mjs"；SMOKE_SPECS="community-member-events.spec.ts community-events.spec.ts --grep='member events|the list: one card'" run-checks cmd smoke；文件清单community-member-events.spec.ts、community-events.spec.ts，共2文件；check-20261122T132705Z.log
+- 计数: typecheck rc0（15秒）；节点336/336、0 fail/skip（6秒）；smoke66/66、0 fail/skip（139秒），其中新spec64、原列表2 [本地测]
+- ci_run_url: —
+- 未测项: P3合入后的最终全量门禁、mp/mpci及真机/S-1
+- 下一条: D-57.3 P4合入已推送的P3
+- 附: L268撤回头像后，原两档列表用例整体通过。四张最终发起页截图全部查看，无空白、遮挡或横溢；按BACKLOG §0.4存入appendix/visual/P4.6/create-{390,1280}-{light,dark}-zh.png，逐张sha256与原图一致。截图仅含合成账号。STATUS现43/60，代码尚未推送。
+
+### L270 · 2026-11-22 07:45 CT · D-57 第7项：提交成员活动客户端
+- task_id: D-57.7
+- code_sha: c800a99
+- docs_sha: 98af2f9
+- 环境: 本地Git
+- 命令: git diff --check；git add（17个已审文件）；git diff --cached --check；git commit --no-verify；git log -1
+- 计数: 17文件、+1118/-41；提交范围内supabase、.github、manifest.json均0文件；验证工作树见L269，提交前后内容不再改变 [本地测]
+- ci_run_url: —
+- 未测项: 合并后的最终门禁；未推送
+- 下一条: D-57.3 合入P3
+- 附: 提交为feat(events): add member creation and organizer actions，身份为OMO，co-author trailer一次。新页面、私有草稿、账号入口、详情动作、文案和直接回归测试同一提交；旧pages.smoke.spec.ts只新增一条路由。
+
+### L271 · 2026-11-22 07:45 CT · D-57 第3项：P4第二次合并五项核对
+- task_id: D-57.3
+- code_sha: 7e61541
+- docs_sha: 98af2f9
+- 环境: 本地Git、GitHub只读核对
+- 命令: git ls-remote确认P3为597b7fa；从干净c800a99执行git merge --no-ff --no-commit 597b7fa；核暂存差异；git commit --no-verify；git show --cc --format=；git diff --name-only c800a99 HEAD -- supabase；两次git merge-base --is-ancestor
+- 计数: ①supabase全目录0文件变化、两个manifest逐字节不变；P3迁移c2a18ee8…951bf、P4迁移a8c0e083…53a79不变；②combined diff为空；③只带入P3的2文件，+183/-79；④.github及vercel.json与9171976e相同；⑤9171976e及597b7fa均为7e61541祖先，退出均0 [本地测]
+- ci_run_url: —
+- 未测项: 合并后的最终门禁
+- 下一条: D-57.11 P4最终门禁
+- 附: 两文件是community-reply-target.spec.ts和plaza/index.vue；没有冲突、手工合并内容、迁移或manifest改动。两个manifest摘要为5599c2ef…1d3f8、96e8462a…f23ad，与合并前一致。P4仍未推送，PR的base和草稿状态不改。
+
+### L272 · 2026-11-22 07:45 CT · D-57 第11项：启动最终全量门禁
+- task_id: D-57.11
+- code_sha: 7e61541
+- docs_sha: 98af2f9
+- 环境: L-UI、本地容器，pw1.65-node22-pg17
+- 命令: umask 022；同一容器锁及磁盘/755守卫；SMOKE_SPECS为下列56文件、在run-checks前同一命令传入；install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；check-20261122T134303Z.log
+- 计数: 开始时unstaged=no；install rc0（10秒）、typecheck rc0（15秒）、h5 rc0（15秒）；其余待后台完成回执 [本地测]
+- ci_run_url: —
+- 未测项: 最终全量结果、699×60、小程序预算
+- 下一条: D-57.11 核门禁与冻结
+- 附: 后台启动并登记完成通知；本条只记启动上下文，不把待定步骤写成通过。代码冻结在7e61541，门禁期间不改该工作树。
+
+SMOKE_SPECS完整清单（56文件，空格连接，排除两条compiled专用spec）：
+```text
+a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-event-console.spec.ts community-events.spec.ts community-home.spec.ts community-member-events.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts
+```
