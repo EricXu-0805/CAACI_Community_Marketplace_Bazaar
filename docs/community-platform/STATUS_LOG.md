@@ -4433,3 +4433,99 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 保存后回复行约多0.8px；既有esbuild registerToastHost导出诊断；下列字符/存储/审核差异
 - 下一条: D-58.3、D-58.4
 - 附: P3的24px下限不改；dev server诊断在main上已有。Z仅21码位，不加入U+061C及U+115F/U+1160/U+3164/U+FFA0，单由这些字符组成的地点仍可能存入。标题和说明仍按原存储规则，U+202E等仍可能改变显示顺序，本批只在判断时去Z，不能当成防视觉伪装。Z外的U+E0000–U+E007F标签字符、U+FE00–U+FE0F变体选择符及形近字不纳入本批。既有服务端content_moderation_normalize和客户端contentSafety normalize删除U+00AD、U+034F、U+061C、U+180E、U+200B–U+200F、U+2060–U+2064、U+206A–U+206F、U+FEFF、U+FE00–U+FE0F，但不删U+202A–U+202E、U+2066–U+2069，本批不改它们。正文是否为空服务端仍由posts层btrim判，直接RPC可存只含Z的正文；客户端先删EVENT_INVISIBLE再判，差异保留。
+
+### L324 · 2026-11-22 16:45 CT · D-58报告更正材料推送回执
+- task_id: D-58.6a–d、D-58.6h
+- code_sha: —
+- docs_sha: a9da080（本次写回之前材料分支的HEAD）
+- 环境: 本地Git、GitHub元数据
+- 命令: git commit --no-verify；scan17d.py ae9142f --log；git push --no-verify；git ls-remote
+- 计数: a9da080已推送并匹配远端；17d：scan17d.log第24行，HEADa9da080，①0 ②0（trailer豁免1）③0 ④0 ⑤0，exit0；提交1、新增52行 [本地测]
+- ci_run_url: —
+- 未测项: P4源码胶囊负对照在排队；本批最终门禁未开始
+- 下一条: D-58.3a
+- 附: 当前材料包括L320–L323与STATUS/RUNBOOK更正；FINAL第十一批未改。下一次材料提交再带上本条回执。
+
+### L325 · 2026-11-22 16:53 CT · D-58 第3a项：小程序胶囊预留修复通过
+- task_id: D-58.3a
+- code_sha: e59754d20626f50e51d707b50fe11021e191be80
+- docs_sha: a9da080（本次写回之前材料分支的HEAD）
+- 环境: 本地容器源码测试
+- 命令: RUN_CMD="cd app && node --test smoke/mp-component-wxss-boundary.test.mjs"；check-20261122T223121Z、T224026Z、T224506Z、T225113Z；git commit --no-verify
+- 计数: 基线3/2/1/0，失败在events header；修复3/3；只移除detail声明后3/2/1/0且指向detail；逐字恢复后3/3。draft guard0、test-junk0、diffcheck0；提交3文件+24 [本地测]
+- ci_run_url: —
+- 未测项: 两个WXSS产物检查留最终mpci；真实微信胶囊仍归Eric。宿主TS/Vue LSP不可用，no-excuse对.mjs报No TypeScript files found、exit2，不作通过
+- 下一条: D-58.3b
+- 附: 两个header仅在MP-WEIXIN分支加既有token，H5不编入该声明。详情文件恢复SHA60384b9f50cd33a27db9391bf664e7070f181e98619bab20d871431a1e390735。最后一次磁盘前344281083904、后344281784320字节。未推P4、未动迁移。
+
+### L326 · 2026-11-22 17:03 CT · [OMO自决] D-58 第3b项：入口保持窗口用例已能变红
+- task_id: D-58.3b
+- code_sha: cfb4bda923ed3c099496d7be753d8dd614267cd7
+- docs_sha: a9da080（本次写回之前材料分支的HEAD）
+- 环境: L-UI，本地容器
+- 命令: SMOKE_SPECS="community-member-events.spec.ts --grep='closed entries stay absent'"（1文件）；check-20261122T225422Z、T225810Z、T230036Z；git commit --no-verify
+- 计数: 强制creationOpen=true时旧找法2/2误绿；改找法后同一控制2/2红，Expectedfalse/Receivedtrue；恢复后2/2绿。页面SHA逐字恢复；diffcheck0、test-junk0 [本地测]
+- ci_run_url: —
+- 未测项: 本批最终完整门禁尚未运行
+- 下一条: D-58.3c
+- 附: 选择D-58允许的稳定data-test属性，保留1500ms requestAnimationFrame取样，避免隐藏的长短标签textContent拼接使正则永不命中。撤回为反向提交该测试/属性变更；临时true赋值已撤除，events页面SHA8983e559d903fffbd28626d2caed16cbfa3749d44fd0d9cd187e30ecface460c。未推P4。
+
+### L327 · 2026-11-22 17:10 CT · D-58 第3c项：补实发起人卡片私信按钮断言
+- task_id: D-58.3c
+- code_sha: d78ed55deebce2c2e2641a43e82a4ae0b590b63a
+- docs_sha: a9da080（本次写回之前材料分支的HEAD）
+- 环境: L-UI，本地容器
+- 命令: SMOKE_SPECS="community-member-events.spec.ts --grep='can cancel while creation is closed'"（1文件），check-20261122T230630Z；恢复后grep加another member can report，check-20261122T230831Z；git commit --no-verify
+- 计数: 新增恰好两处exact角色断言；临时仅放开卡片按钮后4/4红，Message按钮Expected0/Received1；逐字恢复后六场景6/6。提交1文件+2；diffcheck0 [本地测]
+- ci_run_url: —
+- 未测项: 本批最终完整门禁尚未运行
+- 下一条: D-58.3d
+- 附: en.ts确认seller.message=Message。附加负对照[OMO自决]用于证明新断言会抓到卡片按钮错误，既有Message organizer断言不变；详情文件恢复到SHA60384b9f50cd33a27db9391bf664e7070f181e98619bab20d871431a1e390735。撤回对应测试提交；没有永久产品改动。
+
+### L328 · 2026-11-22 17:21 CT · D-58 第3d项：失败不入缓存，列表与开关并发
+- task_id: D-58.3d
+- code_sha: 7a04d0a4ebf22c7faf73f5c3448b79c7b2c84376
+- docs_sha: a9da080（本次写回之前材料分支的HEAD）
+- 环境: 节点测试、L-UI，本地容器
+- 命令: RUN_CMD="cd app && node --test smoke/community-member-event-flags.test.mjs"，check-20261122T230944Z；SMOKE_SPECS="community-member-events.spec.ts --grep='list renders while'"（1文件），T231234Z；typecheck+同节点测试+grep含closed entries，T231723Z；git commit --no-verify
+- 计数: flags修前12/8/4/0，三个恢复请求仍错误返回false；列表修前2/2红在未发出list请求；修后typecheck0、flags12/12、smoke4/4。test-junk0、diffcheck0；四张图已检查 [本地测]
+- ci_run_url: —
+- 未测项: no-excuse报既有findTopicEvent的as unknown，c106e23已相同，未在本项改；原生设备与最终门禁未测
+- 下一条: D-58.3e
+- 附: 只缓存error为空且data为boolean的结果，false成功值也可缓存；失败/拒绝/非boolean不写缓存。列表独立发出，当前epoch的开关结果才更新入口。图在D58/p4/visual/switch-list-231723，390/1280等待时列表可读且入口不在，释放后入口出现；不含真实数据。旧八条flags断言未改，新加一父用例及三个子场景。
+
+### L329 · 2026-11-22 17:43 CT · D-58 第3e项：[OMO自决]草稿告警独立显示，存储失败仍可提交
+- task_id: D-58.3e
+- code_sha: b7df266a62cd0edcc884bf9c3625b80515a81911
+- docs_sha: a9da080（本次写回之前材料分支的HEAD）
+- 环境: L-UI
+- 命令: SMOKE_SPECS="community-member-events.spec.ts --grep='draft storage failure'"（1文件），check-20261122T232940Z；扩大到submission sends、uncertain result、server rejection，T233401Z、T233753Z；git commit --no-verify
+- 计数: 修前6/0/6/0；首次修后typecheck0、14/10/4/0；纠正新增fixture错误码后14/14/0/0。test-junk0、draft-guard0、diffcheck0；修前后各4张图已检查 [本地测]
+- ci_run_url: —
+- 未测项: 最终完整门禁和原生设备待第7项
+- 下一条: D-58.3f
+- 附: 首次修后四个新增重试场景错用不存在的member_event_limit；改为已有member_event_active_limit，未改断言或产品逻辑。只让events_create_draft_v1写入失败；成功提交恰好一次RPC，失败时告警与服务端错误同时可见，表单保留，重试两次payload完全相同。独立status状态避免formError覆盖，换账号清掉；撤回为反向提交此项。存储不可用时离开页面会丢postId，收尾写进⑧。390/1280浅深色图在D58/p4/visual/draft-before-232940与draft-after-233753，均为合成数据。
+
+### L330 · 2026-11-22 17:49 CT · D-58 第3f项：[OMO自决]成员写入模块移入活动分包
+- task_id: D-58.3f
+- code_sha: 0d1fab7eb058cf02fdd6c16a52e185ff0512cf45
+- docs_sha: a9da080（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: typecheck+smoke（community-member-events.spec.ts内submission sends、can cancel while creation is closed），check-20261122T234617Z；RUN_CMD="cd app && node --test smoke/community-member-event-writes.test.mjs" cmd，T234752Z；git commit --no-verify
+- 计数: typecheck0、浏览器6/6、node29/29/0/0；test-junk0、no-excuse0、diffcheck0。4文件+20/-20，模块93%相似重命名 [本地测]
+- ci_run_url: —
+- 未测项: 主包/分包体积及实际产物待第7项mpci；LSP服务未安装，诊断用容器typecheck
+- 下一条: D-58.3g
+- 附: 保留useMemberEventWrites.ts文件名，目标pages/event；两处消费者与九处load更新，模块只改相对导入，逻辑不变。因文件名未变，第7–38行边界规则无需改动，仍只允许pages/event引用，全部断言保留。源码搜索无旧路径。首次包装误填run步骤得到unknown-step rc2，单测未执行；已用cmd补跑29/29，已过的typecheck和6条浏览器用例未重跑。撤回为反向移动和恢复导入。
+
+### L331 · 2026-11-22 17:51 CT · D-58 第3g项：补全成员活动开关关闭行为
+- task_id: D-58.3g
+- code_sha: 67114dcf29a716a9aaff7481815ed123129ea5ab
+- docs_sha: a9da080（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: git diff --check；git diff --cached -- RUNBOOK.md；git commit --no-verify
+- 计数: RUNBOOK单文件+3/-2，核对D-58第3g项一致；未改SQL或应用 [本地测]
+- ci_run_url: —
+- 未测项: 纯文档未另跑门禁；本批最终门禁待第7项
+- 下一条: D-58 合入P3新head
+- 附: 关闭只停新发起；发起人仍能取消已有活动、修改说明，说明继续走既有审核。3a–g共7个本地提交，P4尚未推送。
