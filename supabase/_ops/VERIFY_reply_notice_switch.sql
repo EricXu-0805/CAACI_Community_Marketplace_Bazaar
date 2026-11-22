@@ -13,8 +13,9 @@
 --
 -- A migration that changes one of these functions, a reply trigger or the
 -- switch table updates the pinned values here in the same commit, and with
--- them the test in scripts/community-events.test.mjs that holds this file
--- equal to VERIFY_20261120100354.
+-- them the test in scripts/community-events.test.mjs that keeps the pinned
+-- values and checking logic equal to VERIFY_20261120100354, excluding
+-- exception names and comments.
 \set ON_ERROR_STOP on
 BEGIN;
 SET TRANSACTION READ ONLY;

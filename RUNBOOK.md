@@ -703,8 +703,11 @@ watches it, a third replies. The second account's notification list shows one
 line that names the topic. A line that reads `followed_post_reply:` followed by
 an id means the client in front of you is from before P3: turn the switch off.
 
-Record the time for each database where the release is tracked. VERIFY can be
-run again afterwards; it reports the switch and does not judge it.
+Record the time for each database where the release is tracked.
+`supabase/_ops/VERIFY_20261120100354_community_watch_save_activity.sql` can be
+run again afterwards if 20261120122054 is not applied; otherwise use
+`supabase/_ops/VERIFY_reply_notice_switch.sql`. Both report the switch and do
+not judge it.
 
 **If it goes wrong**, turn it off. New replies stop producing the two notices at
 once; rows already written stay where they are.

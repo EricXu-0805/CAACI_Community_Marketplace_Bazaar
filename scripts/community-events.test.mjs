@@ -644,4 +644,21 @@ test('the reply notice switch check repeats the P3 VERIFY, value for value', () 
   const copied = p3.slice(p3.indexOf('\n  -- 5. '), p3.indexOf('\n  -- 5b. '))
   assert.equal(expectedStrings(copied).length, 5)
   assert.deepEqual(expectedStrings(check), expectedStrings(copied))
+
+  // Compare the checks themselves, including ownership, trigger predicates and order,
+  // and the switch's table privileges. Comments and exception names are not SQL logic.
+  const block = (source, start, end) => {
+    const from = source.indexOf(start)
+    assert.notEqual(from, -1, start)
+    const to = source.indexOf(end, from)
+    assert.notEqual(to, -1, end)
+    return source.slice(from, to + (end === 'END LOOP;' ? end.length : 0))
+      .replace(/--[^\n]*/g, '')
+      .replace(/RAISE EXCEPTION '[^']*'/g, "RAISE EXCEPTION '<exception>'")
+      .split('\n').filter(line => line.trim()).join('\n')
+  }
+  assert.equal(block(check, ') AS known(', 'END LOOP;'), block(p3, ') AS known(', 'END LOOP;'))
+  assert.equal(block(check, `) AS ${triggers}`, '  -- 3.'), block(p3, `) AS ${triggers}`, '  -- 5a.'))
+  const switchStart = "IF pg_catalog.to_regclass('private.community_reply_notice_config')"
+  assert.equal(block(check, switchStart, '\nEND;'), block(p3, switchStart, '  -- 5b.'))
 })
