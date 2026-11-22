@@ -214,7 +214,7 @@ test('a restricted account can still watch and save', async ({ page }) => {
   await expect(page.locator(watch)).toHaveAttribute('aria-pressed', 'true')
   await page.locator(save).click()
   await expect(page.locator(save)).toHaveAttribute('aria-pressed', 'true')
-  expect(fixture.writes.map(write => `${write.method} ${write.table}`)).toEqual(['POST post_follows', 'POST post_bookmarks'])
+  await expect.poll(() => fixture.writes.map(write => `${write.method} ${write.table}`)).toEqual(['POST post_follows', 'POST post_bookmarks'])
   // Replying stays closed for this account.
   await expect(page.locator('.reply-restricted')).toHaveText(text('plaza.restrictedReply'))
 })
