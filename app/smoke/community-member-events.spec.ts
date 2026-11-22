@@ -178,6 +178,7 @@ for (const width of [390, 1280]) {
         fixture.rows = [fixture.member]
         await openFresh(page, DETAIL)
         await expect(page.getByRole('button', { name: 'Message organizer', exact: true })).toHaveCount(0)
+        await expect(page.getByRole('button', { name: 'Message', exact: true })).toHaveCount(0)
         await page.screenshot({ path: testInfo.outputPath(`event-${reader}-${width}-light-en.png`), animations: 'disabled' })
         await expect(page.locator('.ed-more')).toBeVisible()
         await page.locator('.ed-more').click()
@@ -205,6 +206,7 @@ for (const width of [390, 1280]) {
       fixture.rows = [fixture.member]
       await openFresh(page, DETAIL)
       await expect(page.getByRole('button', { name: 'Message organizer', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Message', exact: true })).toBeVisible()
       await page.screenshot({ path: testInfo.outputPath(`event-member-${width}-light-en.png`), animations: 'disabled' })
       await page.locator('.ed-more').click()
       const menu = page.locator('uni-actionsheet')
