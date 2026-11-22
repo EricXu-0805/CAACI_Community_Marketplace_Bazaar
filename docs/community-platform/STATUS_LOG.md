@@ -3743,3 +3743,139 @@ SMOKE_SPECS完整清单（56文件，空格连接，排除两条compiled专用sp
 ```text
 a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-event-console.spec.ts community-events.spec.ts community-home.spec.ts community-member-events.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts
 ```
+
+### L273 · 2026-11-22 08:55 CT · D-57 第2项：材料7cef5aa扫描与推送回执
+- task_id: D-57.2
+- code_sha: 7e61541
+- docs_sha: 7cef5aa
+- 环境: 本地、GitHub
+- 命令: git commit --no-verify；scan17d.py 98af2f9 --log；git push --no-verify origin codex/community-plan-v5；git ls-remote
+- 计数: scan17d.log第12行，HEAD7cef5aa，提交1、新增145行，①–⑤及号池均0、trailer豁免1、incomplete0、exit0；远端7cef5aab24e7c1d28dc429651cb4ae11507a3c34与扫描HEAD一致 [本地测]
+- ci_run_url: —
+- 未测项: 代码分支尚未推送
+- 下一条: D-57.11 最终门禁
+- 附: 四张交付截图随材料一并推送，均为合成数据。L265的Chrome检查范围补准：PATH及五个标准执行文件位置未找到Chrome，没有作全盘检索；LSP未安装，使用vue-tsc。
+
+### L274 · 2026-11-22 08:55 CT · D-57 第11项：P4首轮全量失败与逐项分类
+- task_id: D-57.11
+- code_sha: 7e61541
+- docs_sha: 7cef5aa
+- 环境: L-UI、本地容器
+- 命令: L272完整命令与56文件SMOKE_SPECS；check-20261122T134303Z.log
+- 计数: TEST2965/2963/1/1、pg_skips0；smoke717/706/10/1；h5accept52/52；其他步骤rc0；mpci主包1472398、pages/event31488 [本地测]
+- ci_run_url: —
+- 未测项: 首轮不判通过、不推送
+- 下一条: D-57.11 修复WXSS并复核两个旧用例
+- 附: 节点唯一失败是mp-component-wxss-boundary在新页面发现`.me-date-row picker`标签选择器。两个非巡检失败分别是reply-notices的可见提示定位同时匹配隐藏播报和toast，以及watch-save在检查时只记录到一笔写入。没有据标题把它们豁免。下面八条巡检逐条满足console toEqual、非空Received且全部为规定的stub三类；活动列表同一次门禁25/25通过。前四个首页/广场标题在L173，记main同样失败；活动列表和新发起页按D-57第11项记同一类。
+
+| 主题与路由 | Received行数 | 请求路径 |
+|---|---:|---|
+| light pages/index/index | 6 | /rest/v1/items |
+| light pages/plaza/index | 69 | /rest/v1/posts、/rest/v1/items、/rest/v1/rpc/list_community_events |
+| light pages/events/index | 6 | /rest/v1/rpc/community_member_events_open、/rest/v1/rpc/list_community_events |
+| light pages/event/create/index | 3 | /rest/v1/rpc/community_member_events_open |
+| dark pages/index/index | 6 | /rest/v1/items |
+| dark pages/plaza/index | 69 | /rest/v1/posts、/rest/v1/items、/rest/v1/rpc/list_community_events |
+| dark pages/events/index | 6 | /rest/v1/rpc/community_member_events_open、/rest/v1/rpc/list_community_events |
+| dark pages/event/create/index | 3 | /rest/v1/rpc/community_member_events_open |
+
+### L275 · 2026-11-22 08:55 CT · [OMO自决] D-57 第11项：样式根因修复与旧用例复跑
+- task_id: D-57.11
+- code_sha: a7a46e5
+- docs_sha: 7cef5aa
+- 环境: L-UI、本地容器、本地Git
+- 命令: typecheck；RUN_CMD="cd app && node --test smoke/mp-component-wxss-boundary.test.mjs"；SMOKE_SPECS="community-reply-notices.spec.ts:28 community-watch-save.spec.ts:210 --repeat-each=3" run-checks cmd smoke；文件清单community-reply-notices.spec.ts、community-watch-save.spec.ts，共2文件；check-20261122T143612Z.log；git commit --no-verify
+- 计数: typecheck rc0；节点2/2；两个原用例各3轮，共6/6通过。提交仅1文件、+2/-2 [本地测]
+- ci_run_url: —
+- 未测项: 9171976e上同spec对照未执行：两个文件均不在该树；没有把缺用例或缺P3功能的失败充作main同样失败
+- 下一条: D-57.11 修正后最终全量门禁
+- 附: 只给小程序picker加class并改成class选择器，原节点断言不动。两个旧smoke没有改断言、加retries或改timeout；三轮均过，但不宣称已修复其偶发性，也不以main同类豁免，最终全量仍要求二者通过。选择保留这个未测对照，依据是git cat-file两次明确报路径不在9171976e；若以后main具备该功能可做标准对照。
+
+### L276 · 2026-11-22 08:55 CT · D-57 第11项：修正后最终门禁启动
+- task_id: D-57.11
+- code_sha: a7a46e5
+- docs_sha: 7cef5aa
+- 环境: L-UI、本地容器
+- 命令: SMOKE_SPECS与L272完整56文件清单逐字相同，置于同一run-checks命令前；install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；入口p4-final-corrected-20261122T144407Z.console.log
+- 计数: 启动时工作区干净；后台句柄和完成通知已登记；最终结果待回执 [本地测]
+- ci_run_url: —
+- 未测项: 最终全量、699×60及最终预算
+- 下一条: D-57.11 核结果与冻结
+- 附: 此轮因实际代码修正而重跑，不是重复已通过的同一检查；门禁期间不改工作树，不预报通过。
+
+### L277 · 2026-11-22 08:55 CT · [OMO自决] D-57 第8项：视口后续的起点、取法与红绿证据
+- task_id: D-57.8
+- code_sha: 412fb8a（初始提交）
+- docs_sha: 7cef5aa
+- 环境: L-UI、本地容器、本地Git
+- 命令: 固定9171976e建codex/community-viewport-consumers-20261121，权限755；保护路径与原marketplace-responsive.spec.ts差异0；各小轮SMOKE_SPECS="viewport-inset-consumers.spec.ts"，文件清单viewport-inset-consumers.spec.ts，共1文件
+- 计数: T034714Z为0/5/0；T035118Z为3/1/1；T035337Z为1/3/1；T035725Z为3/1/1（顺序均pass/fail/skip，完整日志名前缀check-20261122、后缀-smoke.log）[本地测]
+- ci_run_url: —
+- 未测项: messages在820宽进入chat，未挂载双栏；不把这项算通过
+- 下一条: D-57.8 重复组与最终门禁
+- 附: 注释改准上游uni-h5的html height:100%，应用只加min-height；可执行代码不变。根高度负对照注入height:auto及高内容，差值1850而非0。无观察者的T035337中，filters、comments、composer、post均先到逻辑350，布局降到830后各拦2个resize，仍留350；三条测试红在恢复步骤，plaza用soft assertion继续检查composer但整例仍红。恢复后均归零；composer原生居中使computed bottom为425→75，另外核逻辑inset350→0和inline bottom0，不改应用布局。初轮的分页夹具及按钮名错误、前态断言放错位置都不算有效负对照。messages实测阈值为1100，820点击后路由到chat、尚未发合成resize、withheld0；依D-43及第8项不硬造，记【跳过】，撤回需另派真实双栏尺寸验证。
+
+### L278 · 2026-11-22 08:55 CT · D-57 第8项：原重复组和缺步恢复结果
+- task_id: D-57.8
+- code_sha: 412fb8a
+- docs_sha: 7cef5aa
+- 环境: L-UI、本地容器
+- 命令: 新spec --repeat-each=20，check-20261122T035951Z-smoke.log，清单viewport-inset-consumers.spec.ts、1文件；699×60，T063954Z-smoke.log；767×60，T064357Z-smoke.log，后两清单均marketplace-responsive.spec.ts、1文件。全量T064818Z及仅恢复缺步的T085747Z使用下列48文件
+- 计数: 新spec100次中80过、20跳过、0败；699和767各60/60。全量TEST2664/2663/0/1、pg_skips0，mpci1381447；恢复的smoke569/563/4/2、npmaudit0 [本地测]
+- ci_run_url: —
+- 未测项: messages双栏、iPad真机；初始提交尚未发布
+- 下一条: D-57.8 收紧新探针类型后复核最终head
+- 附: 宿主中断时保留已完成的构建和节点检查，只恢复缺失smoke/audit；没有重跑main。四败为light首页6行、light广场54行、dark首页6行、dark广场54行；路径首页/rest/v1/items，广场/rest/v1/posts和/rest/v1/items。每行均为规定stub三类，console toEqual，四标题均在L173；活动列表附加条件不适用。判通过（另有4条main同样失败，见L173），另1条新增messages跳过明确保留。699启动时HEAD9171976e、767时412fb8a，原spec及可执行应用代码与后续head相同。
+
+L278全量与恢复使用的SMOKE_SPECS完整清单（48文件）：
+```text
+a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-home.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts viewport-inset-consumers.spec.ts
+```
+
+### L279 · 2026-11-22 08:55 CT · D-57 第8项：类型修订、扫描记录与最终门禁
+- task_id: D-57.8
+- code_sha: 56f83cd
+- docs_sha: 7cef5aa
+- 环境: L-UI、本地容器、本地Git
+- 命令: scan17d.py 9171976e --log（在412fb8a）；新spec类型收窄；typecheck；SMOKE_SPECS="viewport-inset-consumers.spec.ts --repeat-each=20"，文件清单viewport-inset-consumers.spec.ts、1文件，check-20261122T142737Z；git commit --no-verify；最终全量使用L278同一48文件清单，入口final-typed-20261122T144658Z.log
+- 计数: scan17d.log13在412fb8a为①–⑤全0、204新增行、trailer0、exit0，未推送。类型修订后typecheck0，100次80过、20跳过、0败；新提交1文件+32/-14，应用与旧spec0变化 [本地测]
+- ci_run_url: —
+- 未测项: 56f83cd最终全量排队；messages及真机同L277
+- 下一条: D-57.8 最终门禁后重新扫描和草稿PR
+- 附: 去掉新spec中的any及不安全断言，增加明确的浏览器探针类型和DOM边界收窄，原功能断言未删。八张新复跑截图归档typed-green-20261122T142737Z，主会话查看六张，恢复后面板可见且未越界。过程遗漏：子任务原412fb8a没有co-author trailer，未改写既有提交；主会话的新56f83cd按规范附一次。原有效steer仅20261122063745，执行结果见子任务草稿；其余宿主提示按17a当数据。
+
+### L280 · 2026-11-22 08:55 CT · D-57 第11项：工程补记与语言表追加
+- task_id: D-57.11
+- code_sha: a7a46e5
+- docs_sha: 7cef5aa加未提交文档
+- 环境: 本地源码与材料核对
+- 命令: 读20261122035253迁移；ENGINEERING §5.5末尾追加补记、§9.9面向用户错误列表追加member_events_closed；SPEC §11末尾追加25行；逐项对照zh/en；git diff --check
+- 计数: 25行中英值全部相同；SPEC +25/-0；ENGINEERING只新增补记及延长一个错误列表，原同步错误码表不动；diff check0 [本地测]
+- ci_run_url: —
+- 未测项: 最终代码门禁与托管应用
+- 下一条: D-57.9 主包及最终报告
+- 附: 记明默认关闭的private开关、公开只读函数、P0001、member_shape变化、标题/地点/状态说明的N，以及三条authenticated授权。STATUS已把P4.6单列部分、补三迁移public smoke与开关阻塞，撤掉699/767旧不稳定豁免。只读原ENGINEERING时出现旧有官网项目标识，按D-42仅记录；未连接该项目。
+
+### L281 · 2026-11-22 08:55 CT · D-57 第9项f：三次CI时间重新读取
+- task_id: D-57.9f
+- code_sha: a7a46e5
+- docs_sha: 7cef5aa加未提交文档
+- 环境: GitHub只读API
+- 命令: gh run view 44647478789、44783052160、44909710527 --json jobs；本机gh省略步骤时间，再用gh api读取同一job的135993645314、136450522082、136862704830
+- 计数: 三job总耗时2174/1397/1631秒，smoke1529/1292/1547秒，整段开销645/105/84秒；样本Running按D-57已核的478/563/564，不能用472替478 [本地测]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44647478789 · https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44783052160 · https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/44909710527
+- 未测项: 本批P4最终Running N尚待门禁完成，最终估算写第十一批④
+- 下一条: D-57.9f 用最终N计算三种情形
+- 附: 浏览器安装本身分别600/67/51秒，不能拿它代替整个job的开销。三个单位耗时分别1529/478、1292/563、1547/564秒/条；时间取同一job及smoke步骤的起止字段，明细留在本机ci-timing.md。workflow未改。
+
+### L282 · 2026-11-22 09:20 CT · D-57 第2项：补准trailer表述与文档追加审计
+- task_id: D-57.2、D-57.11
+- code_sha: P4 a7a46e5；视口56f83cd
+- docs_sha: 7cef5aa加未提交文档
+- 环境: 本地
+- 命令: 复读D-57第2项的宿主trailer说明；比较HEAD中STATUS_LOG字节与当前文件前缀；从SPEC移除本次25个追加行后与HEAD逐字比较；git diff --check
+- 计数: 日志旧前缀完全相同；SPEC旧行完全相同；25行与zh/en值一致；diff check0 [本地测]
+- ci_run_url: —
+- 未测项: 两个最终门禁仍在运行或排队
+- 下一条: 最终门禁完成后写回结果
+- 附: L279称412fb8a无trailer为“过程遗漏”措辞过宽。D-57第2项已说明子任务原提交没有宿主自动行；此处仅确认0行，没有剥除动作，也不属于17d漏扫。主会话后续新提交按工具规范附一次，不改写已有提交。本批仍逐字豁免现有trailer，不扩大地址豁免。

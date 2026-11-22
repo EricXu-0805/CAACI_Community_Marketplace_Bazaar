@@ -552,6 +552,23 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 - 钉住的 P3 函数体随 P3 第九批改动重算：`admin_execute_community_governance` 改为 `fedabd431c829a5b2303e4a46961a855`（VERIFY）。
 - 本迁移应用之后，P3 的 VERIFY 按设计不再通过（它钉的 `admin_list_moderation_audit_log`、`admin_execute_mutation` 与第 6 节的词表、能力行都被本迁移改过），第一条报错是 `community_watch_save_function_body:public.admin_list_moderation_audit_log(integer,integer,text):720fe81c9d72c7729ce2d184a8a8fd36:this migration`（L199）。已应用 P4 的库，回复通知开关第 1 步改看 VERIFY_20261120122054（P4 分支仓库根目录 RUNBOOK.md「Reply notice switch」）。
 
+#### 第十一批（D-57）补记：成员活动写入开关与规整（STOP-16a）
+
+- 前向迁移 `20261122035253_community_member_events.sql` 接在 `20261120100354`、`20261120122054` 之后。
+- 新表 `private.community_member_event_config` 只有 `singleton=true` 一行，`enabled` 默认 false；启用 RLS，并撤销 PUBLIC、anon、authenticated、service_role 对表的全部权限，由 owner 操作开关。`public.community_member_events_open()` 是返回 boolean 的 STABLE、SECURITY DEFINER 函数，search_path 为 pg_catalog、statement_timeout 为 3s；只给 anon、authenticated EXECUTE，缺行也返回 false。
+- 成员活动 INSERT 在开关关闭时返回 `member_events_closed`（P0001）。取消自己的活动不检查开关；不带状态说明的取消也不受发帖限制。已经成功的同账号、同 post_id 重试可以返回原关联，不再创建第二份。
+- N 规整把 U+0009–000D、0020、0085、00A0、1680、2000–200A、2028、2029、202F、205F、3000、FEFF 的连续空白替换成一个普通空格，再去掉两端普通空格。RPC 将标题和地点按 N 写入；UPDATE 的状态说明 `status_note` 按 N 处理，空白结果变成 NULL。讨论帖正文仍交给帖子路径处理，不用 N 重排正文。
+- `community_events_member_shape` 增加 `occurrence_count=1`；地点要求非 NULL、等于 N(location)、长度 1–80；状态说明为 NULL 或等于 N(status_note)。标题和地点的长度、链接及保留词检查以规整后的值为准。
+- 本迁移授予 authenticated 以下三项，成员写入继续受现有 RLS 和触发器约束：
+
+```sql
+GRANT EXECUTE ON FUNCTION public.create_member_event(uuid, text, text, jsonb) TO authenticated;
+GRANT INSERT (source_type, source_key, organizer_user_id, discussion_post_id, starts_at, ends_at, location, registration_mode) ON TABLE public.community_events TO authenticated;
+GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO authenticated;
+```
+
+- 开关默认关闭；打开的权限、前提和 VERIFY 顺序见代码分支 RUNBOOK「Member events switch」。托管应用、staging S-1 和实际打开开关由 Eric 或他点名批准的人执行。
+
 ## 6. 兼容矩阵与发布顺序（P2.9 ④）
 
 小程序从未提审、发布（见 [STATUS.md](STATUS.md)），没有已安装的旧版小程序，矩阵里不列。
@@ -774,7 +791,7 @@ RPC 与管理动作见 §9；VERIFY 断言上面每一条约束、策略、列�
 | `bad_json`、`bad_ics`、`schema_mismatch`、`unexpected_private_fields` | 解析失败或形状不对 | 不动；`last_outcome = 'failed'` |
 | `campus_unexpected_tz`、`campus_uid_mismatch`、`campus_too_many_occurrences`、`campus_calendar_not_allowed` | 校历数据异常或日历不在白名单 | 写入时拒绝；刷新时不动 |
 
-面向用户的错误码各对应一个 i18n key，key 与文案在 SPEC.md §11「P4 活动」：`member_event_rpc_required`、`member_event_not_eligible`、`member_event_time_out_of_range`、`member_event_active_limit`、`member_event_reserved_wording`、`member_event_link_not_allowed`、`member_event_title_too_long`、`member_event_location_invalid`、`member_event_cancel_final`、`event_discussion_closed`、`official_profile_not_configured`。
+面向用户的错误码各对应一个 i18n key，key 与文案在 SPEC.md §11「P4 活动」：`member_event_rpc_required`、`member_event_not_eligible`、`member_event_time_out_of_range`、`member_event_active_limit`、`member_event_reserved_wording`、`member_event_link_not_allowed`、`member_event_title_too_long`、`member_event_location_invalid`、`member_event_cancel_final`、`event_discussion_closed`、`official_profile_not_configured`、`member_events_closed`（P0001，D-57）。
 
 ### 9.10 测试与 fixtures
 

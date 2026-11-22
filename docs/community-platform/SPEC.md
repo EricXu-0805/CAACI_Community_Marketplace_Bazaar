@@ -1302,6 +1302,31 @@ key 名不改，只改值的标「改」；新 key 标「新」。zh.ts 与 en.t
 | events.wrongInfo | 信息有误？告诉站务 | Something wrong? Tell the site team |
 | events.checkedAt | 来源信息核对于 {when} | Source last checked {when} |
 | events.empty.* | 6.7.12 各行 | 照中文意思译 |
+| events.createShort（D-57） | 发起 | Organize |
+| events.goVerify（D-57） | 去验证 | Go verify |
+| events.menu.report（D-57） | 举报 | Report |
+| events.menu.cancel（D-57） | 取消活动 | Cancel event |
+| events.cancel.confirm（D-57） | 取消活动 | Confirm |
+| events.cancel.keep（D-57） | 保留 | Keep |
+| events.creationTitle（D-57） | 想发起活动？ | Want to organize an event? |
+| events.creationRules.eligibility（D-57） | 校园邮箱已验证，且账号未受限 | A verified campus email and an unrestricted account. |
+| events.creationRules.active（D-57） | 同时最多 2 场未结束、未取消的活动 | Up to 2 events that haven't ended or been cancelled. |
+| events.creationRules.time（D-57） | 开始时间在未来 60 天内 | Start within the next 60 days. |
+| events.form.title（D-57） | 标题 | Title |
+| events.form.startsAt（D-57） | 开始时间（CT） | Start time (CT) |
+| events.form.endsAt（D-57） | 结束时间（选填，CT） | End time (optional, CT) |
+| events.form.location（D-57） | 地点 | Location |
+| events.form.content（D-57） | 说明 | Details |
+| events.form.date（D-57） | 日期 | Date |
+| events.form.time（D-57） | 时间 | Time |
+| events.form.titlePlaceholder（D-57） | 周六下午 ARC 羽毛球，3 缺 3 | Saturday afternoon badminton at ARC, 3 more players needed |
+| events.form.locationPlaceholder（D-57） | ARC（公共场所） | ARC (public place) |
+| events.form.contentPlaceholder（D-57） | 费用怎么分、要带什么、怎么联系你 | How to split costs, what to bring, and how to contact you |
+| events.form.locationHint（D-57） | 私人住所只写大致区域，不要写门牌号和房间号 | For a private home, give only the general area, not a street or room number. |
+| events.err.closed（D-57） | 网友发起活动还没有开放 | Organizing events isn't open yet. |
+| events.err.titleRequired（D-57） | 请填写标题 | Add a title. |
+| events.err.contentInvalid（D-57） | 请填写说明，最多 2000 字 | Add details, up to 2,000 characters. |
+| events.err.endInvalid（D-57） | 结束时间不能早于开始时间，也不能晚于开始后 30 天 | The end can't be before the start or more than 30 days after it. |
 
 RPC 错误码对应的 key（错误码清单在 ENGINEERING §9.9）：`member_event_not_eligible` → `events.needVerify`；`member_event_time_out_of_range` → `events.err.timeRange`；`member_event_active_limit` → `events.err.activeLimit`；`member_event_reserved_wording` → `events.err.reservedWording`；`member_event_link_not_allowed` → `events.err.noLinks`；`member_event_title_too_long` → `events.err.titleTooLong`；`member_event_location_invalid` → `events.err.locationInvalid`；`member_event_cancel_final` → `events.err.cancelFinal`；`member_event_rpc_required` → `events.err.notSubmitted`；`event_discussion_closed` → `events.err.discussionClosed`；`official_account_unset` → `events.err.discussionUnavailable`。
 
