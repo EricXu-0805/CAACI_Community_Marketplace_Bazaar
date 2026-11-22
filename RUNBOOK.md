@@ -23,6 +23,7 @@ explicit pre-conditions, an "if it goes wrong" exit.
 | New admin needs access | [Admin token mint](#admin-token-mint) |
 | Need to ship a hotfix to prod fast | [Hotfix deploy](#hotfix-deploy) |
 | Community P3 is released; reply notices are still off | [Reply notice switch](#reply-notice-switch) |
+| Community P4.6 is released; member events are still off | [Member events switch](#member-events-switch) |
 
 ## Common emergencies
 
@@ -539,9 +540,24 @@ and then production:
    later, or at any time, hold only until then.
 
 **Community P4 (`20261120122054_community_events`).**
+Apply the event migrations in this order:
+
+1. Run `supabase/_ops/PRECHECK_20261120122054_community_events.sql`, apply
+   `20261120122054_community_events.sql`, then pass
+   `supabase/_ops/VERIFY_20261120122054_community_events.sql`.
+2. Only after that VERIFY passes, run
+   `supabase/_ops/PRECHECK_20261122035253_community_member_events.sql`, apply
+   `20261122035253_community_member_events.sql`, then pass
+   `supabase/_ops/VERIFY_20261122035253_community_member_events.sql`. Its
+   NOTICE must read `community_member_events_switch|enabled=f`.
+
+After this migration, `VERIFY_20261120122054_community_events.sql` stops
+by design with this first error:
+`community_events_function_body:private.community_events_member_guard():d865909286d0bf4a90d0796ca898b6eb:this migration`.
+
 Before pull request #380 is merged, its public smoke (`public-smoke` in
-`ci.yml`) must run green against a database that has both `20261120100354`
-and `20261120122054` applied: neither the events page (`pages/events/index`)
+`ci.yml`) must run green against a database that has `20261120100354`,
+`20261120122054`, and `20261122035253` applied: neither the events page (`pages/events/index`)
 nor the plaza page as P4 has it (`pages/plaza/index`, which from P4 on also
 calls `rpc/list_community_events`) has had its page sweep run against a real
 backend.
@@ -653,9 +669,10 @@ and no script.
    - Already applied: the P3 file stops with an error there, by design (the
      events migration replaces functions and vocabularies it pins, and its
      pins are not changed for that). First run the VERIFY of the newest
-     community migration applied to that database, which must pass; until
-     the migration of P4.6 is applied, that is
-     `supabase/_ops/VERIFY_20261120122054_community_events.sql`. Then run
+     community migration applied to that database, which must pass: before
+     `20261122035253` is applied, that is
+     `supabase/_ops/VERIFY_20261120122054_community_events.sql`; afterwards,
+     `supabase/_ops/VERIFY_20261122035253_community_member_events.sql`. Then run
      `supabase/_ops/VERIFY_reply_notice_switch.sql` (read-only), which must
      pass as well. Its notice line must also read
      `community_reply_notice_switch|enabled=f`.
@@ -718,6 +735,65 @@ UPDATE private.community_reply_notice_config
  WHERE singleton
 RETURNING enabled;          -- one row: false
 ```
+
+## Member events switch
+
+> When: `20261122035253_community_member_events` is applied and the P4.6
+> clients are ready. Enable staging first, then production separately.
+
+The migration grants the member write channel, but new events are disabled
+by default. `private.community_member_event_config` has one row with
+`enabled = false`; `public.community_member_events_open()` reports the value
+to clients. Only the release owner, or a person that owner approves by name
+for this action, may turn it on.
+
+**Before turning it on, all four conditions hold for this database:**
+
+1. `supabase/_ops/VERIFY_20261122035253_community_member_events.sql` passes
+   and prints `community_member_events_switch|enabled=f`.
+2. Somebody is assigned to handle member event reports within 48 hours,
+   as required by DECISIONS D-28.
+3. The H5 deployment reading this database includes the P4.6 client.
+4. The P4.6 Mini Program version is released, or the release owner has
+   decided how versions from before P4.6 will be handled.
+
+**Turn it on**, as `postgres` in the database's SQL editor:
+
+```sql
+SELECT singleton, enabled FROM private.community_member_event_config;
+UPDATE private.community_member_event_config
+   SET enabled = true
+ WHERE singleton
+RETURNING enabled;          -- one row: true
+```
+
+**Check it:**
+
+```sql
+-- Exactly one row, on.
+SELECT count(*) AS switch_rows, bool_and(enabled) AS enabled
+  FROM private.community_member_event_config;
+
+-- All three false: the API reads only the public function.
+SELECT has_table_privilege('anon', 'private.community_member_event_config', 'SELECT') AS anon_reads,
+       has_table_privilege('authenticated', 'private.community_member_event_config', 'SELECT') AS member_reads,
+       has_table_privilege('service_role', 'private.community_member_event_config', 'SELECT') AS service_reads;
+
+SELECT public.community_member_events_open(); -- true
+```
+
+**Turn it off** if needed. Closing stops new events immediately; organizers
+can still cancel events they already created.
+
+```sql
+UPDATE private.community_member_event_config
+   SET enabled = false
+ WHERE singleton
+RETURNING enabled;          -- one row: false
+```
+
+Record each database's switch time with its release. The new VERIFY can be
+run again with either value; it reports the switch without requiring it off.
 
 ## Hotfix deploy
 

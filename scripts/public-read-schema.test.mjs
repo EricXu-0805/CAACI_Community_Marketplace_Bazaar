@@ -4,14 +4,15 @@ import { verifyPublicReadSchema } from './verify-public-read-schema.mjs'
 const url = 'https://abcdefghijklmnopqrst.supabase.co'
 const key = 'sb_publishable_synthetic'
 // What a migrated target answers: no rows for a limit=0 read, and "missing" for a topic that does not exist.
-const migrated = target => new Response(target.pathname.endsWith('/rpc/community_post_state') ? '"missing"' : '[]', { status: 200 })
+const migrated = target => new Response(target.pathname.endsWith('/rpc/community_member_events_open') ? 'false'
+  : target.pathname.endsWith('/rpc/community_post_state') ? '"missing"' : '[]', { status: 200 })
 test('public schema preflight checks listing, post and comment projections without write access', async () => {
   const seen = []
   const results = await verifyPublicReadSchema({ url, key, fetchImpl: async (target, init) => {
     seen.push({ target, init }); return migrated(target)
   } })
-  // Six projections, the search and events functions, and the topic state function.
-  assert.equal(results.length, 9)
+  // Six projections, search, events, the member switch, and topic state.
+  assert.equal(results.length, 10)
   const reads = seen.filter(({ target }) => !target.pathname.includes('/rpc/'))
   assert.equal(reads.length, 6)
   for (const { target, init } of reads) {
@@ -39,6 +40,12 @@ test('public schema preflight checks listing, post and comment projections witho
   assert.deepEqual(JSON.parse(events.init.body), { limit_in: 1 })
   assert.equal(events.init.headers.Authorization, undefined)
   assert.equal(events.init.redirect, 'error')
+  const [memberEvents] = seen.filter(({ target }) => target.pathname === '/rest/v1/rpc/community_member_events_open')
+  assert.equal(memberEvents.init.method, 'POST')
+  assert.deepEqual(JSON.parse(memberEvents.init.body), {})
+  assert.equal(memberEvents.init.headers.Authorization, undefined)
+  assert.equal(memberEvents.init.redirect, 'error')
+  assert.ok(memberEvents.init.signal instanceof AbortSignal)
   // P3.6: the topic page asks this function why a topic cannot be read. Asking about a topic that
   // does not exist reads nothing and writes nothing.
   const [state] = seen.filter(({ target }) => target.pathname === '/rest/v1/rpc/community_post_state')
@@ -48,6 +55,24 @@ test('public schema preflight checks listing, post and comment projections witho
   assert.equal(state.init.redirect, 'error')
   assert.ok(state.init.signal instanceof AbortSignal)
   assert.deepEqual(results.at(-1), { name: 'community topic state rpc', status: 200 })
+})
+test('the member events switch probe requires HTTP 200 and a boolean', async () => {
+  for (const body of ['true', 'false']) {
+    const results = await verifyPublicReadSchema({ url, key, fetchImpl: async target =>
+      target.pathname.endsWith('/rpc/community_member_events_open') ? new Response(body) : migrated(target) })
+    assert.deepEqual(results.find(result => result.name === 'community member events switch rpc'),
+      { name: 'community member events switch rpc', status: 200 })
+  }
+  for (const body of ['null', '[]', '{}', '"false"', '0']) {
+    await assert.rejects(verifyPublicReadSchema({ url, key, fetchImpl: async target =>
+      target.pathname.endsWith('/rpc/community_member_events_open') ? new Response(body) : migrated(target) }),
+    /public_schema_unexpected_response/)
+  }
+  for (const status of [202, 400, 404, 500]) {
+    await assert.rejects(verifyPublicReadSchema({ url, key, fetchImpl: async target =>
+      target.pathname.endsWith('/rpc/community_member_events_open') ? new Response('false', { status }) : migrated(target) }),
+    new RegExp(`community member events switch rpc returned HTTP ${status}`))
+  }
 })
 test('missing fields, authentication failure and provider outage cannot pass preflight', async () => {
   for (const status of [400,401,403,500]) {

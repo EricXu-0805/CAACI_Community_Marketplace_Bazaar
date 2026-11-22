@@ -57,6 +57,18 @@ export async function verifyPublicReadSchema({ url, key, fetchImpl = fetch }) {
     }
     results.push({ name, status: rpc.status })
   }
+  const memberEvents = await fetchImpl(new URL('/rest/v1/rpc/community_member_events_open', url), {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: '{}',
+    redirect: 'error', signal: AbortSignal.timeout(10_000),
+  })
+  if (memberEvents.status !== 200) {
+    await memberEvents.body?.cancel()
+    throw new Error(`public_schema_mismatch: community member events switch rpc returned HTTP ${memberEvents.status}; apply the reviewed migrations to this test target before testing the candidate`)
+  }
+  if (typeof await memberEvents.json() !== 'boolean') throw new Error('public_schema_unexpected_response')
+  results.push({ name: 'community member events switch rpc', status: memberEvents.status })
   // P3.6: the topic page asks this function why a topic cannot be read. It ships in one transaction
   // with the watch and save tables and the author's hidden-topic list, which the publishable key
   // cannot reach, so its answer stands for them too. Asking about a topic that does not exist
