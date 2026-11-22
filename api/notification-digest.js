@@ -356,7 +356,7 @@ function digestHtml(rows, isSample, unsubToken, lang = null) {
   return `<!DOCTYPE html><html lang="${lang === 'zh' ? 'zh' : 'en'}"><body style="margin:0;background:#F7F4EE;font-family:-apple-system,'Segoe UI',sans-serif">
   <div style="max-width:520px;margin:0 auto;padding:24px 16px">
     <div style="text-align:center;margin-bottom:8px">
-      <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;background:#C74A2F;color:#fff;font-weight:700;font-size:20px">集</span>
+      <span style="display:inline-block;width:40px;height:40px;line-height:40px;border-radius:10px;background:#C74A2F;color:#fff;font-weight:700;font-size:20px">玉</span>
     </div>
     <h1 style="font-family:Georgia,serif;font-size:22px;color:#2A2521;text-align:center;margin:8px 0 2px">Cornfield</h1>
     <p style="margin:3px 0 0;font-size:12px;font-weight:600;color:#A39A8C;letter-spacing:2px;text-transform:uppercase;text-align:center"><span lang="zh">玉米地</span></p>
