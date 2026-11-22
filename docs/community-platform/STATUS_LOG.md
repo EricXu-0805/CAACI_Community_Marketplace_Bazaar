@@ -3915,3 +3915,203 @@ a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin
 - 未测项: 两个漏提示、一个漏收藏写入的负对照；恢复生产字节后的两文件绿测
 - 下一条: 恢复临时变异，检查指纹，再跑绿测
 - 附: 选择：两个通知断言限定实际原生toast，并同时核精确文字和可见性；收藏断言用expect.poll等到原样的两个写请求。依据：运行时重名节点及乐观状态先于请求的源代码顺序均已观察。临时移除提示、短路save写入来证明断言会红，证据和原文件指纹记在本机reply-notice-debug.md；恢复后只提交测试。撤回用git revert测试提交；不改应用的无障碍提示或乐观交互。LSP未安装，按本批规则不新增依赖、不提问，使用容器typecheck。
+
+### L286 · 2026-11-22 10:25 CT · D-57 第2项：材料0669586推送回执
+- task_id: D-57.2
+- code_sha: P4 d7d11f4；视口56f83cd
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: 本地、远端
+- 命令: git commit --no-verify；python3 ~/work/evidence/tools/scan17d.py a96f516 --log；git push origin HEAD:codex/community-plan-v5；git ls-remote
+- 计数: 17d：scan17d.log第15行，HEAD 0669586，①0 ②0（trailer豁免1）③0 ④0 ⑤0，exit0；1提交、41新增行；远端SHA匹配 [本地测]
+- ci_run_url: —
+- 未测项: P4最终验证尚未完成
+- 下一条: D-57.11
+- 附: 本次push未使用--no-verify；纯文档钩子跳过可执行门禁。该回执按下一条写回规则补记。
+
+### L287 · 2026-11-22 10:25 CT · D-57 第11项：两处测试负对照、恢复与绿测
+- task_id: D-57.11
+- code_sha: d7d11f40ffec6352e2eb0ac660a4fef19e675f3a
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: L-UI，本地容器
+- 命令: 负对照SMOKE_SPECS="community-reply-notices.spec.ts community-watch-save.spec.ts:210"，2文件，check-20261122T160703Z；恢复后SMOKE_SPECS="community-reply-notices.spec.ts community-watch-save.spec.ts"，同2文件，typecheck smoke，check-20261122T160852Z；git commit --no-verify
+- 计数: 负对照Running3、3败0过：两个缺原生toast，一个缺POST post_bookmarks；生产两文件SHA256逐字恢复；绿测Running10、10/10过，typecheck0；提交2文件+7/-3；check-test-junk无发现。绿测磁盘前347005419520、后347004465152字节 [本地测]
+- ci_run_url: —
+- 未测项: 本机no-excuse工具无法从宿主工作区解析typescript，exit2；未装依赖，已运行容器typecheck并人工核新增行
+- 下一条: D-57.11 最终门禁
+- 附: 测试总数不变；保留文字、可见性、路由及精确两项写入断言，只修定位范围和异步完成边界。没有生产代码变更，没有临时变异残留，没有加重试或超时。
+
+### L288 · 2026-11-22 10:25 CT · D-57 第8项：视口最终门禁判过及分支推送
+- task_id: D-57.8
+- code_sha: 56f83cd536153a9940c9e41e210eace697ebb9a5
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: L-UI，本地容器、远端
+- 命令: SMOKE_SPECS="a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-home.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts viewport-inset-consumers.spec.ts"，48文件；run-checks install typecheck h5 h5accept mp mpci migrations test smoke npmaudit，check-20261122T152833Z；scan17d.py 9171976e --text PR_BODY.md --log；git push --no-verify -u origin HEAD:codex/community-viewport-consumers-20261121；git ls-remote
+- 计数: TEST2664/2663/0/1、pg_skips0；smoke569/563/4/2；其余9步rc0；主包1381447，差0。按D-57通过（另有4条main上同样失败，见L173）。磁盘前347071164416、后346975678464字节 [本地测]
+- ci_run_url: —
+- 未测项: messages在820宽不挂双栏，仍跳过；iPad真机未试；草稿PR尚待创建
+- 下一条: D-57.8 创建草稿PR
+- 附: 四条Received逐项均仅含三种允许的stub主机错误：light index为6行、items；light plaza为54行、items/posts；dark index为6行、items；dark plaza为54行、items/posts；都在console errors的toEqual([])，无其他错误。原marketplace用例、supabase、manifest、workflow、vercel配置差异0；应用只改注释。补看composer两态截图，完整可见。17d：scan17d.log第16行，HEAD 56f83cd，①0 ②0（trailer豁免1）③0 ④0 ⑤0，exit0；2提交、274新增行，远端匹配。
+
+### L289 · 2026-11-22 10:25 CT · D-57 第11项：固定d7d11f4后启动最终全量
+- task_id: D-57.11
+- code_sha: d7d11f40ffec6352e2eb0ac660a4fef19e675f3a
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: L-UI，本地容器；后台
+- 命令: SMOKE_SPECS="a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-event-console.spec.ts community-events.spec.ts community-home.spec.ts community-member-events.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts"；56文件；run-checks install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；日志标签p4-final-d7d11f4-20261122T161609Z
+- 计数: 运行前工作区干净；预期Running717、TEST2965，实际结果待完成；bash_831，持续monitor已订阅 [未测]
+- ci_run_url: —
+- 未测项: 本次全量结果
+- 下一条: D-57.11 接收最终验证结果
+- 附: 717=647旧用例+main1+P3本批3+成员活动64+新增路由巡检2；TEST预期净增66=main1+本批65。L276与L284之前只引用清单，现逐次补全：
+
+L276/check-20261122T144407Z的SMOKE_SPECS（56文件）：
+`a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-event-console.spec.ts community-events.spec.ts community-home.spec.ts community-member-events.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts`
+
+L284同一轮完成记录的SMOKE_SPECS（56文件）：
+`a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-event-console.spec.ts community-events.spec.ts community-home.spec.ts community-member-events.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts`
+
+本次亦使用上方完整56文件清单。三个记录对应两次实际运行，不虚增次数。
+
+### L290 · 2026-11-22 10:25 CT · D-57 第11项：最终视口重复及L-SQL排队
+- task_id: D-57.11
+- code_sha: d7d11f40ffec6352e2eb0ac660a4fef19e675f3a
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: 本地隔离容器；同一把flock锁
+- 命令: SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60"，文件清单marketplace-responsive.spec.ts、1文件；日志标签p4-viewport60-d7d11f4-20261122T161609Z。随后用$EV下lsql-replay-controls.sh副本回放20261120100354、20261120122054、20261122035253；AFTER_REPLAY=controls-final.sh；日志标签p4-lsql-final-d7d11f4-20261122T161609Z
+- 计数: 预期Running60；L-SQL预期185条及31项对照，结果均待完成；bash_833、bash_835均后台排队，持续monitor已订阅 [未测]
+- ci_run_url: —
+- 未测项: 两个后台验证结果；尚未冻结新迁移
+- 下一条: D-57.11 接收验证结果
+- 附: 三个运行均使用run-locked.sh，一次一个容器，前后磁盘及755检查不变。controls-final.sh与已验证副本只差输出目录和原夹具路径，bash -n为0；新输出目录独立，旧31项证据未覆盖；原L-SQL脚本及appendix/env不改。
+
+### L291 · 2026-11-22 10:25 CT · D-57 第8项：草稿PR #383创建及CI订阅
+- task_id: D-57.8、D-57.2
+- code_sha: 56f83cd536153a9940c9e41e210eace697ebb9a5
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: 远端、本地
+- 命令: scan17d.py 56f83cd --text PR_BODY.md --log；gh pr create --draft --base main --head codex/community-viewport-consumers-20261121；gh pr view 383；gh run list
+- 计数: 17d：scan17d.log第17行，HEAD 56f83cd，①0 ②0（trailer豁免0）③0 ④0 ⑤0，exit0；0新提交、38正文行；#383为OPEN/isDraft=true/base main，head匹配 [本地测]
+- ci_run_url: —
+- 未测项: CI 45043777896读取为in_progress；messages双栏、iPad真机未测
+- 下一条: D-57.11 等待P4最终验证
+- 附: PR https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pull/383 。CI完成已用持续monitor订阅；不转ready、不合并。本项完成不代表CI已绿。
+
+### L292 · 2026-11-22 10:25 CT · D-57 第12项：独立审阅工作树准备
+- task_id: D-57.12
+- code_sha: P3 597b7fa；P4 d7d11f4；视口56f83cd
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: 本地，只读审阅准备
+- 命令: 每次先umask022；git worktree add --detach；随后git worktree lock --reason review:D57-分支；stat权限；在独立树中git diff --name-only基准..HEAD
+- 计数: 三个工作树均755并已锁定；文件范围P3 11个、P4 52个、视口2个；含普通合并带进来的文件 [本地测]
+- ci_run_url: —
+- 未测项: 唯一审阅子任务尚未启动；P4最终smoke、699重复与L-SQL待完成
+- 下一条: D-57.12 形成QA矩阵并启动唯一审阅
+- 附: 目录为~/work/review-d57-p3-597b7fa、review-d57-p4-d7d11f4、review-d57-viewport-56f83cd。按D-57第10项只用允许类别，不能用subagent_type；审阅按第17条口令规则起。审阅完成后解锁并移除这三个自有目录，拒绝移除时保留并记录。
+
+### L293 · 2026-11-22 11:01 CT · [OMO自决] D-57 第7项：撤回列表头像跳过判断
+- task_id: D-57.7
+- code_sha: d7d11f4（尚未开始头像改动）
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: 源码与原文核对
+- 命令: 复读D-57第7项第944行、静态community-events-boundary.test.mjs和运行时community-events.spec.ts第177行；核UAvatar真实属性及safeAvatarThumbUrl
+- 计数: 静态边界此前3/3通过；明确禁止改的是该静态测试。旧运行时图片总数0与本批新增20px头像要求冲突；当前未改P4，三个验证继续按原head完成 [本地测]
+- ci_run_url: —
+- 未测项: 头像实现、独立红绿验证与非头像图片负对照尚未执行
+- 下一条: D-57.7 完成列表头像和边界验证
+- 附: 更正L268：把更严的运行时断言也当成不可改，判断过宽。将保持静态测试逐字不动，旧运行时仍禁止非头像图片及webview；为20px真实头像、默认头像、两宽度两主题新增独立正向断言，并用缺头像和额外海报的负对照证明覆盖。不是删断言或加skip。当前容器全部结束后才改工作树；d7d11f4这轮改记为头像补齐前的验证，最终head将重新验证。撤回为git revert头像及对应测试提交。
+
+### L294 · 2026-11-22 11:01 CT · D-57 第8项：视口草稿PR的CI通过
+- task_id: D-57.8
+- code_sha: 56f83cd536153a9940c9e41e210eace697ebb9a5
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: GitHub Actions元数据
+- 命令: gh run view 45043777896 --json conclusion,status,headSha,jobs,url；gh pr view 383 --json createdAt
+- 计数: run completed/success；5个job成功、2个按条件跳过，0失败。成功job步数：mp10、typecheck9、H5 13、public sweep12、Boundary13；head匹配 [CI run#45043777896]
+- ci_run_url: —
+- 未测项: protected staging、production readiness跳过；真人iPad及messages双栏仍未测
+- 下一条: D-57.7
+- 附: CI地址：https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45043777896 。PR createdAt为2026-11-22 16:25:37Z，即10:25:37 CT，与L291的分钟标签一致；L292沿用10:25标签，不应作为目录创建命令的精确执行时刻。后续写回标签在每组记录生成时重取，不复用旧时间。
+
+### L295 · 2026-11-22 11:16 CT · D-57 第8项：补全CI链接字段
+- task_id: D-57.8
+- code_sha: 56f83cd536153a9940c9e41e210eace697ebb9a5
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: CI元数据
+- 命令: 沿用L294已经读取的run结果，不重复运行或查询门禁
+- 计数: CI45043777896为success；5成功、2条件跳过、0失败 [CI run#45043777896]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45043777896
+- 未测项: iPad真机与messages双栏仍未测
+- 下一条: D-57.7
+- 附: 补L294的ci_run_url字段；其附注已有正确链接。
+
+### L296 · 2026-11-22 11:16 CT · D-57 第11项：头像补齐前d7d11f4阶段门禁通过
+- task_id: D-57.11
+- code_sha: d7d11f40ffec6352e2eb0ac660a4fef19e675f3a
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: L-UI，本地容器
+- 命令: SMOKE_SPECS="a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-event-console.spec.ts community-events.spec.ts community-home.spec.ts community-member-events.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts"，56文件，install typecheck h5 h5accept mp mpci migrations test smoke npmaudit，check-20261122T161609Z；随后SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60"，marketplace-responsive.spec.ts共1文件，check-20261122T170116Z
+- 计数: TEST2965/2964/0/1、pg_skips0；smoke717/708/8/1，其余9步rc0；community-events.spec.ts同轮25过0败；699另60/60过。主包1472398、余100466。全量磁盘346994839552→346886422528，重复组346886414336→346913951744字节 [本地测]
+- ci_run_url: —
+- 未测项: 本次尚未包含待补的列表头像，不冻结、不推送；头像新head需重跑
+- 下一条: D-57.7
+- 附: 8条均满足D-57四条件：两主题首页各6行(items)，广场各69行(items/posts/rpc/list_community_events)，events各6行(rpc/community_member_events_open、rpc/list_community_events)，create各3行(rpc/community_member_events_open)。全部为允许的stub错误且在console toEqual断言；前4条main同样失败、后4条同类，见L173。两处修正后的旧用例通过，无额外失败。
+
+### L297 · 2026-11-22 11:16 CT · D-57 第11项：d7d11f4回放与31项对照通过
+- task_id: D-57.11
+- code_sha: d7d11f40ffec6352e2eb0ac660a4fef19e675f3a
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: L-SQL，本地隔离容器
+- 命令: L290所列副本及三个完整时间戳；证据p4-lsql-final-d7d11f4-20261122T161609Z/lsql-20261122T170350Z.log；controls-final.sh
+- 计数: files185 replayed185 errors0 done1 rc0；P3_TOTAL703/703、EV_TOTAL855/855、MEV_TOTAL25/25；P3_SWITCH off/PASS；EV_CLOSED SKIP member_event_config；CONTROL_TOTAL31/31、0失败；磁盘346913943552→346889416704字节 [隔离环境 L-SQL]
+- ci_run_url: —
+- 未测项: staging、生产未执行；头像新head的最终流程尚待完成
+- 下一条: D-57.7
+- 附: 新开关true/false正对照、reply开关正对照、旧VERIFY预期失败及六个负对照均通过；每次修改后恢复并确认原版通过。新输出目录独立；原始31项证据和原L-SQL脚本未覆盖。三个后台验证均已结束，才开始新增头像测试。
+
+### L298 · 2026-11-22 11:16 CT · D-57 第7项：成员头像四场景先红
+- task_id: D-57.7
+- code_sha: d7d11f4加未跟踪的新spec；app/src无差异
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: L-UI，本地容器
+- 命令: SMOKE_SPECS="community-event-avatar.spec.ts"，文件清单community-event-avatar.spec.ts、1文件；check-20261122T171100Z；其后仅加入临时改前截图调用，后台采集同四场景
+- 计数: Running4、4败0过，均在卡片3条已到位后，头像Expected2/Received0；非夹具或编译失败 [本地测]
+- ci_run_url: —
+- 未测项: 改前四张截图采集正在进行；应用尚未加头像
+- 下一条: D-57.7 实现头像并验证边界
+- 附: 新spec单独覆盖390/1280与浅深主题，保留旧大型spec的其他断言；将核真实owner头像、20px尺寸及默认图。运行器unstaged=no只看跟踪文件，新测试未跟踪，故在本条明确补充。
+
+### L299 · 2026-11-22 12:08 CT · D-57 第7项：头像与非头像图片边界验证完成
+- task_id: D-57.7
+- code_sha: c106e23b08025aa4a8194a5db0018fe2a1a627f4
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: L-UI，本地容器；合成截图
+- 命令: 改前SMOKE_SPECS="community-event-avatar.spec.ts"（1文件），check-20261122T171530Z；正向SMOKE_SPECS="community-event-avatar.spec.ts community-events.spec.ts --grep='member avatars|the list: one card'"（2文件），check-20261122T171903Z；负对照SMOKE_SPECS="community-events.spec.ts --grep='the list: one card'"（1文件），check-20261122T172855Z；恢复后同正向2文件，check-20261122T173112Z；静态检查均node --test scripts/community-events-boundary.test.mjs；git commit --no-verify
+- 计数: 改前4图已查看；正向typecheck0、static3/3、smoke6/6；临时额外图片使static3中1败、旧列表2/2败，Expected0/Received14；撤除后SHA256逐字恢复，static3/3、smoke6/6。提交3文件+85/-6，旧大型spec仅3行替换；新spec4条；draft guard、test-junk、diffcheck均0 [本地测]
+- ci_run_url: —
+- 未测项: 最终c106e23全量、mpci后续总判、699重复及L-SQL尚待完成；真人设备未试
+- 下一条: D-57.11
+- 附: 6张改后图逐张查看：390/1280浅深主题与旧两档中文列表，真实头像及主题默认图均20px，无新增裁切或重叠。静态边界文件始终未改；原运行时仍拒绝头像子树外的图片和全部webview。首页排除member，帖子引用投影把organizer元信息置null，原可见条件保留，两处compact不受影响。4张新图仅含合成内容，已复制到appendix/visual/P4.6/avatar-<宽度>-<主题>-c106e23.png。L268跳过现已撤回完成。
+
+### L300 · 2026-11-22 12:08 CT · D-57 第11项：包含头像的最终head开始验证
+- task_id: D-57.11
+- code_sha: c106e23b08025aa4a8194a5db0018fe2a1a627f4
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: 本地容器；同一flock锁；后台
+- 命令: SMOKE_SPECS="a11y-authenticated.spec.ts a11y-keyboard-journey.spec.ts a11y-tree.spec.ts admin-feedback-journeys.spec.ts admin-first-unlock.spec.ts admin-support-reply.spec.ts auth-init-timeout-recovery.spec.ts avatar-upload-failure.spec.ts back-and-unknown-routes-are-not-dead-ends.spec.ts chat-item-snapshot-repaints.spec.ts community-board-states.spec.ts community-event-avatar.spec.ts community-event-console.spec.ts community-events.spec.ts community-home.spec.ts community-member-events.spec.ts community-post-partial-attach.spec.ts community-post-topics.spec.ts community-reply-notices.spec.ts community-reply-target.spec.ts community-report-queue.spec.ts community-report-views.spec.ts community-sort-tabs.spec.ts community-tab-label.spec.ts community-topic-row.spec.ts community-watch-save.spec.ts contrast-runtime.spec.ts default-avatar-paints-in-both-themes.spec.ts document-language-follows-the-reader.spec.ts feed-pagination-recovery.spec.ts gate-survives-hash-navigation.spec.ts inbox-actions.spec.ts input-preview-supplement.spec.ts item-storage-cleanup.spec.ts listing-numbers-are-readable.spec.ts login-cancel-navigation.spec.ts marketplace-responsive.spec.ts moderation-chat-gate.spec.ts motion-preference.spec.ts notification-titles-are-one-language.spec.ts notifications-compat.spec.ts otp-cooldown-follows-the-clock.spec.ts pages.smoke.spec.ts plaza-attach-picker-is-modal.spec.ts private-chat-media.spec.ts product-publishing-discovery.spec.ts protected-page-auth-startup.spec.ts publish-ad-soft-gate.spec.ts publish-validates-before-upload.spec.ts read-failure-states.spec.ts restricted-account-notice.spec.ts search-items-compat.spec.ts search-timeout-recovery.spec.ts seller-publish-responsive.spec.ts street-public-english.spec.ts token-refresh-keeps-you-put.spec.ts translate-control-needs-a-session.spec.ts"，57文件；run-checks install typecheck h5 h5accept mp mpci migrations test smoke npmaudit，标签p4-final-c106e23-20261122T173857Z，实际check-20261122T173858Z。另SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60"（marketplace-responsive.spec.ts、1文件），标签p4-viewport60-c106e23-20261122T173857Z；L-SQL三个时间戳20261120100354/20261120122054/20261122035253加controls-final.sh，标签p4-lsql-final-c106e23-20261122T173857Z
+- 计数: 前8步已完成：typecheck、h5、h5accept、mp、mpci、migrations等rc0；TEST2965/2964/0/1、pg_skips0。mpci主包1473057、余99807，较基线+91610、较02d4d4c+13483、较d7d11f4+659。预计Running721=上轮717+新头像4，smoke及两个后续验证待完成 [部分本地测]
+- ci_run_url: —
+- 未测项: smoke最终结果、699六十轮、185条链及31对照；尚未冻结和推送
+- 下一条: D-57.11 接收最终结果
+- 附: bash_850/852/854由同一锁排队，持续monitor已订阅，不能并发起容器；源码保持固定。主包仍比64KiB目标多34271字节余量。
+
+### L301 · 2026-11-22 12:08 CT · D-57 第12项：最终审阅输入与自有目录更换
+- task_id: D-57.12
+- code_sha: P3 597b7fa；P4 c106e23；视口56f83cd
+- docs_sha: 0669586（本次写回之前材料分支的HEAD）
+- 环境: 本地、只读准备
+- 命令: umask022；新增detached review-d57-p4-c106e23并立即lock；解锁并普通worktree remove旧review-d57-p4-d7d11f4；收集git diff；核QA矩阵引用路径
+- 计数: 新目录755；旧自有目录移除rc0，未用force。最终变更文件P3 11、P4 55、视口2；51个已完成证据路径全部存在；唯一审阅尚未启动 [本地测]
+- ci_run_url: —
+- 未测项: 最终三个P4验证结果；审阅结论
+- 下一条: D-57.12 完成QA矩阵后按17条启动审阅
+- 附: 审阅使用p3.diff、p4-c106e23.diff、viewport.diff和changed-files-final.txt。旧p4.diff仅保留为头像前历史，不交给审阅当最终版本。证据和差异仅在本机；不向仓库添加原始日志。
