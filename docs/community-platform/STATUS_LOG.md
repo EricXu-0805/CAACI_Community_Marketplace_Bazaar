@@ -3118,3 +3118,63 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: —
 - 下一条: 等下一条指示；不从 BACKLOG 往下接
 - 附: 三个子任务都已结束，没有残留的进程、容器或锁。
+
+### L226 · 2026-11-21 21:45 CT · [supervisor 指示] D-57 第十一批开工，目标与续跑提醒
+- task_id: D-57.12、D-57.10
+- code_sha: main 9171976e；P3 fdb823a；P4 02d4d4c（开工时远端）
+- docs_sha: 62d7751（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: git pull --ff-only origin codex/community-plan-v5；读 DECISIONS D-57 全文、RUNBOOK §12 第 17 条；create_goal；schedule_prompt list 后 create；omo doctor --models（输出仅存 ~/work/evidence/D57/doctor-models.txt）
+- 计数: 目标 1 个，范围 D-57 第 0–11 项；提醒原为 0 个，新建唯一 sch_56f179f6f0d6，每 3600 秒；截止 2026-11-24 12:00 CT；七个允许类别均已核为 ChatGPT 首选、Claude 后备 [本地测]
+- ci_run_url: —
+- 未测项: 后续代码任务尚在执行
+- 下一条: D-57.1、D-57.2
+- 附: 本批不改模型、不切号、不改 ~/.omo、不查用量，由 supervisor 管理。第 1、2 项自测通过后才起子任务、才推送，包括材料分支。FINAL 第十一批与 STATUS 同提交推送后，结束目标并取消提醒，不接 BACKLOG。
+
+### L227 · 2026-11-21 21:45 CT · D-57 第 1 项：口令脚本与旧缺陷更正
+- task_id: D-57.1（process:B9-1）
+- code_sha: —（脚本只在本机）
+- docs_sha: 62d7751（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: stat 核旧文件；bash -n ~/work/evidence/tools/omo-steer.sh；~/work/evidence/tools/omo-steer-selftest.sh；证据 ~/work/evidence/D57/steer-selftest.log
+- 计数: 10/10 自测通过，覆盖 new、check、bind、重复目标拒绝、1 字节损坏、权限错误、格式错误。必需四次输出为 pending-test 9 600、pending-test 9 600、st_test 9 600、st_test 9 600；截为 1 字节后输出 st_test 1 600 且退出 1。旧 st_01a1fddf、st_01a1fde0、st_01a1fe21 实测均为 1 字节、600 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-57.2
+- 附: 更正第十批记录：旧调用用 tool.bash 的 env 参数传值，但未传入，落盘的是空串加换行。第十批没有发送 steer，所以没有执行后果；不能据权限 600 断言口令有效。旧文件不改不删。新脚本由 openssl 直接写临时文件，核 9 字节、格式、600 后改名，权限 700；没有通过 env 或 shell 变量传口令。口令只在前台 bash 读取，不进日志或记忆。
+
+### L228 · 2026-11-21 21:45 CT · D-57 第 2 项：统一扫描器及旧扫描覆盖缺口
+- task_id: D-57.2（process:B9-2）
+- code_sha: —（脚本只在本机）
+- docs_sha: 62d7751（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: python3 -m py_compile 三个扫描模块；python3 ~/work/evidence/tools/scan17d.py --selftest；证据 ~/work/evidence/D57/scan-selftest-final.log；RUNBOOK §3 登记工具目录
+- 计数: 最终合成自测 19/19，通过五类命中、末尾逐字 trailer 豁免/改用户名拒绝、正文与文件中的同文本不豁免、逐提交暂存后删除内容、多次合并排除第二父历史、合并自身新增内容、漏报合并参数阻止并落账、缺失/空输入拒绝、正文和工作区扫描；真实输入只核 trailer 1 行、非空号池 5 行、清单 3 份，未放入临时仓库 [本地测]
+- ci_run_url: —
+- 未测项: 未安装 ruff、basedpyright、shellcheck；已运行语法编译和真实 Git 历史行为自测
+- 下一条: D-57.3
+- 附: 更正第十批：13 次材料推送只有 1ba07e5 有一次局部新增行扫描，漏了身份、提交说明和最后一次 d81ca04。旧三份扫描器保留；统一扫描器按每个提交扫描身份、提交说明、各自新增行，重复 --diff-base 排除合并带入历史，--cc 结果仍扫描；仅 trailer 段中整行逐字相同的宿主 trailer 豁免，号池仍不豁免。每次 --log 写入 HEAD、计数、退出码与脚本哈希；提交范围读取失败也留不完整记录。推送记录在下一条 STATUS_LOG 记账，不跳过材料分支扫描。
+
+### L229 · 2026-11-21 21:45 CT · 按新版 §12 第 17 条起三个独立子任务
+- task_id: D-57.12、D-57.3、D-57.4、D-57.5、D-57.6、D-57.8
+- code_sha: P3 起点 fdb823a；P4 起点 02d4d4c；视口后续固定起点 9171976e
+- docs_sha: 62d7751（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: omo-steer.sh new、check pending；前台 bash 读回；task 批量启动后 bind、check task_id。三个说明均含 17b 三件事、安全边界、统一扫描器 --log 与推后 SHA 核对
+- 计数: P3 deep-low st_01a20159：pending-d57-p3 9 600、st_01a20159 9 600；P4 服务端 deep-high st_01a2015a：pending-d57-p4db 9 600、st_01a2015a 9 600；视口 visual-engineering st_01a2015b：pending-d57-viewport 9 600、st_01a2015b 9 600。三条前后 check 均通过 [本地测]
+- ci_run_url: —
+- 未测项: 子任务执行中
+- 下一条: D-57.3
+- 附: P4 服务端子任务只做首次合并与第 5、6 项，本地提交后交接；不推送、不跑最终门禁。主会话接第 7、11 项，最后合 P3，再只跑最终门禁并推一次。P3 与视口各自拥有独立目录和分支；容器全部同锁串行，前后检查磁盘。没有发送带口令 steer，序号账本当前为空。
+
+### L230 · 2026-11-21 21:45 CT · D-57 第 0 项及第 9 项 a、b 的开工更正
+- task_id: D-57.0、D-57.9a、D-57.9b（版本与 main 主包行）
+- code_sha: main 9171976e；#379 fdb823a；#380 02d4d4c
+- docs_sha: 62d7751（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: gh pr view 379、380、381、382 --json state,mergeCommit,baseRefName,isDraft,headRefOid；git ls-remote；git show d81ca048:docs/community-platform/DECISIONS.md 读取第 642–646 行；改写 STATUS
+- 计数: #379/#380 OPEN 草稿、base 不变；#381 MERGED 66e14a45；#382 MERGED 9171976e；main 远端 9171976e。D-57 第 0 项四条原文照录；STATUS 第 28 条原 D-56 标记后补回指定旧提交的五条原文、前面保持不变；code_sha 与 #382 状态更新；main 9171976e 主包 1,381,447、差 0，来源 L213 同树；reflog 开启 true [本地测]
+- ci_run_url: —
+- 未测项: 新分支主包数等各自最终 mpci
+- 下一条: D-57.3
+- 附: 生产合并与发布只照录 supervisor 的既成结果，OMO 没有进行部署或托管操作。第十批 FINAL 原文保持不变。

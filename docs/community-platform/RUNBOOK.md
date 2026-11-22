@@ -130,6 +130,7 @@ rm "$T"/node-$V-linux-x64.tar.xz "$T"/SHASUMS256.txt && rmdir "$T"
 | ~/work/caaciorg | feat/public-events-feed；origin = fork EricXu-0805/caaciorg，upstream = a2751012962/caaciorg | P4.3 | 按 BACKLOG P4.3 的命令：E8 之前只读 clone 上游并把 remote 改名为 upstream，在本地写；E8 之后再加 fork 为 origin 并推送。git 已配置用 gh 做凭据（2026-11-12 核对） |
 | ~/work/demo-publish | 不是 git 目录 | demo 预览部署（P1.13、BRAND.7）。全机只有这里允许有 .vercel | 见 §9 |
 | ~/work/evidence/\<任务编号\> | 不是 git 目录 | BACKLOG 的 `$EV`：每个任务的原始输出 | `mkdir -p "$EV"` |
+| ~/work/evidence/tools | 不是 git 目录，权限 700 | D-57：omo-steer.sh、统一 scan17d.py 与本地扫描账本；不进仓库或 appendix/env | 先完成 D-57 第 1、2 项自测；口令及扫描输入只留本机 |
 | ~/work/illini-dev-env | 不是 git 目录 | Containerfile、run-checks.sh、lsql-replay.sh、mp-size.mjs、probe-in-container.sh、probes/、tools/（HOME.1 的 page-audit）、logs/ | 已有 |
 | ~/.cache/illini-dev | — | 容器里的 HOME 和 npm 缓存，挂载到 /cache | 已有 |
 | ~/.config/illini/ | — | staging.env（权限 600，E3）；vercel-demo-project（P1.13，内容是项目名，不是机密） | E3 |
