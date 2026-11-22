@@ -4,23 +4,33 @@ import { supabaseRefForBuild } from './supabase-ref'
 
 test.use({ browserName: 'webkit', viewport: { width: 820, height: 1180 } })
 
+// The browser probe mutates its gate and counters as events arrive.
+interface ViewportEvents {
+  withhold: boolean
+  withheld: number
+  readonly events: string[]
+}
+declare global {
+  interface Window { __viewportEvents: ViewportEvents }
+}
+
 const ME = '11111111-1111-4111-8111-111111111111'
 const PEER = '22222222-2222-4222-8222-222222222222'
 const POST = '33333333-3333-4333-8333-333333333333'
 const CONV = '44444444-4444-4444-8444-444444444444'
 const profile = { id: ME, nickname: 'Viewport reader', avatar_url: null,
   tos_version: CURRENT_CONSENT_VERSION, suspension_level: 0, suspended_until: null,
-  is_illini_verified: true, location: 'UIUC', bio: '' }
-const peer = { ...profile, id: PEER, nickname: 'Viewport peer' }
+  is_illini_verified: true, location: 'UIUC', bio: '' } as const
+const peer = { ...profile, id: PEER, nickname: 'Viewport peer' } as const
 const post = { id: POST, user_id: PEER, title: null, category: null,
   content: 'Synthetic viewport discussion', images: [], like_count: 0, comment_count: 1,
-  created_at: '2026-11-01T00:00:00Z', profile: peer, status: 'active' }
+  created_at: '2026-11-01T00:00:00Z', profile: peer, status: 'active' } as const
 
 test.beforeEach(async ({ page }) => {
   // Install before navigation, ahead of framework and composable listeners.
   await page.addInitScript(([ref, uid]) => {
-    const state = { withhold: false, withheld: 0, events: [] as string[] }
-    ;(window as any).__viewportEvents = state
+    const state: ViewportEvents = { withhold: false, withheld: 0, events: [] }
+    window.__viewportEvents = state
     const gate = (source: string) => (event: Event) => {
       state.events.push(`${source}:${event.type}:${state.withhold ? 'withheld' : 'delivered'}`)
       if (!state.withhold) return
@@ -78,15 +88,18 @@ test.beforeEach(async ({ page }) => {
 
 async function record(page: Page, target: Locator, stage: string) {
   const values = await target.evaluate(element => {
+    if (!(element instanceof HTMLElement)) throw new TypeError('Expected an HTML viewport consumer')
+    const viewport = window.visualViewport
+    if (!viewport) throw new TypeError('Expected the WebKit visual viewport')
     const rect = element.getBoundingClientRect(), style = getComputedStyle(element)
     return { clientHeight: document.documentElement.clientHeight,
       rootHeight: document.documentElement.getBoundingClientRect().height,
-      visualHeight: visualViewport!.height, bottom: style.bottom,
-      inlineBottom: (element as HTMLElement).style.bottom,
+      visualHeight: viewport.height, bottom: style.bottom,
+      inlineBottom: element.style.bottom,
       composerInset: style.getPropertyValue('--composer-bottom-inset').trim(),
       inset: style.getPropertyValue('--chat-bottom-inset').trim(),
       top: rect.top, edge: rect.bottom, height: rect.height,
-      events: (window as any).__viewportEvents }
+      events: window.__viewportEvents }
   })
   console.log(`VIEWPORT ${stage} ${JSON.stringify(values)}`)
 }
@@ -99,9 +112,11 @@ async function staleInset(page: Page, target: Locator, info: TestInfo, name: str
   await expect(target).toBeVisible()
   await expect.poll(() => page.evaluate(() => document.documentElement.clientHeight)).toBe(1180)
   await page.evaluate(() => {
-    Object.defineProperty(visualViewport!, 'height', { configurable: true, get: () => 830 })
-    visualViewport!.dispatchEvent(new Event('resize'))
-    ;(window as any).__viewportEvents.withhold = true
+    const viewport = window.visualViewport
+    if (!viewport) throw new TypeError('Expected the WebKit visual viewport')
+    Object.defineProperty(viewport, 'height', { configurable: true, get: () => 830 })
+    viewport.dispatchEvent(new Event('resize'))
+    window.__viewportEvents.withhold = true
   })
   await expect(target).toHaveCSS(property, '350px')
   if (name === 'messages') {
@@ -113,7 +128,7 @@ async function staleInset(page: Page, target: Locator, info: TestInfo, name: str
   await screenshot(page, info, `${name}-inset-350`)
   await page.setViewportSize({ width: 820, height: 830 })
   await expect.poll(() => page.evaluate(() => document.documentElement.clientHeight)).toBe(830)
-  await expect.poll(() => page.evaluate(() => (window as any).__viewportEvents.withheld)).toBeGreaterThan(0)
+  await expect.poll(() => page.evaluate(() => window.__viewportEvents.withheld)).toBeGreaterThan(0)
   await record(page, target, `${name}:layout-830`)
 }
 
@@ -149,7 +164,7 @@ test('messages two-pane recovers its inset without viewport events', async ({ pa
   if (page.url().includes('/pages/chat/index')) {
     console.log(`VIEWPORT messages:unreachable-two-pane ${JSON.stringify(await page.evaluate(() => ({
       width: document.documentElement.clientWidth, height: document.documentElement.clientHeight,
-      route: location.hash, events: (window as any).__viewportEvents,
+      route: location.hash, events: window.__viewportEvents,
     })))}`)
     test.skip(true, 'The native two-pane requires 1100px; at 820px selecting a conversation opens the chat page.')
   }
@@ -186,7 +201,10 @@ test('plaza comments and composer recover their inset without viewport events', 
   // Assert the consumer's inset separately from that unchanged CSS offset.
   await staleInset(page, composer, info, 'composer', '--composer-bottom-inset')
   await recovered(page, composer, info, 'composer', '--composer-bottom-inset')
-  await expect.poll(() => composer.evaluate(element => (element as HTMLElement).style.bottom)).toBe('0px')
+  await expect.poll(() => composer.evaluate(element => {
+    if (!(element instanceof HTMLElement)) throw new TypeError('Expected the HTML composer')
+    return element.style.bottom
+  })).toBe('0px')
   await expect(composer).toHaveCSS('bottom', '75px')
 })
 
