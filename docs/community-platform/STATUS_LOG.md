@@ -3401,3 +3401,87 @@ SMOKE_SPECS 完整清单（53文件，空格连接后作为同一条命令的环
     street-public-english.spec.ts
     token-refresh-keeps-you-put.spec.ts
     translate-control-needs-a-session.spec.ts
+
+### L245 · 2026-11-22 01:48 CT · D-57：第四次材料推送扫描凭据
+- task_id: D-57.2
+- code_sha: —
+- docs_sha: 2f5acb3（本次写回前）；子任务执行时材料62d77512
+- 环境: 本地
+- 命令: scan17d.py d4797fd --log；git push材料分支；git ls-remote
+- 计数: 17d：scan17d.log 第4行，HEAD 2f5acb3，①0 ②0（号池0，trailer豁免1）③0 ④0 ⑤0，exit0；提交1、新增105行；远端2f5acb3与扫描HEAD一致 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-57.4 最终门禁
+- 附: 随P4前置步骤写回；未为扫描核对另起推送。
+
+### L246 · 2026-11-22 01:48 CT · D-57：P4固定main合并的五项核查
+- task_id: D-57.3（P4）
+- code_sha: 02d4d4c → 02ee57b
+- docs_sha: 2f5acb3（本次写回前）；子任务执行时材料62d77512
+- 环境: 本地
+- 命令: 子任务P4-S1；固定9171976e普通merge；证据p4-server/merge-invariants.txt
+- 计数: 开工工作区0行、755；① migrations/_ops差异0、两manifest不变，P3 c2a18ee8、P4 a8c0e083，supabase只变邮件模板两文件；② combined diff0字节；③9文件+66/-8；④config_equal_rc0；⑤ancestor_rc0 [本地测]
+- ci_run_url: —
+- 未测项: 最终门禁另记，P4尚未推送
+- 下一条: D-57.5
+- 附: 主会话读取合并核查文件；所有证据路径位于~/work/evidence/D57/。
+
+### L247 · 2026-11-22 01:48 CT · D-57：P4开关复验文案明确文件名
+- task_id: D-57.5a
+- code_sha: 22ba3f3
+- docs_sha: 2f5acb3（本次写回前）；子任务执行时材料62d77512
+- 环境: 本地
+- 命令: git show 22ba3f3 -- RUNBOOK.md
+- 计数: 只替换Reply notice switch中的对应一句：未应用P4迁移用VERIFY_20261120100354，已经应用则用VERIFY_reply_notice_switch，两者只报告开关 [本地测]
+- ci_run_url: —
+- 未测项: P3分支同一句未改；最终门禁另记
+- 下一条: D-57.5b
+- 附: 主会话已读提交差异；没有删既有操作步骤。
+
+### L248 · 2026-11-22 01:48 CT · D-57：P4检查逻辑相等测试及两次变异
+- task_id: D-57.5b
+- code_sha: 22ba3f3
+- docs_sha: 2f5acb3（本次写回前）；子任务执行时材料62d77512
+- 环境: 本地容器
+- 命令: 定向node --test --test-name-pattern="the reply notice switch check" scripts/community-events.test.mjs；实际命令由RUN_CMD在app目录执行；日志check-20261122T034624Z、T034658Z、T035001Z的cmd文件
+- 计数: 正对照tests1 pass1 fail0 skipped0；两个负对照各tests1 pass0 fail1 skipped0，差异分别为tgqual IS NOT NULL与删owner检查。仍为同一个test，SQL正文未动、仅文件头注释改准 [本地测]
+- ci_run_url: —
+- 未测项: 新迁移后的SQL正对照待6h；旧四个SQL负对照不重做，因为SQL正文没变
+- 下一条: D-57.6
+- 附: [OMO自决] 用精确VALUES别名截取三段，去注释/空行并统一异常名后比较。首次引号错误未启动测试，随后截取起点过宽的失败已纠正；这些没有计为通过。撤回对应提交。
+
+### L249 · 2026-11-22 01:48 CT · D-57：P4唯一迁移时间戳与历史依据
+- task_id: D-57.6 开工
+- code_sha: 22ba3f3
+- docs_sha: 2f5acb3（本次写回前）；子任务执行时材料62d77512
+- 环境: 本地
+- 命令: 开工时仅一次date -u生成MTS；function-history.txt；D57.6a6指定命令生成W.txt
+- 计数: MTS固定20261122035253；origin/main 9171976e没有两个函数的新定义，分支定义均在20261120122054。字符类83个可打印ASCII字节，与D57所列一致 [本地测]
+- ci_run_url: —
+- 未测项: 迁移及新回归仍在服务端轨道中，尚未完成提交交接
+- 下一条: D-57.6g
+- 附: 主会话只读回已有MTS，没有重新取时间；现行开工条件仍是迁移本地提交后才做客户端。
+
+### L250 · 2026-11-22 01:48 CT · D-57：P4旧回归兼容改动和184条链通过
+- task_id: D-57.6g
+- code_sha: 4c485b3
+- docs_sha: 2f5acb3（本次写回前）；子任务执行时材料62d77512
+- 环境: L-SQL
+- 命令: 独立提交两处授权改动；lsql-replay <P4目录> 20261120100354 20261120122054；lsql-20261122T035606Z.log
+- 计数: files184 replayed184 errors0 done1 rc0；P3_TOTAL703/703、EV_TOTAL855/855；P3_SWITCH default=off PASS，EV_CLOSED PASS。原回归块仅包条件及补嵌套END分号，另一处为临时授权后开关设true [隔离环境 L-SQL]
+- ci_run_url: —
+- 未测项: 带新迁移的正式回放与对照另记
+- 下一条: D-57.6e
+- 附: 执行时工作区无新迁移；子任务P4-S4记录磁盘前347652354048、后347620769792字节。回放通过后，runner自有容器SIGINT超时转SIGKILL清理的警告保留，不当作回放失败或改写为正常退出。
+
+### L251 · 2026-11-22 01:48 CT · D-57：P4新测试先在旧树变红
+- task_id: D-57.6e 红测
+- code_sha: 4c485b3加未提交测试
+- docs_sha: 2f5acb3（本次写回前）；子任务执行时材料62d77512
+- 环境: 本地容器
+- 命令: node --test scripts/community-member-events.test.mjs（从app目录执行）；check-20261122T063950Z-cmd.log
+- 计数: tests5 pass0 fail5 skipped0；缺新VERIFY或新迁移的ENOENT，与当时尚未创建迁移一致；没有语法错误 [本地测]
+- ci_run_url: —
+- 未测项: 客户端字符类断言等第7项；服务端定向绿灯、正式185条链与正负对照仍待结果
+- 下一条: D-57.6a
+- 附: 新迁移在该红测结束后才创建；未把客户端断言标skip。主会话核了原始五条失败和计数。

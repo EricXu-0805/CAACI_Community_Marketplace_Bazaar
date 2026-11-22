@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-22 01:38 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-22 01:48 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: D-57.4（P3 最终全量门禁，之后699六十轮）`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-57 第十一批进行中（L226 起）：前置脚本已自测通过；P3、P4 服务端、视口后续分别执行，主会话负责材料和后续 P4 客户端。截止 2026-11-24 12:00 CT，按 D-57 收尾。第十批已交付，FINAL 第十批原文不改。
+D-57 第十一批进行中（L226 起）：24/59项已完成。P3的高度与长按修复本地提交597b7f，双宽度和触摸验证通过，最终门禁已在后台启动（L244）。P4完成固定main合并、5a/b、唯一MTS、旧链184/184和新测试红灯（L246–L251）；后续服务端验证、客户端和视口后续继续按依赖执行。截止2026-11-24 12:00 CT，按D-57收尾。第十批已交付，FINAL第十批原文不改。
 
 用号更正（2026-11-21 21:47 CT，L232，覆盖 D-57 第 10 项原上限）：所有 Claude 槽位与 ChatGPT login-3 的 7d 上限统一 85%。Claude 默认 default → account-2 → account-5 → account-4，account-3 已过期最后；default 超过 85%，重置前暂排 account-4 后。ChatGPT 优先 login-3，default/login-2 已过期。用量与停下通知归 supervisor，OMO 不查用量、不切号或模型。
 
