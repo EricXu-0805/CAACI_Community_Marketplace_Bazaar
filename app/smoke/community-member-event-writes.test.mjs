@@ -40,7 +40,7 @@ test('event writes are imported only by pages in the event subpackage', () => {
 // The order and payload below are the D-57 app/server and moderation protocol.
 test('publishing checks restriction before all text checks, then moderates before its one RPC', async t => {
   const { state, load } = await memberWorld(t)
-  const { useMemberEventWrites } = await load('composables/useMemberEventWrites.ts')
+  const { useMemberEventWrites } = await load('pages/event/useMemberEventWrites.ts')
   const result = await useMemberEventWrites().createMemberEvent(INPUT)
   assert.deepEqual(state.timeline, ['auth', 'writes', 'check', 'check', 'check', 'remote', 'wechat', 'rpc'])
   const title = 'Saturday badminton', content = 'Bring a racket.\nSplit costs in person.', location = 'ARC Court 1'
@@ -61,7 +61,7 @@ test('publishing checks restriction before all text checks, then moderates befor
 test('flagged text never reaches WeChat moderation or the database write', async t => {
   const { state, load } = await memberWorld(t)
   state.flagged = true
-  const { useMemberEventWrites } = await load('composables/useMemberEventWrites.ts')
+  const { useMemberEventWrites } = await load('pages/event/useMemberEventWrites.ts')
   await assert.rejects(useMemberEventWrites().createMemberEvent(INPUT), /moderation_block/)
   assert.equal(state.moderations.length, 1)
   assert.deepEqual(state.wechat, [])
@@ -71,7 +71,7 @@ test('flagged text never reaches WeChat moderation or the database write', async
 test('a restricted account stops before any text or remote check', async t => {
   const { state, load } = await memberWorld(t)
   state.restricted = true
-  const { useMemberEventWrites } = await load('composables/useMemberEventWrites.ts')
+  const { useMemberEventWrites } = await load('pages/event/useMemberEventWrites.ts')
   await assert.rejects(useMemberEventWrites().createMemberEvent(INPUT), /suspension_active/)
   assert.deepEqual(state.timeline, ['auth', 'writes'])
   assert.deepEqual(state.calls, [])
@@ -80,7 +80,7 @@ test('a restricted account stops before any text or remote check', async t => {
 test('campus eligibility is checked locally before moderation', async t => {
   const { state, load } = await memberWorld(t)
   state.verified = false
-  const { useMemberEventWrites } = await load('composables/useMemberEventWrites.ts')
+  const { useMemberEventWrites } = await load('pages/event/useMemberEventWrites.ts')
   await assert.rejects(useMemberEventWrites().createMemberEvent(INPUT), /member_event_not_eligible/)
   assert.deepEqual(state.timeline, ['auth', 'writes'])
   assert.deepEqual(state.calls, [])
@@ -89,14 +89,14 @@ test('campus eligibility is checked locally before moderation', async t => {
 test('an account change during moderation cannot publish the old account draft', async t => {
   const { state, scope, load } = await memberWorld(t)
   state.onModerate = () => { state.user = SECOND_USER; scope.transitionAccount(SECOND_USER) }
-  const { useMemberEventWrites } = await load('composables/useMemberEventWrites.ts')
+  const { useMemberEventWrites } = await load('pages/event/useMemberEventWrites.ts')
   await assert.rejects(useMemberEventWrites().createMemberEvent(INPUT))
   assert.deepEqual(state.calls, [])
 })
 
 test('transport uncertainty is tagged and retry keeps the caller-owned post id', async t => {
   const { state, load } = await memberWorld(t)
-  const { useMemberEventWrites } = await load('composables/useMemberEventWrites.ts')
+  const { useMemberEventWrites } = await load('pages/event/useMemberEventWrites.ts')
   const { mutationCommitState } = await load('api/mutationCommit.ts')
   state.rpcThrow = new TypeError('fetch failed')
   await assert.rejects(useMemberEventWrites().createMemberEvent(INPUT), error => mutationCommitState(error) === 'unknown')
@@ -108,7 +108,7 @@ test('transport uncertainty is tagged and retry keeps the caller-owned post id',
 test('a SQL rejection is definitely not committed', async t => {
   const { state, load } = await memberWorld(t)
   state.rpcError = { code: '23514', message: 'member_event_active_limit' }
-  const { useMemberEventWrites } = await load('composables/useMemberEventWrites.ts')
+  const { useMemberEventWrites } = await load('pages/event/useMemberEventWrites.ts')
   const { mutationCommitState } = await load('api/mutationCommit.ts')
   await assert.rejects(useMemberEventWrites().createMemberEvent(INPUT),
     error => mutationCommitState(error) === 'not_committed')
@@ -121,7 +121,7 @@ test('cancellation stays available under restriction and invalidates a previousl
   await events.listEvents()
   state.timeline.length = 0
   state.restricted = true
-  const { useMemberEventWrites } = await load('composables/useMemberEventWrites.ts')
+  const { useMemberEventWrites } = await load('pages/event/useMemberEventWrites.ts')
   await useMemberEventWrites().cancelMemberEvent(EVENT)
   assert.deepEqual(state.timeline, ['auth', 'update'])
   assert.deepEqual(state.updates, [{
@@ -149,7 +149,7 @@ const errors = {
 for (const [message, key] of Object.entries(errors)) {
   test(`the ${message} server error selects its SPEC translation`, async t => {
     const { load } = await memberWorld(t)
-    const { memberEventErrorKey } = await load('composables/useMemberEventWrites.ts')
+    const { memberEventErrorKey } = await load('pages/event/useMemberEventWrites.ts')
     assert.equal(memberEventErrorKey({ message }), key)
   })
 }
