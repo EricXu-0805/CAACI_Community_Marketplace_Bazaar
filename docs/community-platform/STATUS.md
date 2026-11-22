@@ -117,7 +117,7 @@ PR #369 · run [44647478789](https://github.com/EricXu-0805/CAACI_Community_Mark
 | P4 7e61541（第十一批首轮，未作为发布版） | 1,472,398（与基线差 +90,951） | 100,466 | check-20261122T134303Z；较02d4d4c增加12,824；pages/event 31,488；该轮有WXSS失败，修后最终值另列 |
 | 视口56f83cd（第十一批，#383） | 1,381,447（与基线差0） | 191,417 | check-20261122T152833Z，L288；较9171976e差0 |
 | P4 d7d11f4（第十一批，头像补齐前验证） | 1,472,398（与基线差+90,951） | 100,466 | check-20261122T161609Z的mpci已通过；较02d4d4c增加12,824，pages/event 31,499；阶段全量已按规则判过，见L296 |
-| P4 c106e23（第十一批，含列表头像） | 1,473,057（与基线差+91,610） | 99,807 | check-20261122T173858Z；较02d4d4c增加13,483、较d7d11f4增加659；最终门禁按规则通过，L303 |
+| P4 c106e23（第十一批，含列表头像） | 1,473,057（与基线差+91,610） | 99,807 | check-20261122T173858Z；pages/event分包31,499；较02d4d4c增加13,483、较d7d11f4增加659；最终门禁按规则通过，L303 |
 
 main · 定时 run [42684660097](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/42684660097) · 2026-11-09 · runner ubuntu-26.04 [CI run#42684660097]
 
@@ -205,7 +205,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P4.1 | 通过 | 本地 wip/P4.1 5f62ddd，容器 test 2015/2014/0/1 [本地测]；不推送；已 merge 进 #380（de2d281） |
 | P4.3 | 部分 | caaciorg 本地 28d59b1，Node 20/24 全部通过 [本地测]；推送等 E8，开 PR 由 Eric 做 |
 | P4.2、P4.8、P4.9 | 部分（P4.11 未做，归 Eric；P4.2 DoD ④ 成员写入通道由 20261122035253 打开，等应用；P4.9 的另一半等 E6，D-56 第 4 项 c） | #380 02d4d4c（D-56 第 3 项 a、f–j，含 P3 fdb823a，L216；主包 1,459,574）；之前 24ff7bf：20261120122054 重新冻结 a8c0e083…（旧 4d382eaa… 作废，L193），含 P3 7ccb195；L-SQL 184/184、EV_TOTAL 855/855、P3_TOTAL 703/703；全量 2898/2897/0/1，smoke 647 条 639 passed、7 条 main 上同样失败或同类；主包 1,459,446（余 113,418） |
-| P4.4、P4.5、P4.7、P4.10、P4.11 | 未测 | P4.5 真实数据等 D-32；P4.4 同步新鲜度及其余真人验收照原依赖 |
+| P4.4、P4.5、P4.7、P4.10、P4.11 | 未测 | P4.5 真实数据等 D-32；P4.4 的同步新鲜度等功能尚未做；其余真人验收照原依赖 |
 | P4.6 | 部分，DoD⑥等Eric | D-57已推送c106e23，发起、取消、举报、私信与20px头像均完成本地验证；64条member与4条avatar全过。最终TEST2965/2964/0/1、pg_skips0；smoke721/712/8/1，八条按规则判基线或同类；SQL185/185和31对照全过，主包1473057、余99807（L303、L307–L310）。新迁移20261122035253已冻结；真机/开发者工具、wechat-seccheck真跑和staging S-1归Eric；前提为staging三条迁移、开关打开、已验证校园邮箱的合成账号 |
 | LEGAL.1–LEGAL.6 | 未测 | 等 D-37、D-38、D-39、D-40、D-28 |
 | CONTENT.1–CONTENT.6、P5.1–P8.1 | 未测 | 依赖 LEGAL 与 P5.2 |
@@ -264,7 +264,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
      - D-55 第 5 项「控制台错误只有一句」是 supervisor 写错了，main 自己的失败也是三句一组。L177 按三句判、L192 把 marketplace-responsive.spec.ts:699 记成「main 上同样失败」，supervisor 复现过（main 3778952 30 次失败 4 次，P4 30 次失败 6 次，报错都是期望 830、实得 480），两处判法都予以追认。第十批起按第 5 项的新写法判。
 29. E6：COMMUNITY_OFFICIAL_PROFILE_ID 没设之前，P3.5 的 set_post_official 和 P4.9 的 create_event_discussion 返回 409 official_profile_not_configured、不落库；set_post_featured、hide_event、unhide_event 不依赖它（D-54 第 1 项 b 更正）。设好后补这两项的另一半。
 30. P4.6 的产品问题：被隐藏或下架的成员活动仍占组织者两个名额之一，作者自己删掉讨论帖的不占，要不要改由 Eric 定（L140）。D-57 按现行规则实现，supervisor 代定，待 Eric 确认。
-31. 本地巡检的stub主机 00000000000000000000.supabase.co 在任何环境都不存在，CI用真实后端；是否沿用L173按D-56四条件及D-57第11项逐条判，不能只看标题。活动列表还须同一次门禁community-events.spec.ts零失败；新发起页的浅深两条按D-57第11项判。marketplace-responsive.spec.ts:699和:767已随main9171976e进入P3/P4，本批必须零失败，不能再援引旧的不稳定豁免；699另跑六十次。
+31. 本地巡检的stub主机 00000000000000000000.supabase.co 在任何环境都不存在，CI用真实后端。这几条不按 BACKLOG §14 第 3 行停，修要基于 main，另起一项。是否沿用L173按D-56四条件及D-57第11项逐条判，不能只看标题。活动列表还须同一次门禁community-events.spec.ts零失败；新发起页的浅深两条按D-57第11项判。marketplace-responsive.spec.ts:699和:767已随main9171976e进入P3/P4，本批必须零失败，不能再援引旧的不稳定豁免；699另跑六十次。
 32. #380 合并之前（gates:B9-1，D-57第11项）：public smoke须在依次应用20261120100354、20261120122054、20261122035253的库上跑绿；verify-deployed-rpcs和verify-public-read-schema均已要求community_member_events_open。真实后端巡检归发布步骤，不能以本地路由夹具替代。
 33. 成员活动开关须在staging、生产分别打开，归Eric或他点名批准的人；前提包括D-28举报值班已经有人，以及RUNBOOK「Member events switch」列出的四个条件。当前默认关闭。
 34. D-57视口后续的messages双栏在820宽不能挂载：应用断点为1100，选会话会进入chat。该消费者未覆盖，未修改断点或强造页面；需要另派真实双栏尺寸的验证，iPad真机检查仍归Eric。
