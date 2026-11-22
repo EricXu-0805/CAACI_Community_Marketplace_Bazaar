@@ -782,8 +782,9 @@ SELECT has_table_privilege('anon', 'private.community_member_event_config', 'SEL
 SELECT public.community_member_events_open(); -- true
 ```
 
-**Turn it off** if needed. Closing stops new events immediately; organizers
-can still cancel events they already created.
+**Turn it off** if needed. Closing stops only new event creation immediately;
+organizers can still cancel their existing events and edit their notes.
+Notes remain subject to the existing moderation checks.
 
 ```sql
 UPDATE private.community_member_event_config
