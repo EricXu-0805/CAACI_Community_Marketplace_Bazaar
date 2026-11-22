@@ -4325,3 +4325,63 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 本次材料CI未等待；真人/微信/seccheck/staging与托管应用、开关仍见FINAL④⑥
 - 下一条: 等待supervisor下一条指示，不接BACKLOG
 - 附: 最终材料diff --check=0；旧FINAL与STATUS_LOG前缀不变，BACKLOG未改；八节、43条固定格式结果，无占位符。唯一提醒已取消。按规定结束目标后只追加本条；本条自身也扫描后推送，其尚未生成的HEAD不预写，实际证明留在统一scan17d.log及本轮最终回复，不为自引用再开新任务。
+
+### L315 · 2026-11-22 16:20 CT · [supervisor 指示] D-58第十二批开工
+- task_id: D-58.0–7
+- code_sha: 视口56f83cd；P3 597b7fa；P4 c106e23
+- docs_sha: 2406654（本次写回之前材料分支的HEAD）
+- 环境: 本地材料
+- 命令: git pull --ff-only；读取DECISIONS D-58全文和RUNBOOK 9c
+- 计数: 材料f7621c0快进到24066548；本批范围0–7，截止2026-11-25 12:00 CT [控制通道/材料]
+- ci_run_url: —
+- 未测项: 本批修复尚未实施
+- 下一条: D-58.0 开工核对
+- 附: 仅20261122035253及manifest该行有具名例外；先3a–g，再合P3、做5的P4部分、最后4；最终P4只推一次，冻结记录先推材料再推代码。旧四迁移和其余manifest行不改；不合并PR、不转ready、不改base、不接BACKLOG。上批最后收尾f7621c0对应scan17d.log第22行，①0 ②0（trailer豁免1）③0 ④0 ⑤0，exit0，提交1、新增12行，远端已匹配；在本批补回该实际回执。
+
+### L316 · 2026-11-22 16:20 CT · D-58：建立目标与唯一续跑提醒
+- task_id: D-58.7
+- code_sha: —
+- docs_sha: 2406654（本次写回之前材料分支的HEAD）
+- 环境: 本地控制工具
+- 命令: create_goal；schedule_prompt list；schedule_prompt create每3600秒
+- 计数: 前一个目标已完成；list为空后创建唯一sch_e0d36dead325；新目标已active，范围第0–7项
+- ci_run_url: —
+- 未测项: 完成线尚未达到
+- 下一条: D-58.0
+- 附: FINAL第十二批与STATUS同提交扫描推送后，结束目标、取消提醒，再追加一次状态日志并扫描推送。到期及账本通知严格按D-58第7项；不自行连接托管库。
+
+### L317 · 2026-11-22 16:20 CT · D-58：分支和类别开工核对
+- task_id: D-58.0、D-58.7
+- code_sha: 视口56f83cd；P3 597b7fa；P4 c106e23
+- docs_sha: 2406654（本次写回之前材料分支的HEAD）
+- 环境: GitHub元数据、只读模型路由
+- 命令: gh pr view 379/380/383 --json state,mergeCommit,baseRefName,isDraft,headRefOid；git status、rev-parse、ls-remote；omo doctor --models
+- 计数: 三目录均clean、HEAD与远端及指定起点相同；三个PR均OPEN草稿，base依次restricted/P3/main；main9171976e。doctor exit0，七个允许类别首个均ChatGPT、随后Claude；无类别禁用 [本地测]
+- ci_run_url: —
+- 未测项: 未查账号用量、未切号或模型
+- 下一条: D-58.1、D-58.2、D-58.3a
+- 附: 模型原始输出仅在本机D58/doctor-models.log。使用上限以D-58第0项85%为准，停下以supervisor通知为准；D-58五条背景已按原文照录STATUS。
+
+### L318 · 2026-11-22 16:20 CT · D-58：共用回放副本和容器锁包装
+- task_id: D-58.7
+- code_sha: —
+- docs_sha: 2406654（本次写回之前材料分支的HEAD）
+- 环境: 本地脚本准备
+- 命令: 复制D57的lsql-replay-controls.sh到D58；新增run-locked.sh；chmod700；bash -n
+- 计数: 回放副本与D57原版逐字节一致；两脚本语法检查rc0；包装核目录755、同锁排队、前后至少53687091200字节 [本地测]
+- ci_run_url: —
+- 未测项: 尚未运行本批容器门禁；原回放脚本和存档未改
+- 下一条: D-58.1、D-58.2、D-58.3a
+- 附: 包装的repo及lane标签由调用者明确给出，各分支日志隔离；门禁后台起并订阅完成。
+
+### L319 · 2026-11-22 16:24 CT · D-58：按第17条并行启动视口与P3
+- task_id: D-58.1、D-58.2、D-58.5
+- code_sha: 视口56f83cd；P3 597b7fa
+- docs_sha: 2406654（本次写回之前材料分支的HEAD）
+- 环境: 两个后台deep-low任务
+- 命令: omo-steer.sh new/check；主会话前台cat；task批量启动；bind/check；交付文件monitor
+- 计数: 视口st_01a2055a：pending-d58-viewport 9 600、st_01a2055a 9 600；P3 st_01a2055b：pending-d58-p3 9 600、st_01a2055b 9 600；两次check均通过
+- ci_run_url: —
+- 未测项: 子任务尚未交付，不把启动记作修复通过
+- 下一条: 主会话D-58.3a
+- 附: 任务各有独立worktree和证据目录；材料及P4由主会话独占。开工说明含17b三件事、停止/不推送/单容器规则、17d完整脚本与远端核对，当前未发steer序号；口令不进文件或日志。

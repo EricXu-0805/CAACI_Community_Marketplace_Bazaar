@@ -1,11 +1,19 @@
 # STATUS
 
-写于 2026-11-22 13:09 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-22 16:20 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: 等待supervisor下一条指示（D-57交付；不接BACKLOG）`
+`next_task_id: D-58.1（与D-58.2、D-58.3a并行开工）`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-57 第十一批交付（L226–L313，FINAL与本页同一提交）：本批实现、本地验收和三个代码分支交付完成。P3已推送597b7fa；视口后续56f83cd的草稿PR #383已交付，CI45043777896成功（5成功、2条件跳过）。P4 c106e23最终TEST2965/2964/0/1、pg_skips0；57文件smoke721/712/8/1，八条均按D-57判为基线或同类，全部新增/修改功能用例过。699六十轮60/60；SQL185/185，31对照全过；mpci主包1473057、余99807。唯一只读审阅st_01a2048a已APPROVE；新迁移已冻结，P4已单次推送c106e23，#380正文已更新，均保留草稿/base。CI按最终721条估计最好29.33分、最坏49.19分，后者超过45分。messages双栏、iPad及P4.6真人/微信/staging验收仍未测。目标与提醒按规定在本报告推送后关闭，实际回执追加到STATUS_LOG。停止在本批，不接BACKLOG；第十批原文不改。
+D-58 第十二批进行中（L315起）：开工材料、目标/提醒和基准核对已完成。视口56f83cd、P3 597b7fa、P4 c106e23为本批起点；当前均草稿且base不变。先并行第1、2和3a–g；P4再合P3，做第5项P4部分，最后按具名例外修改20261122035253。新冻结记录先推材料，再单次推P4。截止2026-11-25 12:00 CT；收尾后停止，不接BACKLOG。第十一批FINAL保留，本批更正另记。
+
+## 第十二批开工背景（D-58第0项，逐字照录）
+
+- 第十一批验收：supervisor 做了五个维度的独立核查（P4.6 迁移、P4.6 客户端、P4 门禁、P3 与视口后续、报告与过程），blocker、major 配反驳方，最后由覆盖审阅逐项核。没有阻断项。在 tony-ws 自己的目录里复现了：P4 c106e23 全量 TEST 2965/2964/0/1、pg_skips 0，smoke 721 条 712 passed、8 failed、1 skipped（8 条都是首页、广场、活动页、发起页的浅色深色巡检，Received 每一行都属于三种 stub 主机报错，community-events.spec.ts 同一次 25 过 0 失败），主包 1,473,057；marketplace-responsive.spec.ts:699 ×60 60/60；P3 597b7fa TEST 2800/2799/0/1、主包 1,422,771；在 c106e23b 的 L-SQL 回放上做了列级授权和零宽字符探针，VERIFY_20261122035253 的 NOTICE 是 enabled=f（L-SQL 185/185、P3_TOTAL 703/703、EV_TOTAL 855/855、MEV_TOTAL 25/25 是 OMO L303 的结果，supervisor 没有另跑全链计数）；开关关着时没有任何能新建成员活动的路径（已有活动的发起人仍能取消、改说明，说明照旧过审核，见第 3 项 g），开关打开后名额、验证、审核都绕不过去；member_events_closed 在迁移、客户端、测试、文档里一律是 P0001。
+- 核查发现、本批要修的：小程序上活动页「发起」和活动详情页菜单被微信胶囊挡住（第 3 项 a）；开关关着时入口不出现的保持窗口用例不会变红（第 3 项 b）；视口后续 PR 的根高度前提用例在页面挂载之前就量了、messages 双栏用例一直跳过（第 1 项）；地点、标题、说明里的零宽和方向控制字符能绕过保留词检查（例如在「hos」和「ted by」之间插一个 U+200B，显示仍是 hosted by），只由 U+200B 组成的地点能存进去、显示成空白（第 4 项；正文的链接检查同样受影响，一并修）；两张开关表的 VERIFY 不查列级授权（第 5 项）；第十一批报告的几处引用和 STATUS 改动（第 6 项）。
+- supervisor 追认：L293 把 community-events.spec.ts:177 的「不渲染任何图片」放宽到不含 `.evc-avatar`（SPEC 6.7.3 要求成员活动卡片显示发起人 20px 头像）；d7d11f4 对两个 P3 时期 spec 的断言边界修正（期望值没变，负对照红过），本批同样搬到 P3（第 2 项）。
+- 账本：supervisor 2026-11-22 21:00Z 前后只读核过，生产和 staging 的账本里都没有 20261120100354、20261120122054、20261122035253。
+- 用号（Eric 2026-11-21 21:47 CT）：所有号（Claude 各号和 ChatGPT login-3）7d 上限一律 85%；Claude 顺序 default → account-2 → account-5 → account-4，default 过线时排到 account-4 后面、重置后挪回第一（supervisor 做）；ChatGPT login-3 先用，default、login-2 登录已过期，等 Eric 重新接回。主会话在 chatgpt-subscription/gpt-6-astra 上，7 个类别 ChatGPT 打头、Claude 兜底（D-57 第 0 项）。用量由 supervisor 看，OMO 不查用量、不切号、不切模型、不改 ~/.omo；子任务只用 D-57 第 10 项那 7 个类别。停下以 supervisor 的通知为准，停下时照 D-51 第 1 项把已完成的部分写进 STATUS 和 FINAL。子任务的类别、开工时 `omo doctor --models` 核对、失败后最多改派一次、出现 fallback 或换号时记一行，都照 D-57 第 10 项，额度数字以本项为准。
 
 用号更正（2026-11-21 21:47 CT，L232，覆盖 D-57 第 10 项原上限）：所有 Claude 槽位与 ChatGPT login-3 的 7d 上限统一 85%。Claude 默认 default → account-2 → account-5 → account-4，account-3 已过期最后；default 超过 85%，重置前暂排 account-4 后。ChatGPT 优先 login-3，default/login-2 已过期。用量与停下通知归 supervisor，OMO 不查用量、不切号或模型。
 
@@ -24,7 +32,7 @@ D-57 第十一批交付（L226–L313，FINAL与本页同一提交）：本批�
 | code_sha | 9171976e94c4c7e96522f0a9ff475452fc24eb51（main，#382 于 2026-11-21 16:09:20Z squash 合并，树与 19c4657 相同；生产发布由 supervisor 完成，D-57 第 0 项） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 2967c6c（本次写回之前材料分支的 HEAD） |
+| docs_sha | 24066548（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #379 codex/community-p3-20261120 597b7fa（base codex/community-restricted-20261113，D-57已推送，L254–L256）；#380 codex/community-events-20261120 c106e23（base P3 的分支，本批已单次推送，L307–L310）；#383 codex/community-viewport-consumers-20261121 56f83cd（base main，L288、L291）；三个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）；#373、#378 已合进各自 base 分支 [本批PR状态：2026-11-22 gh pr view与git ls-remote；旧记录照原条目] |
 | tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 597b7fa（#379）；illini-events-20261120 c106e23（#380，已推送；最终全量、699六十轮和L-SQL已过）；illini-viewport-consumers 56f83cd（#383，草稿，已推送）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树已核；其余为2026-11-21记录] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
