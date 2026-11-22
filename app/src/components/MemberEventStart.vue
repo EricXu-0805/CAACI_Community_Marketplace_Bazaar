@@ -1,5 +1,5 @@
 <template>
-  <UButton variant="ghost" :loading="opening" :class="['me-entry', {
+  <UButton data-test="member-event-start" variant="ghost" :loading="opening" :class="['me-entry', {
     'me-entry-outline': outline, 'me-entry-responsive': responsive,
   }]" @click="start">
     <text class="me-entry-short">{{ t('events.createShort') }}</text>

@@ -53,8 +53,7 @@ for (const width of [390, 1280]) {
         const start = performance.now()
         let found = false
         const sample = () => {
-          found ||= [...document.querySelectorAll('button,[role="button"]')]
-            .some(node => /^Organize(?: an event)?$/.test(node.textContent?.trim() ?? ''))
+          found ||= document.querySelector('[data-test="member-event-start"]') !== null
           if (performance.now() - start >= 1500) resolve(found)
           else requestAnimationFrame(sample)
         }
