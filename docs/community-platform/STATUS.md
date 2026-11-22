@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-22 01:48 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-22 04:51 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-57.4（P3 最终全量门禁，之后699六十轮）`
+`next_task_id: D-57.7（活动列表入口及账号门禁，之后发起页和详情操作）`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-57 第十一批进行中（L226 起）：24/59项已完成。P3的高度与长按修复本地提交597b7f，双宽度和触摸验证通过，最终门禁已在后台启动（L244）。P4完成固定main合并、5a/b、唯一MTS、旧链184/184和新测试红灯（L246–L251）；后续服务端验证、客户端和视口后续继续按依赖执行。截止2026-11-24 12:00 CT，按D-57收尾。第十批已交付，FINAL第十批原文不改。
+D-57 第十一批进行中（L226 起）：37/59项已完成。P3已推送597b7fa并更新草稿正文，门禁及699六十轮通过（L254–L256）。P4服务端本地7c9ffb4，185条回放及31项对照通过；客户端规整、开关缓存和写入逻辑本地e3eae3a，定向单测及类型检查通过，新增UI smoke已在未改客户端上64条全红（L257–L259）。活动入口、发起页、详情操作及最终P4门禁继续；视口后续的smoke与审计已结束，待整理证据和发布。截止2026-11-24 12:00 CT，按D-57收尾。第十批原文不改。
 
 用号更正（2026-11-21 21:47 CT，L232，覆盖 D-57 第 10 项原上限）：所有 Claude 槽位与 ChatGPT login-3 的 7d 上限统一 85%。Claude 默认 default → account-2 → account-5 → account-4，account-3 已过期最后；default 超过 85%，重置前暂排 account-4 后。ChatGPT 优先 login-3，default/login-2 已过期。用量与停下通知归 supervisor，OMO 不查用量、不切号或模型。
 
@@ -24,7 +24,7 @@ D-57 第十一批进行中（L226 起）：24/59项已完成。P3的高度与长
 | code_sha | 9171976e94c4c7e96522f0a9ff475452fc24eb51（main，#382 于 2026-11-21 16:09:20Z squash 合并，树与 19c4657 相同；生产发布由 supervisor 完成，D-57 第 0 项） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 99dd903（本次写回之前材料分支的 HEAD） |
+| docs_sha | 5c17b82（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #379 codex/community-p3-20261120 fdb823a（base codex/community-restricted-20261113）；#380 codex/community-events-20261120 02d4d4c（base P3 的分支）；两个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）；#373、#378 已合进各自 base 分支 [本地测：2026-11-21 gh pr view、git ls-remote] |
 | tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 7ccb195（#379）；illini-events-20261120 24ff7bf（#380）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与 D-55 main 对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：2026-11-21 git worktree list] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |

@@ -3485,3 +3485,99 @@ SMOKE_SPECS 完整清单（53文件，空格连接后作为同一条命令的环
 - 未测项: 客户端字符类断言等第7项；服务端定向绿灯、正式185条链与正负对照仍待结果
 - 下一条: D-57.6a
 - 附: 新迁移在该红测结束后才创建；未把客户端断言标skip。主会话核了原始五条失败和计数。
+
+### L252 · 2026-11-22 02:49 CT · D-57 第 2 项：第五次材料推送扫描凭据
+- task_id: D-57.2
+- code_sha: —
+- docs_sha: 5c17b82（本次写回之前材料HEAD）
+- 环境: 本地
+- 命令: scan17d.py 2f5acb3 --log；git push材料分支；git ls-remote
+- 计数: 17d：scan17d.log 第5行，HEAD5c17b82，①0 ②0（号池0，trailer豁免1）③0 ④0 ⑤0，exit0；提交1、新增86行；推后远端与扫描HEAD一致 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-57.4 扫描推送P3
+
+### L253 · 2026-11-22 02:49 CT · [OMO自决] 两个子任务宿主不可用，主会话接手
+- task_id: D-57.6、D-57.8、D-57.2（17c）
+- code_sha: P4本地4c485b3加暂存服务端改动；视口412fb8a
+- docs_sha: 5c17b82
+- 环境: 本地
+- 命令: task_output；task_cancel两个旧任务；只读进程归属；flock -n；取得共享锁后umask022、磁盘前后检查、podman ps；两分支ls-remote
+- 计数: st_01a2015a（deep-high）、st_01a2015b（visual-engineering）都报host_unavailable:ensure_failed，RPC宿主在get_protocol_info之前退出1、stdin lifetime reopen unavailable。取消工具均返回completed/not running/no change。主会话直接检查：当时仅自己的P3门禁仍在运行；之后锁检查rc0、容器列表空；前后磁盘346947444736字节；P4远端仍02d4d4c，视口后续远端尚不存在 [本地测]
+- ci_run_url: —
+- 未测项: 宿主启动失败的完整原因、发出SIGTERM的主体未证实；没有查询号池或重置时刻
+- 下一条: 主会话继续既有证据下未完成的检查
+- 附: 观察到的模型均为chatgpt-subscription/gpt-6-astra；不是已证实的模型链或额度错误，不换类别绕行。视口check-20261122T064818Z已完成前八步和TEST2664/2663/0/1，smoke只到第67条，07:04:27Z收到signal15；仅恢复smoke、npmaudit。原20/60/60通过结果保留。P4此前52条已过，主会话只补原失败的VERIFY相等测试（check-20261122T082524Z，1/1）；正式回放放到新证据目录，不写旧任务的完成文件。未改账号、模型或宿主配置。
+
+### L254 · 2026-11-22 02:49 CT · D-57 第 4 项：P3最终门禁与六十轮通过
+- task_id: D-57.4
+- code_sha: 597b7f，tree702e4e63，unstaged=no
+- docs_sha: 5c17b82
+- 环境: 本地容器L-UI；小程序CI构建环境
+- 命令: L244所列53文件完整SMOKE_SPECS，同一命令执行install typecheck h5 h5accept mp mpci migrations test smoke npmaudit，check-20261122T073432Z；SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60"（文件清单marketplace-responsive.spec.ts，1文件），check-20261122T082251Z
+- 计数: TEST2800/2799/0/1，pg_skips0；smoke Running616=612+main1+本批3，611过4败1跳过；其余九个STEP均rc0。四败：light首页Received6行、light广场66行、dark首页6行、dark广场66行；首页路径/rest/v1/items，广场/rest/v1/posts及/rest/v1/items。每条标题、console toEqual断言、非空Received全为规定的stub三类均满足；events附加条件不适用，四条标题都在L173，判main上同样失败。本批回复六条全过，699和767均过；另699六十轮60/60、rc0、153秒。mpci主包1422771、余150093，比fdb823a多48、比基线1381447多41324 [本地测]
+- ci_run_url: —（base尚未改main）
+- 未测项: 小程序真机；stub主机在任何环境都不存在，真实后端巡检仍归发布步骤
+- 下一条: D-57.4 扫描推送P3并更新正文
+- 附: 判通过（另有4条main上同样失败，见L173），未重跑main。主包增量对应两处触摸守卫与动作行最小高度；合入的视口代码只在H5。全量磁盘前347054993408、后346947457024；六十轮前346933735424、后347017936896字节。启动时registerToastHost依赖扫描诊断也出现在上批check-20261121T120007Z，同一条原有诊断未在本批展开；typecheck、H5及后续用例正常完成。
+
+### L255 · 2026-11-22 02:49 CT · [OMO自决] 17d：P3正文两处公开代码名称命中
+- task_id: D-57.2、D-57.4
+- code_sha: 597b7f
+- docs_sha: 5c17b82
+- 环境: 本地
+- 命令: scan17d.py fdb823a --diff-base 5ae88f6 --text pr379-updated.md --log；逐条核对命中位置、既有PR归档、匹配类型及基准树文件存在性
+- 计数: 17d：scan17d.log 第6行和第7行，HEAD均597b7f，①0 ②0（号池0，trailer豁免1）③0 ④0 ⑤2，exit2；提交2、新增314行。两行都指text:pr379-updated.md:11与:61；周围文字改写后位置和个数仍相同。精确核对两项均为WORD8、全部位于各自反引号内的公开文件名；基准fdb823a中两个文件都存在，没有中文句子重合 [本地测]
+- ci_run_url: —
+- 未测项: 此时尚未推送或改PR正文，完成后另记远端核对
+- 下一条: D-57.4 推送597b7f
+- 附: 选择按⑤误报允许；理由是必要的公开代码引用，不是复制核查清单叙述。两个来源在修改前公开PR正文中已存在，技术条件保持，周边表达也已自行改写。扫描规则未放宽。撤回不适用；不记录清单原文。
+
+
+### L256 · 2026-11-22 04:50 CT · D-57：P3已推送并更新草稿正文
+- task_id: D-57.4、D-57.2
+- code_sha: 597b7fabcdadf851259876390d3b2c590b317556（七位597b7fa）
+- docs_sha: 5c17b82（本次写回前）
+- 环境: 本地、GitHub元数据
+- 命令: 推送后git ls-remote；scan17d.py fdb823a --diff-base 5ae88f6 --text pr379-updated.md --log；gh pr edit --body-file；gh api --method PATCH repos/EricXu-0805/CAACI_Community_Marketplace_Bazaar/pulls/379（只传body）
+- 计数: 推后远端与扫描HEAD一致；正文扫描scan17d.log第8、9行均①0 ②0（号池0，trailer豁免1）③0 ④0 ⑤2、exit2，位置和L255的公开文件名误报相同。REST回执number379、state=open、draft=true、base=codex/community-restricted-20261113、head597b7fa、bodyLength12670 [本地测]
+- ci_run_url: —（base尚未改main）
+- 未测项: 改base后的CI、P3上线前提仍归supervisor/Eric
+- 下一条: D-57.7
+- 附: [OMO自决] gh pr edit因旧GraphQL projectCards查询报错、rc1，正文未改；改用REST仅更新body，rc0。理由是修正客户端接口兼容问题，执行同一次已授权正文修改。撤回可用本地正文归档。L244、L254、L255里的597b7f是六位缩写，正式七位是597b7fa，旧记录不改。
+
+### L257 · 2026-11-22 04:50 CT · D-57：P4服务端提交及正式回放
+- task_id: D-57.6a–i
+- code_sha: 7c9ffb415688e6832adfeedb88e7f1ee8ce5ae5c
+- docs_sha: 5c17b82
+- 环境: L-SQL、本地容器
+- 命令: 修正后的VERIFY相等测试check-20261122T082524Z；lsql-replay-controls.sh，证据D57/p4-server/main-recovery-20261122T082853Z/lsql-20261122T083016Z.log及main-replay-controls-20261122T082853Z.log；本地提交feat(events): open member writes behind a disabled switch
+- 计数: 修正定向1/1；正式files185 replayed185 errors0 done1 rc0；P3_TOTAL703/703、EV_TOTAL855/855、MEV_TOTAL25/25；31项对照全过，含开关true/false正对照及六个负对照逐一恢复；P3_SWITCH off/PASS、EV_CLOSED SKIP member_event_config、新开关NOTICE f [隔离环境 L-SQL]
+- ci_run_url: —（未推送）
+- 未测项: 最终客户端全量门禁、冻结和推送；staging及生产未执行
+- 下一条: D-57.7
+- 附: 唯一MTS为20261122035253。候选迁移sha256为97adefdd8d62a50442c6e7bd8e0d1a0bf5cc52b3ad7ba962a5f205244f625298，此时未冻结。客户端EVENT_SPACE断言在工作区保留、未混入服务端提交；旧测试未删、未标skip。RUNBOOK已记录旧VERIFY首错和实际复验顺序。
+
+### L258 · 2026-11-22 04:50 CT · D-57 第7项：新客户端用例在旧应用树上全红
+- task_id: D-57.7
+- code_sha: 7c9ffb4加未提交测试；运行前git diff HEAD -- app/src为空
+- docs_sha: 5c17b82
+- 环境: L-UI、本地容器
+- 命令: SMOKE_SPECS="community-member-events.spec.ts" run-checks smoke；文件清单community-member-events.spec.ts，共1文件；check-20261122T094309Z.log
+- 计数: Running64、failed64、passed0、skipped0、STEP smoke rc1、807秒；两宽度均因尚无发起入口、表单或详情操作而失败，没有测试语法错误 [本地测]
+- ci_run_url: —
+- 未测项: 客户端UI尚未实现；红测不是验收通过
+- 下一条: D-57.7 共用文本规整及写入逻辑
+- 附: 复用原话题认证夹具，新增verified/lang/theme可选项，旧默认值不变。正文、开关、重试和取消走路由拦截；客户端源码在这次红测结束后才修改。磁盘前346953670656、后346952421376字节。
+
+### L259 · 2026-11-22 04:50 CT · D-57 第7项：文本规整、开关缓存和写入逻辑通过
+- task_id: D-57.7 共用代码、写入组合函数、node单测
+- code_sha: e3eae3ace97a42c661f98b0e1c30e1caae924234
+- docs_sha: 5c17b82
+- 环境: 本地容器、源码检查
+- 命令: D-57.6a6指定Python命令生成83字节字符类并拼入补丁；node定向红测check-20261122T100622Z；绿测check-20261122T101510Z；分包外类型导入负对照check-20261122T102457Z、恢复后边界及RPC登记check-20261122T102737Z；最终typecheck与写入单测check-20261122T103542Z
+- 计数: 新Node首跑36/0/36/0；首次绿灯63/63/0/0（客户端36、服务端27，含26码位一致性）；架构负对照1/0/1/0且点名临时分包外文件；删除临时控制后边界和RPC登记3/3/0/0；最终写入文件29/29/0/0、typecheck rc0；开关文件8条已在63条绿灯中通过。TS代码规范最终exit0 [本地测]
+- ci_run_url: —（本地增量提交，未推送）
+- 未测项: 活动入口、发起页、详情操作、截图、最终全量门禁仍待完成；编辑器LSP未安装，类型证据来自容器vue-tsc
+- 下一条: D-57.7 活动列表入口及账号门禁
+- 附: 开关按账号缓存60秒，错误和旧账号迟到响应均为false；取消使列表缓存及在途旧读失效。发起顺序、三项文本检查、微信scene3、未知结果保留调用者postId、受限账号取消和十二个服务端码映射均有单测。代码规范先指出两处未区分已分类错误的catch，现直接重抛已有结果状态的Error，仅为未分类错误补状态。八个逻辑/Node文件已提交；三个UI测试相关文件仍留工作区。
