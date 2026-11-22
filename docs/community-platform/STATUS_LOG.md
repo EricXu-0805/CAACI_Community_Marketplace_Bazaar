@@ -3250,3 +3250,51 @@ mig:P4 逐条（改了，或不改的理由），都在 35a694e：
 - 未测项: P4 最终 Running N 尚未产生；最终三种推算在 FINAL 第十一批④用这个 N 计算，本条不把估算当实测
 - 下一条: 等 P4 最终门禁后完成 D-57.9f
 - 附: gh run view 的当前 JSON 只有 job 时间、没有步骤时间，使用同一次运行的 jobs API 补齐；gh run view --log 返回空文件，已改从 job 日志接口取得真实 Running 计数。ci.yml 不改。第十一批④草稿的 P3.7 行已补回：之后把 #379 的 base 改到 main 跑 CI（STATUS 阻塞第12条；改 base 之前只普通 git merge origin/main，D-55 第2项l）；这里只补文案，OMO 不改 base。
+
+### L237 · 2026-11-22 00:46 CT · D-57 第 2 项：第二次材料推送扫描凭据
+- task_id: D-57.2
+- code_sha: —
+- docs_sha: 83a7b67（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: python3 ~/work/evidence/tools/scan17d.py 99dd903 --log；git push origin codex/community-plan-v5；git ls-remote
+- 计数: 17d：scan17d.log 第 2 行，HEAD 83a7b67，① 0 ② 0（号池0，trailer豁免1）③ 0 ④ 0 ⑤ 0，exit 0；推后远端83a7b67与扫描HEAD一致 [本地测]
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-57.4a
+- 附: 本次记录随新的恢复事项一起写回，没有为记账单独起推送。
+
+### L238 · 2026-11-22 00:46 CT · [OMO自决] D-57 三个任务的接续中断与恢复
+- task_id: D-57.4、D-57.6、D-57.8
+- code_sha: P3 本地5ae88f6加未提交改动；P4服务端及视口各自保留现场
+- docs_sha: 83a7b67（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: 06:34Z 核进程与证据时间；在同一flock内先umask022再查磁盘及podman ps；分别omo-steer.sh check、前台读回、task_send续接原任务；序号仅存~/work/evidence/D57/parent-steers.json
+- 计数: 恢复前没有run-checks或L-SQL宿主进程、没有容器，锁空闲；前后空闲均347275034624字节。三个check均9字节600；发送P3序号20261122063720、P4服务端20261122063732、视口20261122063745，工具均返回Revived。视口回执已确认接受20261122063745，并保留已过的二十轮 [本地测]
+- ci_run_url: —
+- 未测项: 中断根因尚未确认；监控寿命可能有关，但没有当成已定位原因
+- 下一条: 恢复未完成检查，保留已通过证据
+- 附: 选择：从现有结果续接，不重新派任务、不改模型或账号。理由：证据停在04:03附近，已不存在对应运行；此前把中途completion当作仍有活跃接续的依据不足。视口check-20261122T035951Z为80 passed、20 skipped，保留；P3 check-20261122T040320Z没有最终summary/STEP且报告收到signal15，只恢复该未完成绿测。长运行改用持久后台会话和完成文件监控。撤回不适用，没有改已完成结果。
+
+### L239 · 2026-11-22 00:46 CT · [OMO自决] 17c：释放出错的P3子任务，由主会话接手
+- task_id: D-57.4、D-57.2（17c、序号核对）
+- code_sha: P3 本地5ae88f6；远端fdb823a
+- docs_sha: 83a7b67（本次写回之前材料分支的 HEAD）
+- 环境: 本地
+- 命令: task_output核宿主错误；任务工具redispatch拒绝error状态；task_cancel st_01a20159释放保留的continuation；取消后查run-checks/lsql进程、共享flock、podman ps与git ls-remote；SMOKE_SPECS=community-reply-target.spec.ts恢复绿测，日志~/work/evidence/D57/p3/green-main-20261122T064527Z.log
+- 计数: 取消后三项：①没有P3运行进程或容器；②锁取得成功且检查退出0；③远端仍fdb823a，无额外推送。磁盘前后347117850624字节。当前恢复运行的精确SMOKE_SPECS为1文件community-reply-target.spec.ts，预期Running6，结果待返回 [本地测]
+- ci_run_url: —
+- 未测项: 当前六条绿测、最终全量门禁和视口六十轮尚未完成
+- 下一条: D-57.4a
+- 附: 失败任务st_01a20159，类别deep-low，已观察模型chatgpt-subscription/gpt-6.1-sol；错误为宿主interrupted、要求Human input或Resume，没有登录/额度错误或重置时刻信息。支持的恢复接口不接受该error状态，未继续尝试此接口，未更改配置。选择主会话接手原目录，只保留现有两文件改动；不重派模型。主会话发过20261122063720，但子任务最终报告没有该序号的执行回执，按17a核对要求记录缺项，不断言已执行。两处touchstart守卫、动作行最小高度和原红测证据均保留。撤回不适用。
+
+### L240 · 2026-11-22 00:56 CT · D-57 第 4 项：恢复绿测，长按通过，桌面测试交互修正
+- task_id: D-57.4a（进行中）、D-57.4b
+- code_sha: P3 本地5ae88f6加两文件未提交改动
+- docs_sha: 83a7b67（本次写回之前材料分支的 HEAD）
+- 环境: L-UI，本机容器
+- 命令: SMOKE_SPECS=community-reply-target.spec.ts，文件数1；run-locked.sh smoke，日志check-20261122T064641Z；读取失败页面快照、当前uni-h5动作菜单样式及App.vue键盘处理；更正两个高度场景的菜单关闭动作，再以SMOKE_SPECS="community-reply-target.spec.ts --grep=pending"（文件数1，预期Running2）运行，证据~/work/evidence/D57/p3/layout-dismiss-20261122T065406Z.log
+- 计数: 第一轮Running6：5 passed、1 failed；手机楼与楼中楼高度95.421875→95.421875，跟随元素y分别553.59375→553.59375、744.4375→744.4375，差均0。两条长按pending light/heavy/timers均0/0/0，saved均1/1/1，均通过；desktop在测量前超时。容器前后空闲347113484288/347099820032字节 [隔离环境 L-UI]
+- ci_run_url: —
+- 未测项: 更正后的双宽度结果等待后台通知；全量门禁未开始；编辑器typescript-language-server缺失，未安装新依赖，容器typecheck仍须运行
+- 下一条: D-57.4a
+- 附: [OMO自决] 选择：高度场景从手机取消按钮改为在可见菜单项按Escape关闭，两处长按场景仍点击手机取消。理由：桌面运行快照中菜单已打开却没有可见Cancel；当前uni-h5在宽高均至少500px时隐藏取消组，App.vue原有键盘增强已支持Escape。没有改应用来迎合测试，没有增加超时或重试，没有删改高度、位移、菜单和动作数量断言。撤回：反向修改这两处测试交互；原超时日志保留。
