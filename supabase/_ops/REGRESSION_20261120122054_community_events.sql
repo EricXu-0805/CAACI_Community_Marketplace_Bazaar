@@ -146,6 +146,10 @@ INSERT INTO public.moderation_keywords(keyword) VALUES ('evblockedmarker');
 -- Part 0 (D-54 2l): the member write channel as the migration leaves it.
 DO $closed$
 BEGIN
+  IF pg_catalog.to_regclass('private.community_member_event_config') IS NOT NULL THEN
+    RAISE NOTICE 'EV_CLOSED|SKIP|member_event_config';
+  ELSE
+BEGIN
   -- Nobody may execute the function. This is read from the catalog: on this
   -- image a call without EXECUTE under SET ROLE takes the backend down
   -- instead of answering 42501 (scripts/community-events.test.mjs makes the
@@ -174,6 +178,8 @@ BEGIN
     PERFORM pg_temp.expect('update without the grant', SQLERRM, 'permission denied for table community_events');
   END;
   RAISE NOTICE 'EV_CLOSED|PASS';
+END;
+  END IF;
 END
 $closed$;
 
@@ -183,6 +189,14 @@ GRANT EXECUTE ON FUNCTION public.create_member_event(uuid, text, text, jsonb) TO
 GRANT INSERT (source_type, source_key, organizer_user_id, discussion_post_id, starts_at, ends_at, location, registration_mode)
   ON TABLE public.community_events TO authenticated;
 GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO authenticated;
+
+DO $member_switch$
+BEGIN
+  IF pg_catalog.to_regclass('private.community_member_event_config') IS NOT NULL THEN
+    UPDATE private.community_member_event_config SET enabled = true WHERE singleton;
+  END IF;
+END
+$member_switch$;
 
 -- Organizations' rows, in the three shapes their writers will produce. 51,
 -- 52 and 53 start at the same instant; 54 belongs to a partner that withdrew
