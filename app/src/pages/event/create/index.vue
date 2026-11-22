@@ -65,6 +65,7 @@
           <text v-if="field === 'location'" id="me-location-hint" class="me-hint">{{ t('events.form.locationHint') }}</text>
           <text v-if="errors[field]" :id="`me-${field}-error`" class="me-error" role="alert">{{ errors[field] }}</text>
         </view>
+        <text v-if="draftSaveFailed" class="me-error" role="status">{{ t('publish.draftSaveFailed') }}</text>
         <text v-if="formError" class="me-error" role="alert">{{ formError }}</text>
         <UButton :loading="submitting" block class="me-submit" @click="submit"
           @keydown.enter.prevent="submit" @keydown.space.prevent="submit">{{ t('events.create') }}</UButton>
@@ -108,6 +109,7 @@ const timeFields = { startsAt: { date: 'startDate', time: 'startTime' }, endsAt:
 const loading = ref(true), creationOpen = ref(false), submitting = ref(false)
 const errors = ref<Partial<Record<MemberEventField, string>>>({})
 const formError = ref('')
+const draftSaveFailed = ref(false)
 let epoch = 0
 let visible = false
 
@@ -132,6 +134,7 @@ const unsubscribe = onAccountTransition(() => {
   submitting.value = false
   errors.value = {}
   formError.value = ''
+  draftSaveFailed.value = false
   if (visible) void initialize()
 })
 onUnmounted(() => { visible = false; epoch += 1; unsubscribe() })
@@ -158,7 +161,7 @@ async function submit() {
   const current = () => mine === epoch && isAccountRequestCurrent(token)
   errors.value = {}
   formError.value = ''
-  if (!stored.persist()) { formError.value = t('publish.draftSaveFailed'); return }
+  draftSaveFailed.value = !stored.persist()
   submitting.value = true
   try {
     const result = await createMemberEvent({

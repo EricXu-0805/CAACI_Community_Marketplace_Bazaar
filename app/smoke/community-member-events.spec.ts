@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { AUTHOR, READER, TOPIC, announced, text } from './community-topic-fixture'
-import { CONVERSATION_ID, EVENT_ID, fillMemberForm, installMemberEvents, openFresh } from './community-member-event-fixture'
+import { CONVERSATION_ID, EVENT_ID, failMemberDraftStorage, fillMemberForm, installMemberEvents, openFresh } from './community-member-event-fixture'
 
 const CREATE = 'pages/event/create/index'
 const DETAIL = `pages/event/detail/index?id=${EVENT_ID}`
@@ -95,6 +95,45 @@ for (const width of [390, 1280]) {
         releaseSwitch?.()
       }
     })
+
+    test('draft storage failure does not block a successful publication', async ({ page }) => {
+      const fixture = await installMemberEvents(page)
+      await failMemberDraftStorage(page)
+      await openFresh(page, CREATE)
+      await fillMemberForm(page)
+      await page.locator('.me-form').getByRole('button', { name: 'Organize an event', exact: true }).click()
+      await expect(page).toHaveURL(new RegExp(DETAIL.replace('?', '\\?') + '$'))
+      expect(fixture.createCalls).toHaveLength(1)
+    })
+
+    for (const theme of ['light', 'dark'] as const) {
+      test(`draft storage failure keeps edits and retry identity in ${theme}`, async ({ page }, testInfo) => {
+        await page.emulateMedia({ colorScheme: theme })
+        const fixture = await installMemberEvents(page, { theme })
+        fixture.createError = 'member_event_active_limit'
+        await failMemberDraftStorage(page)
+        await openFresh(page, CREATE)
+        await fillMemberForm(page)
+        const form = page.locator('.me-form')
+        const submit = form.getByRole('button', { name: 'Organize an event', exact: true })
+        await submit.click()
+        await expect(form.getByText(text('publish.draftSaveFailed'), { exact: true })).toBeVisible()
+        try {
+          await expect.poll(() => fixture.createCalls.length).toBe(1)
+          await expect(form.getByText(errors.limit, { exact: true })).toBeVisible()
+          await expect(form.getByText(text('publish.draftSaveFailed'), { exact: true })).toBeVisible()
+        } finally {
+          await submit.scrollIntoViewIfNeeded()
+          await page.screenshot({ path: testInfo.outputPath(`draft-storage-error-${width}-${theme}-en.png`), animations: 'disabled' })
+        }
+        await expect(form.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Saturday badminton')
+        fixture.createError = ''
+        await submit.click()
+        await expect(page).toHaveURL(new RegExp(DETAIL.replace('?', '\\?') + '$'))
+        expect(fixture.createCalls).toHaveLength(2)
+        expect(fixture.createCalls[1]).toEqual(fixture.createCalls[0])
+      })
+    }
 
     test('a guest follows the existing login flow', async ({ page }) => {
       await installMemberEvents(page, { reader: 'guest' })

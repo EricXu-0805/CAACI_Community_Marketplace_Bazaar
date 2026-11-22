@@ -142,6 +142,18 @@ export async function openFresh(page: Page, path: string) {
   await page.goto(`/#/${path}`, { waitUntil: 'networkidle' })
 }
 
+export async function failMemberDraftStorage(page: Page) {
+  await page.addInitScript(() => {
+    const write = Storage.prototype.setItem
+    Storage.prototype.setItem = function (this: Storage, key: string, value: string) {
+      if (key === 'events_create_draft_v1') {
+        throw new DOMException('Synthetic draft write failure', 'QuotaExceededError')
+      }
+      write.call(this, key, value)
+    }
+  })
+}
+
 export async function fillMemberForm(page: Page) {
   const form = page.locator('.me-form')
   await expect(form).toBeVisible()
