@@ -46,7 +46,13 @@ const json = (route: Route, body: unknown, status = 200) => route.fulfill({
 })
 
 /** Seeds a session (or none) and installs the routes. `level` puts the reader under that restriction. */
-export async function installTopicFixture(page: Page, options: { user?: string | null; level?: number } = {}): Promise<TopicFixture> {
+export async function installTopicFixture(page: Page, options: {
+  readonly user?: string | null
+  readonly level?: number
+  readonly verified?: boolean
+  readonly lang?: 'en' | 'zh'
+  readonly theme?: 'light' | 'dark'
+} = {}): Promise<TopicFixture> {
   const user = options.user === undefined ? READER : options.user
   const fixture: TopicFixture = {
     marks: { post_follows: new Set(), post_bookmarks: new Set() },
@@ -63,10 +69,10 @@ export async function installTopicFixture(page: Page, options: { user?: string |
       last = now
     }).observe(document, { childList: true, subtree: true, characterData: true })
   })
-  await page.addInitScript(([ref, uid]) => {
+  await page.addInitScript(([ref, uid, lang, theme]) => {
     localStorage.setItem('welcomed', '1')
-    localStorage.setItem('lang', 'en')
-    localStorage.setItem('theme_pref', 'light')
+    localStorage.setItem('lang', lang)
+    localStorage.setItem('theme_pref', theme)
     if (!uid) return
     const generation = 'topic-fixture-generation-0001'
     localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify({
@@ -78,11 +84,11 @@ export async function installTopicFixture(page: Page, options: { user?: string |
       }),
     }))
     localStorage.setItem(`sb-${ref}-auth-token-auth-boundary-v2`, JSON.stringify({ v: 2, mode: 'allowed', generation }))
-  }, [REF, user] as const)
+  }, [REF, user, options.lang ?? 'en', options.theme ?? 'light'] as const)
 
   const profile = {
     id: user, nickname: 'Reader', avatar_url: null, tos_version: CURRENT_CONSENT_VERSION, bio: '', location: 'UIUC',
-    is_illini_verified: true, suspension_level: options.level ?? 0,
+    is_illini_verified: options.verified ?? true, suspension_level: options.level ?? 0,
     suspended_until: options.level ? '2100-12-03T12:34:56Z' : null,
   }
   await page.route('**/*.supabase.co/**', route => json(route, route.request().url().includes('/rpc/get_my_profile') ? profile : []))

@@ -12,6 +12,7 @@
         <UIcon name="chevron-left" size="xs" color="accent-primary" />
       </view>
       <text class="header-title">{{ t('nav.events') }}</text>
+      <EventMenu v-if="event && !loading" :event="event" @cancelled="onCancelled" />
     </view>
 
     <view v-if="loading" class="ed-state" aria-busy="true">
@@ -42,9 +43,17 @@
         <text class="ed-fact" data-test="event-time">{{ formatEventDetailTime(event, language) }}</text>
         <text v-if="deviceTime" class="ed-fact ed-quiet" data-test="event-device-time">{{ deviceTime }}</text>
         <text v-if="place" class="ed-fact" data-test="event-place">{{ place }}</text>
-        <text v-if="event.source_type === 'member' && event.organizer_nickname" class="ed-fact ed-quiet">{{ t('events.organizer', { name: event.organizer_nickname }) }}</text>
       </view>
       <text v-if="summary" class="ed-summary">{{ summary }}</text>
+      <view v-if="event.source_type === 'member'" class="ed-author">
+        <UAvatar class="ed-author-avatar" :src="event.organizer_avatar_url" :owner="event.organizer_user_id"
+          :fallback="isDark ? '/static/default-avatar-dark.svg' : '/static/default-avatar.svg'" aria-hidden="true" />
+        <view class="ed-author-copy">
+          <text class="ed-author-name">{{ event.organizer_nickname || t('app.user') }}</text>
+          <UBadge v-if="event.organizer_is_illini_verified" class="ed-verified" variant="illini" :label="t('profile.illiniVerified')" />
+        </view>
+        <UButton v-if="canContact" variant="ghost" :loading="contacting" @click="contact">{{ t('seller.message') }}</UButton>
+      </view>
 
       <!-- SPEC 6.7.9: registration is with the organizer; a link off the allowlist has no button. -->
       <view v-if="actions.length" class="ed-actions">
@@ -58,6 +67,7 @@
           <text v-if="action.kind === 'partnerRegister'" class="ed-note">{{ t('events.cta.partnerNote', { org: partnerName }) }}</text>
         </template>
       </view>
+      <UButton v-if="canContact" variant="ghost" :loading="contacting" @click="contact">{{ t('events.cta.dmOrganizer') }}</UButton>
 
       <text v-if="event.source_type === 'member'" class="ed-safety">{{ t('events.memberSafety') }}</text>
       <text class="ed-wrong" role="button" tabindex="0" data-test="event-wrong-info"
@@ -71,7 +81,7 @@
 /*
  * P4.8 (SPEC 6.7.6): one event. The row comes from the list the reader just
  * saw, or from list_community_events when the page is opened directly. No
- * image of any source is rendered and no web view is opened.
+ * event poster is rendered and no web view is opened.
  */
 // #ifdef H5
 import AppSidebar from '../../../components/AppSidebar.vue'
@@ -84,6 +94,12 @@ import AppToast from '../../../components/AppToast.vue'
 import { computed, ref, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import UIcon from '../../../components/UIcon.vue'
+import UAvatar from '../../../components/UAvatar.vue'
+import UBadge from '../../../components/UBadge.vue'
+import UButton from '../../../components/UButton.vue'
+import EventMenu from '../EventMenu.vue'
+import { useOrganizerContact } from '../useOrganizerContact'
+import { useTheme } from '../../../composables/useTheme'
 import { useCommunityEvents } from '../../../composables/useCommunityEvents'
 import { useI18n } from '../../../composables/useI18n'
 import { SUPPORT_EMAIL } from '../../../config/runtime'
@@ -100,6 +116,8 @@ const language = computed(() => (lang.value === 'zh' ? 'zh' : 'en'))
 
 const eventId = ref('')
 const event = ref<CommunityEvent | null>(null)
+const { canContact, busy: contacting, contact } = useOrganizerContact(event)
+const { isDark } = useTheme()
 const loading = ref(true)
 const loadError = ref(false)
 const now = ref(Date.now())
@@ -199,6 +217,9 @@ function reportWrongInfo() {
   // #endif
 }
 function goList() { navigateBackOr(() => uni.redirectTo({ url: '/pages/events/index' })) }
+function onCancelled(result: { readonly id: string; readonly cancelled_at: string }) {
+  if (event.value?.id === result.id) event.value = { ...event.value, cancelled_at: result.cancelled_at }
+}
 </script>
 
 <style lang="scss" scoped>
@@ -226,6 +247,11 @@ function goList() { navigateBackOr(() => uni.redirectTo({ url: '/pages/events/in
 .ed-fact { font-size: 15px; line-height: 22px; color: var(--ink); }
 .ed-quiet { font-size: 13px; line-height: 20px; color: var(--ink-quiet); }
 .ed-summary { font-size: 15px; line-height: 24px; color: var(--ink); white-space: pre-wrap; }
+.ed-author { display: flex; align-items: center; gap: var(--space-3); }
+.ed-author-avatar { width: var(--space-7); height: var(--space-7); border-radius: 50%; flex: none; }
+.ed-author-copy { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1; }
+.ed-author-name { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-author .ed-verified { align-self: flex-start; font-size: 12px; }
 .ed-actions { display: flex; flex-direction: column; gap: var(--space-2); }
 .ed-act {
   min-height: 44px; display: flex; align-items: center; justify-content: center; padding: 0 var(--space-4);

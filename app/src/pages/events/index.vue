@@ -12,6 +12,7 @@
         <UIcon name="chevron-left" size="xs" color="accent-primary" />
       </view>
       <text class="header-title" role="heading" aria-level="1">{{ t(past ? 'events.pastTitle' : 'nav.events') }}</text>
+      <MemberEventStart v-if="creationOpen" responsive />
     </view>
 
     <!-- SPEC 6.7.4 item 2: the source filter; the last choice is remembered on this device. -->
@@ -54,6 +55,7 @@
             <text class="ev-state-t">{{ t(`events.empty.${filter}`) }}</text>
             <text v-for="link in emptyLinks" :key="link.key" class="ev-link" role="button" tabindex="0" :data-link="link.key"
               @click="openLink(link.url)" @keydown.enter.prevent="openLink(link.url)">{{ t(link.key) }}</text>
+            <MemberEventStart v-if="creationOpen && (filter === 'all' || filter === 'member')" />
           </view>
           <template v-else>
             <view v-if="view.live.length" class="ev-group" data-group="live">
@@ -84,14 +86,7 @@
       </view>
 
       <!-- #ifdef H5 -->
-      <!-- SPEC 6.7.4, desktop: how to read the four sources. -->
-      <view class="ev-side" data-block="event-sources">
-        <text class="ev-side-h" role="heading" aria-level="2">{{ t('events.sourcesTitle') }}</text>
-        <view v-for="source in SOURCES" :key="source" class="ev-side-row">
-          <text class="ev-side-tag">{{ t(`events.filter.${source}`) }}</text>
-          <text class="ev-side-t">{{ t(`events.side.${source}`) }}</text>
-        </view>
-      </view>
+      <EventsSidebar :creation-open="creationOpen" />
       <!-- #endif -->
     </view>
     </view>
@@ -107,6 +102,7 @@
  */
 // #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
+import EventsSidebar from '../../components/EventsSidebar.vue'
 // #endif
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
@@ -117,16 +113,16 @@ import { computed, ref, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import EventCard from '../../components/EventCard.vue'
 import UIcon from '../../components/UIcon.vue'
+import MemberEventStart from '../../components/MemberEventStart.vue'
 import { useCommunityEvents } from '../../composables/useCommunityEvents'
 import { useI18n } from '../../composables/useI18n'
 import { navigateBackOr } from '../../utils'
 import {
   EVENT_FILTERS, buildEventList, eventEmptyLinks, formatEventGroupHead,
-  type CommunityEvent, type EventDateHead, type EventFilter, type EventSource,
+  type CommunityEvent, type EventDateHead, type EventFilter,
 } from '../../utils/communityEvents'
 import { openExternalLink } from '../../utils/eventLinks'
 
-const SOURCES: EventSource[] = ['caaci', 'partner', 'campus', 'member']
 const FILTER_KEY = 'community_events_filter'
 // SPEC 6.7.9: the mini program opens no web page; a link there copies its address, and its label says so.
 let copiesLinks = true
@@ -135,7 +131,7 @@ copiesLinks = false
 // #endif
 
 const { t, tc, lang } = useI18n()
-const { listEvents } = useCommunityEvents()
+const { listEvents, memberEventsOpen } = useCommunityEvents()
 const language = computed(() => (lang.value === 'zh' ? 'zh' : 'en'))
 
 function readFilter(): EventFilter {
@@ -150,6 +146,7 @@ const rows = ref<CommunityEvent[]>([])
 const pastRows = ref<CommunityEvent[]>([])
 const loading = ref(true)
 const loadError = ref(false)
+const creationOpen = ref(false)
 const allLive = ref(false)
 // The instant the list was read at: states and "today" are judged against it.
 const now = ref(Date.now())
@@ -165,6 +162,9 @@ async function load() {
   const mine = ++epoch
   loading.value = (past.value ? pastRows.value : rows.value).length === 0
   loadError.value = false
+  const open = await memberEventsOpen()
+  if (mine !== epoch) return
+  creationOpen.value = open
   try {
     const next = await listEvents(past.value ? 'past' : 'upcoming')
     if (mine !== epoch) return
@@ -224,7 +224,6 @@ function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/plaza/inde
 .ev-chip.on .ev-chip-t { color: var(--surface); }
 .ev-cols { display: flex; align-items: flex-start; gap: var(--space-6); }
 .ev-main { flex: 1; min-width: 0; }
-.ev-side { display: none; }
 .ev-group-h {
   display: flex; align-items: center; height: 36px; padding: 0 var(--space-4);
   font-size: 13px; font-weight: 600; color: var(--ink-soft);
@@ -247,17 +246,6 @@ function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/plaza/inde
   .ev-cols { max-width: 1200px; margin: var(--space-5) auto 0; padding: 0 var(--space-6); box-sizing: border-box; }
   .ev-main { max-width: 876px; }
   .ev-list { border-radius: var(--radius-sm); overflow: hidden; box-shadow: inset 0 0 0 1px var(--line-soft); }
-  .ev-side {
-    display: block; flex: none; width: 300px; box-sizing: border-box; padding: var(--space-4);
-    border-radius: var(--radius-sm); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-soft);
-  }
-  .ev-side-h { display: block; margin-bottom: var(--space-2); font-size: 15px; line-height: 24px; font-weight: 600; color: var(--ink); }
-  .ev-side-row { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) 0; }
-  .ev-side-tag {
-    align-self: flex-start; font-size: 12px; line-height: 18px; padding: 0 var(--space-2); border-radius: var(--radius-xs);
-    color: var(--ink-soft); box-shadow: inset 0 0 0 1px var(--line-soft);
-  }
-  .ev-side-t { font-size: 13px; line-height: 20px; color: var(--ink-soft); }
 }
 /* #endif */
 </style>

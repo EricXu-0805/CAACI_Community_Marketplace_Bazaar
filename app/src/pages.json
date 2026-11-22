@@ -73,6 +73,10 @@
 			"style": { "navigationStyle": "custom" }
 		},
 		{
+			"path": "pages/event/create/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/history/index",
 			"style": { "navigationStyle": "custom" }
 		},
@@ -208,7 +212,10 @@
 		},
 		{
 			"root": "pages/event",
-			"pages": [{ "path": "detail/index", "style": { "navigationStyle": "custom" } }]
+			"pages": [
+				{ "path": "detail/index", "style": { "navigationStyle": "custom" } },
+				{ "path": "create/index", "style": { "navigationStyle": "custom" } }
+			]
 		},
 		{
 			"root": "pages/following",
