@@ -200,6 +200,9 @@ function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/plaza/inde
 .header {
   display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4);
   padding-top: calc(var(--space-3) + var(--mp-status-bar, env(safe-area-inset-top, 0px)));
+  /* #ifdef MP-WEIXIN */
+  padding-right: var(--mp-navbar-right-pad, 0px);
+  /* #endif */
   background: var(--surface); box-shadow: inset 0 -1px 0 var(--line-hair);
 }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }

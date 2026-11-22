@@ -124,3 +124,21 @@ test('WeChat tablet keeps primary navigation and page headers without an H5 side
     })
   }
 })
+
+test('WeChat event headers reserve the native capsule before compilation', () => {
+  for (const page of ['pages/events/index.vue', 'pages/event/detail/index.vue']) {
+    const source = fs.readFileSync(path.join(sourceRoot, page), 'utf8')
+    const css = scopedStyleBlocks(source).map(block => {
+      const mpSource = keepForMpWeixin(block.body)
+      return block.isScss ? sass.compileString(mpSource).css : mpSource
+    }).join('\n')
+    const insets = []
+    postcss.parse(css).walkRules('.header', rule => {
+      rule.walkDecls('padding-right', declaration => { insets.push(declaration.value) })
+    })
+    assert.ok(
+      insets.includes('var(--mp-navbar-right-pad, 0px)'),
+      `${page}: WeChat header must reserve the native capsule`,
+    )
+  }
+})
