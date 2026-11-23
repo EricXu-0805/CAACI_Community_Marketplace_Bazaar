@@ -5314,3 +5314,39 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 旧head未另跑这条额外strict命令；不声称全spec严格编译通过
 - 下一条: D-59.1c
 - 附: 没有浏览器在失败命令中启动，未把旧test-results作本次证据；未改旧回调、未压错误。仓库正式typecheck属于正在执行的完整门禁，另记录其结果；本条纳入FINAL⑥。
+
+### L393 · 2026-11-23 06:37 CT · D-59基线证据第三次材料推送完成
+- task_id: D-59.1a/1b
+- code_sha: a9c271b0
+- docs_sha: 4a60102a（本次写回之前材料分支的HEAD）
+- 环境: 本地及GitHub
+- 命令: scan17d.py ffb743dd --log；git push --no-verify origin HEAD:refs/heads/codex/community-plan-v5；git ls-remote
+- 计数: 4a60102；scan40 exit0、incomplete0；远端一致；材料累计3次推送/3次扫描
+- ci_run_url: —
+- 未测项: 当时完整门禁尚未完成
+- 下一条: D-59.1c
+- 附: L386–L392已发布；没有把局部绿色或预期负对照当作全量通过。
+
+### L394 · 2026-11-23 06:37 CT · D-59子任务完整门禁被外部信号打断
+- task_id: D-59.1c/中断
+- code_sha: a9c271b0
+- docs_sha: 4a60102a（本次写回之前材料分支的HEAD）
+- 环境: 本地后台容器
+- 命令: 读check-20261123T105510Z-smoke.log末端；认证消息20261123121555要求停推并只读原bash_33；核进程、同锁podman元数据与原产物副本
+- 计数: 2026-11-23 11:19:29Z出现SIGTERM；原会话已不存在；前8步0，TEST2664/2663/0/1 pg_skips0；smoke计划571，仅260pass/0fail/1skip，无汇总；audit未跑
+- ci_run_url: —
+- 未测项: 发送SIGTERM的上游来源未记录；完整门禁未通过，最终60轮、CI未跑
+- 下一条: D-59.1c/恢复
+- 附: 原参数background=true，timeout及auto_reap_minutes均未传，监控是无截止的文件watch；不能把自动回收说成已证实原因。仅核已知配置的terminal.backgroundAutoReapMinutes字段，两处unset；未改配置。当前无该运行的进程或容器，锁可取得；磁盘前后340821516288/340820881408。保留83个浏览器产物、25282670字节，与原目录清单一致；原日志及启动记录存私有hold目录。未task_cancel、未kill进程或容器。
+
+### L395 · 2026-11-23 06:37 CT · D-59主会话接管完整门禁恢复
+- task_id: D-59.1c/恢复
+- code_sha: a9c271b0
+- docs_sha: 4a60102a（本次写回之前材料分支的HEAD）
+- 环境: 本地主会话后台
+- 命令: tool.bash(run_in_background=true,auto_reap_minutes=0)；SMOKE_SPECS="$(cd ~/work/illini-smoke-stub/app/smoke && ls *.spec.ts | grep -v -e compiled-chunk-recovery -e compiled-draft-persistence | tr '\n' ' ')" bash ~/work/evidence/D59/run-locked.sh stub/final-ten-parent-20261123T123228Z ~/work/illini-smoke-stub ~/work/illini-dev-env/run-checks.sh ~/work/illini-smoke-stub install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；同cell注册persistent完成watch
+- 计数: 启动bash_940，watch_94；同一干净a9c271b，远端分支尚不存在；开跑前可用340875632640字节；新运行尚未结束
+- ci_run_url: —
+- 未测项: 新完整门禁、699六十轮、首次推送及PR/CI仍待
+- 下一条: D-59.1c
+- 附: 主会话接管剩余门禁与首次交付；子任务保持停推，不并发操作。原中断调用不拼接成通过，按D59要求从同一行完整十步重做；这是执行恢复，不宣称未知信号来源已修复。未改源码、断言或配置，未重跑已经完成的一次性诊断及变异对照。
