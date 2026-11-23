@@ -5554,3 +5554,111 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 最终全量、L-SQL和唯一P4推送待后续；TypeScript/Vue LSP不可用，未声称LSP通过
 - 下一条: D-59.2
 - 附: 主包1468020不变、余104844；pages/event由37187到37201（+14，一行catch告警分支），无其他产物变化声明。四张390/1280浅深色告警截图已亲看，无文字重叠；浅色为新晚失败路径，深色为原早失败路径，全部私有保存。没有加依赖或改配置，改用已有容器typecheck。读取既有run-checks脚本时出现生产/官网标识的自检正则，属于D42源码例外，未连接托管库。supabase差异为空。
+
+### L413 · 2026-11-23 15:52 CT · D-59第七次材料推送核对
+- task_id: D-59.5写回
+- code_sha: cdb4d131
+- docs_sha: dfe18093（本次写回之前材料分支的HEAD）
+- 环境: GitHub
+- 命令: scan17d.py 70bf78f9 --log；git push --no-verify origin HEAD:refs/heads/codex/community-plan-v5；git ls-remote
+- 计数: dfe1809已推，scan46 exit0/incomplete0；远端一致；材料累计7次推送/7次扫描
+- ci_run_url: —
+- 未测项: P4本批代码尚未推送
+- 下一条: D-59.2
+- 附: 第5项已本地提交，回归与三项变异证据在L410–L412。
+
+### L414 · 2026-11-23 15:52 CT · D-59隔离实现分工与17条认证记录
+- task_id: D-59.2/3/4/6
+- code_sha: cdb4d131
+- docs_sha: dfe18093（本次写回之前材料分支的HEAD）
+- 环境: 本地隔离工作树与子任务
+- 命令: 只读omo doctor --models；umask022创建detached worktree并chmod755/lock；omo-steer new/check；主会话前台读回；category派出；bind/check
+- 计数: st_01a20a13 deep-high负责SQL；st_01a20a1e visual-engineering负责3/4；st_01a20a1f deep-low负责6；三份口令元数据均9字节600
+- ci_run_url: —
+- 未测项: 活动页、纯解析产物未完成主会话验收/集成
+- 下一条: D-59.2
+- 附: [OMO自决] 独立目录并行编写，主线程负责同步模块；P4仍按5→2→3→4→6集成，子任务均不推送。三个category首行均为chatgpt-subscription，openai/*排除；不查用量、不切号/模型、不改配置。调度完成通知的fallback字段显示provider名到显示名的映射；子任务未报告实际切换，不据此推断换号。UI收到认证序号20261123204318继续原任务，未重启已在跑的验证；task_cancel未使用。
+
+### L415 · 2026-11-23 15:52 CT · D-59迁移A组件完成并本地集成，仍未冻结
+- task_id: D-59.2a/2g
+- code_sha: de1e58a8
+- docs_sha: dfe18093（本次写回之前材料分支的HEAD）
+- 环境: 本地PG17与L-SQL
+- 命令: 审查子提交cfc36a8九文件、实际日志及身份；git cherry-pick cfc36a8（显式OMO身份）；逐字核五迁移与manifest前缀；对照提交tree
+- 计数: Node57/57/0/0；L-SQL186/186 errors0 done1 rc0；P3 703、EV855、MEV38、SYNC35/35；VERIFY_A通过；41/90项完成时集成
+- ci_run_url: —
+- 未测项: 集成最终head全量、A后旧对象VERIFY及四负对照未做；不冻结、不推P4
+- 下一条: D-59.2
+- 附: A=20261123201501_community_event_sync.sql，临时SHA256 bb2f91e6afcdd7a5be28bcbead4faa7e349bde22c3ca181365a2559b62ed9ce1，UNFROZEN。父已读全部SQL/测试；集成tree f595e632与子提交一致。测试日志原头为cdb4d13、unstaged=yes，未伪称当时已提交。五条冻结迁移不变，既有manifest逐字不变且只追加A一行，二级manifest不变。并发观察两个PID且一真一假；普通PG实际42501六次，L-SQL仅目录查权限。SQL子任务序号无、invalid0/host0；退出清理的SIGINT超时/SIGKILL警告保留。
+
+### L416 · 2026-11-23 15:52 CT · D-59同步模块及worker接线阶段验证
+- task_id: D-59.2b–e
+- code_sha: de1e58a8加工作区实现
+- docs_sha: dfe18093（本次写回之前材料分支的HEAD）
+- 环境: 本地容器，全替身上游
+- 命令: run-checks cmd运行sync-worker、原background-jobs/cron-monitor、sync模块/预算、dry-run与真实PG投影测试
+- 计数: T210745Z修前worker5/0/5；T211340Z消费者49/49；T212205Z模块预算33/33；T212617Z CLI与实际SQL投影14/14；真实fetch0；当前46/90
+- ci_run_url: —
+- 未测项: 要求的变异与全量test仍进行；fixture更新后要再验证；尚未提交JS实现
+- 下一条: D-59.2
+- 附: 开关关闭保留原7个JSON键；仅1启用，剩余≤12秒不调同步。预算四步为5000/5000/3500/1500；晚预算场景不apply/finish仍purge/status且HTTP200。三种抖动各780撤下相位，最长1620秒（推算27分钟，假定每拍预算够）。真实本地SQL接受模块投影；原上下游字段与实际拒绝码均核。
+
+### L417 · 2026-11-23 15:52 CT · D-59同步接口和错误处理的具体选择
+- task_id: D-59.2实现契约
+- code_sha: de1e58a8加工作区实现
+- docs_sha: dfe18093（本次写回之前材料分支的HEAD）
+- 环境: 代码与材料契约
+- 命令: 对照ENGINEERING9.2/9.9、background-jobs既有safeFailureCode及D59.2b
+- 计数: apply仅返回complete/rejected；counts键community_events_sync；未知异常沿用unexpected_failure
+- ci_run_url: —
+- 未测项: 最终全量与发布仍待
+- 下一条: D-59.2
+- 附: [OMO自决] complete是坏key降级后的最终值，供worker准确写partial，避免返回行数据；未知I/O或实现异常沿用现有worker通用码，拒绝任意错误消息进入日志。finish RPC自身失败只记一次日志、无重试，保留已计算快照结果；在finish前预算不足仍改成failed/deadline。撤回需同改调用方、返回契约和测试；A冻结后改SQL只能新前向迁移。代码仍按D59指定接线点和原调用保持不变，未为通用skill的文件长度建议做额外重构。
+
+### L418 · 2026-11-23 15:52 CT · D-59官网handler离线契约握手通过
+- task_id: D-59.2h阶段证据
+- code_sha: caaciorg28d59b1；P4工作区
+- docs_sha: dfe18093（本次写回之前材料分支的HEAD）
+- 环境: Node22容器 --network none
+- 命令: 只读28d59b1副本，复用test/helpers.js的fakeRequest/mockFetch/fakeEnv；调用onRequestGet后交normalizeCaaciEvents；stdout/stderr在容器管道逐行脱敏后才写盘
+- 计数: HTTP200；cache public,max-age60；fake DB GET1；真实fetch0；2行归一化接受；新fixture caaci-handler-28d59b1.json
+- ci_run_url: —
+- 未测项: 真实站点与真实dry-run未测，等P4.3；新fixture单测待本轮执行
+- 下一条: D-59.2
+- 附: 逐字段对照9.1：id=UUID字符串；slug/title_zh/summary_zh/ends_at/location/register_url在样本中同时有字符串和null；title_en/summary_en为字符串（summary_en可空规则另由handler源码确认）；starts_at/非空ends_at为UTC ISO；time_zone=America/Chicago；takes_registrations/registration_open为boolean；page_url为slug或id锚点，register_url仅有slug且接受报名时为对应/register/；content_hash为sha256前缀加64位hex。没有改形状迁就consumer；标题、地点均合成，所有非空summary为Synthetic description.。Node模块类型推断警告保留，未改package配置。
+
+### L419 · 2026-11-23 16:23 CT · D-59同步四类负对照及逐字恢复
+- task_id: D-59.2b/2f
+- code_sha: 3e549ae4
+- docs_sha: dfe18093（本次写回之前材料分支的HEAD）
+- 环境: 本地容器、假时钟与注入fetch
+- 命令: 分别移除1000ms守卫、三RPC第三参数、改常量14、输出替身正文；逐项目标测试后恢复SHA256
+- 计数: T214534Z预算outcome红；T215014Z三RPC参数红；T215329Z十四分钟红；T215639Z正文隐私红；T221442Z预算调用列表红；共4类5次各1/0/1/0
+- ci_run_url: —
+- 未测项: 未做真实网络或线上节奏测试
+- 下一条: D-59.3
+- 附: 首次预算控制先被outcome断言拦住，保持原断言集合、将调用列表断言前移后再做一次；T221442Z实际多出finish，故“只有claim、没有apply/finish”的断言变红，不声称那次观测到apply。十四分钟为1860秒/900相位；十二分钟三组最长1620秒/780相位，是推算。全部生产模块恢复95ab626482e052a73e614ec968c2ac67a2beb804e4a1809ed1dcc986d472e8a4。补丁未匹配/未接受时没有执行后续动作。
+
+### L420 · 2026-11-23 16:23 CT · D-59同步实现完成并本地提交，暂不开关
+- task_id: D-59.2
+- code_sha: 3e549ae4
+- docs_sha: dfe18093（本次写回之前材料分支的HEAD）
+- 环境: Node22/PG17本地容器，远端P4仍fe80882
+- 命令: run-checks test；run-checks cmd运行完整sync-worker；git diff --cached --check；显式OMO身份git commit（未用--no-verify）
+- 计数: T220100Z TEST3034/3033/0/1、pg_skips0、rc0；T221859Z worker5/5/0/0；54/90项完成；提交11文件+866/-18
+- ci_run_url: —
+- 未测项: 最终全量/186链及A后旧对象和四负对照仍待3/4/6合入；真实dry-run部分等P4.3；A未冻结，P4未推送；TypeScript/Vue/Biome LSP不可用
+- 下一条: D-59.3
+- 附: 全量在tree3c497499、unstaged=no；之后只调整新用例的断言顺序及手册VERIFY顺序，worker5/5验证新顺序；生产代码未变。提交treeac9230d8。手册统一A后先VERIFY_A再VERIFY_member、VERIFY_reply，开关只设Production且设置/删除均需新部署；停领用infinity、恢复NULL。没有修改vercel.json、cron、函数清单、旧API断言或旧迁移。
+
+### L421 · 2026-11-23 16:23 CT · D-59活动UI任务的旧快照与实际交付核对
+- task_id: D-59.3/4交接
+- code_sha: UI9d19bdf；P43e549ae4
+- docs_sha: dfe18093（本次写回之前材料分支的HEAD）
+- 环境: 本地隔离工作区与私有证据
+- 命令: task_output一次中点核对；读取MESSAGES/STATUS_LOG和文件时间；只读工作树log/status及相关进程
+- 计数: 任务工具为completed/persisted_only且host_unavailable/ensure_failed；磁盘有9d19bdf及第4项后续产物；序号20261123204318已接受执行，invalid0/replay0/hostcontext0
+- ci_run_url: —
+- 未测项: 主会话尚未接受UI测试、图像及第4项未提交改动；sticky/MP负对照文件存在但未核
+- 下一条: D-59.3
+- 附: 旧状态摘要还停在第一条负对照，不能当成实时进度。文件最后进展21:03:40Z；22:05读取仅有主会话run-checks，没有UI run-checks。主会话接回未完成审阅、恢复及提交，不另派。子任务记录4次goal continuation沿原任务，无新scope；L414的认证序号现由子任务账本确认。未使用task_cancel，取消检查次数仍0。

@@ -704,6 +704,7 @@ GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO aut
   2. 改期交给既有community_events_schedule_change；新的开始时间在48小时内时标source_time_changed_near_start。既有触发器不改。
   3. 每一行单独的PL/pgSQL子事务只捕获23514、23502、23505、22001、22023；其他错误让整个apply失败，不能吞掉。被拒但key有效的行仍算看到了：原visible/hidden复位缺席计数、清空missing_since，其他字段和可见性不动；原unavailable保持状态、计数和missing_since全部不动。返回rejected计数；有拒绝行时outcome仍可为ok/partial，error_code写rows_rejected。
   4. apply再查source_key格式；任一坏key使该行计入rejected，整份降成partial，只upsert其余行，不记缺席，防止坏数据把整库活动撤下。
+     返回JSON仅含 `{ complete: boolean, rejected: integer }`；complete为最终值，worker以它决定ok/partial，避免坏key降级信息丢失（D-59实现选择）。
   5. 只有最终complete为true才处理未出现且有效结束时间≥now()−179天的caaci行：missing_checks加1、第一次写missing_since；连续两次完整快照都缺席时转unavailable。partial只upsert，最终last_outcome为partial。
 - 撤稿时限仍为30分钟。推算（非实测）：来源缓存最坏60秒，cron每分钟一次、每拍0–10秒抖动，claim严格小于；14分钟领取间隔最坏约31分钟，改12分钟后约27分钟。此推算假定每一拍剩余预算都>12秒；被预算跳过的拍会顺延撤稿时间。确定性节奏测试遍历完整周期内每一秒撤下的情形，并分别用「成功领取的拍10秒、其他拍0秒」、全0、全10三种抖动；把模块常量改成14分钟必须使30分钟断言变红。
 - finish只写last_outcome、last_error_code，以及ok或partial时的last_success_at；failed保留旧last_success_at，不写last_attempt_at。SPEC的核对灰字读取last_success_at。模块不会向background-jobs外层抛错：错误只分类，能放下finish时记failed；finish自己失败只记一次日志，不重试finish，后续purge/status仍执行。
@@ -798,6 +799,7 @@ GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO aut
 | `bad_json`、`bad_ics`、`schema_mismatch`、`unexpected_private_fields` | 200非JSON或解析失败、形状/隐私字段不合约 | 不动，last_outcome=failed |
 | `deadline` | 某步剩余可用预算不足1000毫秒 | 停在该步之前；finish也放不下时不记sync_state，已claim的须等满间隔，报告Sentry |
 | `claim_failed` | 领取RPC报错 | 不发上游请求、不调finish；可能每分钟报告，开关前须四迁移VERIFY通过 |
+| `unexpected_failure` | 不能归入上述已知类别的I/O或实现异常，沿用既有background-jobs通用码 | 不外抛、不记录任意异常消息；已claim且预算足够时finish记failed |
 | `rows_rejected` | apply拒绝了至少一行 | outcome仍为ok或partial；有效key算已见，unavailable被拒行保持状态及缺席计数，坏key使整份partial |
 | `campus_unexpected_tz`、`campus_uid_mismatch`、`campus_too_many_occurrences`、`campus_calendar_not_allowed` | 校历数据异常或日历不在白名单 | 写入时拒绝；刷新时不动 |
 

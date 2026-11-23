@@ -1,13 +1,13 @@
 # STATUS
 
-写于 2026-11-23 14:09 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-23 16:23 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-59.2`
+`next_task_id: D-59.3`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-59第十三批进行中（L370起）。第1项已完成：a9c271b本地完整十步、60轮和只读审阅通过，PR #384的CI45186897514通过，已由supervisor合为main321a916f且同树（L397–L408）。第8项本地182链回放完成：六类不可见文本均可原样存入，全部回滚，平台边界交Eric定（L402–L403）。第9a–e/g/h已更正，第9f等P4最终N；第5项已本地提交cdb4d13，回归与负对照通过（L410–L412），现接第2项。
+D-59第十三批进行中（L370起）。第1项已完成：a9c271b本地完整十步、60轮和只读审阅通过，PR #384的CI45186897514通过，已由supervisor合为main321a916f且同树（L397–L408）。第8项本地182链回放完成：六类不可见文本均可原样存入，全部回滚，平台边界交Eric定（L402–L403）。第9a–e/g/h已更正，第9f等P4最终N；第5项已本地提交cdb4d13，回归与负对照通过（L410–L412），第2项已本地提交de1e58a与3e549ae（A未冻结），完整Node及同步对照通过，真实请求挂起（L414–L420）；现做第3项。
 
-第1项CI及合并均已核；P4从fe80882c按5→2→3→4→6提交，第5项cdb4d13已完成，现做第2项；P3不动、P4不合main。本批不请求caaciorg.com；A在最终门禁与L-SQL通过后只冻结一次，先推材料再唯一推P4。2026-11-25 12:00 CT减项、2026-11-26 12:00 CT收尾按D59.10；完成后关闭目标提醒并停止。
+第1项CI及合并均已核；P4从fe80882c按5→2→3→4→6提交，第5项cdb4d13和第2项3e549ae已完成，现做第3项；P3不动、P4不合main。本批不请求caaciorg.com；A在最终门禁与L-SQL通过后只冻结一次，先推材料再唯一推P4。2026-11-25 12:00 CT减项、2026-11-26 12:00 CT收尾按D59.10；完成后关闭目标提醒并停止。
 
 D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已结束、提醒已取消。第十二批FINAL不改，第十三批另写更正。P4当前基线fe80882c的门禁、SQL与终审结果仍见L358–L369。
 
@@ -44,9 +44,9 @@ D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已�
 | code_sha | 321a916f1d5cf41fa101d5bed35eceffc674921d（main，#384于2026-11-23 19:26:06Z合并，与已验证a9c271b同树；L408） |
 | 基线 main | 321a916f1d5cf41fa101d5bed35eceffc674921d（D-59第1项合并后已核祖先及树；P4对照仍用9171976e，P4不合main） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 70bf78f9（本次写回之前材料分支的HEAD） |
+| docs_sha | dfe18093（本次写回之前材料分支的HEAD） |
 | 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e7bd21（base codex/community-restricted-20261113，D-58已推送，L343）；#380 codex/community-events-20261120 fe80882（base P3 的分支，D-58已唯一推送并更新正文，L364–L365）；#383 codex/community-viewport-consumers-20261121 cca63d9（已合main d3bfc17e，D-59.0）；#384 codex/community-smoke-stub-20261123 a9c271b（已合main321a916f，本批仅一次代码推送）；#379、#380仍为草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）、#383（d3bfc17e）、#384（321a916f）；#373、#378 已合进各自 base 分支 [当前#384由2026-11-23 gh pr view与git ls-remote核对；其余沿用D59.0或各原记录] |
-| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 cdb4d13（第5项本地提交，尚未推送；远端仍fe80882）；illini-viewport-consumers cca63d9（已随#383合main，本批不改）；illini-smoke-stub a9c271b（已随#384合main321a916f，本地完整门禁、60轮及CI通过）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
+| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 3e549ae（第5、2项已本地提交；远端仍fe80882，A未冻结）；illini-viewport-consumers cca63d9（已随#383合main，本批不改）；illini-smoke-stub a9c271b（已随#384合main321a916f，本地完整门禁、60轮及CI通过）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -286,7 +286,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 29. E6：COMMUNITY_OFFICIAL_PROFILE_ID 没设之前，P3.5 的 set_post_official 和 P4.9 的 create_event_discussion 返回 409 official_profile_not_configured、不落库；set_post_featured、hide_event、unhide_event 不依赖它（D-54 第 1 项 b 更正）。设好后补这两项的另一半。
 30. P4.6 的产品问题：被隐藏或下架的成员活动仍占组织者两个名额之一，作者自己删掉讨论帖的不占，要不要改由 Eric 定（L140）。D-57 按现行规则实现，supervisor 代定，待 Eric 确认。
 31. D-59第1项已启动main派生的本地巡检夹具分支。含该夹具的head，D-56第5项四条件豁免和D-57第11项pages.smoke条款不再适用，巡检必须0失败。P3/P4以后普通merge main后，再单独提交把新增读表/RPC加入显式名单并注明原因；P4至少含list_community_events→[]、community_member_events_open→false、community_event_sync_state表读，不能夹在合并提交。本批P3不动、P4不合main，P4仍按D56四条件逐条判；699/767必须0失败，699另60轮。
-32. #380合并之前（D-59.9b/10）：public smoke须在依次应用20261120100354、20261120122054、20261122035253和本批前向迁移A并VERIFY的库上跑绿；A尚待实现和冻结，实际时间戳/sha256将在冻结记录补齐。verify-deployed-rpcs与verify-public-read-schema已要求community_member_events_open；真实后端巡检归发布步骤，本地路由夹具不能代替。
+32. #380合并之前（D-59.9b/10）：public smoke须在依次应用20261120100354、20261120122054、20261122035253和本批前向迁移A并VERIFY的库上跑绿；A已本地实现为20261123201501，尚未冻结；临时hash见L415，最终hash必须待全量与L-SQL通过后登记。verify-deployed-rpcs与verify-public-read-schema已要求community_member_events_open；真实后端巡检归发布步骤，本地路由夹具不能代替。
 33. 成员活动开关须在staging、生产分别打开，归Eric或他点名批准的人；前提包括D-28举报值班已经有人，以及RUNBOOK「Member events switch」列出的四个条件。当前默认关闭。 成员活动开关打开之前，要不要先做可见文本边界，归 Eric 定（本地第8项六类输入均存入、三正向对照通过、回滚残留0，见L402–L403；线上未测）。
 34. 已覆盖：cca63d95的wide messages用例在1280双栏下先红后绿，已随#383进main d3bfc17e（D-59.9b）。iPad真机检查仍归Eric。
 35. CI public sweep的job限45分钟；用例增长可能超时。第十三批④将按P4最终Running N重算推算表，现尚未进入最终门禁；第十二批原表不改，ci.yml本批不改，选哪种处置由Eric定（D-59.9f）。
