@@ -134,11 +134,13 @@ test('WeChat event headers reserve the native capsule before compilation', () =>
     }).join('\n')
     const insets = []
     postcss.parse(css).walkRules('.header', rule => {
-      rule.walkDecls('padding-right', declaration => { insets.push(declaration.value) })
+      rule.walkDecls(/^(padding|padding-right)$/, declaration => {
+        insets.push([declaration.prop, declaration.value])
+      })
     })
-    assert.ok(
-      insets.includes('var(--mp-navbar-right-pad, 0px)'),
-      `${page}: WeChat header must reserve the native capsule`,
+    assert.deepEqual(
+      insets.at(-1), ['padding-right', 'var(--mp-navbar-right-pad, 0px)'],
+      `${page}: the last right-padding declaration must reserve the native capsule`,
     )
   }
 })

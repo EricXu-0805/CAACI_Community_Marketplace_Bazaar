@@ -180,7 +180,7 @@ async function submit() {
     if (error instanceof MemberEventError && error.field) errors.value[error.field] = message
     else formError.value = message
     if (mutationCommitState(error) === 'unknown') draft.value.outcomeUncertain = true
-    stored.persist()
+    if (!stored.persist()) draftSaveFailed.value = true
   } finally {
     if (current()) submitting.value = false
   }
