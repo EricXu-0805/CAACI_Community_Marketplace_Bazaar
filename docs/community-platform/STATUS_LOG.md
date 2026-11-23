@@ -4819,3 +4819,210 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 全量结果、P4六十轮、全部正负SQL控制及包大小尚待
 - 下一条: D-58.4 先推送材料冻结记录
 - 附: 首次误按56文件预估拦在启动前，没有跑门禁；按源树核实上批和本批均57后启动唯一一轮。L352的39例是node单测，环境前端部分应写本地，不能作为浏览器验收；本轮smoke才记录实际浏览器全量结果。视口CI45103933628已成功，不再待CI。
+
+### L355 · 2026-11-22 21:50 CT · D-58新冻结记录已先推材料远端
+- task_id: D-58.4/冻结顺序
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: git commit --no-verify；scan17d.py 21ed5d6 --log；git push --no-verify；git ls-remote
+- 计数: scan33：一提交、113新增行、trailer1、①–⑤与incomplete全0；远端ff915926等于扫描HEAD；P4仍未推 [本地测]
+- ci_run_url: —
+- 未测项: P4最终完整门禁、正负对照、六十轮、扫描与单次代码推送待完成
+- 下一条: D-58.7 运行三个最终head完整门禁
+- 附: 材料ff915926包含L350撤销冻结、L353重新冻结及新SHA256 b93ea1ed…1bdd；先材料、后P4的要求已满足。本次材料commit与push均用了--no-verify，扫描独立执行。
+
+### L356 · 2026-11-22 22:13 CT · D-58按最终Running数重算CI；核本批代码尾注
+- task_id: D-58.6e/6f
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 读check-20261123T033605Z的TEST、Running与mpci；(开销秒+smoke秒×729/旧Running)/60；三分支rev-list及逐字尾注计数，P4排除合入P3祖先
+- 计数: 前8步骤rc0；TEST2981/2980/0/1、pg_skips0；Running729；mpci main1468020、event37187；3组CI49.61/29.63/34.73分钟；代码13/13各一条指定trailer [本地测]
+- ci_run_url: —
+- 未测项: smoke与npmaudit尚未结束；包体逐文件差值、SQL控制、最终六十轮仍待
+- 下一条: D-58.7 运行唯一最终全量门禁
+- 附: 三个旧样本沿用L281，显示每条3.20/2.29/2.74，计算用原比例：645+1529×729/478、105+1292×729/563、84+1547×729/564，分别除60；首组超过45分钟。ci.yml本批不改，选哪种做法归Eric。代码计数视口1、P3 2、P4 10（含bcefddd合并本身，不重复计P3）。材料提交另计。
+
+### L357 · 2026-11-22 22:21 CT · D-58最终mpci产物检查及逐文件基线测量启动
+- task_id: D-58.3a/3f/7
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 读最终mpci两份.header规则、writer输出路径和packageBytes；umask022创建并锁定c106e23独立worktree；同锁后台install mpci
+- 计数: events/index与event/detail的.header均含mp-navbar-right-pad；writer在pages/event、不在composables；main1468020、较c106减少5037、余104844；event37187；19分包最大58671、全部低于2MiB [本地测]
+- ci_run_url: —
+- 未测项: 微信真机未测；逐文件差值等待旧提交独立产物；全量smoke、SQL控制及六十轮待完成
+- 下一条: D-58.7 核对WXSS与主包分包体积
+- 附: D57证据目录两轮检索没有找到逐文件包体快照；用d58-mpci-c106-20261123T041506Z补取c106编译产物，只有install/mpci。目录755，创建前可用343610695680字节；bash_928、mon_6SW0RC79DZWX100B排在同一容器锁后，完成取证后移除本任务目录。两条WXSS检查只记结果，不新增依赖构建产物的测试。
+
+### L358 · 2026-11-22 22:40 CT · D-58最终P4全量门禁按例外判法通过
+- task_id: D-58.7/全量
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: L-UI、本地
+- 命令: 全部57个spec的SMOKE_SPECS与RC同一命令；install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；check-20261123T033605Z
+- 计数: TEST2981/2980/0/1 pg_skips0；smoke729/720/8/1、1960秒、rc1；其余9步骤rc0；events同次25/25；699/767各通过 [本地测]
+- ci_run_url: —
+- 未测项: 真实后端public smoke、微信及iPad真机仍归Eric
+- 下一条: D-58.7 扫描并单次推送P4
+- 附: 八条全为pages巡检console toEqual([])，全部168条Received只含D56规定的三类stub主机错误；四条首页/广场为L173同名，活动/发起四条为同类。events同次25过0失败满足第四条件。没有改IGNORE、加stub或重跑main。TEST较2965新增16：胶囊源码1、开关4、客户端S10、Z契约1；smoke较721新增8：列表并发2、草稿6。最终产物先归档到p4/final-smoke-20261123T033605Z-artifacts，再跑六十轮。
+| 主题 | 路由 | Received行 | 请求路径（均在rest/v1） | 判定 |
+|---|---|---:|---|---|
+| light | pages/index/index | 6 | items | main同样失败，L173 |
+| light | pages/plaza/index | 69 | posts、items、rpc/list_community_events | main同样失败，L173 |
+| light | pages/events/index | 6 | rpc/community_member_events_open、rpc/list_community_events | 同一类，L173 |
+| light | pages/event/create/index | 3 | rpc/community_member_events_open | 同一类，L173 |
+| dark | pages/index/index | 6 | items | main同样失败，L173 |
+| dark | pages/plaza/index | 69 | posts、items、rpc/list_community_events | main同样失败，L173 |
+| dark | pages/events/index | 6 | rpc/community_member_events_open、rpc/list_community_events | 同一类，L173 |
+| dark | pages/event/create/index | 3 | rpc/community_member_events_open | 同一类，L173 |
+
+### L359 · 2026-11-22 22:40 CT · D-58最终P4回放及全部正负对照通过
+- task_id: D-58.7/SQL
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: L-SQL
+- 命令: 同锁后台D58/lsql-replay-controls.sh；三个时间戳；AFTER_REPLAY=p4/controls-final.sh；lsql-20261123T042055Z
+- 计数: 185/185/errors0/done1/rc0；P3_TOTAL703/703，EV_TOTAL855/855，MEV_TOTAL38/38；P3_SWITCH off/PASS、EV_CLOSED SKIP；59/59控制通过 [本地测]
+- ci_run_url: —
+- 未测项: staging、生产及开关操作归Eric
+- 下一条: D-58.7 扫描并单次推送P4
+- 附: 最新VERIFY默认enabled=f、开/关正对照t/f；reply NOTICE=f。旧P4 VERIFY首错为community_events_function_body:private.community_events_member_guard():7eb7680e59995c1dc8e9d754603ed790:this migration。13组主动变异逐组恢复并重验，首错逐个核过、每份只有一个ERROR。副本仍与D57回放副本一致，原脚本和appendix未改；控制脚本及夹具只在本机。文件订阅首次等待锁时超时，只更换订阅，未重开SQL任务。
+逐项日志位于p4/controls-final-20261123T035853Z；完整异常参数留对应日志：
+| 负对照日志 | 命中异常项 | 恢复后通过日志 |
+|---|---|---|
+| control-revoke-create.log | function_grants:create_member_event | control-restored-create.log |
+| control-grant-location.log | column_privileges:authenticated:UPDATE | control-restored-location.log |
+| control-delete-switch.log | switch_row:0:none | control-restored-switch.log |
+| control-old-shape.log | constraint:community_events_member_shape | control-restored-shape.log |
+| control-grant-switch.log | switch_table_closed | control-restored-switch-acl.log |
+| control-remove-guard-switch.log | function_body:community_events_member_guard | control-restored-guard-switch.log |
+| control-n-shape.log | constraint:community_events_member_shape | control-restored-n-shape.log |
+| control-member-column.log | community_member_events_switch_table_column_acl | control-restored-member-column.log |
+| control-reply-column.log | reply_notice_switch_table_column_acl | control-restored-reply-column.log |
+| control-reply-body.log | reply_notice_switch_function_body:notify_topic_reply | control-restored-reply-body.log |
+| control-reply-security.log | reply_notice_switch_function_attributes:notify_topic_reply | control-restored-reply-security.log |
+| control-reply-trigger.log | reply_notice_switch_reply_trigger:trg_notify_topic_reply | control-restored-reply-trigger.log |
+| control-reply-row.log | reply_notice_switch_row:0:none | control-restored-reply-row.log |
+
+### L360 · 2026-11-22 22:40 CT · D-58最终P4视口六十轮通过
+- task_id: D-58.7/六十轮
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: L-UI
+- 命令: SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60" RC smoke；check-20261123T042601Z
+- 计数: 60/60、0失败、0跳过、rc0、153秒 [本地测]
+- ci_run_url: —
+- 未测项: iPad真机旋转、键盘、聊天视口归Eric
+- 下一条: D-58.7 扫描并单次推送P4
+- 附: 与最终全量相同fe80882及tree560cafe；没有在两轮之间修改源码。全量699和767亦已通过，见L358。
+
+### L361 · 2026-11-22 22:40 CT · D-58逐文件包体差额与最终界面复核
+- task_id: D-58.7/包体与界面
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: mpci、L-UI
+- 命令: 旧c106独立install/mpci check-20261123T042300Z；逐文件stat对比最终033605Z产物；查看同一最终head的12张截图
+- 计数: 旧main1473057→1468020，-5037；event31499→37187，+5688；其余18分包逐字节数不变；总增651；19分包均<2MiB；12图已查看 [本地测]
+- ci_run_url: —
+- 未测项: 微信真机与开发者工具仍归Eric
+- 下一条: D-58.7 扫描并单次推送P4
+- 附: 最终截图确认：两宽度开关等待期间列表已呈现、入口不出现，放行后入口显示；手机/桌面明暗主题告警与服务端错误同时可见、表单及提交按钮不重叠；中文表单四图无横向截断。图片只留本机。旧包体复建与原1473057总数相同，独立目录随后清理；不是第二次全量门禁。
+| 编译文件 | 原字节 | 新字节 | 差值 | 对应变更 |
+|---|---:|---:|---:|---|
+| components/MemberEventStart.wxml | 273 | 304 | +31 | 稳定入口定位属性 |
+| composables/useCommunityEvents.js | 3281 | 3315 | +34 | 只缓存成功的开关布尔值 |
+| composables/useMemberEventWrites.js | 5252 | 0 | -5252 | 移出主包 |
+| pages/event/create/index.js | 4797 | 4832 | +35 | 草稿告警状态及相对导入 |
+| pages/event/create/index.wxml | 2785 | 2864 | +79 | 独立草稿告警 |
+| pages/event/detail/index.wxss | 4017 | 4063 | +46 | 胶囊右侧留白 |
+| pages/event/EventMenu.js | 3278 | 3262 | -16 | 改用分包内相对导入 |
+| pages/event/useMemberEventWrites.js | 0 | 5544 | +5544 | 移入写入模块，含S校验及导入调整 |
+| pages/events/index.js | 4304 | 4310 | +6 | 列表与开关并发读取 |
+| pages/events/index.wxss | 2551 | 2597 | +46 | 胶囊右侧留白 |
+| utils/communityEvents.js | 4151 | 4249 | +98 | Z常量导出 |
+
+### L362 · 2026-11-22 22:52 CT · D-58最终代码只读终审已派出
+- task_id: D-58.7/终审
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 独立detached review worktrees并立即lock；omo-steer new/check；主会话前台读取；task后台；bind/check；RPC完成订阅
+- 计数: st_01a206bf；派出前后9字节/600；允许编辑路径为空；父会话已观察最终12张图；待终审结论 [本地测]
+- ci_run_url: —
+- 未测项: 只读终审尚未交付；P4仍未推送
+- 下一条: D-58 完成报告文档更正与证据核对
+- 附: 只派一个终审，读三个固定最终提交和已完成门禁，不重复测试、不跑容器、不操作托管库、不推送。主会话继续报告和PR正文准备。旧c106包体worktree已在两份产物归档后，干净状态普通unlock/remove成功；未用force。没有发送steer。
+
+### L363 · 2026-11-22 23:08 CT · D-58只读终审通过，准备唯一P4推送
+- task_id: D-58.7/终审
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: st_01a206bf完成；接收APPROVE/HIGH；普通unlock/remove三个review worktree；停止其RPC订阅
+- 计数: 0阻塞；独立复核完整差异、三个head、168条Received、13组负对照及恢复、12截图、哈希和包体；未重跑门禁 [本地测]
+- ci_run_url: —
+- 未测项: P4推送、正文更新和FINAL关闭尚待；真机与真实后端仍归Eric
+- 下一条: D-58.7 扫描并单次推送P4
+- 附: 审阅者强调P3十步证据由同一干净head/tree的原3步加恢复7步组成，不把恢复日志说成单个完整十步。维护性备注：指定浏览器spec为295纯行，依D58要求保留在该文件；LSP不可用但typecheck已过。审阅无文件/Git写入、无容器或托管操作。消息账本received/executed/rejected序号为空、最高0；无口令工具指示1条按数据处理，其余类别0，不复制原文。
+
+### L364 · 2026-11-22 23:13 CT · D-58 P4唯一推送完成，冻结顺序已核
+- task_id: D-58.7/推送；D-58.6g
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: scan17d.py c106e23b --diff-base bcefddd --text PR_BODY_D58.md --log；git push --no-verify；git ls-remote；gh pr view
+- 计数: scan34：10提交535新增行、trailer10、text1；①–⑤/incomplete全0；远端及PR head均fe80882，与扫描HEAD一致；仍OPEN草稿、base P3 [本地测]
+- ci_run_url: —
+- 未测项: PR正文仍待独立扫描更新；真实后端及设备验收归Eric
+- 下一条: D-58.7 更新P4草稿正文和新哈希
+- 附: 门禁依据L358–L361、只读终审L363。材料ff915926的L353重新冻结记录先于本次代码推送，scan33在34之前；新SHA256=b93ea1edce3ecc2f2a2d4a59fb5b9ed3bbb129f52ed65211ad02cd02e8781bdd。没有在材料冻结推送前发布P4；本批P4代码只推这一次。正文当前仍与旧副本相同，无并发改动。
+
+### L365 · 2026-11-22 23:20 CT · D-58 P4草稿正文已按独立扫描更新
+- task_id: D-58.7/PR正文
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: scan17d.py fe80882 --text PR_BODY_D58.md --log；gh api PATCH pull380，仅body字段；核返回正文和元数据
+- 计数: scan35：0提交171正文行、text1，①–⑤/incomplete全0；返回正文逐字匹配；OPEN草稿/base P3/head fe80882不变 [本地测]
+- ci_run_url: —
+- 未测项: 真实后端public smoke及设备验收仍由Eric执行
+- 下一条: D-58 完成报告文档更正与证据核对
+- 附: 已更新b93新哈希、S的判断/存储区别、两表列级检查、关闭行为、完整门禁和包体数字。保留三迁移顺序、开关前提与既有未完成项；旧D57证据明确标为历史。未重复推代码，没有修改base、ready状态或合并。
+
+### L366 · 2026-11-22 23:20 CT · D-58四分支已有推送与扫描账本逐笔对应
+- task_id: D-58.7/对账
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 各分支基准到HEAD的rev-list；origin分支reflog update by push；对照scan17d.log的分支、HEAD、时间和exit0
+- 计数: 截至本条：材料6推送/6对应扫描；视口1/1；P3 1/1；P4 1/1；全部扫描早于相应推送 [本地测]
+- ci_run_url: —
+- 未测项: 本FINAL及随后关闭记录的材料推送尚未执行，回执另追加
+- 下一条: D-58 同提交推送FINAL和STATUS
+- 附: 材料对应扫描23、24、26、27、29、33；视口30；P3 28；P4 34。PR正文扫描另算：视口31后GraphQL读取失败而未写，32后REST成功；P4 35后REST成功。这里统计成功更新远端，不把正文扫描计成代码推送。
+
+### L367 · 2026-11-22 23:42 CT · D-58最终元数据核对与材料基准字段更正
+- task_id: D-58/最终核对
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: ff91592（本次写回之前材料分支的HEAD）
+- 环境: 本地/GitHub
+- 命令: gh pr view 379/380/383；git ls-remote五分支；按head查询CI；读取写回助手与近期docs_sha字段
+- 计数: 三PR均OPEN草稿、base不变；heads4e7bd21/fe80882/cca63d9；main9171976e；视口CI45103933628 success；P3/P4该head无CI工作流run [本地测]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45103933628
+- 未测项: 真实后端与设备验收按FINAL④
+- 下一条: D-58 同提交推送FINAL和STATUS
+- 附: 更正L355–L366：docs_sha应为ff915926（当时材料HEAD），不是21ed5d6；L347–L354的21ed5d6正确。原因是材料提交后未刷新写回助手的缓存变量，现已按实际HEAD刷新，后续每次材料提交立即刷新；原日志不改，code_sha、测试、扫描HEAD与远端回执不受影响。STATUS多hunk曾按错误顺序排列，STATUS文件更新失败而日志已追加；按文件顺序仅重试STATUS成功，没有重写或重复日志。
+
+### L368 · 2026-11-22 23:42 CT · D-58第十二批FINAL与STATUS同提交就绪
+- task_id: D-58/FINAL
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: ff91592（本次写回之前材料分支的HEAD）
+- 环境: 本地材料
+- 命令: 追加FINAL第十二批并更新STATUS；预备git diff --check、commit --no-verify、scan17d.py ff915926 --log、push --no-verify
+- 计数: 第0–7项实现、门禁、SQL控制、代码和正文交付完成；终审APPROVE/HIGH；本节及STATUS在同一材料提交；尚待本提交远端核对
+- ci_run_url: —
+- 未测项: 目标结束、取消sch_e0d36dead325及最终一次日志追加在推送之后
+- 下一条: 等待supervisor下一条指示（不续接BACKLOG）
+- 附: 旧FINAL全文保留，STATUS_LOG只追加。材料本次FINAL成功发布后累计7次推送各有扫描；随后目标关闭记录的推送另在最后回执登记。临时baseline和review worktree均已移除。三个代码分支不再改动，不再新建目标。
