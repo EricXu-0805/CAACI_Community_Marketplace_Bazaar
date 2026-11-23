@@ -108,7 +108,7 @@ async function screenshot(page: Page, info: TestInfo, name: string) {
   if (info.repeatEachIndex === 0) await page.screenshot({ path: info.outputPath(`${name}.png`), animations: 'disabled' })
 }
 
-async function staleInset(page: Page, target: Locator, info: TestInfo, name: string, property = 'bottom') {
+async function staleInset(page: Page, target: Locator, info: TestInfo, name: string, property = 'bottom', width = 820) {
   await expect(target).toBeVisible()
   await expect.poll(() => page.evaluate(() => document.documentElement.clientHeight)).toBe(1180)
   await page.evaluate(() => {
@@ -126,7 +126,7 @@ async function staleInset(page: Page, target: Locator, info: TestInfo, name: str
   if (property === '--composer-bottom-inset') await expect(target).toHaveCSS('bottom', '425px')
   await record(page, target, `${name}:inset-350`)
   await screenshot(page, info, `${name}-inset-350`)
-  await page.setViewportSize({ width: 820, height: 830 })
+  await page.setViewportSize({ width, height: 830 })
   await expect.poll(() => page.evaluate(() => document.documentElement.clientHeight)).toBe(830)
   await expect.poll(() => page.evaluate(() => window.__viewportEvents.withheld)).toBeGreaterThan(0)
   await record(page, target, `${name}:layout-830`)
@@ -143,6 +143,9 @@ async function recovered(page: Page, target: Locator, info: TestInfo, name: stri
 
 test('root box height matches the layout viewport at both tablet heights', async ({ page }) => {
   await page.goto('/#/pages/index/index')
+  // This real home control appears after the page mounts, so the measurements
+  // include its rendered content rather than the short startup shell.
+  await expect(page.getByRole('button', { name: 'Open filters', exact: true })).toBeVisible()
   for (const height of [1180, 830]) {
     await page.setViewportSize({ width: 820, height })
     await expect.poll(() => page.evaluate(() => document.documentElement.clientHeight)).toBe(height)
@@ -155,25 +158,23 @@ test('root box height matches the layout viewport at both tablet heights', async
   }
 })
 
-test('messages two-pane recovers its inset without viewport events', async ({ page }, info) => {
-  await page.goto('/#/pages/messages/index')
-  await page.locator('.conv-item').first().click()
-  await expect(page.locator('.chat-thread')).toBeVisible()
-  // At tablet width the real application may navigate instead of mounting
-  // its two-pane consumer. Do not force a hidden pane or alter its breakpoint.
-  if (page.url().includes('/pages/chat/index')) {
-    console.log(`VIEWPORT messages:unreachable-two-pane ${JSON.stringify(await page.evaluate(() => ({
-      width: document.documentElement.clientWidth, height: document.documentElement.clientHeight,
-      route: location.hash, events: window.__viewportEvents,
-    })))}`)
-    test.skip(true, 'The native two-pane requires 1100px; at 820px selecting a conversation opens the chat page.')
-  }
-  const target = page.locator('.page.has-sidebar').filter({ has: page.locator('.chat-thread') })
-  await staleInset(page, target, info, 'messages')
-  await recovered(page, target, info, 'messages')
-  await expect(target).not.toHaveClass(/kb-up/)
-  await expect.poll(() => target.evaluate(element => getComputedStyle(element).getPropertyValue('--chat-bottom-inset').trim())).toBe('0px')
-  await expect.poll(() => page.locator('.send-btn').evaluate(element => Math.round(element.getBoundingClientRect().bottom))).toBeLessThanOrEqual(830)
+test.describe('wide messages viewport', () => {
+  // uni-h5 uses the smallest of innerWidth, clientWidth and screen width.
+  // Override both sizes while retaining the inherited iPhone touch settings.
+  test.use({ viewport: { width: 1280, height: 1180 }, screen: { width: 1280, height: 1180 } })
+
+  test('messages two-pane recovers its inset without viewport events', async ({ page }, info) => {
+    await page.goto('/#/pages/messages/index')
+    await page.locator('.conv-item').first().click()
+    await expect(page).toHaveURL(/\/#\/pages\/messages\/index$/)
+    await expect(page.locator('.msg-thread-pane .chat-thread')).toBeVisible()
+    const target = page.locator('.page.has-sidebar').filter({ has: page.locator('.chat-thread') })
+    await staleInset(page, target, info, 'messages', 'bottom', 1280)
+    await recovered(page, target, info, 'messages')
+    await expect(target).not.toHaveClass(/kb-up/)
+    await expect.poll(() => target.evaluate(element => getComputedStyle(element).getPropertyValue('--chat-bottom-inset').trim())).toBe('0px')
+    await expect.poll(() => page.locator('.send-btn').evaluate(element => Math.round(element.getBoundingClientRect().bottom))).toBeLessThanOrEqual(830)
+  })
 })
 
 test('index filters recover their inset without viewport events', async ({ page }, info) => {

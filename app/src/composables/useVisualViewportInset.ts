@@ -31,9 +31,10 @@ export function useVisualViewportBounds() {
     // WebKit can deliver its last resize event while layout still has the
     // previous height, then finish that layout with no further viewport
     // event, which used to leave the old inset in place. uni-h5's
-    // style/framework/base.css gives html height: 100%; App.vue only adds
-    // min-height. Observing the root relies on that upstream height rule
-    // to rerun sync() when the layout viewport height read above changes.
+    // style/framework/base.css sets html and body to height: 100%, keeping
+    // the root box equal to the layout viewport even with taller content.
+    // App.vue's min-height alone would let the root grow with that content,
+    // hiding layout viewport height changes from this root observer.
     if (typeof ResizeObserver !== 'undefined') {
       layoutObserver = new ResizeObserver(sync)
       layoutObserver.observe(document.documentElement)
