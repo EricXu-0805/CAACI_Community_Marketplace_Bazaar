@@ -5026,3 +5026,15 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 目标结束、取消sch_e0d36dead325及最终一次日志追加在推送之后
 - 下一条: 等待supervisor下一条指示（不续接BACKLOG）
 - 附: 旧FINAL全文保留，STATUS_LOG只追加。材料本次FINAL成功发布后累计7次推送各有扫描；随后目标关闭记录的推送另在最后回执登记。临时baseline和review worktree均已移除。三个代码分支不再改动，不再新建目标。
+
+### L369 · 2026-11-23 00:02 CT · 第十二批（D-58）目标已结束，续跑提醒已取消
+- task_id: D-58/收尾
+- code_sha: P3 4e7bd21；P4 fe80882；视口cca63d9
+- docs_sha: baa2695（本次写回之前材料分支的HEAD）
+- 环境: 本地控制工具/Git
+- 命令: 已执行update_goal complete、schedule_prompt cancel sch_e0d36dead325；本条随后commit --no-verify、scan17d.py baa2695 --log、push --no-verify、ls-remote核对
+- 计数: goal=complete；目标用时28119秒（7小时48分39秒），tokensUsed=3143599；提醒cancelled；FINAL与STATUS的baa269564a1b985eb101df364d444a35857071d4已推送且等于scan36 HEAD [本地测]
+- ci_run_url: —
+- 未测项: 范围外的托管迁移、开关、真实后端public smoke及真机事项见FINAL④
+- 下一条: 等待supervisor下一条指示
+- 附: 目标结束工具时间为2026-11-23T05:57:23Z；先完成FINAL同提交推送，再结束目标、取消提醒，然后追加本条，顺序已满足。至FINAL材料7次推送均有扫描，三代码分支各1次均有扫描；本条再独立扫描推送，成功后材料累计8次/8次，实际行号与HEAD留scan17d.log和最终回复。不再新设目标，不接BACKLOG，不再运行已通过的检查。
