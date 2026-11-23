@@ -165,3 +165,40 @@ for (const [label, input, expected] of [
     assert.equal(normalizeEventText(input), expected)
   })
 }
+
+const invisible = String.fromCodePoint(8203)
+for (const [label, patch, reason, field] of [
+  ['empty title', { title: invisible }, 'member_event_title_required', 'title'],
+  ['empty content', { content: invisible }, 'member_event_content_invalid', 'content'],
+  ['empty location', { location: invisible }, 'member_event_location_invalid', 'location'],
+  ['reserved title', { title: `hos${invisible}ted by` }, 'member_event_reserved_wording', 'title'],
+  ['reserved location', { location: `hos${invisible}ted by` }, 'member_event_reserved_wording', 'location'],
+  ['linked title', { title: `htt${invisible}ps://example.test` }, 'member_event_link_not_allowed', 'title'],
+  ['linked content', { content: `htt${invisible}ps://example.test` }, 'member_event_link_not_allowed', 'content'],
+  ['linked location', { location: `htt${invisible}ps://example.test` }, 'member_event_link_not_allowed', 'location'],
+]) {
+  test(`invisible characters cannot bypass the ${label} preflight`, async t => {
+    const { state, load } = await memberWorld(t)
+    const { MemberEventError, useMemberEventWrites } = await load('pages/event/useMemberEventWrites.ts')
+    await assert.rejects(useMemberEventWrites().createMemberEvent({ ...INPUT, ...patch }),
+      error => error instanceof MemberEventError && error.reason === reason && error.field === field)
+    assert.deepEqual(state.calls, [])
+  })
+}
+
+for (const [location, expected] of [
+  [String.fromCodePoint(8238) + `ARC${invisible}`, 'ARC'],
+  [`hosted${invisible}by`, 'hostedby'],
+]) {
+  test(`publishing stores location ${expected} without changing title or content joiners`, async t => {
+    const { state, load } = await memberWorld(t)
+    const { useMemberEventWrites } = await load('pages/event/useMemberEventWrites.ts')
+    const title = String.fromCodePoint(128104, 8205, 128105, 8205, 128103) + ' picnic'
+    const content = `Bring${invisible} a racket.`
+    await useMemberEventWrites().createMemberEvent({ ...INPUT, title, content, location })
+    assert.equal(state.calls.length, 1)
+    assert.equal(state.calls[0].args.title_in, title)
+    assert.equal(state.calls[0].args.content_in, content)
+    assert.equal(state.calls[0].args.event_in.location, expected)
+  })
+}

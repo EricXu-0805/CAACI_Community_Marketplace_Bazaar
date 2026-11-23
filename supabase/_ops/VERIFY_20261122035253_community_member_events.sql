@@ -26,11 +26,11 @@ BEGIN
   FOR expected IN
     SELECT * FROM (VALUES
     ('private.community_events_schedule_change()', 'e4a2e33f688e3f6d4e192a3426b0ea36', 'this migration', false, 'v', 'search_path=pg_catalog', ''),
-    ('private.community_events_member_guard()', 'd865909286d0bf4a90d0796ca898b6eb', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
+    ('private.community_events_member_guard()', '7eb7680e59995c1dc8e9d754603ed790', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
     ('private.community_events_moderate_text()', 'c3da68f508cbcee6724a6926892300ed', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
     ('private.community_events_post_link()', '2831761c52a0d5280010f9cb6a9a406e', 'this migration', false, 'v', 'search_path=pg_catalog', ''),
     ('private.community_events_follow_topic()', '5f543fbda17b88b20d579d2d27023e99', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
-    ('public.create_member_event(uuid,text,text,jsonb)', '5fc68d086e78fa45463110a8f7413e87', 'this migration', false, 'v', 'search_path=pg_catalog', 'authenticated'),
+    ('public.create_member_event(uuid,text,text,jsonb)', '9e58b01a3b5dff8a355f7323413b3dc2', 'this migration', false, 'v', 'search_path=pg_catalog', 'authenticated'),
     ('public.community_member_events_open()', '8d82d9012631e5eee8b23e19af62a64a', 'this migration', true, 's', 'search_path=pg_catalog|statement_timeout=3s', 'anon,authenticated'),
     ('public.list_community_events(text,text,text,integer)', '51369430c8c82f1816a168ed8754f736', 'this migration', false, 's', 'search_path=pg_catalog|statement_timeout=3s', 'anon,authenticated'),
     ('public.admin_execute_community_events(text,uuid,text,text,jsonb)', 'f3095aaa03fcc202ae3b5e99e1eede08', 'this migration', true, 'v', 'search_path=pg_catalog', ''),
@@ -159,7 +159,7 @@ BEGIN
     ('public.community_events', 'community_events_hidden_pair_check', 'c', $d$CHECK (((availability = 'hidden'::text) = (hidden_reason IS NOT NULL)))$d$),
     ('public.community_events', 'community_events_hidden_reason_check', 'c', $d$CHECK ((hidden_reason = ANY (ARRAY['admin'::text, 'post_removed'::text])))$d$),
     ('public.community_events', 'community_events_location_check', 'c', $d$CHECK ((char_length(location) <= 160))$d$),
-    ('public.community_events', 'community_events_member_shape', 'c', $d$CHECK (((source_type <> 'member'::text) OR ((organizer_user_id IS NOT NULL) AND (source_key ~ '^[0-9a-f-]{36}$'::text) AND (page_url IS NULL) AND (register_url IS NULL) AND (registration_mode = 'discussion'::text) AND (title IS NULL) AND (title_en IS NULL) AND (occurrence_count = 1) AND (location IS NOT NULL) AND (location = btrim(regexp_replace(location, '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+'::text, ' '::text, 'g'::text), ' '::text)) AND ((char_length(location) >= 1) AND (char_length(location) <= 80)) AND ((status_note IS NULL) OR (status_note = btrim(regexp_replace(status_note, '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+'::text, ' '::text, 'g'::text), ' '::text))))))$d$),
+    ('public.community_events', 'community_events_member_shape', 'c', $d$CHECK (((source_type <> 'member'::text) OR ((organizer_user_id IS NOT NULL) AND (source_key ~ '^[0-9a-f-]{36}$'::text) AND (page_url IS NULL) AND (register_url IS NULL) AND (registration_mode = 'discussion'::text) AND (title IS NULL) AND (title_en IS NULL) AND (occurrence_count = 1) AND (location IS NOT NULL) AND (location = btrim(regexp_replace(regexp_replace(location, '[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069]'::text, ''::text, 'g'::text), '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+'::text, ' '::text, 'g'::text), ' '::text)) AND ((char_length(location) >= 1) AND (char_length(location) <= 80)) AND ((status_note IS NULL) OR (status_note = btrim(regexp_replace(status_note, '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+'::text, ' '::text, 'g'::text), ' '::text))))))$d$),
     ('public.community_events', 'community_events_occurrence_count_check', 'c', $d$CHECK (((occurrence_count >= 1) AND (occurrence_count <= 400)))$d$),
     ('public.community_events', 'community_events_organizer_name_check', 'c', $d$CHECK (((char_length(organizer_name) >= 2) AND (char_length(organizer_name) <= 80)))$d$),
     ('public.community_events', 'community_events_organizer_user_id_fkey', 'f', $d$FOREIGN KEY (organizer_user_id) REFERENCES profiles(id) ON DELETE CASCADE$d$),

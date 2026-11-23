@@ -5,7 +5,7 @@ import { useCommunityEvents } from '../../composables/useCommunityEvents'
 import { assertWritesAllowed } from '../../composables/useRestriction'
 import { mpTextGate } from '../../composables/useWechatSecCheck'
 import { checkContent, remoteModerate } from '../../utils/contentSafety'
-import { normalizeEventText } from '../../utils/communityEvents'
+import { EVENT_INVISIBLE, normalizeEventText } from '../../utils/communityEvents'
 import {
   isDefinitiveMutationRejection, mutationCommitState, mutationOutcomeError,
 } from '../../api/mutationCommit'
@@ -78,15 +78,20 @@ export function useMemberEventWrites() {
       if (!user.is_illini_verified) throw new MemberEventError('member_event_not_eligible')
       const title = normalizeEventText(input.title)
       const content = input.content.trim()
-      const location = normalizeEventText(input.location)
-      if (!title) throw new MemberEventError('member_event_title_required', 'title')
+      const location = normalizeEventText(input.location.replace(EVENT_INVISIBLE, ''))
+      const titleCheck = normalizeEventText(title.replace(EVENT_INVISIBLE, ''))
+      const contentCheck = normalizeEventText(content.replace(EVENT_INVISIBLE, ''))
+      if (!titleCheck) throw new MemberEventError('member_event_title_required', 'title')
       if (Array.from(title).length > 60) throw new MemberEventError('member_event_title_too_long', 'title')
-      if (!content || Array.from(content).length > 2000) throw new MemberEventError('member_event_content_invalid', 'content')
+      if (!contentCheck || Array.from(content).length > 2000) throw new MemberEventError('member_event_content_invalid', 'content')
       if (!location || Array.from(location).length > 80) throw new MemberEventError('member_event_location_invalid', 'location')
+      const checkedTexts = [
+        ['title', titleCheck], ['content', contentCheck], ['location', location],
+      ] as const
       const texts = [
         ['title', title], ['content', content], ['location', location],
       ] as const
-      for (const [field, value] of texts) {
+      for (const [field, value] of checkedTexts) {
         if (LINK.test(value)) throw new MemberEventError('member_event_link_not_allowed', field)
         if (field !== 'content' && RESERVED.test(value)) throw new MemberEventError('member_event_reserved_wording', field)
       }

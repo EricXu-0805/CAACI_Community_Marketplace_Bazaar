@@ -7,6 +7,7 @@ import {
 } from './fixtures/community-member-events-database.mjs'
 
 const SPACE = String.raw`[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]`
+const INVISIBLE = String.raw`[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069]`
 const CODES = [9, 10, 11, 12, 13, 32, 133, 160, 5760, ...Array.from({ length: 11 }, (_, n) => 8192 + n), 8232, 8233, 8239, 8287, 12288, 65279]
 const CREATE = 'public.create_member_event(uuid,text,text,jsonb)'
 const GUARD = 'private.community_events_member_guard()'
@@ -41,21 +42,37 @@ test('member VERIFY changes only the declared rows and switch sections', () => {
   assert.equal(logic(current), logic(old))
 })
 
-test('member normalization uses five identical printable ASCII expressions', () => {
+test('member normalization uses fixed printable ASCII N and Z expressions', () => {
   const migration = readMigration(MIGRATION)
   assert.equal(Buffer.byteLength(SPACE), 83)
   assert.match(SPACE, /^[\x20-\x7E]+$/)
   const expressions = [...migration.matchAll(/pg_catalog\.btrim\(pg_catalog\.regexp_replace\(([^\n]*?), '(\[[^']+\])\+', ' ', 'g'\), ' '\)/g)]
-  assert.equal(expressions.length, 5)
-  assert.deepEqual(expressions.map(match => match[1]), ['location', 'status_note', 'title_in', "event_in ->> 'location'", 'NEW.status_note'])
+  const invisible = [...migration.matchAll(/pg_catalog\.regexp_replace\((?!pg_catalog\.regexp_replace\()([^\n]*?), '(\[[^']+\])', '', 'g'\)/g)]
+  assert.equal(expressions.length, 10)
+  assert.equal(invisible.length, 7)
+  assert.deepEqual(expressions.map(match => match[1]), [
+    "pg_catalog.regexp_replace(location, '[\\u00AD\\u180E\\u200B-\\u200F\\u202A-\\u202E\\u2060-\\u2064\\u2066-\\u2069]', '', 'g')",
+    "status_note",
+    "title_in",
+    "pg_catalog.regexp_replace(title_in, '[\\u00AD\\u180E\\u200B-\\u200F\\u202A-\\u202E\\u2060-\\u2064\\u2066-\\u2069]', '', 'g')",
+    "pg_catalog.regexp_replace(event_in ->> 'location', '[\\u00AD\\u180E\\u200B-\\u200F\\u202A-\\u202E\\u2060-\\u2064\\u2066-\\u2069]', '', 'g')",
+    "pg_catalog.regexp_replace(NEW.location, '[\\u00AD\\u180E\\u200B-\\u200F\\u202A-\\u202E\\u2060-\\u2064\\u2066-\\u2069]', '', 'g')",
+    "pg_catalog.regexp_replace(NEW.status_note, '[\\u00AD\\u180E\\u200B-\\u200F\\u202A-\\u202E\\u2060-\\u2064\\u2066-\\u2069]', '', 'g')",
+    "NEW.status_note",
+    "pg_catalog.regexp_replace(topic_title, '[\\u00AD\\u180E\\u200B-\\u200F\\u202A-\\u202E\\u2060-\\u2064\\u2066-\\u2069]', '', 'g')",
+    "pg_catalog.regexp_replace(topic_content, '[\\u00AD\\u180E\\u200B-\\u200F\\u202A-\\u202E\\u2060-\\u2064\\u2066-\\u2069]', '', 'g')"
+  ])
+  assert.deepEqual(invisible.map(match => match[1]), ["location","title_in","event_in ->> 'location'","NEW.location","NEW.status_note","topic_title","topic_content"])
   for (const match of expressions) assert.equal(match[2], SPACE)
-  assert.equal([...migration.matchAll(/pg_catalog\.regexp_replace\(/g)].length, 5)
+  for (const match of invisible) assert.equal(match[2], INVISIBLE)
+  assert.equal([...migration.matchAll(/pg_catalog\.regexp_replace\(/g)].length, expressions.length + invisible.length)
   for (const source of [migration, readOps(VERIFY), appSource()]) {
     for (const code of CODES.filter(code => code !== 10 && code !== 32)) {
       assert.ok(!source.includes(String.fromCodePoint(code)), `raw whitespace U+${code.toString(16).toUpperCase()}`)
     }
   }
 })
+
 
 test('member migration does not reissue unrelated community objects', () => {
   const migration = readMigration(MIGRATION)

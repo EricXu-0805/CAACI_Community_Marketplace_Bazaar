@@ -186,6 +186,46 @@ UPDATE public.account_deletion_jobs SET stage='completed',updated_at=now(),last_
 PERFORM pg_temp.expect('deleted member events',(SELECT count(*)::text FROM public.community_events WHERE organizer_user_id=pg_temp.id(2)),'0');
 PERFORM pg_temp.expect('anon list after deletion',pg_temp.as_anon(format('SELECT count(*)::text FROM public.list_community_events() WHERE organizer_user_id=%L',pg_temp.id(2))),'0');
 PERFORM pg_temp.expect('member list after deletion',pg_temp.as_member(1,format('SELECT count(*)::text FROM public.list_community_events() WHERE organizer_user_id=%L',pg_temp.id(2))),'0');$case$);
+INSERT INTO mev_cases VALUES
+(26,'location-only-zero-width',true,$case$PERFORM pg_temp.expect('invisible place',
+  pg_temp.member_error(pg_temp.create_sql(116,chr(8203))), '22023:member_event_location_invalid');$case$),
+(27,'reserved-location-zero-width',true,$case$PERFORM pg_temp.expect('reserved place',
+  pg_temp.member_error(pg_temp.create_sql(116,'hos'||chr(8203)||'ted by')), '23514:member_event_reserved_wording');$case$),
+(28,'reserved-title-zero-width',true,$case$PERFORM pg_temp.expect('reserved title',
+  pg_temp.member_error(pg_temp.create_sql(116,'ARC','hos'||chr(8203)||'ted by')), '23514:member_event_reserved_wording');$case$),
+(29,'reserved-note-zero-width',true,$case$made := pg_temp.as_member(1,pg_temp.create_sql(116))::jsonb;
+PERFORM pg_temp.expect('reserved note',pg_temp.member_error(format(
+  'UPDATE public.community_events SET status_note=%L WHERE id=%L RETURNING id',
+  'hos'||chr(8203)||'ted by',made->>'event_id')), '23514:member_event_reserved_wording');$case$),
+(30,'reserved-chinese-title-zero-width',true,$case$PERFORM pg_temp.expect('reserved Chinese title',
+  pg_temp.member_error(pg_temp.create_sql(116,'ARC','官'||chr(8203)||'方')), '23514:member_event_reserved_wording');$case$),
+(31,'location-hostedby-without-space',true,$case$made := pg_temp.as_member(1,pg_temp.create_sql(116,'hosted'||chr(8203)||'by'))::jsonb;
+PERFORM pg_temp.expect('nonreserved place', (SELECT location FROM public.community_events WHERE id=(made->>'event_id')::uuid), 'hostedby');$case$),
+(32,'location-direction-marker',true,$case$made := pg_temp.as_member(1,pg_temp.create_sql(116,chr(8238)||'ARC'))::jsonb;
+PERFORM pg_temp.expect('direction-free place', (SELECT location FROM public.community_events WHERE id=(made->>'event_id')::uuid), 'ARC');$case$),
+(33,'title-keeps-emoji-joiners',true,$case$made := pg_temp.as_member(1,pg_temp.create_sql(116,'ARC',chr(128104)||chr(8205)||chr(128105)||chr(8205)||chr(128103)||' picnic'))::jsonb;
+PERFORM pg_temp.expect('original emoji title', (SELECT title FROM public.posts WHERE id=pg_temp.id(116)),
+  chr(128104)||chr(8205)||chr(128105)||chr(8205)||chr(128103)||' picnic');$case$),
+(34,'title-only-zero-width-atomic',true,$case$PERFORM pg_temp.expect('invisible title',
+  pg_temp.member_error(pg_temp.create_sql(116,'ARC',chr(8203))), '22023:public_write_boundary:post_title_size');
+PERFORM pg_temp.expect('no invisible-title posts', (SELECT count(*)::text FROM public.posts WHERE user_id=pg_temp.id(1)), '0');
+PERFORM pg_temp.expect('no invisible-title events', (SELECT count(*)::text FROM public.community_events WHERE organizer_user_id=pg_temp.id(1)), '0');$case$),
+(35,'empty-title-control-atomic',true,$case$PERFORM pg_temp.expect('empty title',
+  pg_temp.member_error(pg_temp.create_sql(116,'ARC','')), '22023:public_write_boundary:post_title_size');
+PERFORM pg_temp.expect('no empty-title posts', (SELECT count(*)::text FROM public.posts WHERE user_id=pg_temp.id(1)), '0');
+PERFORM pg_temp.expect('no empty-title events', (SELECT count(*)::text FROM public.community_events WHERE organizer_user_id=pg_temp.id(1)), '0');$case$),
+(36,'content-link-zero-width',true,$case$PERFORM pg_temp.expect('hidden content link',
+  pg_temp.member_error(format($q$SELECT public.create_member_event(%L,%L,%L,
+    jsonb_build_object('starts_at',now()+interval '2 days','location','ARC'))$q$,
+    pg_temp.id(116),'MEV badminton','htt'||chr(8203)||'ps://example.test')), '23514:member_event_link_not_allowed');$case$),
+(37,'note-only-zero-width-is-null',true,$case$made := pg_temp.as_member(1,pg_temp.create_sql(116))::jsonb;
+PERFORM pg_temp.expect('invisible note cleared',pg_temp.as_member(1,format(
+  'UPDATE public.community_events SET status_note=chr(8203) WHERE id=%L RETURNING (status_note IS NULL)::text',
+  made->>'event_id')), 'true');$case$),
+(38,'note-keeps-visible-text-joiner',true,$case$made := pg_temp.as_member(1,pg_temp.create_sql(116))::jsonb;
+PERFORM pg_temp.expect('original nonempty note',pg_temp.as_member(1,format(
+  'UPDATE public.community_events SET status_note=%L WHERE id=%L RETURNING status_note',
+  'Bring'||chr(8205)||' water',made->>'event_id')), 'Bring'||chr(8205)||' water');$case$);
 CREATE TEMP TABLE mev_results(name text, passed boolean, detail text);
 DO $run$
 DECLARE
@@ -219,7 +259,7 @@ DECLARE
 BEGIN
   SELECT count(*) FILTER (WHERE r.passed),count(*) INTO passed,total FROM mev_results AS r;
   RAISE NOTICE 'MEV_TOTAL %/%',passed,total;
-  IF total <> 25 OR passed <> total THEN
+  IF total <> 38 OR passed <> total THEN
     RAISE EXCEPTION 'MEV regression failed: %/%',passed,total;
   END IF;
   IF (SELECT enabled FROM private.community_member_event_config WHERE singleton) THEN

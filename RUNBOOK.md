@@ -553,7 +553,7 @@ Apply the event migrations in this order:
 
 After this migration, `VERIFY_20261120122054_community_events.sql` stops
 by design with this first error:
-`community_events_function_body:private.community_events_member_guard():d865909286d0bf4a90d0796ca898b6eb:this migration`.
+`community_events_function_body:private.community_events_member_guard():7eb7680e59995c1dc8e9d754603ed790:this migration`.
 
 Before pull request #380 is merged, its public smoke (`public-smoke` in
 `ci.yml`) must run green against a database that has `20261120100354`,

@@ -68,7 +68,7 @@ ALTER TABLE public.community_events
     AND occurrence_count = 1
     -- A normalized place, as create_member_event stores it.
     -- IS NOT NULL is spelled out: a CHECK holds for an unknown place.
-    AND location IS NOT NULL AND location = pg_catalog.btrim(pg_catalog.regexp_replace(location, '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' ')
+    AND location IS NOT NULL AND location = pg_catalog.btrim(pg_catalog.regexp_replace(pg_catalog.regexp_replace(location, '[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069]', '', 'g'), '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' ')
     AND char_length(location) BETWEEN 1 AND 80
     AND (status_note IS NULL OR status_note = pg_catalog.btrim(pg_catalog.regexp_replace(status_note, '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' '))));
 
@@ -100,7 +100,10 @@ BEGIN
   IF pg_catalog.char_length(coalesce(title_value, '')) > 60 THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'member_event_title_too_long';
   END IF;
-  location_value := pg_catalog.btrim(pg_catalog.regexp_replace(event_in ->> 'location', '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' ');
+  IF pg_catalog.btrim(pg_catalog.regexp_replace(pg_catalog.regexp_replace(title_in, '[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069]', '', 'g'), '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' ') = '' THEN
+    title_value := '';
+  END IF;
+  location_value := pg_catalog.btrim(pg_catalog.regexp_replace(pg_catalog.regexp_replace(event_in ->> 'location', '[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069]', '', 'g'), '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' ');
   IF location_value IS NULL OR pg_catalog.char_length(location_value) NOT BETWEEN 1 AND 80 THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'member_event_location_invalid';
   END IF;
@@ -177,6 +180,10 @@ DECLARE
   topic_created_at timestamptz;
   topic_title text;
   topic_content text;
+  topic_title_check text;
+  topic_content_check text;
+  place_check text;
+  note_check text;
   open_events integer;
   -- What this write sets: an insert sets everything, an update what it changes.
   sets_place boolean := true;
@@ -187,9 +194,12 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  place_check := pg_catalog.btrim(pg_catalog.regexp_replace(pg_catalog.regexp_replace(NEW.location, '[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069]', '', 'g'), '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' ');
+  note_check := pg_catalog.btrim(pg_catalog.regexp_replace(pg_catalog.regexp_replace(NEW.status_note, '[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069]', '', 'g'), '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' ');
+
   IF TG_OP = 'UPDATE' THEN
     sets_place := NEW.location IS DISTINCT FROM OLD.location;
-    NEW.status_note := nullif(pg_catalog.btrim(pg_catalog.regexp_replace(NEW.status_note, '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' '), '');
+    NEW.status_note := CASE WHEN note_check = '' THEN NULL ELSE nullif(pg_catalog.btrim(pg_catalog.regexp_replace(NEW.status_note, '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' '), '') END;
     sets_note := NEW.status_note IS DISTINCT FROM OLD.status_note;
     sets_times := NEW.starts_at IS DISTINCT FROM OLD.starts_at
       OR NEW.ends_at IS DISTINCT FROM OLD.ends_at;
@@ -222,6 +232,9 @@ BEGIN
        OR NEW.source_key IS DISTINCT FROM NEW.discussion_post_id::text THEN
       RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'member_event_rpc_required';
     END IF;
+
+    topic_title_check := pg_catalog.btrim(pg_catalog.regexp_replace(pg_catalog.regexp_replace(topic_title, '[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069]', '', 'g'), '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' ');
+    topic_content_check := pg_catalog.btrim(pg_catalog.regexp_replace(pg_catalog.regexp_replace(topic_content, '[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069]', '', 'g'), '[\u0009-\u000D \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g'), ' ');
 
     -- D-49: other people see a member's event. The topic's own trigger refuses
     -- a restricted account first; this holds the rule for the event itself.
@@ -259,11 +272,11 @@ BEGIN
       RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_active_limit';
     END IF;
 
-    IF topic_title ~* reserved_pattern THEN
+    IF topic_title_check ~* reserved_pattern THEN
       RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_reserved_wording';
     END IF;
-    IF coalesce(topic_title, '') ~* link_pattern
-       OR coalesce(topic_content, '') ~* link_pattern THEN
+    IF coalesce(topic_title_check, '') ~* link_pattern
+       OR coalesce(topic_content_check, '') ~* link_pattern THEN
       RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_link_not_allowed';
     END IF;
   END IF;
@@ -281,12 +294,12 @@ BEGIN
 
   -- The place and the note are text other people read: no reserved wording
   -- and no link, as in the topic's title.
-  IF (sets_place AND NEW.location ~* reserved_pattern)
-     OR (sets_note AND NEW.status_note ~* reserved_pattern) THEN
+  IF (sets_place AND place_check ~* reserved_pattern)
+     OR (sets_note AND note_check ~* reserved_pattern) THEN
     RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_reserved_wording';
   END IF;
-  IF (sets_place AND NEW.location ~* link_pattern)
-     OR (sets_note AND NEW.status_note ~* link_pattern) THEN
+  IF (sets_place AND place_check ~* link_pattern)
+     OR (sets_note AND note_check ~* link_pattern) THEN
     RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'member_event_link_not_allowed';
   END IF;
 
