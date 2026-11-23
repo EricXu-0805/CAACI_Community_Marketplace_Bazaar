@@ -56,3 +56,15 @@ export function startMemberEventsDatabase() {
   }
   return { ...db, as, attempt, together, assertGrants, stop }
 }
+
+// The sync tests inherit the real member migration and its unchanged grants.
+export function startEventSyncDatabase() {
+  const db = startMemberEventsDatabase()
+  try {
+    db.sql(readMigration('20261123201501_community_event_sync.sql'))
+    return db
+  } catch (error) {
+    db.stop()
+    throw error
+  }
+}
