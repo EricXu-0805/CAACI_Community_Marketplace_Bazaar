@@ -5350,3 +5350,135 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 新完整门禁、699六十轮、首次推送及PR/CI仍待
 - 下一条: D-59.1c
 - 附: 主会话接管剩余门禁与首次交付；子任务保持停推，不并发操作。原中断调用不拼接成通过，按D59要求从同一行完整十步重做；这是执行恢复，不宣称未知信号来源已修复。未改源码、断言或配置，未重跑已经完成的一次性诊断及变异对照。
+
+### L396 · 2026-11-23 08:09 CT · D-59恢复记录第四次材料推送完成
+- task_id: D-59.1c
+- code_sha: a9c271b0
+- docs_sha: e4e73d2e（本次写回之前材料分支的HEAD）
+- 环境: 本地及GitHub
+- 命令: scan17d.py 4a60102a --log；git push --no-verify origin HEAD:refs/heads/codex/community-plan-v5；git ls-remote
+- 计数: e4e73d2；scan41 exit0、incomplete0；远端一致；材料累计4次推送/4次扫描
+- ci_run_url: —
+- 未测项: 该条推送时恢复门禁仍待结果
+- 下一条: D-59.1c
+- 附: L393–L395已发布，原中断未被改写成通过。
+
+### L397 · 2026-11-23 08:09 CT · D-59第1c项主会话完整十步通过
+- task_id: D-59.1c/全量
+- code_sha: a9c271b0
+- docs_sha: e4e73d2e（本次写回之前材料分支的HEAD）
+- 环境: L-UI容器 pw1.65-node22-pg17
+- 命令: L395同一行完整命令；check-20261123T123228Z install typecheck h5 h5accept mp mpci migrations test smoke npmaudit
+- 计数: 十步rc0；TEST2664/2663/0/1 pg_skips0；Running571，570pass/0fail/1skip（569+2）；mpci主包1381447、差0、余191417
+- ci_run_url: —
+- 未测项: 远端CI与supervisor合并当时未完成
+- 下一条: D-59.1c
+- 附: 同一干净head/tree4136a949。各步秒数8/15/15/301/12/14/1/327/1607/3；磁盘340875632640→340961185792。这是完整新调用，不拼接原中断前8步；既有Sass legacy-js-api警告保留。
+
+### L398 · 2026-11-23 08:09 CT · D-59第1c项最终699六十轮通过
+- task_id: D-59.1c/699
+- code_sha: a9c271b0
+- docs_sha: e4e73d2e（本次写回之前材料分支的HEAD）
+- 环境: 本地容器
+- 命令: SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60" 配合D59/run-locked.sh调用run-checks smoke；check-20261123T131632Z
+- 计数: 60/60/0/0，smoke rc0，154秒；同一干净head；完整门禁83个产物25281615字节及11份日志已在此前保存
+- ci_run_url: —
+- 未测项: 远端CI与supervisor合并
+- 下一条: D-59.1c
+- 附: parent bash_943，auto_reap_minutes=0，persistent watch；磁盘340934574080→340956295168。未重跑已结束的一次性诊断与变异。
+
+### L399 · 2026-11-23 08:09 CT · D-59第1项只读交付审阅通过
+- task_id: D-59.1c/审阅
+- code_sha: a9c271b0
+- docs_sha: e4e73d2e（本次写回之前材料分支的HEAD）
+- 环境: 只读独立快照与既有证据
+- 命令: omo-steer new/check、主会话前台读回、task category=deep-low、bind/check；st_01a2089d；普通worktree unlock/remove
+- 计数: APPROVE/HIGH，0阻塞；3文件112行增量；9行QA矩阵与完整门禁/60轮证据复核；口令元数据9字节600；无后续序号、四类无效消息均0
+- ci_run_url: —
+- 未测项: CI/发布/合并不在本次预发布审阅结论内
+- 下一条: D-59.1c
+- 附: [OMO自决] 按review-work要求用私有EV里的临时锁定detached快照，未新增常驻分支或推送；审后正常移除。D59要求全部category，因此未用subagent_type；没有重跑测试或容器。原实现子任务最终四个认证序号均执行、无效0，旧监控已无记录；主会话接管后未发生并发写入。额外strict错误仍按L392保留。
+
+### L400 · 2026-11-23 08:09 CT · D-59夹具分支首次推送完成
+- task_id: D-59.1c/推送
+- code_sha: a9c271b0
+- docs_sha: e4e73d2e（本次写回之前材料分支的HEAD）
+- 环境: GitHub
+- 命令: scan17d.py d3bfc17e --log；git push --no-verify -u origin HEAD:refs/heads/codex/community-smoke-stub-20261123；git ls-remote
+- 计数: scan42 exit0，身份/邮箱/号池/路径/凭据/发现重合均0；远端精确等于a9c271b03cbc4dfe9fe5281195e6cf08ced130de；该分支1次推送/1次扫描
+- ci_run_url: —
+- 未测项: CI/合并待
+- 下一条: D-59.1c
+- 附: 已满足本地全量、60轮和只读审阅；还剩最多一次、仅按D59.1c的CI失败修复条件使用的推送机会。
+
+### L401 · 2026-11-23 08:09 CT · D-59唯一草稿PR #384已创建
+- task_id: D-59.1c/PR与CI
+- code_sha: a9c271b0
+- docs_sha: e4e73d2e（本次写回之前材料分支的HEAD）
+- 环境: GitHub元数据
+- 命令: 创建前gh pr list确认无同分支PR；scan17d.py d3bfc17e --text PR_BODY.md --log；gh pr create --draft --base main；gh pr view；git ls-remote；注册CI/合并monitor
+- 计数: scan43 exit0；#384 OPEN/draft，base main，head a9c271b；正文含全部对照、诊断、十步与60轮；仅创建一次
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45186897514
+- 未测项: CI45186897514已启动、结论待；supervisor合并待；P4尚未开工
+- 下一条: D-59.1c
+- 附: CI由bash_946持续订阅，supervisor合并由bash_947订阅；不重复轮询、不转ready、不改base、不合并。代码远端与该分支最新scan43的HEAD一致。
+
+### L402 · 2026-11-23 08:09 CT · D-59第8项本地main回放及事务探针完成
+- task_id: D-59.8
+- code_sha: a9c271b0（迁移同d3bfc17e）
+- docs_sha: e4e73d2e（本次写回之前材料分支的HEAD）
+- 环境: L-SQL，本地PG17无网络
+- 命令: AFTER_REPLAY=visible-text-hook.sh，LSQL_LOG_DIR=D59/probe；D59/run-locked.sh调用未改动的D58回放副本；不带时间戳；lsql-20261123T135917Z
+- 计数: files182/replayed182/errors0/done1/rc0；1个已验证且无停权合成账号；9个独立事务/ROLLBACK，含6探针与3正向对照
+- ci_run_url: —
+- 未测项: 客户端入口、真实staging/生产未测；不修平台文本边界
+- 下一条: D-59.1c
+- 附: 普通authenticated角色写入；没有改变表授权或禁用策略；评论与可见父话题在同一事务。原脚本退出清理记录SIGINT10秒未停后SIGKILL，发生在全部结果与ROLLBACK之后；具名容器已同锁确认不存在。磁盘340966690816→340944384000，清理复核340938149888。原脚本及archive均未改。
+
+### L403 · 2026-11-23 08:09 CT · D-59第8项六类可见文本边界观察
+- task_id: D-59.8/结果
+- code_sha: a9c271b0
+- docs_sha: e4e73d2e（本次写回之前材料分支的HEAD）
+- 环境: 仅本地完整main迁移链
+- 命令: 读visible-text-lsql-20261123T135917Z.out；核实际角色、SQLSTATE、RETURNING字节、正向对照和残留
+- 计数: 6/6存入，均SQLSTATE00000、1行、authenticated；3/3正向对照；无duplicate_post/duplicate_item/rate_limit；最终posts/comments/items均0
+- ci_run_url: —
+- 未测项: 线上和客户端处理未测；平台级修复待Eric决定
+- 下一条: D-59.1c
+- 附: 话题标题U+200B、U+3164、U+034F、U+061C均存入；评论正文U+200B存入；商品标题U+200B存入。UTF-8字节分别e2808b/e385a4/cd8f/d89c，原样保留。每条已回滚，不留内容。成员活动开关前是否先补可见文本边界、是否做平台级统一边界，归Eric定；第十三批④列这六条，不改代码。
+
+### L404 · 2026-11-23 08:09 CT · D-59官方文档查询的站外结果记录
+- task_id: D-59.8/过程
+- code_sha: —
+- docs_sha: e4e73d2e（本次写回之前材料分支的HEAD）
+- 环境: 只读文档查询
+- 命令: PostgreSQL17文档搜索；随后显式限制postgresql.org并打开官方页
+- 计数: 首个site限定写错，搜索结果混入一个Reddit条目；未打开该条目、未采用其内容
+- ci_run_url: —
+- 未测项: 不把站外搜索结果作为技术依据
+- 下一条: D-59.1c
+- 附: 纠正为官方域名过滤；事务实现依据既有本地harness与PostgreSQL官方说明。未对Reddit域名发起页面打开请求，也不把本次过程笼统说成搜索结果从未出现禁站。
+
+### L405 · 2026-11-23 08:14 CT · D-59文档查询时序更正
+- task_id: D-59.8/过程更正
+- code_sha: —
+- docs_sha: e4e73d2e（本次写回之前材料分支的HEAD）
+- 环境: 只读官方文档
+- 命令: 直接打开postgresql.org的PG17 Control Structures及SET ROLE官方页；定位Trapping Errors段
+- 计数: 本条时才完成官方页面读取；没有第二次域名过滤搜索
+- ci_run_url: —
+- 未测项: 首条站外搜索结果未打开、未采用
+- 下一条: D-59.1c
+- 附: L404把拟进行的“域名过滤并打开官方页”提前写成已执行，这是记录错误，以本条纠正。探针实际编码和运行依据既有本地harness与迁移；官方说明是事后核读，不追记成事前依据。原L404按追加规则保留；不重跑已经完成的探针。
+
+### L406 · 2026-11-23 08:15 CT · D-59草稿PR #384的CI通过
+- task_id: D-59.1c/CI
+- code_sha: a9c271b0
+- docs_sha: e4e73d2e（本次写回之前材料分支的HEAD）
+- 环境: GitHub Actions
+- 命令: CI monitor完成rc0；gh run view 45186897514；gh pr view 384
+- 计数: workflow completed/success；5个job成功、2个按条件跳过；head精确为a9c271b
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45186897514
+- 未测项: supervisor合并仍待；P4尚未开工
+- 下一条: D-59.1c
+- 附: PR当前OPEN，draft=true，base=main；没有第二次代码推送。CI通过不替代supervisor合并，合并订阅继续。
