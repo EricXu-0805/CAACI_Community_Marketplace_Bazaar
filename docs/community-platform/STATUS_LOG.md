@@ -5662,3 +5662,51 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 主会话尚未接受UI测试、图像及第4项未提交改动；sticky/MP负对照文件存在但未核
 - 下一条: D-59.3
 - 附: 旧状态摘要还停在第一条负对照，不能当成实时进度。文件最后进展21:03:40Z；22:05读取仅有主会话run-checks，没有UI run-checks。主会话接回未完成审阅、恢复及提交，不另派。子任务记录4次goal continuation沿原任务，无新scope；L414的认证序号现由子任务账本确认。未使用task_cancel，取消检查次数仍0。
+
+### L422 · 2026-11-23 16:54 CT · D-59第八次材料推送核对
+- task_id: D-59.2写回
+- code_sha: 3e549ae4
+- docs_sha: cdaf3c42（本次写回之前材料分支的HEAD）
+- 环境: GitHub
+- 命令: scan17d.py dfe1809 --log；git push --no-verify origin HEAD:refs/heads/codex/community-plan-v5；git ls-remote
+- 计数: cdaf3c4已推；scan47 exit0/incomplete0；远端一致；材料累计8次推送/8次扫描
+- ci_run_url: —
+- 未测项: P4代码尚未推送
+- 下一条: D-59.3
+- 附: 扫描账本HEAD是短SHA，先用git rev-parse解析为完整SHA后与当前提交比对。首次把短SHA当完整值的本地校验停止在推送之前；没有重复推送。
+
+### L423 · 2026-11-23 16:54 CT · D-59 UI接管取消及17c检查
+- task_id: D-59.3/4交接
+- code_sha: UI9d19bdf；P43e549ae4
+- docs_sha: cdaf3c42（本次写回之前材料分支的HEAD）
+- 环境: 本机只读检查、GitHub只读远端
+- 命令: task_cancel st_01a20a1e；pgrep run-checks/lsql；umask022；flock -n 同一锁 podman ps；git ls-remote；前后磁盘核对
+- 计数: 取消调用1次，返回completed/not running、no change；相关进程0、容器列表空、锁成功；磁盘前后338195046400字节；P4远端fe80882不变
+- ci_run_url: —
+- 未测项: 没有推断RPC宿主失败的根因；不改账号或模型配置
+- 下一条: D-59.3
+- 附: 取消后三项全部完成；没有强停进程或容器，没有撤销任何未读工作区改动。第4项残留H5守卫变异已定位，接管后按保存的SHA逐字恢复。
+
+### L424 · 2026-11-23 16:54 CT · D-59上次核对灰字通过并本地集成
+- task_id: D-59.3
+- code_sha: 8511ddcd
+- docs_sha: cdaf3c42（本次写回之前材料分支的HEAD）
+- 环境: 本地固定容器，H5与CI环境mpci
+- 命令: 审阅9d19bdf九文件与实际日志；比对三份变异前SHA；亲看五张截图；git cherry-pick 9d19bdf；核app tree相同
+- 计数: typecheck rc0；Node19/19；原活动25/25；新freshness15/15；两变异各1失败；五图small0/contrast0/axe0/overflow0；59/90完成
+- ci_run_url: —
+- 未测项: 最终36图、集成全量、真实CAACI和托管库未测；A未冻结/P4未推
+- 下一条: D-59.4
+- 附: 并发读取只取source,last_success_at，读失败/缺失不阻塞列表；严格早于2小时才显示列表12px灰字，详情仅caaci显示13px。年度按香槟日历判定，禁Intl的Node用例覆盖UTC跨年尚未跨香槟年的边界。首次smoke6条失败是新选择器误用data-testid，原始输出保留；修成项目data-test后15/15。两个指定行为变异是真实失败，恢复SHA与9d提交一致。父集成app tree04c29bd9与已验证子提交相同，未重复已通过检查。五张浅色图中灰字可读，无重叠。
+
+### L425 · 2026-11-23 16:54 CT · D-59灰字主包与文案偏差登记
+- task_id: D-59.3主包/⑧
+- code_sha: 8511ddcd
+- docs_sha: cdaf3c42（本次写回之前材料分支的HEAD）
+- 环境: CI build-mp-weixin参数的本地mpci
+- 命令: 读取check-20261123T204810Z的mpci输出与保留产物；对照第5项主包
+- 计数: main1469377，余103487；比cdb4d13增加1357；pages/event37679，比第5项增加478
+- ci_run_url: —
+- 未测项: 第4项及最终候选主包待后续记录
+- 下一条: D-59.4
+- 附: 当前只是第3项；同步服务端没有改变app源树。CT后缀和跨香槟日历年时带年份是D59.3的supervisor代定，相对SPEC例文的偏差进入⑧。撤回需改formatEventCheckedAt及对应文案/用例，不能拿设备本地年替代香槟年。
