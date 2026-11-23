@@ -2,6 +2,12 @@
   <view class="page secondary-page secondary-page--catalog has-sidebar ev" :class="mpThemeClass" :style="mpChrome">
     <!-- #ifdef H5 -->
     <AppSidebar current="plaza" />
+    <view v-if="desktop" class="ev-desktop-header">
+      <CommunityHeader v-model:search="headerSearch" view="home" :board="null" desktop current-item="events"
+        :is-logged-in="headerLoggedIn" @home="headerHome" @all="headerAll" @board="headerBoard"
+        @compose="headerHome" @login="headerLogin" @search-input="headerAll"
+        @search-submit="headerAll" @search-open="headerAll" />
+    </view>
     <!-- #endif -->
     <view class="secondary-content">
     <!-- #ifndef H5 -->
@@ -104,6 +110,10 @@
 // #ifdef H5
 import AppSidebar from '../../components/AppSidebar.vue'
 import EventsSidebar from '../../components/EventsSidebar.vue'
+import CommunityHeader from '../../components/CommunityHeader.vue'
+import { useEventHeader } from '../../composables/useEventHeader'
+const { desktop, search: headerSearch, isLoggedIn: headerLoggedIn, home: headerHome,
+  all: headerAll, board: headerBoard, login: headerLogin } = useEventHeader()
 // #endif
 import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
@@ -257,7 +267,14 @@ function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/plaza/inde
   .header-title { font-size: 22px; line-height: 1.4; }
 }
 @media (min-width: 1024px) {
-  .ev-cols { max-width: 1200px; margin: var(--space-5) auto 0; padding: 0 var(--space-6); box-sizing: border-box; }
+  .page.secondary-page.has-sidebar { padding-left: 0; }
+  .page :deep(.app-sidebar) { display: none; }
+  .ev-desktop-header { position: sticky; top: 0; z-index: 30; }
+  .page.secondary-page > .secondary-content { width: min(1200px, calc(100% - var(--space-8))); margin: var(--space-5) auto; }
+  .header, .ev-chips { width: calc(100% - 300px - var(--space-6)); box-sizing: border-box; }
+  .header .back-btn { display: none; }
+  .ev-chips { top: 56px; }
+  .ev-cols { margin: var(--space-5) auto 0; padding: 0; box-sizing: border-box; }
   .ev-main { max-width: 876px; }
   .ev-list { border-radius: var(--radius-sm); overflow: hidden; box-shadow: inset 0 0 0 1px var(--line-soft); }
 }

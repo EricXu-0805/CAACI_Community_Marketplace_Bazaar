@@ -204,7 +204,7 @@ for (const size of [PHONE, DESKTOP]) {
       // The list has moved up by more than the row's own distance from the top, and the row is still there.
       expect(firstAt - await top(cards(page).first())).toBeGreaterThan(chipsAt)
       await expect(chips).toBeInViewport()
-      expect(Math.abs(await top(chips))).toBeLessThanOrEqual(1)
+      expect(Math.abs(await top(chips) - (size === DESKTOP ? await page.locator('.ev-desktop-header .cx-hdr').evaluate(el => el.getBoundingClientRect().bottom) : 0))).toBeLessThanOrEqual(1)
       // It still works from there.
       await page.locator('.ev-chip[data-filter="caaci"]').click()
       await expect(page.locator('[data-test="events-empty"] .ev-state-t')).toHaveText('CAACI 近期没有已发布的活动。往期活动在 CAACI 官网。')

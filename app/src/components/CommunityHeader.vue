@@ -20,7 +20,7 @@
       </view>
 
       <view class="cx-nav" role="navigation" :aria-label="t('a11y.primaryNav')" @keydown.esc="menuOpen = false">
-        <view class="cx-nav-i cx-nav-on" role="button" aria-controls="cx-boards"
+        <view :class="['cx-nav-i', { 'cx-nav-on': currentItem === 'community' }]" role="button" aria-controls="cx-boards"
           :aria-expanded="menuOpen ? 'true' : 'false'" @click="menuOpen = !menuOpen">
           <text class="cx-nav-t">{{ t('plaza.title') }}</text>
           <UIcon class="cx-caret" name="chevron-right" size="xs" color="ink-soft" />
@@ -36,7 +36,7 @@
         </view>
         <text class="cx-nav-i cx-nav-t" role="button" @click="goTab('/pages/index/index')">{{ t('home.navMarket') }}</text>
         <!-- SPEC 5.2 ①: the events page arrives with P4.8. -->
-        <text class="cx-nav-i cx-nav-t" role="button" data-test="nav-events" @click="goEvents">{{ t('nav.events') }}</text>
+        <text :class="['cx-nav-i cx-nav-t', { 'cx-nav-on': currentItem === 'events' }]" role="button" data-test="nav-events" @click="goEvents">{{ t('nav.events') }}</text>
       </view>
 
       <view class="cx-right">
@@ -129,14 +129,18 @@ import { useTheme } from '../composables/useTheme'
 import { useUnread } from '../composables/useUnread'
 import { POST_CATEGORIES, type PostCategory } from '../utils/communityPost'
 import { REGIONS, regionLabel, showRegionSwitcher } from '../utils/region'
+// #ifdef H5
+import { openEventList } from '../api/communityNavigation'
+// #endif
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   view: 'home' | 'board' | 'all'
   board: PostCategory | null
   desktop: boolean
   search: string
   isLoggedIn: boolean
-}>()
+  currentItem?: 'community' | 'events'
+}>(), { currentItem: 'community' })
 const emit = defineEmits<{
   (event: 'home'): void
   (event: 'all'): void
@@ -159,9 +163,12 @@ const notifLabel = computed(() => unreadNotifCount.value > 0
   ? `${t('notif.title')}, ${t('a11y.unreadNotifications')}`
   : t('notif.title'))
 function goNotifications() { uni.navigateTo({ url: '/pages/notifications/index' }) }
-function goEvents() { uni.navigateTo({ url: '/pages/events/index' }) }
 
 // #ifdef H5
+function goEvents() {
+  if (props.currentItem === 'events') openEventList()
+  else uni.navigateTo({ url: '/pages/events/index' })
+}
 // What only the desktop header holds: the board menu, the search field, messages and the avatar.
 const { currentUser } = useAuth()
 const { unreadCount } = useUnread()
@@ -203,6 +210,7 @@ function goTab(url: string) { uni.switchTab({ url }) }
 .cx-nav-t { font-size: 14px; line-height: 56px; color: var(--ink-soft); white-space: nowrap; }
 .cx-nav-on { box-shadow: inset 0 -2px 0 var(--brand); }
 .cx-nav-on .cx-nav-t { color: var(--ink); font-weight: 600; }
+.cx-nav-on.cx-nav-t { color: var(--ink); font-weight: 600; }
 .cx-caret { transform: rotate(90deg); }
 .cx-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 39; }
 .cx-pop {

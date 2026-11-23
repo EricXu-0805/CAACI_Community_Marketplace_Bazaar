@@ -2,6 +2,12 @@
   <view class="page secondary-page secondary-page--reading has-sidebar" :class="mpThemeClass" :style="mpChrome">
     <!-- #ifdef H5 -->
     <AppSidebar current="plaza" />
+    <view v-if="desktop" class="ev-desktop-header">
+      <CommunityHeader v-model:search="headerSearch" view="home" :board="null" desktop current-item="events"
+        :is-logged-in="headerLoggedIn" @home="headerHome" @all="headerAll" @board="headerBoard"
+        @compose="headerHome" @login="headerLogin" @search-input="headerAll"
+        @search-submit="headerAll" @search-open="headerAll" />
+    </view>
     <!-- #endif -->
     <view class="secondary-content">
     <!-- #ifndef H5 -->
@@ -86,6 +92,10 @@
  */
 // #ifdef H5
 import AppSidebar from '../../../components/AppSidebar.vue'
+import CommunityHeader from '../../../components/CommunityHeader.vue'
+import { useEventHeader } from '../../../composables/useEventHeader'
+const { desktop, search: headerSearch, isLoggedIn: headerLoggedIn, home: headerHome,
+  all: headerAll, board: headerBoard, login: headerLogin } = useEventHeader()
 // #endif
 import { mpChromeVars, mpThemeClass } from '../../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
@@ -281,4 +291,11 @@ function onCancelled(result: { readonly id: string; readonly cancelled_at: strin
   min-height: 44px; padding: 0 var(--space-5); border-radius: var(--radius-pill); display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 600; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-bold); cursor: pointer;
 }
+/* #ifdef H5 */
+@media (min-width: 1024px) {
+  .page.secondary-page.has-sidebar { padding-left: 0; }
+  .page :deep(.app-sidebar) { display: none; }
+  .ev-desktop-header { position: sticky; top: 0; z-index: 30; }
+}
+/* #endif */
 </style>

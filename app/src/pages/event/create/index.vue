@@ -2,6 +2,12 @@
   <view class="page secondary-page secondary-page--reading has-sidebar" :class="mpThemeClass" :style="mpChrome">
     <!-- #ifdef H5 -->
     <AppSidebar current="plaza" />
+    <view v-if="desktop" class="ev-desktop-header">
+      <CommunityHeader v-model:search="headerSearch" view="home" :board="null" desktop current-item="events"
+        :is-logged-in="headerLoggedIn" @home="headerHome" @all="headerAll" @board="headerBoard"
+        @compose="headerHome" @login="headerLogin" @search-input="headerAll"
+        @search-submit="headerAll" @search-open="headerAll" />
+    </view>
     <!-- #endif -->
     <view class="secondary-content">
       <!-- #ifndef H5 -->
@@ -77,6 +83,10 @@
 <script setup lang="ts">
 // #ifdef H5
 import AppSidebar from '../../../components/AppSidebar.vue'
+import CommunityHeader from '../../../components/CommunityHeader.vue'
+import { useEventHeader } from '../../../composables/useEventHeader'
+const { desktop, search: headerSearch, isLoggedIn: headerLoggedIn, home: headerHome,
+  all: headerAll, board: headerBoard, login: headerLogin } = useEventHeader()
 // #endif
 // #ifndef H5
 import AppToast from '../../../components/AppToast.vue'
@@ -212,5 +222,10 @@ async function submit() {
 .me-control:focus + .me-date-placeholder { display: none; }
 :global(html[data-theme="dark"]) .me-control { color-scheme: dark; }
 :global(html[data-theme="light"]) .me-control { color-scheme: light; }
+@media (min-width: 1024px) {
+  .page.secondary-page.has-sidebar { padding-left: 0; }
+  .page :deep(.app-sidebar) { display: none; }
+  .ev-desktop-header { position: sticky; top: 0; z-index: 30; }
+}
 /* #endif */
 </style>
