@@ -1,13 +1,13 @@
 # STATUS
 
-写于 2026-11-23 08:09 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-23 13:33 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-59.1`
+`next_task_id: D-59.5`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-59第十三批进行中（L370起）。第1项a9c271b已完成完整十步、60轮和只读审阅，并首次推送为草稿PR #384；CI45186897514已通过，supervisor合并仍待（L397–L401、L406）。第8项本地182链回放完成：六类不可见文本均可原样存入，全部回滚，平台边界交Eric定（L402–L403）。第9a–e/g/h已更正，第9f等P4最终N；P4尚未开工。
+D-59第十三批进行中（L370起）。第1项已完成：a9c271b本地完整十步、60轮和只读审阅通过，PR #384的CI45186897514通过，已由supervisor合为main321a916f且同树（L397–L408）。第8项本地182链回放完成：六类不可见文本均可原样存入，全部回滚，平台边界交Eric定（L402–L403）。第9a–e/g/h已更正，第9f等P4最终N；现从干净fe80882c开始第5项。
 
-P4仍从fe80882c按5→2→3→4→6提交，等待第1项CI和supervisor合并后开工；P3不动、P4不合main。本批不请求caaciorg.com；A在最终门禁与L-SQL通过后只冻结一次，先推材料再唯一推P4。2026-11-25 12:00 CT减项、2026-11-26 12:00 CT收尾按D59.10；完成后关闭目标提醒并停止。
+第1项CI及合并均已核；P4从fe80882c按5→2→3→4→6提交，现开始第5项；P3不动、P4不合main。本批不请求caaciorg.com；A在最终门禁与L-SQL通过后只冻结一次，先推材料再唯一推P4。2026-11-25 12:00 CT减项、2026-11-26 12:00 CT收尾按D59.10；完成后关闭目标提醒并停止。
 
 D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已结束、提醒已取消。第十二批FINAL不改，第十三批另写更正。P4当前基线fe80882c的门禁、SQL与终审结果仍见L358–L369。
 
@@ -41,18 +41,18 @@ D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已�
 | 项 | 值 |
 |---|---|
 | 代码分支 / PR | #369、#375、#374、#377、#372 已由 supervisor 依次 squash 进 main（ad986c9、e9c2604、4900722、05e0959、3778952、66e14a45（#381）；D-54 第 0 项、L151，D-56 第 0 项） [本地测：2026-11-21 gh pr view] |
-| code_sha | d3bfc17e91a4be21a8ee88a447b473e8fbf9c4a4（main，#383由supervisor于2026-11-23 07:47:52Z合并；只测试/注释，不发布生产，D-59.0） |
-| 基线 main | d3bfc17e91a4be21a8ee88a447b473e8fbf9c4a4（本批gh元数据和ls-remote已核；P4对照仍用9171976e，D-59抬头） |
+| code_sha | 321a916f1d5cf41fa101d5bed35eceffc674921d（main，#384于2026-11-23 19:26:06Z合并，与已验证a9c271b同树；L408） |
+| 基线 main | 321a916f1d5cf41fa101d5bed35eceffc674921d（D-59第1项合并后已核祖先及树；P4对照仍用9171976e，P4不合main） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | e4e73d2e（本次写回之前材料分支的HEAD） |
-| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e7bd21（base codex/community-restricted-20261113，D-58已推送，L343）；#380 codex/community-events-20261120 fe80882（base P3 的分支，D-58已唯一推送并更新正文，L364–L365）；#383 codex/community-viewport-consumers-20261121 cca63d9（已合main d3bfc17e，D-59.0）；#384 codex/community-smoke-stub-20261123 a9c271b（OPEN草稿，base main，本批首次推送）；#379、#380、#384仍为草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）、#383（d3bfc17e）；#373、#378 已合进各自 base 分支 [当前#384由2026-11-23 gh pr view与git ls-remote核对；其余沿用D59.0或各原记录] |
-| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 fe80882（已唯一推送；全量、SQL控制、六十轮及终审通过）；illini-viewport-consumers cca63d9（已随#383合main，本批不改）；illini-smoke-stub a9c271b（已首次推送为#384草稿，本地完整门禁及60轮通过，CI待）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
+| docs_sha | 59204416（本次写回之前材料分支的HEAD） |
+| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e7bd21（base codex/community-restricted-20261113，D-58已推送，L343）；#380 codex/community-events-20261120 fe80882（base P3 的分支，D-58已唯一推送并更新正文，L364–L365）；#383 codex/community-viewport-consumers-20261121 cca63d9（已合main d3bfc17e，D-59.0）；#384 codex/community-smoke-stub-20261123 a9c271b（已合main321a916f，本批仅一次代码推送）；#379、#380仍为草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）、#383（d3bfc17e）、#384（321a916f）；#373、#378 已合进各自 base 分支 [当前#384由2026-11-23 gh pr view与git ls-remote核对；其余沿用D59.0或各原记录] |
+| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 fe80882（已唯一推送；全量、SQL控制、六十轮及终审通过）；illini-viewport-consumers cca63d9（已随#383合main，本批不改）；illini-smoke-stub a9c271b（已随#384合main321a916f，本地完整门禁、60轮及CI通过）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
 ## CI
 
-#384（a9c271b，草稿、base main）的run45186897514已completed/success：五个job成功，protected staging与production readiness按条件跳过；本地完整十步与60轮通过，等待supervisor合并（L397–L401、L406）。
+#384（head a9c271b，已合main321a916f）的run45186897514已completed/success：五个job成功，protected staging与production readiness按条件跳过；本地完整十步与60轮通过，合并与同树已核（L397–L401、L406、L408）；合并后main的新CI未查询。
 
 #383已由supervisor合进main：PR最终head cca63d95的run [45103933628](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45103933628) completed/success，五job成功，protected staging与production readiness按条件跳过；main d3bfc17e的run [45133719064](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45133719064) 七job全部成功。本批已独立读取元数据（D-59.0/9b）；原45043777896只是较早head的历史结果。
 

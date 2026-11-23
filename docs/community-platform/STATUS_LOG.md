@@ -5482,3 +5482,27 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: supervisor合并仍待；P4尚未开工
 - 下一条: D-59.1c
 - 附: PR当前OPEN，draft=true，base=main；没有第二次代码推送。CI通过不替代supervisor合并，合并订阅继续。
+
+### L407 · 2026-11-23 13:33 CT · D-59第五次材料推送核对
+- task_id: D-59.1/8写回
+- code_sha: a9c271b0
+- docs_sha: 59204416（本次写回之前材料分支的HEAD）
+- 环境: GitHub
+- 命令: scan17d.py e4e73d2e --log；git push --no-verify origin HEAD:refs/heads/codex/community-plan-v5；git ls-remote
+- 计数: 5920441已推，scan44 exit0/incomplete0；远端精确一致；材料累计5次推送/5次扫描
+- ci_run_url: —
+- 未测项: 此提交写回时supervisor合并仍待，现由L408接续
+- 下一条: D-59.5
+- 附: L396–L406包含完整门禁、60轮、PR/CI和第8项探针；既有通过证据未重跑。
+
+### L408 · 2026-11-23 13:33 CT · D-59第1项合并完成并接第5项
+- task_id: D-59.1→D-59.5
+- code_sha: 321a916f（main）；fe80882c（P4）
+- docs_sha: 59204416（本次写回之前材料分支的HEAD）
+- 环境: GitHub元数据与本地Git
+- 命令: gh pr view 384；git fetch origin main；git merge-base --is-ancestor 321a916f origin/main；git rev-parse树；P4 status/HEAD/ls-remote
+- 计数: 2026-11-23T19:26:06Z合并；main321a916f；与a9c271b同树4136a9494abb5579eddc8ae8566f672542eb7603；P4本地/远端均fe80882c且干净；32/90项完成
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45186897514
+- 未测项: 第5项及后续P4工作尚待；合并后main的新CI未查询
+- 下一条: D-59.5
+- 附: 【supervisor 做】#384已MERGED，isDraft=false，base main。按D59.10及BACKLOG14更新基线继续；OMO没有合并、转ready或改base，P4不合main、P3不动。接第5项两处小修同提交，supabase不动。
