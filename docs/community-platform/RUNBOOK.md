@@ -128,6 +128,7 @@ rm "$T"/node-$V-linux-x64.tar.xz "$T"/SHASUMS256.txt && rmdir "$T"
 | ~/work/illini-seal | codex/community-brand-seal-20261121（从 3778952 起） | D-55 第 1 项：邮件印章「集」改「玉」，草稿 PR base main | `git -C ~/work/illini worktree add -b codex/community-brand-seal-20261121 ~/work/illini-seal 3778952` |
 | ~/work/illini-viewport | codex/community-viewport-20261121（从 66e14a45 起） | D-56 第 1 项：聊天页视口 inset，草稿 PR base main | `git -C ~/work/illini worktree add -b codex/community-viewport-20261121 ~/work/illini-viewport 66e14a45` |
 | ~/work/illini-viewport-consumers | codex/community-viewport-consumers-20261121（从 9171976e 起，PR #383，草稿，base main） | D-57 第8项及D-58 第1项：根高度与视口消费者验证 | 已建好；D-58重新授权本批维护和推送，目录与分支日期不改，合并由supervisor做 |
+| ~/work/illini-smoke-stub | codex/community-smoke-stub-20261123（从d3bfc17e起，草稿PR待建，base main） | D-59第1项：本地巡检显式stub和根高度前置断言；最多两次推送 | umask022后从固定d3bfc17e建立，目录755；D59具名授权表外分支，合并归supervisor |
 | ~/work/caaciorg | feat/public-events-feed；origin = fork EricXu-0805/caaciorg，upstream = a2751012962/caaciorg | P4.3 | 按 BACKLOG P4.3 的命令：E8 之前只读 clone 上游并把 remote 改名为 upstream，在本地写；E8 之后再加 fork 为 origin 并推送。git 已配置用 gh 做凭据（2026-11-12 核对） |
 | ~/work/demo-publish | 不是 git 目录 | demo 预览部署（P1.13、BRAND.7）。全机只有这里允许有 .vercel | 见 §9 |
 | ~/work/evidence/\<任务编号\> | 不是 git 目录 | BACKLOG 的 `$EV`：每个任务的原始输出 | `mkdir -p "$EV"` |

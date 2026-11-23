@@ -1,13 +1,21 @@
 # STATUS
 
-写于 2026-11-22 23:42 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-23 04:31 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: 等待supervisor下一条指示（D-58完成，不续接BACKLOG）`
+`next_task_id: D-59.1`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-58第十二批完成（L315–L368）：第0–7项的实现、本地验证、代码和PR正文交付齐全，FINAL第十二批与本STATUS同提交发布。旧FINAL第十一批保留，本批更正另列。20261122035253的具名原地修改例外随本次FINAL推送到期，之后按前向迁移处理。完成线远端核对后结束目标、取消提醒并追加真实回执；不自行开始下一批，不从BACKLOG续接。
+D-59第十三批进行中（L370起）：材料9b8db4a8的例外及0–10项已读；先做第1项新巡检分支。P4从fe80882c按5→2→3→4→6提交，最终通过后才冻结A、先推材料冻结再唯一推P4；P3不动，P4不合main。本批不请求caaciorg.com。11-25 12:00 CT减项、11-26 12:00 CT收尾均按D59.10；完成后关闭目标提醒并停止。
 
-D-58代码与正文交付已完成：P3 4e7bd21、视口cca63d9、P4 fe80882均已推送并按17d核远端（L343、L351、L364–L365）。P4全量TEST2981/2980/0/1、smoke729/720/8/1按例外通过；185链及703/855/38例、59控制、六十轮60/60通过；终审APPROVE/HIGH（L358–L363）。迁移b93ea1ed…1bdd的材料冻结记录ff915926先推，P4只推一次。本次FINAL与STATUS共同交付；工具关闭的真实回执随后追加到STATUS_LOG。
+D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已结束、提醒已取消。第十二批FINAL不改，第十三批另写更正。P4当前基线fe80882c的门禁、SQL与终审结果仍见L358–L369。
+
+## 第十三批开工背景（D-59第0项，逐字照录）
+
+- 第十二批验收：supervisor 做了五个维度的独立核查（P4.6 迁移、P4 客户端、门禁、P3 与视口后续、报告与过程），最后由覆盖审阅逐项核。没有阻断项，也没有 major。在 tony-ws 自己的目录里复现了：P4 fe80882c 全量 TEST 2981/2980/0/1、pg_skips 0，smoke 729 条 720 passed、8 failed、1 skipped（8 条都是首页、广场、活动页、发起页的浅色深色巡检，Received 每一行都属于三种 stub 主机报错，community-events.spec.ts 同一次 0 失败），主包 1,468,020；:699 ×60 60/60；L-SQL 185/185、P3_TOTAL 703/703、EV_TOTAL 855/855、MEV_TOTAL 38/38，VERIFY_20261122035253 的 NOTICE 是 enabled=f；P3 4e7bd214 TEST 2800/2799/0/1、主包 1,422,771；视口 cca63d95 TEST 2664/2663/0/1、主包 1,381,447，viewport-inset-consumers.spec.ts ×10 50/50、0 跳过；三个 head 的 manifest 全部核对通过，五条冻结迁移逐字节相同。
+- 上线进度【supervisor 做】（UTC）：2026-11-23 07:47:52 把 #383 改成 ready 并 squash 进 main（d3bfc17e，树 ed33cf3f 与 cca63d95 相同，提交说明手写，不带 sisyphus-dev-ai 那一行）；只动了测试和注释，生产不用发布，仍是 dpl_9KmHcW（9171976e）；main 上 run 45133719064 七个 job 全过。
+- 核查发现、本批要修的：胶囊静态用例只查有没有那条声明，不查它是不是排在 `padding` 简写之后（第 5 项 a）；发起页提交失败那条路径上 `stored.persist()` 的结果没人看（第 5 项 b，第十二批之前就有）；视口根高度用例只因为首页内容碰巧比视口高才会红，没有断言这个前提（第 1 项 b）；第十二批 6h 那份已知缺口清单漏了 U+034F 和 U+206A–U+206F，也没写标题、说明同样能显示成空白（第 9 项 a）；STATUS 第 34 条和 CI 那一行过期（第 9 项 b）；FINAL 第十二批一处 L 号、一条 17a 的【OMO自决】、scan17d.log 第 25 行（第 9 项 c）；第十二批终审子任务 st_01a206bf 用 subagent_type 派出、没带 category（第 0 项用号那一款）。
+- 账本：supervisor 2026-11-23 08:30 UTC 前后只读核过，生产和 staging 的账本里都没有 20261120100354、20261120122054、20261122035253。
+- 用号（更正 D-58 第 0 项的上限）：ChatGPT login-3 不设上限，用到 OMO 自己在 95% 跳号为止（Eric 2026-11-22 23:53 CT 原话见抬头；reset 由 Eric 做，supervisor 提醒他）；Claude 各号 7d 上限仍是 85%，顺序 default → account-2 → account-5 → account-4，account-3 登录过期排最后；ChatGPT default、login-2 登录已过期，等 Eric 重新接回。主会话在 chatgpt-subscription/gpt-6-astra 上。用量由 supervisor 看，OMO 不查用量、不切号、不切模型、不改 ~/.omo。子任务的类别（只用 D-57 第 10 项那 7 个，派子任务一律带 category，不用 subagent_type 代替）、开工时只读跑 `omo doctor --models` 核对、失败后最多改派一次、出现 fallback 或换号时记一行，都照 D-57 第 10 项，额度数字以本项为准。停下以 supervisor 的通知为准，停下时照 D-51 第 1 项把已完成的部分写进 STATUS 和 FINAL。
 
 ## 第十二批开工背景（D-58第0项，逐字照录）
 
@@ -31,12 +39,12 @@ D-58代码与正文交付已完成：P3 4e7bd21、视口cca63d9、P4 fe80882均�
 | 项 | 值 |
 |---|---|
 | 代码分支 / PR | #369、#375、#374、#377、#372 已由 supervisor 依次 squash 进 main（ad986c9、e9c2604、4900722、05e0959、3778952、66e14a45（#381）；D-54 第 0 项、L151，D-56 第 0 项） [本地测：2026-11-21 gh pr view] |
-| code_sha | 9171976e94c4c7e96522f0a9ff475452fc24eb51（main，#382 于 2026-11-21 16:09:20Z squash 合并，树与 19c4657 相同；生产发布由 supervisor 完成，D-57 第 0 项） |
-| 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
+| code_sha | d3bfc17e91a4be21a8ee88a447b473e8fbf9c4a4（main，#383由supervisor于2026-11-23 07:47:52Z合并；只测试/注释，不发布生产，D-59.0） |
+| 基线 main | d3bfc17e91a4be21a8ee88a447b473e8fbf9c4a4（本批gh元数据和ls-remote已核；P4对照仍用9171976e，D-59抬头） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | ff915926（本次写回之前材料分支的HEAD；本FINAL与STATUS同一提交） |
-| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e7bd21（base codex/community-restricted-20261113，D-58已推送，L343）；#380 codex/community-events-20261120 fe80882（base P3 的分支，D-58已唯一推送并更新正文，L364–L365）；#383 codex/community-viewport-consumers-20261121 cca63d9（base main，D-58已推送且CI成功，L351）；三个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）；#373、#378 已合进各自 base 分支 [本批PR状态：2026-11-22 gh pr view与git ls-remote；旧记录照原条目] |
-| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 fe80882（已唯一推送；全量、SQL控制、六十轮及终审通过）；illini-viewport-consumers cca63d9（已推送，完整门禁及699六十轮通过，CI成功）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
+| docs_sha | 9b8db4a8（本次写回之前材料分支的HEAD） |
+| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e7bd21（base codex/community-restricted-20261113，D-58已推送，L343）；#380 codex/community-events-20261120 fe80882（base P3 的分支，D-58已唯一推送并更新正文，L364–L365）；#383 codex/community-viewport-consumers-20261121 cca63d9（已合main d3bfc17e，D-59.0）；#379、#380仍为草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）、#383（d3bfc17e）；#373、#378 已合进各自 base 分支 [本批PR状态：2026-11-22 gh pr view与git ls-remote；旧记录照原条目] |
+| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 fe80882（已唯一推送；全量、SQL控制、六十轮及终审通过）；illini-viewport-consumers cca63d9（已随#383合main，本批不改）；illini-smoke-stub d3bfc17e（D59新分支，目录755，尚未推送）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -269,7 +277,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
      - D-55 第 5 项「控制台错误只有一句」是 supervisor 写错了，main 自己的失败也是三句一组。L177 按三句判、L192 把 marketplace-responsive.spec.ts:699 记成「main 上同样失败」，supervisor 复现过（main 3778952 30 次失败 4 次，P4 30 次失败 6 次，报错都是期望 830、实得 480），两处判法都予以追认。第十批起按第 5 项的新写法判。
 29. E6：COMMUNITY_OFFICIAL_PROFILE_ID 没设之前，P3.5 的 set_post_official 和 P4.9 的 create_event_discussion 返回 409 official_profile_not_configured、不落库；set_post_featured、hide_event、unhide_event 不依赖它（D-54 第 1 项 b 更正）。设好后补这两项的另一半。
 30. P4.6 的产品问题：被隐藏或下架的成员活动仍占组织者两个名额之一，作者自己删掉讨论帖的不占，要不要改由 Eric 定（L140）。D-57 按现行规则实现，supervisor 代定，待 Eric 确认。
-31. 本地巡检的stub主机 00000000000000000000.supabase.co 在任何环境都不存在，CI用真实后端。这几条不按 BACKLOG §14 第 3 行停，修要基于 main，另起一项。是否沿用L173按D-56四条件及D-57第11项逐条判，不能只看标题。活动列表还须同一次门禁community-events.spec.ts零失败；新发起页的浅深两条按D-57第11项判。marketplace-responsive.spec.ts:699和:767已随main9171976e进入P3/P4，本批必须零失败，不能再援引旧的不稳定豁免；699另跑六十次。
+31. D-59第1项已启动main派生的本地巡检夹具分支。含该夹具的head，D-56第5项四条件豁免和D-57第11项pages.smoke条款不再适用，巡检必须0失败。P3/P4以后普通merge main后，再单独提交把新增读表/RPC加入显式名单并注明原因；P4至少含list_community_events→[]、community_member_events_open→false、community_event_sync_state表读，不能夹在合并提交。本批P3不动、P4不合main，P4仍按D56四条件逐条判；699/767必须0失败，699另60轮。
 32. #380 合并之前（gates:B9-1，D-57第11项）：public smoke须在依次应用20261120100354、20261120122054、20261122035253的库上跑绿；verify-deployed-rpcs和verify-public-read-schema均已要求community_member_events_open。真实后端巡检归发布步骤，不能以本地路由夹具替代。
 33. 成员活动开关须在staging、生产分别打开，归Eric或他点名批准的人；前提包括D-28举报值班已经有人，以及RUNBOOK「Member events switch」列出的四个条件。当前默认关闭。
 34. D-57视口后续的messages双栏在820宽不能挂载：应用断点为1100，选会话会进入chat。该消费者未覆盖，未修改断点或强造页面；需要另派真实双栏尺寸的验证，iPad真机检查仍归Eric。

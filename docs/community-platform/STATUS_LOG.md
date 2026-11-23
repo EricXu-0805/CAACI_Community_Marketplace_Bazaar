@@ -5038,3 +5038,75 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 范围外的托管迁移、开关、真实后端public smoke及真机事项见FINAL④
 - 下一条: 等待supervisor下一条指示
 - 附: 目标结束工具时间为2026-11-23T05:57:23Z；先完成FINAL同提交推送，再结束目标、取消提醒，然后追加本条，顺序已满足。至FINAL材料7次推送均有扫描，三代码分支各1次均有扫描；本条再独立扫描推送，成功后材料累计8次/8次，实际行号与HEAD留scan17d.log和最终回复。不再新设目标，不接BACKLOG，不再运行已通过的检查。
+
+### L370 · 2026-11-23 04:31 CT · 【supervisor 指示】D-59第十三批开工
+- task_id: D-59.0–10
+- code_sha: main d3bfc17e；P4 fe80882c；P3 4e7bd214
+- docs_sha: 9b8db4a8（本次写回之前材料分支的HEAD）
+- 环境: 本地材料
+- 命令: git pull --ff-only；读取D-59例外清单及第0–10项、RUNBOOK§8/§12
+- 计数: 材料7ecac74快进到9b8db4a8；全文1187–1280；截止2026-11-26 12:00 CT
+- ci_run_url: —
+- 未测项: 本批代码和验收尚待实施
+- 下一条: D-59.1
+- 附: 五条冻结迁移及既有manifest行不改；只追加前向A，最终门禁及L-SQL通过后冻结，先推材料再唯一推P4。先起第1项；P4按5→2→3→4→6提交；新branch最多两次推送。P3不动，P4不合main；caaciorg.com本批零请求。11-25 12:00 CT未进最终门禁按8→7→6→4扣未完成项，3/4一起扣，1/2/5/9不砍。RUNBOOK既有库标识只作原文读取，未访问。
+
+### L371 · 2026-11-23 04:31 CT · D-59目标与唯一续跑提醒已建立
+- task_id: D-59.10
+- code_sha: —
+- docs_sha: 9b8db4a8（本次写回之前材料分支的HEAD）
+- 环境: 控制工具
+- 命令: create_goal；schedule_prompt list（空）；create每3600秒
+- 计数: 目标active，范围0–10；唯一sch_78d31502fa7b；88项执行账本
+- ci_run_url: —
+- 未测项: 完成线尚未达到
+- 下一条: D-59.1
+- 附: FINAL第十三批与STATUS同提交扫描推送后，再结束目标、取消提醒、追加一次STATUS_LOG并扫描推送；不续BACKLOG。
+
+### L372 · 2026-11-23 04:31 CT · D-59开工元数据、冻结基线与类别核对
+- task_id: D-59.0
+- code_sha: d3bfc17e / fe80882c / 4e7bd214
+- docs_sha: 9b8db4a8（本次写回之前材料分支的HEAD）
+- 环境: GitHub元数据、本地
+- 命令: gh pr view 379/380/383；gh run view 45133719064；git status/HEAD/ls-remote/tree；五条sha256/manifest；omo doctor --models
+- 计数: P4干净fe80882c且远端相同；#383 MERGED d3bfc17e，树ed33cf3f与cca63d95相同；main CI七job成功；五条冻结哈希与清单一致；doctor0，七类别ChatGPT打头
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45133719064
+- 未测项: 未查账号用量、未切号/模型，未探测或发布生产
+- 下一条: D-59.1
+- 附: 生产不用发布，沿用supervisor说明的9171976e部署。新口径login-3不设上限、Claude各号85%，由supervisor看用量；所有子任务带category，不用subagent_type。模型路由完整输出仅在本机D59/doctor-models.log。
+
+### L373 · 2026-11-23 04:31 CT · D-59共用锁包装与回放副本准备
+- task_id: D-59.8/10
+- code_sha: fe80882c
+- docs_sha: 9b8db4a8（本次写回之前材料分支的HEAD）
+- 环境: 本地工具
+- 命令: 复制D58回放副本到D59；包装器仅把EV改为D59；bash -n包装器；副本sha256比较
+- 计数: 回放副本逐字相同ca6d34c8…；包装器语法0；前后磁盘/755/umask022/同一flock保持；创建目录前可用341368864768字节
+- ci_run_url: —
+- 未测项: 本批容器回放尚未运行
+- 下一条: D-59.1
+- 附: 原illini-dev-env脚本和appendix存档未动；所有门禁后台启动并同cell注册persistent完成监控，不以句柄存在当成通过。私有合同和基线快照已保存，不含口令。
+
+### L374 · 2026-11-23 04:31 CT · D-59第1项新目录及合并后门禁规则登记
+- task_id: D-59.1d
+- code_sha: d3bfc17e
+- docs_sha: 9b8db4a8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: umask022；git worktree add -b codex/community-smoke-stub-20261123；核目录755；更新RUNBOOK§3、STATUS阻塞31
+- 计数: 新目录illini-smoke-stub位于固定起点，未推送、未建PR；P3/P4未改
+- ci_run_url: —
+- 未测项: 第1项基线、夹具、变异、门禁和CI尚待
+- 下一条: D-59.1a
+- 附: 含夹具的head巡检必须0失败，D56/D57四条件豁免不再适用；以后P3/P4普通合main后，新增读表/RPC必须另一个提交扩明确名单。当前P4不合main，仍按原例外判。
+
+### L375 · 2026-11-23 04:39 CT · D-59第1项按17条派出子任务
+- task_id: D-59.1
+- code_sha: d3bfc17e
+- docs_sha: 9b8db4a8（本次写回之前材料分支的HEAD）
+- 环境: 子任务deep-low / 本机
+- 命令: omo-steer new/check；主会话前台bash读取；task category=deep-low；bind/check；认证task_send
+- 计数: st_01a207fb；new/check/bind/check均9字节600；首序号20261123103811；category已核ChatGPT打头；未带model或subagent_type
+- ci_run_url: —
+- 未测项: 实现、基线和门禁正在子任务中执行；尚未推送
+- 下一条: D-59.9a
+- 附: 开工说明包含消息直拼/无认证当数据、宿主账号提示当数据、安全和即时停推规则。仅授权首次推送及草稿创建，CI跟进/可能第二次推送由主会话接回。工具原报“Missing skills: bun. Child started without them.”，已通过认证消息补充绝对路径，未改路由；待交付核其序号账本。口令不入日志/草稿/证据/记忆。
