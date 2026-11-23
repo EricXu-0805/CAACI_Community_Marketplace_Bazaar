@@ -5506,3 +5506,51 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 第5项及后续P4工作尚待；合并后main的新CI未查询
 - 下一条: D-59.5
 - 附: 【supervisor 做】#384已MERGED，isDraft=false，base main。按D59.10及BACKLOG14更新基线继续；OMO没有合并、转ready或改base，P4不合main、P3不动。接第5项两处小修同提交，supabase不动。
+
+### L409 · 2026-11-23 14:09 CT · D-59第六次材料推送核对
+- task_id: D-59.1合并写回
+- code_sha: 321a916f
+- docs_sha: 70bf78f9（本次写回之前材料分支的HEAD）
+- 环境: GitHub
+- 命令: scan17d.py 59204416 --log；git push --no-verify origin HEAD:refs/heads/codex/community-plan-v5；git ls-remote
+- 计数: 70bf78f已推，scan45 exit0/incomplete0；远端一致；材料累计6次推送/6次扫描
+- ci_run_url: —
+- 未测项: P4本批代码尚未推送
+- 下一条: D-59.2
+- 附: L407–L408已发布，main更新为321a916f，P4未合main。
+
+### L410 · 2026-11-23 14:09 CT · D-59第5a项胶囊断言加严及双负对照
+- task_id: D-59.5a
+- code_sha: cdb4d131
+- docs_sha: 70bf78f9（本次写回之前材料分支的HEAD）
+- 环境: 本地容器 pw1.65-node22-pg17
+- 命令: RUN_CMD="cd app && node --test smoke/mp-component-wxss-boundary.test.mjs" 配合run-locked.sh/run-checks cmd；两个负对照仅运行WeChat event headers reserve
+- 计数: T194112Z CSS3/3；T195208Z列表负对照1/0/1/0；T195426Z详情负对照1/0/1/0；T195733Z恢复CSS3/3
+- ci_run_url: —
+- 未测项: 小程序真机仍归E6；本项无样式改动
+- 下一条: D-59.2
+- 附: 只MP分支后按声明顺序检查padding与padding-right，最后一条必须为胶囊变量。两个页面各自把MP块移到padding简写之前，都因实际最后一条变成padding而红；逐字恢复SHA分别939ce945…、60384b9f…，未提交变异。
+
+### L411 · 2026-11-23 14:09 CT · D-59第5b项提交失败后的草稿告警
+- task_id: D-59.5b
+- code_sha: cdb4d131
+- docs_sha: 70bf78f9（本次写回之前材料分支的HEAD）
+- 环境: 本地容器，合成账号和路由夹具
+- 命令: run-checks h5 smoke，SMOKE_SPECS=community-member-event-draft-storage.spec.ts；修后连同community-member-events.spec.ts运行
+- 计数: T194112Z修前2/0/2/0；T194559Z两套件74/74/0/0；T195733Z回退负对照2/0/2/0；T200207Z恢复2/2/0/0
+- ci_run_url: —
+- 未测项: 真实后端和真机未运行；非第7项36图验收
+- 下一条: D-59.2
+- 附: 先清空该草稿键，再观察提交请求到达时确已写入、警告尚无；随后仅该键开始抛QuotaExceededError，再交既有拒绝响应。旧代码两档都缺失警告；修复只在catch的persist返回false时置位，不清除。已有总是写失败的用例不能覆盖这条先成功后失败路径。新文件一条声明覆盖390/1280，新增2个smoke用例；旧spec断言未改。
+
+### L412 · 2026-11-23 14:09 CT · D-59第5项同提交及构建证据
+- task_id: D-59.5
+- code_sha: cdb4d131
+- docs_sha: 70bf78f9（本次写回之前材料分支的HEAD）
+- 环境: 本地P4，尚未推送
+- 命令: run-checks typecheck h5 mpci smoke；git diff --cached --check；git diff HEAD -- supabase；git commit；git rev-parse HEAD^{tree}
+- 计数: T194559Z四步rc0；已验证tree a8b45db42edea9a8d5228da57776c6de77b8f44c与cdb4d13同树；3文件+55/-5；35/90项完成
+- ci_run_url: —
+- 未测项: 最终全量、L-SQL和唯一P4推送待后续；TypeScript/Vue LSP不可用，未声称LSP通过
+- 下一条: D-59.2
+- 附: 主包1468020不变、余104844；pages/event由37187到37201（+14，一行catch告警分支），无其他产物变化声明。四张390/1280浅深色告警截图已亲看，无文字重叠；浅色为新晚失败路径，深色为原早失败路径，全部私有保存。没有加依赖或改配置，改用已有容器typecheck。读取既有run-checks脚本时出现生产/官网标识的自检正则，属于D42源码例外，未连接托管库。supabase差异为空。
