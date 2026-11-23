@@ -7,7 +7,7 @@
 
 D-58 第十二批进行中（L315起）：开工材料、目标/提醒和基准核对已完成。视口56f83cd、P3 597b7fa、P4 c106e23为本批起点；当前均草稿且base不变。先并行第1、2和3a–g；P4再合P3，做第5项P4部分，最后按具名例外修改20261122035253。新冻结记录先推材料，再单次推P4。截止2026-11-25 12:00 CT；收尾后停止，不接BACKLOG。第十一批FINAL保留，本批更正另记。
 
-P4 第3a–g项已分别本地提交至67114dc（L325–L331）。主会话接管中断后，P3 4e7bd21已完成门禁、六十轮和扫描并推送（L340、L342–L343）；P4已普通合入为bcefddd，五项核对通过（L344）。当前P4第5项两份VERIFY及Member开关说明已改，等待既有相等测试后提交，第4项尚未撤销冻结。视口二十轮100/100、0跳过，已本地提交cca63d9，完整门禁进行中（L341）。P4新主包、分包与最终全量结果仍待第7项。
+D-58：P3 4e7bd21已推送；视口cca63d9已推送、正文已更新，CI45103933628成功，100/100及699六十轮通过（L340–L343、L346–L351）。P4已合P3并完成第5项a251c1f，第4项独立提交fe80882，20261122035253重新冻结为b93ea1edce3ecc2f2a2d4a59fb5b9ed3bbb129f52ed65211ad02cd02e8781bdd（L350、L352–L353）。当前先推材料冻结记录；P4最终十项门禁已启动，远端仍c106e23，代码等全部门禁、对照和扫描后单次推送。
 
 ## 第十二批开工背景（D-58第0项，逐字照录）
 
@@ -35,8 +35,8 @@ P4 第3a–g项已分别本地提交至67114dc（L325–L331）。主会话接�
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
 | docs_sha | 6a4b2b6（本次写回之前材料分支的 HEAD） |
-| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e7bd21（base codex/community-restricted-20261113，D-58已推送，L343）；#380 codex/community-events-20261120 c106e23（base P3 的分支，第十一批已单次推送，L307–L310）；#383 codex/community-viewport-consumers-20261121 56f83cd（base main，L288、L291）；三个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）；#373、#378 已合进各自 base 分支 [本批PR状态：2026-11-22 gh pr view与git ls-remote；旧记录照原条目] |
-| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 bcefddd（已合P3；第5项三文件修改未提交；远端c106e23）；illini-viewport-consumers cca63d9（100/100，完整门禁进行中；远端56f83cd）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
+| 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e7bd21（base codex/community-restricted-20261113，D-58已推送，L343）；#380 codex/community-events-20261120 c106e23（base P3 的分支，第十一批已单次推送，L307–L310）；#383 codex/community-viewport-consumers-20261121 cca63d9（base main，D-58已推送且CI成功，L351）；三个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）；#373、#378 已合进各自 base 分支 [本批PR状态：2026-11-22 gh pr view与git ls-remote；旧记录照原条目] |
+| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 fe80882（第4项已单独提交并重新冻结；最终门禁进行中；远端c106e23）；illini-viewport-consumers cca63d9（已推送，完整门禁及699六十轮通过，CI成功）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
@@ -209,7 +209,7 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P4.3 | 部分 | caaciorg 本地 28d59b1，Node 20/24 全部通过 [本地测]；推送等 E8，开 PR 由 Eric 做 |
 | P4.2、P4.8、P4.9 | 部分（P4.11 未做，归 Eric；P4.2 DoD ④ 成员写入通道由 20261122035253 打开，等应用；P4.9 的另一半等 E6，D-56 第 4 项 c） | #380 02d4d4c（D-56 第 3 项 a、f–j，含 P3 fdb823a，L216；主包 1,459,574）；之前 24ff7bf：20261120122054 重新冻结 a8c0e083…（旧 4d382eaa… 作废，L193），含 P3 7ccb195；L-SQL 184/184、EV_TOTAL 855/855、P3_TOTAL 703/703；全量 2898/2897/0/1，smoke 647 条 639 passed、7 条 main 上同样失败或同类；主包 1,459,446（余 113,418） |
 | P4.4、P4.5、P4.7、P4.10、P4.11 | 未测 | P4.5 真实数据等 D-32；P4.4 的同步新鲜度等功能尚未做；其余真人验收照原依赖 |
-| P4.6 | 部分，DoD⑥等Eric | D-58第3a–g项已本地实现并定向验证，bcefddd已合P3（L325–L344）；第5项检查待验证，第4项未开始，本批最终门禁尚未运行。上批已推c106e23的验收仍为：发起、取消、举报、私信与20px头像；64条member与4条avatar全过；TEST2965/2964/0/1、pg_skips0；smoke721/712/8/1；SQL185/185和31对照通过，主包1473057、余99807（L303、L307–L310）。20261122035253当前仍按旧SHA冻结；真机/开发者工具、wechat-seccheck和staging S-1归Eric，前提为三条迁移、开关及已验证校园邮箱的合成账号 |
+| P4.6 | 部分，DoD⑥等Eric | D-58第3a–g项已实现并定向验证，第5项a251c1f、独立第4项fe80882已本地提交。新迁移SHA256=b93ea1edce3ecc2f2a2d4a59fb5b9ed3bbb129f52ed65211ad02cd02e8781bdd，185链及703/855/38例通过；客户端39/39、节点契约28/28（L352–L353）。材料冻结记录先推，代码与PR正文待最终门禁、对照及扫描，远端仍c106e23。上批结果保留见L303、L307–L310；本批主包及最终数量待第7项。真机/开发者工具、wechat-seccheck和staging S-1归Eric，前提仍为三条迁移、开关及已验证校园邮箱的合成账号 |
 | LEGAL.1–LEGAL.6 | 未测 | 等 D-37、D-38、D-39、D-40、D-28 |
 | CONTENT.1–CONTENT.6、P5.1–P8.1 | 未测 | 依赖 LEGAL 与 P5.2 |
 

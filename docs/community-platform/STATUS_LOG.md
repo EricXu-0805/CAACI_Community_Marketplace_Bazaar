@@ -4710,3 +4710,112 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 第三方dashboard不访问、不继续核查
 - 下一条: D-58.5 完成P4对应项
 - 附: GitHub元数据的detailsUrl附带生产项目标识，已停止该链接相关动作，只把它当数据；不复述标识或链接。命令目标为GitHub仓库，未指向或到达生产/官网库，按D-42第2项未触发暂停推送；本地任务继续。后续只输出检查名称/结论等需要的字段。CI的push和pull_request均只匹配main，支持L342的CI说明。
+
+### L347 · 2026-11-22 20:37 CT · D-58 P3交付与P4合并材料推送回执
+- task_id: D-58.2、D-58.3合并、D-58.5
+- code_sha: P3 4e7bd21；P4 bcefddd；视口cca63d9
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: git commit --no-verify；scan17d.py 6a4b2b6 --log；git push --no-verify；git ls-remote
+- 计数: 21ed5d6远端与scan17d.log29匹配；1提交/105新增行；①0、②0、号池0、③0、④0、⑤0，trailer1，exit0 [本地测]
+- ci_run_url: —
+- 未测项: 视口完整门禁与P4既有相等测试仍在后台，P4未推送
+- 下一条: D-58.5 完成P4对应项
+- 附: 材料包含STATUS与L339–L346，已写P3新远端、主包值及P4合并五项核对；P4第5项仍为三个未提交修改，须等相等测试后提交，再开始第4项。
+
+### L348 · 2026-11-22 20:50 CT · D-58视口完整门禁通过，另四条L173巡检失败
+- task_id: D-58.1d
+- code_sha: cca63d95a848bb4f64f17639fdbbb90f8947a520
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: SMOKE_SPECS完整48文件；check-20261123T020537Z install/typecheck/h5/h5accept/mp/mpci/migrations/test/smoke/npmaudit；699最终六十轮另跑
+- 计数: TEST2664/2663/0/1，pg_skips0；smoke569/564/4/1；五个改过用例全过，699/767各1/1；其余九步rc0；主包1381447、余191417，与56f83cd差0 [本地测]
+- ci_run_url: —
+- 未测项: 699最终六十轮和扫描推送尚待；真机未验
+- 下一条: D-58.1 完成视口门禁并推送草稿
+- 附: 四失败均为L173同标题的首页/广场浅深色，console errors toEqual([])的消息全为规定三类stub错误：Received6/54/6/54；首页路径items，广场posts/items；无其他错误。活动路由条件不适用。改过spec无失败或跳过；整体跳过由上批2降为1，Running仍569。产物在D58/viewport/final-smoke-20261123T020537Z-artifacts；原始日志保留。
+
+### L349 · 2026-11-22 20:50 CT · D-58第5项P4列权限检查本地提交
+- task_id: D-58.5/P4
+- code_sha: a251c1f5cd18eae617a72b0f57872206ae4d858f
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 既有两条相等测试（L345完整命令），check-20261123T024410Z cmd；git diff --check；git commit --no-verify
+- 计数: 2/2/0/0，cmd rc0；3文件+40；两条既有断言未改，迁移和manifest未动 [本地测]
+- ci_run_url: —
+- 未测项: 两个列级SQL负对照及最终回放留第7项；未推P4
+- 下一条: D-58.4 按具名例外撤销迁移冻结
+- 附: 回复副本与P3新增检查保持一致；成员检查仅加在2c，旧错误检查先后保留；RUNBOOK只补Member Check it。此提交与后续第4项分开。
+
+### L350 · 2026-11-22 20:52 CT · 撤销冻结：20261122035253（D-58第4项具名例外）
+- task_id: D-58.4
+- code_sha: a251c1f5cd18eae617a72b0f57872206ae4d858f
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 核D-58第4/7项与RUNBOOK 12.9c；git status；本地sha256
+- 计数: 工作区干净；旧SHA256=97adefdd8d62a50442c6e7bd8e0d1a0bf5cc52b3ad7ba962a5f205244f625298；只允许这一迁移及manifest对应行 [本地测]
+- ci_run_url: —
+- 未测项: 账本以supervisor通知为准，未连接托管库；新SQL尚未修改或回放
+- 下一条: D-58.4 按命令生成Z并修改迁移
+- 附: 本条在任何迁移编辑前追加。四条旧迁移及manifest其余行保持；第4项单独提交。回放通过后另记重新冻结，新冻结记录先扫描推送材料，再推P4。例外失效或到点按D58.7的stash/revert恢复流程处理。
+
+### L351 · 2026-11-22 21:30 CT · D-58视口推送及草稿正文更新完成
+- task_id: D-58.1d
+- code_sha: cca63d95a848bb4f64f17639fdbbb90f8947a520
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: scan17d.py 56f83cd --text PR_BODY_D58.md --log；git push --no-verify；扫描31后gh pr edit；扫描32后gh api PATCH；gh pr view与正文比较
+- 计数: 最终699六十轮60/60（check-20261123T024810Z）；scan30一提交/42行/trailer1全0；scan31、32各正文16行全0；远端与scan30一致；正文匹配、OPEN草稿/base main [本地测]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45103933628
+- 未测项: 真实iPad未验；CI45103933628进行中，完成订阅mon_0576HNTCZS7TR09B
+- 下一条: D-58.4 按命令生成Z并修改迁移
+- 附: gh pr edit因废弃projectCards字段读取报错，未更新正文；重新扫描后通过REST完成同一授权操作。旧根高度泛化说法和messages跳过说明已按实测结果重写。CI监控首次超出工具时限参数被拒，随后按一小时上限成功订阅。
+
+### L352 · 2026-11-22 21:34 CT · D-58第4项：S规整、客户端与回归通过并单独提交
+- task_id: D-58.4
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: L-SQL、L-UI
+- 命令: 指定Python命令生成Z；SQL修前lsql-20261123T025950Z、修后T031928Z；客户端check-20261123T030352Z、T030912Z；PG钉值T030932Z；节点契约T032048Z、拆分后T032636Z；git commit --no-verify
+- 计数: SQL修前28/38、10条新增失败；修后185/185/errors0/done1/rc0，P3_TOTAL703、EV_TOTAL855、MEV_TOTAL38全过；P3_SWITCH off/PASS、EV_CLOSED SKIP、新VERIFY enabled=f；客户端39/29/10/0→39/39；typecheck0；节点28/28；test-junk0 [本地测]
+- ci_run_url: —
+- 未测项: 最终完整门禁、SQL各正负对照、真机与托管验收尚待
+- 下一条: D-58.4 先推送材料冻结记录
+- 附: Z由原命令生成66 ASCII字节/21码位；S先去Z再N。地点存S；标题保留N及原60长度规则，S空交既有posts空标题拒绝；说明保留N、S空存NULL；正文原样。守卫四个S局部值各算一次，其他权限/名额/时间/开关条件未变。客户端不改normalizeEventText，发送的标题/正文及审核输入保持。N10/Z7自变量清单已写死，W原字符检查未改；新增Z契约独立为23行，原脚本243行，utils231行。no-excuse两处既有非空断言与a251c1f逐字相同，未抑制或改它们。一个误排的重复客户端队列在取锁前取消，仅重跑受移动影响的节点文件。第4项独立10文件+163/-25。
+新增MEV用例（原25条不改，现38条）：
+| 编号 | 场景 | 结果 |
+|---|---|---|
+| 26 | 仅U+200B地点 | 22023:member_event_location_invalid |
+| 27–29 | hosted by中插U+200B，分别作地点、标题、说明UPDATE | 三条均23514:member_event_reserved_wording |
+| 30 | 中文保留词中插U+200B作标题 | 23514:member_event_reserved_wording |
+| 31 | hosted与by之间仅U+200B、无空格 | 成功存hostedby |
+| 32 | U+202E后接ARC作地点 | 成功存ARC |
+| 33 | 家庭表情标题含两个U+200D | 标题逐字保留 |
+| 34–35 | 仅U+200B标题与空标题对照 | 两条均22023:public_write_boundary:post_title_size，posts/events均不增加 |
+| 36 | 正文https协议中插U+200B | 23514:member_event_link_not_allowed |
+| 37 | 仅U+200B说明 | 存NULL |
+| 38 | 非空说明含U+200D | 按N存，保留连接符 |
+
+### L353 · 2026-11-22 21:34 CT · 重新冻结：20261122035253（D-58第4项）
+- task_id: D-58.4/重新冻结
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 核SQL38/38及185链；核四条旧迁移、两个manifest边界；sha256与manifest对应行比较
+- 计数: 新SHA256=b93ea1edce3ecc2f2a2d4a59fb5b9ed3bbb129f52ed65211ad02cd02e8781bdd；旧97adefdd…5298撤销；四旧迁移及manifest其余行零差异；独立提交fe80882 [本地测]
+- ci_run_url: —
+- 未测项: 材料冻结记录尚未推送；P4代码尚未推送；最终门禁与控制待跑
+- 下一条: D-58.4 先推送材料冻结记录
+- 附: 实测guard md5=7eb7680e59995c1dc8e9d754603ed790，create_member_event md5=9e58b01a3b5dff8a355f7323413b3dc2；VERIFY两行及member_shape、RUNBOOK报错md5据PG17更新。冻结记录先扫描推到材料远端，确认后才能最终单次推P4。P4远端目前仍c106e23，不将本地候选误写为已发布。
+
+### L354 · 2026-11-22 21:44 CT · D-58最终P4门禁启动；更正L352前端环境
+- task_id: D-58.7
+- code_sha: fe80882c13cb51bcbdb71f57e1f5c83c5d7b0d2b
+- docs_sha: 21ed5d64e844da812f97695c4441df835b7b3cc8（本次写回之前材料分支的HEAD）
+- 环境: 本地、L-UI
+- 命令: SMOKE_SPECS=全部57个spec（排除两个compiled）RC install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；umask022、同一flock、后台bash_925、mon_R43C69610DS4C150
+- 计数: 仅启动，结果未出；57文件与c106e23的相同清单逐项一致 [本地测]
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45103933628
+- 未测项: 全量结果、P4六十轮、全部正负SQL控制及包大小尚待
+- 下一条: D-58.4 先推送材料冻结记录
+- 附: 首次误按56文件预估拦在启动前，没有跑门禁；按源树核实上批和本批均57后启动唯一一轮。L352的39例是node单测，环境前端部分应写本地，不能作为浏览器验收；本轮smoke才记录实际浏览器全量结果。视口CI45103933628已成功，不再待CI。
