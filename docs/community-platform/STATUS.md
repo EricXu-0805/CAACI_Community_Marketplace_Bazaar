@@ -1,13 +1,13 @@
 # STATUS
 
-写于 2026-11-22 17:52 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-22 19:25 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
 `next_task_id: D-58.1（与D-58.2、D-58.3a并行开工）`
 `latest_batch: appendix/batch/FINAL.md`
 
 D-58 第十二批进行中（L315起）：开工材料、目标/提醒和基准核对已完成。视口56f83cd、P3 597b7fa、P4 c106e23为本批起点；当前均草稿且base不变。先并行第1、2和3a–g；P4再合P3，做第5项P4部分，最后按具名例外修改20261122035253。新冻结记录先推材料，再单次推P4。截止2026-11-25 12:00 CT；收尾后停止，不接BACKLOG。第十一批FINAL保留，本批更正另记。
 
-P4 第3a–g项已分别在本地提交（至67114dc，L325–L331），尚未推送；胶囊源码、入口负对照、私信断言、开关读取与列表并发、草稿失败提交和重试均有验证。草稿相关最后一组14/14，390/1280浅深色告警与错误同时可见；模块移动后typecheck、29条node和6条浏览器场景通过。当前等P3交付后合入；完整门禁、构建产物和主包数字等第7项，视口亦等子任务交付。
+P4 第3a–g项已分别在本地提交（至67114dc，L325–L331），尚未推送；胶囊源码、入口负对照、私信断言、开关读取与列表并发、草稿失败提交和重试均有验证。草稿相关最后一组14/14，390/1280浅深色告警与错误同时可见；模块移动后typecheck、29条node和6条浏览器场景通过。旧子任务运行已中断，主会话按17c接管（L333–L337）；P3续剩余七步门禁，视口五场景二十轮排队。两者已有红绿及P3回放证据已核。P3推送后再合入P4，完整门禁、产物和包体检查继续按第7项。
 
 ## 第十二批开工背景（D-58第0项，逐字照录）
 
@@ -34,9 +34,9 @@ P4 第3a–g项已分别在本地提交（至67114dc，L325–L331），尚未�
 | code_sha | 9171976e94c4c7e96522f0a9ff475452fc24eb51（main，#382 于 2026-11-21 16:09:20Z squash 合并，树与 19c4657 相同；生产发布由 supervisor 完成，D-57 第 0 项） |
 | 基线 main | 7b18f2052e52a4268c25407d0584748477cbf978（2026-11-13 git ls-remote） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | a9da080（本次写回之前材料分支的 HEAD） |
+| docs_sha | 31d9f36（本次写回之前材料分支的 HEAD） |
 | 其余代码分支（远端 head） | #379 codex/community-p3-20261120 597b7fa（base codex/community-restricted-20261113，D-57已推送，L254–L256）；#380 codex/community-events-20261120 c106e23（base P3 的分支，第十一批已单次推送，L307–L310）；#383 codex/community-viewport-consumers-20261121 56f83cd（base main，L288、L291）；三个都是草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）；#373、#378 已合进各自 base 分支 [本批PR状态：2026-11-22 gh pr view与git ls-remote；旧记录照原条目] |
-| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 597b7fa（#379，D-58子任务进行中，待交付更新）；illini-events-20261120 67114dc（D-58.3a–g共7个本地提交，未推；远端c106e23，等P3交付后合入）；illini-viewport-consumers 56f83cd（#383，D-58子任务进行中，待交付更新）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：P4本地head为本次更新；其余为此前记录] |
+| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58本地两提交，远端597b7fa；主会话续跑门禁）；illini-events-20261120 67114dc（D-58.3a–g共7个本地提交，未推；远端c106e23，等P3交付后合入）；illini-viewport-consumers 56f83cd（两项预期修改未提交；主会话二十轮验证排队）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：P4本地head为本次更新；其余为此前记录] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 

@@ -4529,3 +4529,87 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 纯文档未另跑门禁；本批最终门禁待第7项
 - 下一条: D-58 合入P3新head
 - 附: 关闭只停新发起；发起人仍能取消已有活动、修改说明，说明继续走既有审核。3a–g共7个本地提交，P4尚未推送。
+
+### L332 · 2026-11-22 17:57 CT · D-58第3a–g项材料推送回执
+- task_id: D-58.3a–g
+- code_sha: 67114dcf29a716a9aaff7481815ed123129ea5ab
+- docs_sha: 31d9f36ea555ab8609ec03a7dd9507bf1d7dc689（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: git pull --ff-only；git commit --no-verify；scan17d.py a9da080 --log；git push --no-verify；git ls-remote
+- 计数: 31d9f36已推送，远端与scan17d.log第26行HEAD一致；1提交/102新增行；①0、②0、号池0、③0、④0、⑤0，trailer豁免1，exit0 [本地测]
+- ci_run_url: —
+- 未测项: P4最终门禁与实际主包/分包体积尚未运行；P3和视口等交付
+- 下一条: D-58 合入P3新head
+- 附: 本次材料包含STATUS和L324–L331；七项代码只在P4本地提交，未推P4；未修改迁移。
+
+### L333 · 2026-11-22 19:17 CT · [OMO自决] D-58接管已中断的P3与视口子任务
+- task_id: D-58.1、D-58.2、D-58.5
+- code_sha: P3本地4e7bd21；视口基准56f83cd
+- docs_sha: 31d9f36ea555ab8609ec03a7dd9507bf1d7dc689（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 读取check-20261122T224520Z-h5accept.log；task_cancel st_01a2055b、st_01a2055a；pgrep；umask022+flock -n下podman ps；flock -n true；git ls-remote
+- 计数: 两个task_cancel均返回completed/not running、无变更。17c核对：runner0、容器0、锁rc0；远端仍597b7fa及56f83cd，未推送。磁盘前后343891886080字节 [本地测]
+- ci_run_url: —
+- 未测项: 中断信号发送来源未证实；P3完整门禁、视口20轮及其完整门禁未完成
+- 下一条: D-58 恢复中断子任务的执行与交接
+- 附: P3原日志install/typecheck/h5均rc0；h5accept仅跑到第32/52条，22:49:27Z出现signal15转发失败，没有整步完成结果。视口控制已恢复，20轮没有运行产物。此前把旧完成摘要和文件监控句柄当作仍在运行的依据，等待判断失准；以实际进程、容器和日志改判，由主会话接手，不再派新子任务，不重跑已通过步骤。P3两提交及183/183、703/703和列级红绿证据保留；两工作树无临时控制，视口仅两项预期修改。没有发送steer，序号均0。
+
+### L334 · 2026-11-22 19:21 CT · D-58第2a项：承接并核对P3三处断言修正
+- task_id: D-58.2a
+- code_sha: 7954556、4e7bd21
+- docs_sha: 31d9f36ea555ab8609ec03a7dd9507bf1d7dc689（本次写回之前材料分支的HEAD）
+- 环境: L-UI
+- 命令: 两spec完整各20轮：check-20261122T222400Z、T223207Z；真实生产控制T224038Z、恢复T224213Z；git diff 597b7fab..HEAD
+- 计数: 基线200/200（reply40、watch/save160），失败均0；修后200/200；负对照3/0/3/0；恢复完整两spec10/10 [本地测]
+- ci_run_url: —
+- 未测项: 本批最终门禁剩余七步和699六十轮尚待
+- 下一条: D-58.2 完成P3门禁并推送
+- 附: 未声称基线复现偶发问题。diff原样为d7d11f4三处：toast定位和等待真实写请求；只有两测试文件+7/-3。通知真实toast移除、真实save写入短路均在对应断言变红；当前工作区干净，提交差异不含两个临时产品文件，恢复已完成。保留既有证据，没有重跑这些已通过检查。
+
+### L335 · 2026-11-22 19:21 CT · D-58第5项P3部分：列级授权检查及回放通过
+- task_id: D-58.5/P3
+- code_sha: 4e7bd2142092310e972f365822bcdacfa7ee5e91
+- docs_sha: 31d9f36ea555ab8609ec03a7dd9507bf1d7dc689（本次写回之前材料分支的HEAD）
+- 环境: L-SQL
+- 命令: p3/replay.log；lsql-20261122T224251Z.log；column-negative.log、column-restored.log；核VERIFY和RUNBOOK差异
+- 计数: files183/replayed183/errors0/done1/rc0；P3_TOTAL703/703；P3_SWITCH default=off/PASS；初始及恢复VERIFY enabled=f。列UPDATE授权后指定column_acl、verify_rc3；撤掉后rc0 [本地测]
+- ci_run_url: —
+- 未测项: 未连托管库；P3完整门禁及推送待完成
+- 下一条: D-58.2 完成P3门禁并推送
+- 附: VERIFY在原表权限循环之后、行数之前加规定两段；沿用object_name，RUNBOOK补列ACL计数和三角色权限检查。两文件+26；迁移和manifest无差异。D58回放控制副本承接D57原脚本，未修改原脚本或归档。
+
+### L336 · 2026-11-22 19:21 CT · [OMO自决] D-58视口后续单例红绿控制已核
+- task_id: D-58.1a–c
+- code_sha: 56f83cd工作区（两文件未提交）
+- docs_sha: 31d9f36ea555ab8609ec03a7dd9507bf1d7dc689（本次写回之前材料分支的HEAD）
+- 环境: L-UI
+- 命令: 根控制check-20261122T223136Z、恢复T224005Z；messages旧实现T224134Z、恢复T224509Z；查看两张messages-recovered图
+- 计数: 根只加height:auto控制1失败，差值Expected0/Received50，恢复1通过；旧66e14a45在恢复断言Expected0px/Received350px，恢复1通过；两张双栏图已看 [本地测]
+- ci_run_url: —
+- 未测项: 20轮由主会话排队补跑；最终门禁和699六十轮未完成，真机未验
+- 下一条: D-58.1 完成二十轮零跳过验证
+- 附: 选择精确Open filters按钮可见后量根高度，因为它属于首页真实挂载内容；两档820×1180/830。messages仅覆盖viewport/screen为1280×1180，实际URL和双栏先确认，其余iPhone参数保留；staleInset宽度默认820，其余调用不变。只改观察者注释，没有改实现；临时源码恢复。第一轮根控制因输出路径不在容器挂载内而未运行，不计作负对照。二十轮此前未启动，现用主会话后台句柄；未把旧子任务完成摘要当作验收。
+
+### L337 · 2026-11-22 19:25 CT · D-58主会话续跑及更正L336的启动表述
+- task_id: D-58.1、D-58.2
+- code_sha: P3 4e7bd21；视口56f83cd工作区
+- docs_sha: 31d9f36ea555ab8609ec03a7dd9507bf1d7dc689（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 主会话run_in_background；同一行传53个SMOKE_SPECS，P3续h5accept/mp/mpci/migrations/test/smoke/npmaudit；视口SMOKE_SPECS="viewport-inset-consumers.spec.ts --repeat-each=20"；共用run-locked.sh
+- 计数: P3后台bash_898，完成监控mon_EQC8MX2VN9A2WQN9；视口排队bash_899，完成监控mon_PE7895DYXMS8PKNR；此条不计门禁通过 [本地测]
+- ci_run_url: —
+- 未测项: 两个新运行尚未结束
+- 下一条: D-58.2 完成P3门禁并推送
+- 附: 更正L336“此前未启动”：准确结论是没有留存可确认的二十轮启动/完成证据，不能确定它是否曾启动；不记为已执行。P3原通过三步仍有效，同一4e7bd21只续中断及未完成七步。新标签p3/final-resume-20261123T011812Z、viewport/repeat20-resumed-20261123T011845Z，各有console与exit文件订阅，原始日志保留。
+
+### L338 · 2026-11-22 19:28 CT · 更正L334的控制环境措辞
+- task_id: D-58.2a
+- code_sha: 4e7bd21
+- docs_sha: 31d9f36ea555ab8609ec03a7dd9507bf1d7dc689（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 核L334及check-20261122T224038Z、T224213Z的本地容器记录
+- 计数: 原3条红、恢复10条绿计数不变；本条仅更正文案 [本地测]
+- ci_run_url: —
+- 未测项: 未连接或操作生产环境
+- 下一条: D-58.2 完成P3门禁并推送
+- 附: L334“真实生产控制”指本地产品源码上的真实缺陷负对照，应读作“本地产品代码负对照”；不是生产环境控制或生产写入。两个临时源码改动均已恢复。
