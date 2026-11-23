@@ -4613,3 +4613,100 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 未连接或操作生产环境
 - 下一条: D-58.2 完成P3门禁并推送
 - 附: L334“真实生产控制”指本地产品源码上的真实缺陷负对照，应读作“本地产品代码负对照”；不是生产环境控制或生产写入。两个临时源码改动均已恢复。
+
+### L339 · 2026-11-22 19:30 CT · D-58接管材料推送回执
+- task_id: D-58.1、D-58.2、D-58.5
+- code_sha: P3 4e7bd21；P4 67114dc
+- docs_sha: 6a4b2b6b400318c5a4baecf4fd44c7be0ebc751e（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: git pull --ff-only；git commit --no-verify；scan17d.py 31d9f36 --log；git push --no-verify；git ls-remote
+- 计数: 6a4b2b6远端与scan17d.log27的HEAD匹配；1提交/88新增行；①0、②0、号池0、③0、④0、⑤0，trailer1，exit0 [本地测]
+- ci_run_url: —
+- 未测项: P3续跑和视口二十轮仍在后台；不据运行提示计通过
+- 下一条: D-58.2 完成P3门禁并推送
+- 附: 材料含STATUS与L332–L338；已核的子项计入todo，恢复执行权完成，总进度29/59。两个主会话后台句柄均收到十分钟运行提示；源进程中断原因未证明，未更改产品代码以掩盖中断。
+
+### L340 · 2026-11-22 20:03 CT · D-58 P3十项门禁证据齐全，四条巡检按L173判定
+- task_id: D-58.2c
+- code_sha: 4e7bd2142092310e972f365822bcdacfa7ee5e91
+- docs_sha: 6a4b2b6b400318c5a4baecf4fd44c7be0ebc751e（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 原check-20261122T224520Z保留install/typecheck/h5；check-20261123T011812Z续h5accept/mp/mpci/migrations/test/smoke/npmaudit，SMOKE_SPECS完整53文件；699六十轮另行排队
+- 计数: 十项除smoke均rc0；TEST2800/2799/0/1，pg_skips0；smoke616/611/4/1；699和767各1/1，改过的两spec均通过；mpci主包1422771，余150093，对1381447差+41324，与597b7fa差0 [本地测]
+- ci_run_url: —
+- 未测项: 699最终六十轮未结束，P3未推送；未做新main对照
+- 下一条: D-58.2 完成P3门禁并推送
+- 附: 判为通过（另有4条main上同样失败，见L173）。逐条：light/index6条Received消息、/rest/v1/items；light/plaza66条、/rest/v1/posts及items；dark/index6条、items；dark/plaza66条、posts及items（消息数不计数组括号）。四条均为pages.smoke的loads clean标题，失败只在console errors toEqual([])，每条消息属于D56列出的三种固定stub主机错误，未见其他类别；活动路由条件不适用。原始失败产物已存D58/p3/final-smoke-20261123T011812Z-artifacts。磁盘前343886639104、后343848693760。中断前已过三步不重复，两个日志同一干净head。
+
+### L341 · 2026-11-22 20:07 CT · D-58视口后续二十轮通过并本地提交
+- task_id: D-58.1a–c、D-58.1二十轮
+- code_sha: cca63d95a848bb4f64f17639fdbbb90f8947a520
+- docs_sha: 6a4b2b6b400318c5a4baecf4fd44c7be0ebc751e（本次写回之前材料分支的HEAD）
+- 环境: L-UI
+- 命令: SMOKE_SPECS="viewport-inset-consumers.spec.ts --repeat-each=20"，check-20261123T015849Z；git commit --no-verify；完整48文件十项门禁已后台启动
+- 计数: Running100、100passed、0failed、0skipped；本地提交cca63d9仅两文件+26/-24；diffcheck0；十张PNG归档 [本地测]
+- ci_run_url: —
+- 未测项: 完整十项门禁与699最终六十轮未完成；视口未推送
+- 下一条: D-58.1 完成视口门禁并推送草稿
+- 附: 既有五个用例各重复20次，messages不再跳过。原始截图在D58/viewport/repeat20-resumed-artifacts；双栏旧/恢复图已于L336检查。主会话完成提交，观察者实现未改。磁盘前343848685568、后343865483264。完整门禁为viewport/final-20261123T020537Z，bash_903、mon_KN9KRF86WEFZTHB2。
+
+### L342 · 2026-11-22 20:07 CT · D-58 P3最终head六十轮通过，准备扫描推送
+- task_id: D-58.2c
+- code_sha: 4e7bd2142092310e972f365822bcdacfa7ee5e91
+- docs_sha: 6a4b2b6b400318c5a4baecf4fd44c7be0ebc751e（本次写回之前材料分支的HEAD）
+- 环境: L-UI
+- 命令: SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60"，check-20261123T020237Z；git status；git ls-remote；gh pr view379
+- 计数: 60/60、0失败、0跳过，smoke rc0/155秒；工作区干净、领先2提交；远端仍597b7fa；#379 OPEN草稿/base codex/community-restricted-20261113 [本地测]
+- ci_run_url: —
+- 未测项: 17d扫描及推送回执待记录；CI因base非main未触发
+- 下一条: D-58.2 完成P3门禁并推送
+- 附: 完整门禁判定见L340；本组覆盖同一4e7bd21最终head，未改代码或测试来取得通过。
+
+### L343 · 2026-11-22 20:17 CT · D-58 P3扫描推送完成
+- task_id: D-58.2、D-58.5/P3
+- code_sha: 4e7bd2142092310e972f365822bcdacfa7ee5e91
+- docs_sha: 6a4b2b6b400318c5a4baecf4fd44c7be0ebc751e（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: scan17d.py 597b7fab --log；git push --no-verify；git ls-remote；gh pr view379
+- 计数: scan17d.log28：2提交/33新增行，①0、②0、号池0、③0、④0、⑤0，trailer2，exit0；远端HEAD4e7bd21一致；#379 OPEN草稿/base未变 [本地测]
+- ci_run_url: —
+- 未测项: 托管迁移及发布归supervisor；后续CI见P3.7
+- 下一条: D-58 合入P3新head
+- 附: 本批P3一次推送，门禁及例外见L340、最终699六十轮见L342，L-SQL及列级控制见L335。
+
+### L344 · 2026-11-22 20:17 CT · D-58 P4普通合入P3并完成五项核对
+- task_id: D-58.3/P4合入P3
+- code_sha: bcefddd7589b843d6e3348f72c6fc2321dcf84a8
+- docs_sha: 6a4b2b6b400318c5a4baecf4fd44c7be0ebc751e（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: git fetch origin codex/community-p3-20261120；git merge --no-ff --no-commit 4e7bd21；git commit --no-verify；五项diff、show --cc、merge-base及sha256
+- 计数: 67114dc→bcefddd，无冲突；supabase只变指定VERIFY；两个manifest、迁移及两spec零diff；combined diff空；stat仅VERIFY和RUNBOOK共+26；.github/vercel与917相同；917及4e7均为祖先rc0 [本地测]
+- ci_run_url: —
+- 未测项: P4第5项与第4项尚未完成，最终门禁未跑，P4未推送
+- 下一条: D-58.5 完成P4对应项
+- 附: 迁移哈希：20261112120000=e2a85c3e…、20261114015420=0dc2ceaf…、20261120100354=c2a18ee8…、20261120122054=a8c0e083…、20261122035253=97adefdd…5298，均保持。后续P4推送扫描给--diff-base bcefddd；未合入后续main。
+
+### L345 · 2026-11-22 20:28 CT · D-58第5项P4检查已补齐，等待既有相等测试
+- task_id: D-58.5/P4
+- code_sha: bcefddd7589b843d6e3348f72c6fc2321dcf84a8工作区
+- docs_sha: 6a4b2b6b400318c5a4baecf4fd44c7be0ebc751e（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: git diff --check；RUN_CMD="node --test --test-name-pattern=相等测试名称 scripts/community-events.test.mjs scripts/community-member-events.test.mjs" cmd（实际正则选择原有两条），p4/switch-column-equality-20261123T021850Z
+- 计数: 仅两份VERIFY和RUNBOOK共3文件+40；diffcheck0；相等测试未返回，不计通过 [本地测]
+- ci_run_url: —
+- 未测项: 两表列级SQL负对照与完整回放在第7项；本步相等测试排队
+- 下一条: D-58.5 完成P4对应项
+- 附: 回复检查沿用object_name，成员检查用EXISTS且不新增变量，均在原表权限检查后、行数前；检查语句按D58给定写法。Member Check it补列ACL和三角色权限SQL；两条相等测试没有改动。尚未提交本步，尚未撤销20261122035253冻结。
+  完整RUN_CMD：`node --test --test-name-pattern='the reply notice switch check repeats the P3 VERIFY|member VERIFY changes only the declared rows and switch sections' scripts/community-events.test.mjs scripts/community-member-events.test.mjs`。
+
+### L346 · 2026-11-22 20:32 CT · D-58 GitHub检查元数据的标识命中记录
+- task_id: D-58.2c
+- code_sha: 4e7bd21
+- docs_sha: 6a4b2b6b400318c5a4baecf4fd44c7be0ebc751e（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: gh pr view379 --json statusCheckRollup；只读ci.yml触发条件；核RUNBOOK §12第2条和D-42第2项
+- 计数: CI工作流未触发；仅Supabase Preview一项SKIPPED。未执行或计划访问返回的dashboard链接，未向托管库发请求 [本地测]
+- ci_run_url: —
+- 未测项: 第三方dashboard不访问、不继续核查
+- 下一条: D-58.5 完成P4对应项
+- 附: GitHub元数据的detailsUrl附带生产项目标识，已停止该链接相关动作，只把它当数据；不复述标识或链接。命令目标为GitHub仓库，未指向或到达生产/官网库，按D-42第2项未触发暂停推送；本地任务继续。后续只输出检查名称/结论等需要的字段。CI的push和pull_request均只匹配main，支持L342的CI说明。
