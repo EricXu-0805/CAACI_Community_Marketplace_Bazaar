@@ -150,6 +150,19 @@ BEGIN
       RAISE EXCEPTION 'reply_notice_switch_table_privilege:%', object_name;
     END IF;
   END LOOP;
+  IF (SELECT pg_catalog.count(*)
+        FROM pg_catalog.pg_attribute AS a
+        JOIN pg_catalog.pg_class AS c ON c.oid = a.attrelid
+        CROSS JOIN LATERAL pg_catalog.aclexplode(a.attacl) AS entry
+       WHERE a.attrelid = 'private.community_reply_notice_config'::pg_catalog.regclass
+         AND a.attnum > 0 AND NOT a.attisdropped AND entry.grantee <> c.relowner) <> 0 THEN
+    RAISE EXCEPTION 'reply_notice_switch_table_column_acl';
+  END IF;
+  FOREACH object_name IN ARRAY ARRAY['anon', 'authenticated', 'service_role'] LOOP
+    IF pg_catalog.has_any_column_privilege(object_name, 'private.community_reply_notice_config', 'SELECT,INSERT,UPDATE,REFERENCES') THEN
+      RAISE EXCEPTION 'reply_notice_switch_table_column_privilege:%', object_name;
+    END IF;
+  END LOOP;
   SELECT pg_catalog.count(*)::text || ':' || coalesce(pg_catalog.bool_and(switch.singleton)::text, 'none') INTO listed
     FROM private.community_reply_notice_config AS switch;
   IF listed IS DISTINCT FROM '1:true' THEN

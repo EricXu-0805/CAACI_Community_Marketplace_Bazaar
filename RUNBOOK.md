@@ -792,6 +792,19 @@ SELECT has_table_privilege('anon', 'private.community_member_event_config', 'SEL
        has_table_privilege('authenticated', 'private.community_member_event_config', 'SELECT') AS member_reads,
        has_table_privilege('service_role', 'private.community_member_event_config', 'SELECT') AS service_reads;
 
+-- No column grants to anyone except the table owner (0).
+SELECT count(*) AS non_owner_column_grants
+  FROM pg_catalog.pg_attribute AS a
+  JOIN pg_catalog.pg_class AS c ON c.oid = a.attrelid
+  CROSS JOIN LATERAL pg_catalog.aclexplode(a.attacl) AS entry
+ WHERE a.attrelid = 'private.community_member_event_config'::pg_catalog.regclass
+   AND a.attnum > 0 AND NOT a.attisdropped AND entry.grantee <> c.relowner;
+
+-- No API role has any column privilege (all three false).
+SELECT role_name,
+       pg_catalog.has_any_column_privilege(role_name, 'private.community_member_event_config', 'SELECT,INSERT,UPDATE,REFERENCES') AS any_column_privilege
+  FROM pg_catalog.unnest(ARRAY['anon', 'authenticated', 'service_role']) AS api(role_name);
+
 SELECT public.community_member_events_open(); -- true
 ```
 
