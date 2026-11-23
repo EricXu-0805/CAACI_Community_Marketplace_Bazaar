@@ -69,6 +69,13 @@ export function useCommunityEvents() {
   const { currentUser, awaitAuthReady } = useAuth()
   const moderation = useModeration()
 
+  async function caaciLastSuccess(): Promise<string | null> {
+    return supabase.from('community_event_sync_state').select('source, last_success_at')
+      .eq('source', 'caaci').maybeSingle()
+      .then(({ data, error }) => !error && typeof data?.last_success_at === 'string'
+        && Number.isFinite(Date.parse(data.last_success_at)) ? data.last_success_at : null, () => null)
+  }
+
   async function memberEventsOpen(): Promise<boolean> {
     // D-57 requires every failed prerequisite or RPC response to stay closed.
     const ready = await awaitAuthReady().then(() => true, () => false)
@@ -138,5 +145,5 @@ export function useCommunityEvents() {
     }
   }
 
-  return { listEvents, findEvent, findTopicEvent, memberEventsOpen, invalidate: invalidateEventLists }
+  return { listEvents, findEvent, findTopicEvent, memberEventsOpen, caaciLastSuccess, invalidate: invalidateEventLists }
 }

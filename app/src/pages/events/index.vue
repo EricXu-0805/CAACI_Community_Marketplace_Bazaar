@@ -83,6 +83,7 @@
               @click="showPast(true)" @keydown.enter.prevent="showPast(true)">{{ t('events.pastLink') }}</text>
           </view>
         </template>
+        <text v-if="staleCheckedAt" class="ev-stale" data-test="events-stale">{{ t('events.empty.stale', { when: staleCheckedAt }) }}</text>
       </view>
 
       <!-- #ifdef H5 -->
@@ -122,6 +123,7 @@ import {
   type CommunityEvent, type EventDateHead, type EventFilter,
 } from '../../utils/communityEvents'
 import { openExternalLink } from '../../utils/eventLinks'
+import { formatEventCheckedAt } from '../../utils/eventTime'
 
 const FILTER_KEY = 'community_events_filter'
 // SPEC 6.7.9: the mini program opens no web page; a link there copies its address, and its label says so.
@@ -131,7 +133,7 @@ copiesLinks = false
 // #endif
 
 const { t, tc, lang } = useI18n()
-const { listEvents, memberEventsOpen } = useCommunityEvents()
+const { listEvents, memberEventsOpen, caaciLastSuccess } = useCommunityEvents()
 const language = computed(() => (lang.value === 'zh' ? 'zh' : 'en'))
 
 function readFilter(): EventFilter {
@@ -150,8 +152,11 @@ const creationOpen = ref(false)
 const allLive = ref(false)
 // The instant the list was read at: states and "today" are judged against it.
 const now = ref(Date.now())
+const lastSuccess = ref<string | null>(null)
 let epoch = 0
 
+const staleCheckedAt = computed(() => lastSuccess.value && now.value - Date.parse(lastSuccess.value) > 2 * 60 * 60_000
+  ? formatEventCheckedAt(lastSuccess.value, language.value, now.value) : '')
 const view = computed(() => buildEventList(rows.value, filter.value, now.value, { allLive: allLive.value }))
 const groupHead = (head: EventDateHead) => formatEventGroupHead(head, language.value,
   { today: t('events.today'), tomorrow: t('events.tomorrow') }, now.value)
@@ -163,6 +168,10 @@ async function load() {
   loading.value = (past.value ? pastRows.value : rows.value).length === 0
   loadError.value = false
   creationOpen.value = false
+  lastSuccess.value = null
+  void caaciLastSuccess().then(value => {
+    if (mine === epoch) lastSuccess.value = value
+  })
   void memberEventsOpen().then(open => {
     if (mine === epoch) creationOpen.value = open
   })
@@ -235,6 +244,7 @@ function goBack() { navigateBackOr(() => uni.switchTab({ url: '/pages/plaza/inde
 .ev-more, .ev-link { display: flex; align-items: center; min-height: 44px; padding: 0 var(--space-4); font-size: 13px; color: var(--ink-soft); cursor: pointer; }
 .ev-more { background: var(--surface); box-shadow: inset 0 -1px 0 var(--line-hair); }
 .ev-foot { display: flex; justify-content: center; padding: var(--space-4) 0 var(--space-8); }
+.ev-stale { display: block; padding: 0 var(--space-4) var(--space-5); font-size: var(--t-meta); line-height: var(--lh-meta); color: var(--ink-quiet); text-align: center; }
 .ev-state { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-8) var(--space-4); }
 .ev-state-t { font-size: 14px; line-height: 22px; color: var(--ink-soft); text-align: center; }
 .ev-btn {

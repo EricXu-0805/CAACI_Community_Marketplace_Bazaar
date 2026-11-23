@@ -49,6 +49,7 @@ test('migration inventory covers every shipped direct relation plus view depende
   assert.deepEqual([...relations].sort(), [
     'banners_live',
     'blocks',
+    'community_event_sync_state',
     'community_events',
     'conversation_archives',
     'conversations',

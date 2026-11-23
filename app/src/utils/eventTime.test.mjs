@@ -47,6 +47,19 @@ test('event time utilities run offline, use Central time without Intl, and share
       assert.match(time.formatEventDetailTime({ starts_at: event.starts_at, all_day: true }), /全天/)
       assert.match(time.formatEventDetailTime({ starts_at: '2027-01-01T05:00:00Z', ends_at: '2027-01-01T07:00:00Z' }), /2026年12月31日.*2027年1月1日/)
     })
+    await t.test('checked-at text uses Chicago time and includes a year only across Chicago years without Intl', () => {
+      const value = '2026-11-12T20:05:00Z'
+      const now = Date.parse('2026-11-20T16:00:00Z')
+      assert.equal(time.formatEventCheckedAt(value, 'zh', now), '11月12日 14:05 CT')
+      assert.equal(time.formatEventCheckedAt(value, 'en', now), 'Nov 12, 2:05 PM CT')
+      const previous = '2025-11-12T20:05:00Z'
+      assert.equal(time.formatEventCheckedAt(previous, 'zh', now), '2025年11月12日 14:05 CT')
+      assert.equal(time.formatEventCheckedAt(previous, 'en', now), 'Nov 12, 2025, 2:05 PM CT')
+      // UTC has entered 2027, but Chicago is still in 2026.
+      const utcNewYear = Date.parse('2027-01-01T05:59:00Z')
+      assert.equal(time.formatEventCheckedAt(value, 'en', utcNewYear), 'Nov 12, 2:05 PM CT')
+      assert.equal(time.formatEventCheckedAt(value, 'zh', utcNewYear + 60_000), '2026年11月12日 14:05 CT')
+    })
     await t.test('an all-day event names its own days: one day alone, several days up to the last one (ENGINEERING 9.3)', () => {
       // A calendar gives an all-day event from 00:00 of its first day to 00:00 of the day after its last, in Champaign.
       const one = { all_day: true, starts_at: '2026-11-23T06:00:00Z', ends_at: '2026-11-24T06:00:00Z' }

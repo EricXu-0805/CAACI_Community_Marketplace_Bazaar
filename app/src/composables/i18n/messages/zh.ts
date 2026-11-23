@@ -1111,6 +1111,8 @@ const zh: Record<string, string> = {
   'events.empty.campus': '近期没有收录学校活动。',
   'events.empty.member': '还没有网友发起活动。',
   'events.empty.past': '过去 180 天没有活动记录。',
+  'events.empty.stale': 'CAACI 活动信息上次核对：{when}',
+  'events.checkedAt': '来源信息核对于 {when}',
   'events.empty.caaciLink': 'CAACI 官网活动 ›',
   'events.empty.campusLink': 'UIUC 国际学生活动日历 ›',
   'events.empty.caaciLinkCopy': '复制 CAACI 官网活动链接',

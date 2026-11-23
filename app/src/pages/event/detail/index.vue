@@ -70,6 +70,7 @@
       <UButton v-if="canContact" variant="ghost" :loading="contacting" @click="contact">{{ t('events.cta.dmOrganizer') }}</UButton>
 
       <text v-if="event.source_type === 'member'" class="ed-safety">{{ t('events.memberSafety') }}</text>
+      <text v-if="event.source_type === 'caaci' && lastSuccess" class="ed-checked" data-test="event-checked">{{ t('events.checkedAt', { when: formatEventCheckedAt(lastSuccess, language, now) }) }}</text>
       <text class="ed-wrong" role="button" tabindex="0" data-test="event-wrong-info"
         @click="reportWrongInfo" @keydown.enter.prevent="reportWrongInfo">{{ t('events.wrongInfo') }}</text>
     </view>
@@ -108,10 +109,10 @@ import {
   eventActions, eventSourceLabel, eventState, eventTitle, type CommunityEvent, type EventAction,
 } from '../../../utils/communityEvents'
 import { openExternalLink } from '../../../utils/eventLinks'
-import { formatEventDetailTime, formatEventDeviceTime, formatEventPreviousTime } from '../../../utils/eventTime'
+import { formatEventCheckedAt, formatEventDetailTime, formatEventDeviceTime, formatEventPreviousTime } from '../../../utils/eventTime'
 
 const { t, tc, lang } = useI18n()
-const { findEvent } = useCommunityEvents()
+const { findEvent, caaciLastSuccess } = useCommunityEvents()
 const language = computed(() => (lang.value === 'zh' ? 'zh' : 'en'))
 
 const eventId = ref('')
@@ -121,12 +122,17 @@ const { isDark } = useTheme()
 const loading = ref(true)
 const loadError = ref(false)
 const now = ref(Date.now())
+const lastSuccess = ref<string | null>(null)
 let epoch = 0
 
 async function load() {
   const mine = ++epoch
   loading.value = true
   loadError.value = false
+  lastSuccess.value = null
+  void caaciLastSuccess().then(value => {
+    if (mine === epoch) lastSuccess.value = value
+  })
   try {
     const row = eventId.value ? await findEvent(eventId.value) : null
     if (mine !== epoch) return
@@ -249,6 +255,7 @@ function onCancelled(result: { readonly id: string; readonly cancelled_at: strin
 .ed-facts { display: flex; flex-direction: column; gap: var(--space-2); }
 .ed-fact { font-size: 15px; line-height: 22px; color: var(--ink); }
 .ed-quiet { font-size: 13px; line-height: 20px; color: var(--ink-quiet); }
+.ed-checked { font-size: var(--t-caption); line-height: var(--lh-caption); color: var(--ink-quiet); }
 .ed-summary { font-size: 15px; line-height: 24px; color: var(--ink); white-space: pre-wrap; }
 .ed-author { display: flex; align-items: center; gap: var(--space-3); }
 .ed-author-avatar { width: var(--space-7); height: var(--space-7); border-radius: 50%; flex: none; }

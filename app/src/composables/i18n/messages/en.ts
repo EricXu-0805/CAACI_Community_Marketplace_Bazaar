@@ -1119,6 +1119,8 @@ const en: Record<string, string> = {
   'events.empty.campus': 'No campus events are listed for the coming months.',
   'events.empty.member': 'No member events yet.',
   'events.empty.past': 'No events in the past 180 days.',
+  'events.empty.stale': 'CAACI event info last checked {when}',
+  'events.checkedAt': 'Source last checked {when}',
   'events.empty.caaciLink': 'CAACI events on caaciorg.com ›',
   'events.empty.campusLink': 'UIUC international student events calendar ›',
   'events.empty.caaciLinkCopy': 'Copy the link to CAACI events',

@@ -72,6 +72,14 @@ export function formatEventPreviousTime(value: string, lang: Language = 'zh'): s
     : `${WEEK_EN[p.weekday]}, ${MONTH_EN[p.month - 1]} ${p.day}, ${p.year} ${clock(p, lang)} CT`
 }
 
+export function formatEventCheckedAt(value: string, lang: Language = 'zh', now = Date.now()): string {
+  const p = eventTimeParts(value)
+  const year = p.year !== eventTimeParts(new Date(now)).year
+  return lang === 'zh'
+    ? `${year ? `${p.year}年` : ''}${p.month}月${p.day}日 ${clock(p, lang)} CT`
+    : `${MONTH_EN[p.month - 1]} ${p.day}${year ? `, ${p.year}` : ''}, ${clock(p, lang)} CT`
+}
+
 function dateLabel(p: Parts, lang: Language, year: boolean): string {
   return lang === 'zh' ? `${year ? `${p.year}年` : ''}${p.month}月${p.day}日（周${WEEK_ZH[p.weekday]}）`
     : `${WEEK_EN[p.weekday]}, ${MONTH_EN[p.month - 1]} ${p.day}${year ? `, ${p.year}` : ''}`
