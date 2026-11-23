@@ -5230,3 +5230,87 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 未把补check追记成发送前执行；后续消息账本待子任务交付
 - 下一条: D-59.1
 - 附: 首次派出及首条补充消息已执行new/check/前台读取/bind/check链。此次没有口令泄露、身份或模型改动；口令值未写任何材料或私有证据。
+
+### L386 · 2026-11-23 05:21 CT · D-59文档更正材料推送完成
+- task_id: D-59.9
+- code_sha: —
+- docs_sha: ffb743dd（本次写回之前材料分支的HEAD）
+- 环境: 本地及GitHub
+- 命令: scan17d.py 3d1448a9 --log；git push --no-verify origin HEAD:refs/heads/codex/community-plan-v5；git ls-remote
+- 计数: ffb743d；scan39 exit0、incomplete0；远端一致；材料累计2次推送/2次扫描
+- ci_run_url: —
+- 未测项: 第9f最终N推算及FINAL统一发布待后续
+- 下一条: D-59.1c
+- 附: 第9a–e/g/h已完成，旧FINAL第十二批未改。
+
+### L387 · 2026-11-23 05:21 CT · D-59第1a项修前页面巡检基线
+- task_id: D-59.1a/基线
+- code_sha: d3bfc17e
+- docs_sha: ffb743dd（本次写回之前材料分支的HEAD）
+- 环境: 本地容器与trace只读复核
+- 命令: 子任务stub/baseline；check-20261123T103841Z install/cmd；主会话读取实际计数并汇总61份trace
+- 计数: Running61，56pass/4fail/1skip；失败为首页、广场浅深；GET items8、GET posts28、HEAD posts4，RPC0
+- ci_run_url: —
+- 未测项: 基线是预期红；不作为修复后门禁
+- 下一条: D-59.1c
+- 附: 1份跳过用例的trace无network，其余60份读取；表名单据此只有items/posts，每条注释说明页面及挂载时机。install10秒，browser186秒。
+
+### L388 · 2026-11-23 05:21 CT · D-59第1a项显式夹具与两条用例
+- task_id: D-59.1a/实现
+- code_sha: a9c271b0
+- docs_sha: ffb743dd（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 主会话审3文件diff与stub-backend.ts；读取restored-targeted-green、helper-types-ci-cases日志
+- 计数: 3文件+112，既有无关行无删改；恢复后7/7，CI模式两新用例2/2；Node用例未新增
+- ci_run_url: —
+- 未测项: 完整十步、最终699六十轮和CI尚未交付
+- 下一条: D-59.1c
+- 附: 开关只认3个精确origin且GITHUB_ACTIONS不是true；关闭时无route。GET数组/单行406/PGRST116、HEAD两头、RPC显式空表；表外501并独立写errs；同stub的WebSocket只关闭并console.log。IGNORE未改，夹具只装在指定巡检及新自检。
+
+### L389 · 2026-11-23 05:21 CT · D-59第1a项四个独立变异
+- task_id: D-59.1a/负对照
+- code_sha: a9c271b0
+- docs_sha: ffb743dd（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: stub/control-remove-install、control-items500、control-omit-ci-guard、control-unknown-rpc200；逐个恢复；主会话读原始失败点并核3文件sha256
+- 计数: 依次4fail、2fail、1fail、1fail；命中原巡检错误、http500、CI条件true/false、未知RPC诊断空数组；当前3哈希与对照前相同
+- ci_run_url: —
+- 未测项: 完整门禁仍待
+- 下一条: D-59.1c
+- 附: 每个独立运行；对照日志、结果和trace留本机；恢复后7/7。pages/spec、viewport/spec、helper的恢复hash分别a27930c7…、8827bc41…、8bec2894…，完整值留私有CONTROLS。
+
+### L390 · 2026-11-23 05:21 CT · D-59第1a项route.abort一次诊断
+- task_id: D-59.1a/诊断
+- code_sha: a9c271b0
+- docs_sha: ffb743dd（本次写回之前材料分支的HEAD）
+- 环境: 本地单次浏览器诊断
+- 命令: stub/diagnostic-abort-once：浅色首页一次，临时替换安装并监听pageerror；后逐字恢复
+- 计数: 1pass；子任务trace记录Route.abort2次；pageError0，Fetch API cannot load未再现
+- ci_run_url: —
+- 未测项: 没有pageError就没有这次的调用栈；不据此诊断应用
+- 下一条: D-59.1c
+- 附: 基线trace的该类事件stack/source为空、位置0:0。仅记录浏览器观察，未改应用，不重跑该一次性诊断。
+
+### L391 · 2026-11-23 05:21 CT · D-59第1b项根高度前提与对照
+- task_id: D-59.1b
+- code_sha: a9c271b0
+- docs_sha: ffb743dd（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: stub/control-content-fit、control-html-body-auto；restored-targeted-green；主会话读失败点及两档循环代码
+- 计数: 820×1180与820×830均先断言内容高于视口；装下内容对照在新前提1fail；纯html/body auto在原等值断言1fail（0对50）；恢复7/7
+- ci_run_url: —
+- 未测项: 完整门禁和最终699六十轮待定
+- 下一条: D-59.1c
+- 附: 临时CSS在真实Open filters挂载后约束uni包装与首页为100vh、隐藏溢出，不造高内容；原等值断言不改。3文件当前sha256均与对照前一致。
+
+### L392 · 2026-11-23 05:21 CT · D-59额外严格编译的未解决结果
+- task_id: D-59.1/附加检查
+- code_sha: a9c271b0
+- docs_sha: ffb743dd（本次写回之前材料分支的HEAD）
+- 环境: 本地
+- 命令: 子任务restored-green-ci-and-types-browser.log的全spec独立strict编译；随后单独严格编译新helper并运行两新例
+- 计数: 前者TS2345两处，pages.smoke.spec.ts:561/:627；这些既有回调未在diff中改变。新helper命令rc0、两用例2/2
+- ci_run_url: —
+- 未测项: 旧head未另跑这条额外strict命令；不声称全spec严格编译通过
+- 下一条: D-59.1c
+- 附: 没有浏览器在失败命令中启动，未把旧test-results作本次证据；未改旧回调、未压错误。仓库正式typecheck属于正在执行的完整门禁，另记录其结果；本条纳入FINAL⑥。

@@ -5,7 +5,7 @@
 `next_task_id: D-59.1`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-59第十三批进行中（L370起）：材料9b8db4a8的例外及0–10项已读；先做第1项新巡检分支。P4从fe80882c按5→2→3→4→6提交，最终通过后才冻结A、先推材料冻结再唯一推P4；P3不动，P4不合main。本批不请求caaciorg.com。11-25 12:00 CT减项、11-26 12:00 CT收尾均按D59.10；完成后关闭目标提醒并停止。 第9a–e/g/h更正已写回L377–L384，第9f已登记阻塞35，推算等最终N；第1项候选a9c271b正在完整门禁，尚未交付推送。
+D-59第十三批进行中（L370起）：材料9b8db4a8的例外及0–10项已读；先做第1项新巡检分支。P4从fe80882c按5→2→3→4→6提交，最终通过后才冻结A、先推材料冻结再唯一推P4；P3不动，P4不合main。本批不请求caaciorg.com。11-25 12:00 CT减项、11-26 12:00 CT收尾均按D59.10；完成后关闭目标提醒并停止。 第9a–e/g/h更正已写回L377–L384，第9f已登记阻塞35，推算等最终N；第1项候选a9c271b正在完整门禁，尚未交付推送。 第1a/b实现、基线、四个变异和两类根高度对照已复核（L387–L392）；完整门禁仍待，不计为全量通过。
 
 D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已结束、提醒已取消。第十二批FINAL不改，第十三批另写更正。P4当前基线fe80882c的门禁、SQL与终审结果仍见L358–L369。
 
@@ -42,7 +42,7 @@ D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已�
 | code_sha | d3bfc17e91a4be21a8ee88a447b473e8fbf9c4a4（main，#383由supervisor于2026-11-23 07:47:52Z合并；只测试/注释，不发布生产，D-59.0） |
 | 基线 main | d3bfc17e91a4be21a8ee88a447b473e8fbf9c4a4（本批gh元数据和ls-remote已核；P4对照仍用9171976e，D-59抬头） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 3d1448a9（本次写回之前材料分支的HEAD） |
+| docs_sha | ffb743dd（本次写回之前材料分支的HEAD） |
 | 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e7bd21（base codex/community-restricted-20261113，D-58已推送，L343）；#380 codex/community-events-20261120 fe80882（base P3 的分支，D-58已唯一推送并更新正文，L364–L365）；#383 codex/community-viewport-consumers-20261121 cca63d9（已合main d3bfc17e，D-59.0）；#379、#380仍为草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）、#383（d3bfc17e）；#373、#378 已合进各自 base 分支 [本批PR状态：2026-11-22 gh pr view与git ls-remote；旧记录照原条目] |
 | tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 fe80882（已唯一推送；全量、SQL控制、六十轮及终审通过）；illini-viewport-consumers cca63d9（已随#383合main，本批不改）；illini-smoke-stub a9c271b（D59本地候选，门禁尚未交付，未推送）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
