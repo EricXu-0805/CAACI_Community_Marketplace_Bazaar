@@ -56,7 +56,7 @@
 | 图片来源限制 | `app/src/utils/publicResource.ts:35` `safeManagedBannerUrl`；`vercel.json` CSP `img-src 'self' data: blob: https://*.supabase.co` | 活动卡不渲染外部图片 |
 | 校园时区换算（不依赖 Intl） | `app/src/utils/campusTime.ts:174` `campusWallClockToInstant`、`:185` `campusPartsNoIntl` | P4 时间显示与导入 |
 | 有界外部请求 | `api/_http-boundary.js` `fetchBounded`（`timeoutMs`、`maxBytes`、`redirect:'manual'`，遇跳转抛 `upstream_redirect`） | P4 同步 |
-| 生产 cron 身份门 | `api/_cron-release.js` `releasedCron`；`cronDeploymentIdentity`（:17-30）只认 `VERCEL_ENV=production` 且 origin 属于 `PRODUCTION_APP_ORIGINS`（:11-12） | P4 同步只在生产执行 |
+| 生产 cron 身份门 | `api/_cron-release.js` `releasedCron`；Production GET核对已发布身份，非生产仍转入monitoredCron（:75-79） | 它不限制P4只在生产执行；CAACI同步开关只能设置在Production，设删后须重新部署（§9.2，D-59） |
 | 每分钟后台任务 | `api/background-jobs.js`（`vercel.json` `* * * * *`；单次预算 `RUN_TIMEOUT_MS = 25_000`，单调用 `CALL_TIMEOUT_MS = 5_000`） | P4.4、P4.7 挂在这里 |
 | 通知写入 | `private.enqueue_activity_notification`：自通知过滤、拉黑检查、`source_event_key` 唯一去重（20260903070000:53-97） | P3.3 |
 | 通知跳转 | `app/src/api/notifications.ts:117` 白名单只认 `post_comment`、`post_like`、`post_comment_like` | P3.3 加 key |
@@ -686,23 +686,29 @@ GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO aut
 
 ### 9.2 社区侧同步 CAACI 活动（P4.4）
 
-- 触发：`api/background-jobs.js` 在现有工作之后、`purge_completed_background_jobs` 之前，剩余预算 >12 秒时调用 `api/_community-events-sync.js`。不新增 Vercel cron，`vercel.json` 不改。它和 background-jobs 一样受 `releasedCron` 保护，只在生产执行（`api/_cron-release.js:17-30`）。
-- 开关：生产环境变量 `COMMUNITY_SYNC_CAACI_EVENTS=1`、`COMMUNITY_SYNC_CAMPUS_EVENTS=1`，由 Eric 设置。没设的来源直接跳过，也不写 `community_event_sync_state`。停同步就删掉对应变量。
-- 节奏：service_role RPC `claim_community_event_sync(source_in text, interval_in interval) returns boolean`，在 `last_attempt_at` 为空或早于 `interval_in` 时更新它并返回 true。CAACI 用 14 分钟。
-- 请求：`fetchBounded`，地址固定 `https://caaciorg.com/api/public-events?window=recent`，超时 5 秒，正文上限 256 KB，`redirect: 'manual'`。请求头只有 `accept: application/json` 和 `user-agent: CornfieldSync/1 (+https://www.illinimarket.com)`。
-- 归一化 `normalizeCaaciEvents`（`api/_community-events.js`）：
-  - `schema` 不是 `caaci.public-events.v1` 时返回 `schema_mismatch`。
-  - 任何对象里出现 `email`、`phone`、`registration`、`volunteer`、`questions` 这类键时返回 `unexpected_private_fields`，防止有人把 `event-register` 的登录态响应当成数据源。
-  - 映射：`source_key ← id`，`title ← title_zh`，`title_en ← title_en`，`summary ← summary_zh`，`summary_en ← summary_en`，`organizer_name ← 'CAACI'`，`registration_mode = takes_registrations ? 'caaci_site' : 'info_only'`，其余同名。
-  - 中文界面的链接由 `app/src/utils/eventLinks.ts` 按官网固定规则换算：活动页把 `/events/` 换成 `/zh/events/`，报名页加 `?lang=zh`（`events.ts:196-199`）。前端不从 slug 自己拼地址。
-- 对账 RPC `apply_caaci_event_snapshot(complete_in boolean, rows_in jsonb) returns jsonb`（SECURITY DEFINER，只授 service_role），一个事务内：
-  1. 看到的行按 `(source_type, source_key)` upsert，写 `last_seen_at`（新行另写 `first_seen_at`），清零 `missing_checks`、清空 `missing_since`；原为 `unavailable` 的改回 `visible`。`hidden` 行只更新字段，不改可见性。
-  2. 开始时间变化交给 `community_events_schedule_change`；新的开始时间在 48 小时内时，另写 `review_flag = 'source_time_changed_near_start'`，供管理端核对。
-  3. 只有 `complete_in = true` 才处理缺席：快照里没有、且有效结束时间 ≥ now() − 179 天的 caaci 行，`missing_checks + 1`，`missing_since = coalesce(missing_since, now())`；`missing_checks >= 2` 的改为 `unavailable`。
-  4. `complete_in = false` 时只 upsert，`last_outcome = 'partial'`。
-- 撤稿时限（验收标准）：官网撤下或删除活动后，社区最迟 30 分钟停止列出。推算：撤下后最多 14 分钟遇到第一次完整同步（`missing_checks = 1`），再过 14 分钟第二次（`= 2`，转为 `unavailable`），加上 cron 最多 1 分钟的间隔，共 29 分钟。L-SQL 用两次缺席快照模拟（P4.4 ③）。
-- 收尾 RPC `finish_community_event_sync(source_in, outcome_in, error_code_in)` 写 `last_success_at`、`last_outcome`、`last_error_code`。SPEC 的「上次核对」灰字读 `last_success_at`。
-- 内容现状：2026-11-12 活动设计调研从 Mac 请求官网 `/api/volunteer`，返回 0 场未结束的已发布活动。官网有活动之前，活动页主要靠学校和合作组织来源。
+- 触发：`api/background-jobs.js` 在孤儿上传清理循环结束后、`purge_completed_background_jobs` 之前，开关打开且剩余预算 >12 秒才调用 `api/_community-events-sync.js`；不足时新增的同步计数为 `skipped_budget`。不新增 cron，不改 `vercel.json`。不能把 `releasedCron` 当成「只在生产执行」的开关：非生产也转入 `monitoredCron`（`api/_cron-release.js:75-79`），Production 才额外核发布身份。
+- 开关只认 `process.env.COMMUNITY_SYNC_CAACI_EVENTS === '1'`；只在 Vercel 的 Production 设置，由 Eric 操作。没设或值不是 `1` 时，不请求、不调同步 RPC、不写 sync_state，background-jobs 响应的键与原来相同。开关打开时 counts 增加本次 outcome；claim 返回 false 为 `not_due`。学校开关 `COMMUNITY_SYNC_CAMPUS_EVENTS` 的接线、fetch 和写库留 D-60，本批不实现。
+- 设置、删除开关之后都要新的生产部署才生效，发布照 E13。要立即停止后续领取、不等部署，由 Eric 在 SQL 编辑器以 postgres 执行 `INSERT INTO public.community_event_sync_state (source, last_attempt_at) VALUES ('caaci', 'infinity') ON CONFLICT (source) DO UPDATE SET last_attempt_at = 'infinity'`；没有状态行时也有效。恢复时把该行 last_attempt_at 改回 NULL。finish 不写 last_attempt_at，所以 infinity 会一直阻止 claim。关掉同步后，已入库行既不更新，也不再记缺席。开关前置和应用顺序见仓库根 RUNBOOK 的「Community P4」「CAACI events sync」。
+- 前向迁移 A 仅提供三个函数：`claim_community_event_sync(source_in text, interval_in interval) returns boolean`、`apply_caaci_event_snapshot(complete_in boolean, rows_in jsonb) returns jsonb`、`finish_community_event_sync(source_in text, outcome_in text, error_code_in text) returns boolean`。三者均 SECURITY DEFINER、owner postgres、`SET search_path = pg_catalog`；撤销 PUBLIC/anon/authenticated EXECUTE，只授 service_role，不改既有表、触发器、策略或授权。claim/finish 结果只认 `=== true`；不用 void，避免 PostgREST 的204空正文被 rpc() 记成 provider_malformed。
+- 领取用一条语句解决初次没有状态行和并发：
+  `INSERT INTO public.community_event_sync_state AS s (source, last_attempt_at) VALUES (source_in, now()) ON CONFLICT (source) DO UPDATE SET last_attempt_at = now() WHERE s.last_attempt_at IS NULL OR s.last_attempt_at < now() - interval_in RETURNING true`。
+  返回行就是 true，没有返回行就是 false；间隔边界严格小于，正好相隔 interval 不领取，infinity 也不领取。source_in 只允许 caaci/campus，其他值由既有表约束报23514。CAACI 间隔为12分钟，是同步模块导出的常量，测试读同一个常量（D-59.2b）。
+- 预算：模块只收 deadline、call 和注入的 fetch，不收 serviceCall、不读 Supabase 密钥、不自行构造 RPC 请求。background-jobs 的 call 只增加可选第三参 timeoutMs，执行 `rpc(origin, name, args, timeoutMs == null ? timeLeft() : Math.min(timeoutMs, timeLeft()))`；原调用不改，不传第三参时行为与原来相同。claim、上游、apply、finish 每步开始前重新计算 `min(5000, deadline - Date.now() - 5000)`，给 call 第三参或 fetchBounded.timeoutMs，给 purge/status 保留至少5秒。
+- 某一步的预算不足1000毫秒就停在它之前，outcome=failed、code=deadline。已claim但finish也放不下时，只记日志、不调finish；因此deadline不写入sync_state，下一次须等满领取间隔。claim本身报错则code=claim_failed，不调finish；没有成功领取，因此可能每分钟报告一次，打开开关前必须确认四条迁移已应用并VERIFY。
+- 请求用 `fetchBounded`：固定 `https://caaciorg.com/api/public-events?window=recent`，上限256 KB，`redirect: 'manual'`，超时按上述预算且最多5秒；请求头只有 `accept: application/json` 和 `user-agent: CornfieldSync/1 (+https://www.illinimarket.com)`，不携带授权或cookie。D-59期间真实请求0次；dry-run脚本只实现 `--dry-run --source caaci`，等P4.3上线后，才按RUNBOOK §12第2条允许一次GET，不读数据库环境变量、不写库。
+- 归一化仍用 `normalizeCaaciEvents`（`api/_community-events.js`）：schema不符为schema_mismatch；隐私字段检测照原样，任何id不是UUID仍使整份bad_json。投影只选数据库白名单列，不能把含partner_name_zh、allowed_link_hosts、comment_count等的卡片对象直接交给apply。
+  - `source_key ← id.toLowerCase()`；`title ← title_zh`、`title_en ← title_en`、`summary ← summary_zh`、`summary_en ← summary_en`、`organizer_name ← 'CAACI'`、`registration_mode = takes_registrations ? 'caaci_site' : 'info_only'`，其余同名白名单字段；starts_at、非空ends_at投影时都用 `new Date(v).toISOString()`。
+  - 中文链接仍由 `app/src/utils/eventLinks.ts` 把 `/events/` 换成 `/zh/events/`、报名页加 `?lang=zh`；前端不从slug另拼地址。
+- apply在一个事务内按来源/key对账，只认caaci行和白名单列：
+  1. 有效行upsert，写last_seen_at（新行另写first_seen_at）、复位missing_checks/missing_since；unavailable重现时回visible，hidden可更新字段但保持hidden。
+  2. 改期交给既有community_events_schedule_change；新的开始时间在48小时内时标source_time_changed_near_start。既有触发器不改。
+  3. 每一行单独的PL/pgSQL子事务只捕获23514、23502、23505、22001、22023；其他错误让整个apply失败，不能吞掉。被拒但key有效的行仍算看到了：原visible/hidden复位缺席计数、清空missing_since，其他字段和可见性不动；原unavailable保持状态、计数和missing_since全部不动。返回rejected计数；有拒绝行时outcome仍可为ok/partial，error_code写rows_rejected。
+  4. apply再查source_key格式；任一坏key使该行计入rejected，整份降成partial，只upsert其余行，不记缺席，防止坏数据把整库活动撤下。
+  5. 只有最终complete为true才处理未出现且有效结束时间≥now()−179天的caaci行：missing_checks加1、第一次写missing_since；连续两次完整快照都缺席时转unavailable。partial只upsert，最终last_outcome为partial。
+- 撤稿时限仍为30分钟。推算（非实测）：来源缓存最坏60秒，cron每分钟一次、每拍0–10秒抖动，claim严格小于；14分钟领取间隔最坏约31分钟，改12分钟后约27分钟。此推算假定每一拍剩余预算都>12秒；被预算跳过的拍会顺延撤稿时间。确定性节奏测试遍历完整周期内每一秒撤下的情形，并分别用「成功领取的拍10秒、其他拍0秒」、全0、全10三种抖动；把模块常量改成14分钟必须使30分钟断言变红。
+- finish只写last_outcome、last_error_code，以及ok或partial时的last_success_at；failed保留旧last_success_at，不写last_attempt_at。SPEC的核对灰字读取last_success_at。模块不会向background-jobs外层抛错：错误只分类，能放下finish时记failed；finish自己失败只记一次日志，不重试finish，后续purge/status仍执行。
+- failed、partial或rejected>0时，在background_job_status之后、return之前，按现有reportToSentry用法报告一次：message固定 `community events sync needs attention`，extra仅 `{ outcome, code, rejected }`；code与finish参数一致，没调finish的deadline/claim_failed也报告。不在同步与purge之间等待Sentry；日志、Sentry和finish参数不含上游正文。
+- 内容现状：2026-11-12活动设计调研从Mac请求官网 `/api/volunteer`，返回0场未结束的已发布活动。官网有活动之前，活动页主要靠学校和合作组织来源。
 
 ### 9.3 UIUC 校历（P4.7；接入方式由 D-33 选）
 
@@ -765,7 +771,7 @@ GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO aut
 - 管理动作 `create_event_discussion {event_id}`（OWNER 角色），只用于 caaci、partner、campus 行：
   - 事件可见且 `duplicate_of is null`，否则拒绝；`availability <> 'visible'` 时返回 `event_discussion_closed`。
   - `select ... for update` 锁住事件行，已有 `discussion_post_id` 就直接返回它。
-  - 插入帖子：`user_id = COMMUNITY_OFFICIAL_PROFILE_ID`（api 层从环境变量传入；没设时返回 `official_profile_not_configured`）、`is_official = true`、`category = 'events-social'`、`title = left(coalesce(nullif(title, ''), title_en), 120)`，正文用 SPEC 定的固定模板（不写时间地点，改期后正文不会过时）。官方帖不受 044 发帖限流（`044_rate_limit_window_buffer.sql:85-87`）。
+  - 插入帖子：`user_id = COMMUNITY_OFFICIAL_PROFILE_ID`（api 层从环境变量传入；没设时返回 `official_profile_not_configured`）、`is_official = true`、`category = 'events-social'`、`title = left(coalesce(nullif(title, ''), title_en), 120)`，正文固定为「这里是这场活动的讨论帖，时间和地点以活动页为准。」（SPEC §6.7.6；D-59.9d按D-43采用20261120122054现有正文，不改冻结迁移；英文界面也为中文，撤回走前向迁移；不写具体时间地点，改期后仍有效）。官方帖不受 044 发帖限流（`044_rate_limit_window_buffer.sql:85-87`）。
   - 同一事务里 `update public.community_events set discussion_post_id = <新帖> where id = <事件> and discussion_post_id is null`；更新 0 行就回滚，返回已有的帖子。重复点击只产生 1 个话题。
 - `hide_event`、`unhide_event`（MODERATION 角色）写或清 `availability = 'hidden'`、`hidden_reason = 'admin'`。
 - `create_event_discussion`、`hide_event`、`unhide_event`，以及 `upsert_event_partner`、`set_event_partner_status`、`create_partner_event`、`update_partner_event`、`import_campus_event`（只在方式 A 下有）都按 §5.3 的五处同步；审计 event_kind 依次命名为 `event_discussion_created`、`event_hidden`、`event_unhidden`、`event_partner_changed`、`event_partner_status_changed`、`partner_event_created`、`partner_event_updated`、`campus_event_imported`。
@@ -784,11 +790,15 @@ GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO aut
 
 | 码 | 含义 | 对已入库的行 |
 |---|---|---|
-| `http_403_edge` | 403 且是 `text/html` 或带 `cf-mitigated` 头；推断为 Cloudflare 边缘拦截 | 不动 |
-| `http_404` | 只用于方式 A 的单条学校活动 | 按 §9.3 记缺席 |
-| `http_429`、`http_503`、`http_5xx` | 限流或服务端错误 | 不动；503 时本次停止 |
-| `timeout`、`too_large`、`upstream_redirect` | 超过 5 秒 / 超过上限 / 遇到跳转 | 不动 |
-| `bad_json`、`bad_ics`、`schema_mismatch`、`unexpected_private_fields` | 解析失败或形状不对 | 不动；`last_outcome = 'failed'` |
+| `http_403_edge` | 403且是text/html或带cf-mitigated；推断为边缘拦截 | CAACI不动已入库行，last_outcome=failed |
+| `http_403`、`http_4xx` | 非边缘403；其余4xx（429另列） | CAACI不动已入库行，last_outcome=failed |
+| `http_404` | 来源返回404 | 学校方式A照§9.3记缺席；CAACI不动已入库行，last_outcome=failed |
+| `http_429`、`http_503`、`http_5xx` | 限流或服务端错误 | 不动；503时本次停止，CAACI记failed |
+| `timeout`、`too_large`、`upstream_redirect` | 超过预算超时（最多5秒）/正文上限/遇到跳转 | 不动，CAACI记failed |
+| `bad_json`、`bad_ics`、`schema_mismatch`、`unexpected_private_fields` | 200非JSON或解析失败、形状/隐私字段不合约 | 不动，last_outcome=failed |
+| `deadline` | 某步剩余可用预算不足1000毫秒 | 停在该步之前；finish也放不下时不记sync_state，已claim的须等满间隔，报告Sentry |
+| `claim_failed` | 领取RPC报错 | 不发上游请求、不调finish；可能每分钟报告，开关前须四迁移VERIFY通过 |
+| `rows_rejected` | apply拒绝了至少一行 | outcome仍为ok或partial；有效key算已见，unavailable被拒行保持状态及缺席计数，坏key使整份partial |
 | `campus_unexpected_tz`、`campus_uid_mismatch`、`campus_too_many_occurrences`、`campus_calendar_not_allowed` | 校历数据异常或日历不在白名单 | 写入时拒绝；刷新时不动 |
 
 面向用户的错误码各对应一个 i18n key，key 与文案在 SPEC.md §11「P4 活动」：`member_event_rpc_required`、`member_event_not_eligible`、`member_event_time_out_of_range`、`member_event_active_limit`、`member_event_reserved_wording`、`member_event_link_not_allowed`、`member_event_title_too_long`、`member_event_location_invalid`、`member_event_cancel_final`、`event_discussion_closed`、`official_profile_not_configured`、`member_events_closed`（P0001，D-57）。
@@ -898,4 +908,6 @@ OMO 的 GitHub 令牌没有 Variables 权限（D-07），读不到 `PR_SMOKE_SUP
 | 10 | Supabase 后台生效的 Auth 邮件模板是否等于仓库 `supabase/email-templates/` 副本 | BRAND.2 之后的邮件品牌 | Eric | E10 粘贴前先对比 |
 | 11 | Vercel `redirects` 用 host 条件加 `statusCode: 301`、排除 `/api/` 时的实际行为 | BRAND.6 的 DoD ①② | OMO | 在 demo 项目的预览部署上验证（不碰生产）。BRAND.6 开工后 |
 | 12 | `api/auth/delete-account.js` 的删除顺序与网友发起活动的外键是否冲突 | P4.6 删号断言 | OMO | 读源码后在 L-SQL 跑一次删号。P4.6 |
+| 13 | 成员活动的保留词、链接预检还会漏掉 U+034F 和 U+206A–U+206F；标题、说明若仅含 U+061C、韩文填充符或 U+034F，也可能显示为空；客户端只剔除 EVENT_INVISIBLE，仍有同样缺口（D-59.9a） | 开成员活动之前是否先建立可见文本边界；范围不只地点 | Eric（决定）；OMO（本批第8项只测） | D-59.8逐条探针写进STATUS_LOG与第十三批④；本批不修，平台级规则另派 |
+| 14 | §9.4的page_url只要求https，而SPEC §6.7.9外链要求域名白名单；§9.4从组织记录复制consent_ref，而SPEC §6.7.11要求管理端填写授权编号 | 合作组织原页按钮可能被客户端隐藏；授权编号录入责任不一致 | OMO（D-60） | D-60对齐两处合同；本批仅记录，不改§9.4、既有迁移或合作组织代码（D-59.9g） |
 

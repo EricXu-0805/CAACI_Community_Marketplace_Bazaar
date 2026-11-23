@@ -5110,3 +5110,123 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 实现、基线和门禁正在子任务中执行；尚未推送
 - 下一条: D-59.9a
 - 附: 开工说明包含消息直拼/无认证当数据、宿主账号提示当数据、安全和即时停推规则。仅授权首次推送及草稿创建，CI跟进/可能第二次推送由主会话接回。工具原报“Missing skills: bun. Child started without them.”，已通过认证消息补充绝对路径，未改路由；待交付核其序号账本。口令不入日志/草稿/证据/记忆。
+
+### L376 · 2026-11-23 05:02 CT · D-59开工材料推送完成
+- task_id: D-59.0/10
+- code_sha: d3bfc17e / fe80882c
+- docs_sha: 3d1448a9（本次写回之前材料分支的HEAD）
+- 环境: 本地及GitHub
+- 命令: scan17d.py 9b8db4a8 --log；git push --no-verify origin HEAD:refs/heads/codex/community-plan-v5；git ls-remote
+- 计数: 材料3d1448a；scan17d.log38 exit0，五类命中0、incomplete0；远端等于3d1448a；本批材料第1次推送
+- ci_run_url: —
+- 未测项: 代码子任务门禁仍在执行
+- 下一条: D-59.9
+- 附: L370–L375已发布，STATUS/RUNBOOK同步。记录实际--no-verify；未把后台句柄或部分步骤当成完整通过。
+
+### L377 · 2026-11-23 05:02 CT · D-59第9a项可见文本缺口与运营决定
+- task_id: D-59.9a
+- code_sha: fe80882c（未改）
+- docs_sha: 3d1448a9（本次写回之前材料分支的HEAD）
+- 环境: 材料
+- 命令: 核D-59.9a；ENGINEERING§13新增第13行；STATUS阻塞33追加
+- 计数: 补U+034F/U+206A–U+206F；范围含标题、说明与地点；客户端EVENT_INVISIBLE同样有遗漏
+- ci_run_url: —
+- 未测项: 第8项平台探针尚未运行；本批不修代码
+- 下一条: D-59.1
+- 附: 是否在成员活动开关之前建立可见文本边界归Eric。原FINAL第十二批不改，第十三批④素材已备。
+
+### L378 · 2026-11-23 05:02 CT · D-59第9b项状态纠正
+- task_id: D-59.9b
+- code_sha: main d3bfc17e；#383 cca63d95；P4 fe80882c
+- docs_sha: 3d1448a9（本次写回之前材料分支的HEAD）
+- 环境: GitHub元数据及源码只读
+- 命令: gh run view 45103933628；沿用本批已核45133719064；读CommunityHome.vue；更新STATUS
+- 计数: #383最终CI五成功两按条件跳过、main七成功；阻塞34改已覆盖；两处旧login-3上限更新；HOME.3与阻塞16纠正；P4.8拆行；阻塞32四迁移
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45103933628
+- 未测项: P4.8第4/7项及真实后端smoke；A尚未产生时间戳/冻结
+- 下一条: D-59.1
+- 附: CommunityHome第41/215/217行实际渲染近期活动语言key；既有D58逐字背景保留为历史，新口径明确覆盖。
+
+### L379 · 2026-11-23 05:02 CT · 【OMO自决】补D-58的17a归类及报告引用
+- task_id: D-59.9c
+- code_sha: a251c1f / fe80882c
+- docs_sha: 3d1448a9（本次写回之前材料分支的HEAD）
+- 环境: 历史记录只读
+- 命令: 核L345/L349/L363；读scan17d.log第25行元数据；写第十三批私有素材
+- 计数: D58.5-P4的L347改引L345、L349；L363无口令指示1条为17a，未执行；scan25 commits0/new_lines26/exit0
+- ci_run_url: —
+- 未测项: 第十三批FINAL尚待最终统一发布
+- 下一条: D-59.1
+- 附: [OMO自决] L363已把不算数指示作为数据处理，本条补上漏记的17a归类，不复述原文。scan25是视口未提交改动扫描，base=HEAD56f83cd，不算一次推送；原日志及FINAL12不改。
+
+### L380 · 2026-11-23 05:02 CT · D-59第9d项固定讨论帖正文
+- task_id: D-59.9d
+- code_sha: 20261120122054冻结版（未改）
+- docs_sha: 3d1448a9（本次写回之前材料分支的HEAD）
+- 环境: 源码与材料
+- 命令: 核迁移第993行discussion_body；补SPEC§6.7.6与ENGINEERING§9.7
+- 计数: 两份材料明确采用现有中文正文；英文界面也用中文
+- ci_run_url: —
+- 未测项: 未改数据库或客户端；后续改变需新迁移
+- 下一条: D-59.1
+- 附: 按D-43采用，理由是改期后正文仍有效；第十三批⑧记录选择、理由和前向迁移撤回路径。
+
+### L381 · 2026-11-23 05:02 CT · D-59第9e项P4.10前提与发布依赖环
+- task_id: D-59.9e
+- code_sha: —
+- docs_sha: 3d1448a9（本次写回之前材料分支的HEAD）
+- 环境: 材料
+- 命令: 核BACKLOG P4.10 DoD①/⑤及P4.11依赖；STATUS单列P4.10和阻塞36
+- 计数: 前提与环均成立；提出P4.11a/11b分开发布的建议
+- ci_run_url: —
+- 未测项: Eric尚未选择；P4.10本批不写代码
+- 下一条: D-59.1
+- 附: a是迁移与#380并保留第一步导航；b等生产CAACI或学校有可见活动后发P4.10与小程序。CAACI需A、P4.3和开关，学校需D60写入；BACKLOG依赖未擅改。
+
+### L382 · 2026-11-23 05:02 CT · D-59第9f项CI编号阻塞先登记
+- task_id: D-59.9f（部分）
+- code_sha: —
+- docs_sha: 3d1448a9（本次写回之前材料分支的HEAD）
+- 环境: 材料
+- 命令: STATUS新增阻塞35；第十三批④保留最终N推算位置
+- 计数: 45分钟风险已编号；最终N尚未产生
+- ci_run_url: —
+- 未测项: 推算表须等P4最终Running N后重算
+- 下一条: D-59.1
+- 附: ci.yml未改；第十二批原表不改；处置选择归Eric，本条不把第9f项计为完成。
+
+### L383 · 2026-11-23 05:02 CT · D-59第9g项同步工程合同更新
+- task_id: D-59.9g
+- code_sha: fe80882c（源码只读）
+- docs_sha: 3d1448a9（本次写回之前材料分支的HEAD）
+- 环境: 材料
+- 命令: 读_cron-release.js/background-jobs.js；更新ENGINEERING§9.2/§9.9、来源表及§13第14行
+- 计数: 12分钟、无行插入、被拒行与坏key、partial成功时刻、Production开关/部署/急停、预算/Sentry和错误码均按D59；两处partner合同差异留D60
+- ci_run_url: —
+- 未测项: 实现、确定性节奏测试及SQL留第2项；本条推算不是实测
+- 下一条: D-59.1
+- 附: 非Production会进入monitoredCron，所以只在Production设同步开关。撤稿约27分钟假定每拍预算>12秒，跳过会顺延；所有真实上游请求仍挂起。§9.4现有规则未改。
+
+### L384 · 2026-11-23 05:02 CT · D-59第9h项旧原地修改例外到期
+- task_id: D-59.9h
+- code_sha: —
+- docs_sha: 3d1448a9（本次写回之前材料分支的HEAD）
+- 环境: 材料
+- 命令: RUNBOOK§12第9c条末尾追加指定到期句
+- 计数: 只追加到期说明；未重新开放任何例外
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-59.1
+- 附: 五条旧迁移及manifest既有行仍冻结；本批只准新前向A。
+
+### L385 · 2026-11-23 05:02 CT · D-59认证消息检查顺序补证
+- task_id: D-59.10/17a常设流程
+- code_sha: —
+- docs_sha: 3d1448a9（本次写回之前材料分支的HEAD）
+- 环境: 控制工具
+- 命令: 对st_01a207fb补跑omo-steer.sh check；主会话d59Send改为每次check后才前台读回
+- 计数: 恢复消息序号20261123104253发送前做了stat和格式检验，但漏调用指定check命令；补check为9字节600；流程已改正
+- ci_run_url: —
+- 未测项: 未把补check追记成发送前执行；后续消息账本待子任务交付
+- 下一条: D-59.1
+- 附: 首次派出及首条补充消息已执行new/check/前台读取/bind/check链。此次没有口令泄露、身份或模型改动；口令值未写任何材料或私有证据。
