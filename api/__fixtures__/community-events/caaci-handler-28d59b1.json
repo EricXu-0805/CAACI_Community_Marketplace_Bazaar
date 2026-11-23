@@ -1,0 +1,41 @@
+{
+  "schema": "caaci.public-events.v1",
+  "generated_at": "2026-11-23T00:00:00Z",
+  "complete": true,
+  "events": [
+    {
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "slug": "synthetic-gathering",
+      "title_en": "Synthetic gathering",
+      "title_zh": "\u793a\u4f8b\u6d3b\u52a8",
+      "summary_en": "Synthetic description.",
+      "summary_zh": "Synthetic description.",
+      "starts_at": "2027-02-06T23:00:00Z",
+      "ends_at": "2027-02-07T03:00:00Z",
+      "time_zone": "America/Chicago",
+      "location": "Synthetic public hall",
+      "takes_registrations": true,
+      "registration_open": true,
+      "page_url": "https://caaciorg.com/events/#synthetic-gathering",
+      "register_url": "https://caaciorg.com/events/synthetic-gathering/register/",
+      "content_hash": "sha256:769635d6d070e1593d4cdf8cfef99f9fd26e6b2d463258e9b36f31064d0630c1"
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000002",
+      "slug": null,
+      "title_en": "Synthetic second gathering",
+      "title_zh": null,
+      "summary_en": "Synthetic description.",
+      "summary_zh": null,
+      "starts_at": "2027-02-08T23:00:00Z",
+      "ends_at": null,
+      "time_zone": "America/Chicago",
+      "location": null,
+      "takes_registrations": false,
+      "registration_open": false,
+      "page_url": "https://caaciorg.com/events/#a0000000-0000-4000-8000-000000000002",
+      "register_url": null,
+      "content_hash": "sha256:eefd21c15eefac0807a3392991bee68e75f51991c9f0a8d1cd9f6af7184be113"
+    }
+  ]
+}

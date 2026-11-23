@@ -540,24 +540,34 @@ and then production:
    later, or at any time, hold only until then.
 
 **Community P4 (`20261120122054_community_events`).**
-Apply the event migrations in this order:
+This is the application order for the four community migrations. The release
+owner follows it on staging and production, using the approved frozen files:
 
-1. Run `supabase/_ops/PRECHECK_20261120122054_community_events.sql`, apply
+1. Complete the Community P3 procedure above for
+   `20261120100354_community_watch_save_activity.sql`, including its PRECHECK
+   and VERIFY, before applying the event migrations.
+2. Run `supabase/_ops/PRECHECK_20261120122054_community_events.sql`, apply
    `20261120122054_community_events.sql`, then pass
    `supabase/_ops/VERIFY_20261120122054_community_events.sql`.
-2. Only after that VERIFY passes, run
+3. Only after that VERIFY passes, run
    `supabase/_ops/PRECHECK_20261122035253_community_member_events.sql`, apply
    `20261122035253_community_member_events.sql`, then pass
    `supabase/_ops/VERIFY_20261122035253_community_member_events.sql`. Its
    NOTICE must read `community_member_events_switch|enabled=f`.
+4. Run `supabase/_ops/PRECHECK_20261123201501_community_event_sync.sql`, apply
+   `20261123201501_community_event_sync.sql`, then pass
+   `supabase/_ops/VERIFY_20261123201501_community_event_sync.sql`.
+   After A, run `VERIFY_20261122035253_community_member_events.sql` again,
+   followed by `VERIFY_reply_notice_switch.sql` (both under `supabase/_ops/`).
+   Both switch notices must still report `enabled=f`.
 
-After this migration, `VERIFY_20261120122054_community_events.sql` stops
+After the member-events migration, `VERIFY_20261120122054_community_events.sql` stops
 by design with this first error:
 `community_events_function_body:private.community_events_member_guard():7eb7680e59995c1dc8e9d754603ed790:this migration`.
 
 Before pull request #380 is merged, its public smoke (`public-smoke` in
 `ci.yml`) must run green against a database that has `20261120100354`,
-`20261120122054`, and `20261122035253` applied: neither the events page (`pages/events/index`)
+`20261120122054`, `20261122035253`, and `20261123201501` applied and verified: neither the events page (`pages/events/index`)
 nor the plaza page as P4 has it (`pages/plaza/index`, which from P4 on also
 calls `rpc/list_community_events`) has had its page sweep run against a real
 backend.
@@ -668,14 +678,17 @@ and no script.
      passes. Its notice line reads `community_reply_notice_switch|enabled=f`.
    - Already applied: the P3 file stops with an error there, by design (the
      events migration replaces functions and vocabularies it pins, and its
-     pins are not changed for that). First run the VERIFY of the newest
-     community migration applied to that database, which must pass: before
-     `20261122035253` is applied, that is
-     `supabase/_ops/VERIFY_20261120122054_community_events.sql`; afterwards,
-     `supabase/_ops/VERIFY_20261122035253_community_member_events.sql`. Then run
-     `supabase/_ops/VERIFY_reply_notice_switch.sql` (read-only), which must
-     pass as well. Its notice line must also read
-     `community_reply_notice_switch|enabled=f`.
+     pins are not changed for that). Before `20261122035253` is applied,
+     run `supabase/_ops/VERIFY_20261120122054_community_events.sql`, then
+     `supabase/_ops/VERIFY_reply_notice_switch.sql`; both must pass.
+     After `20261122035253`, run
+     `supabase/_ops/VERIFY_20261122035253_community_member_events.sql`, then
+     `supabase/_ops/VERIFY_reply_notice_switch.sql`. If A (`20261123201501`)
+     is also applied, first pass
+     `supabase/_ops/VERIFY_20261123201501_community_event_sync.sql`, then run
+     those two checks in the same order, as listed in Community P4 above.
+     The member and reply switch notices must both read `enabled=f`; the
+     reply notice is `community_reply_notice_switch|enabled=f`.
 2. The H5 deployment that reads this database is the P3 release or later. The
    same deployment carries `api/notification-digest.js`, which keeps both keys
    out of the digest mail.
@@ -748,6 +761,61 @@ UPDATE private.community_reply_notice_config
  WHERE singleton
 RETURNING enabled;          -- one row: false
 ```
+
+## CAACI events sync
+
+The sync switch is `COMMUNITY_SYNC_CAACI_EVENTS`. Only the exact value `1`
+enables it. Eric sets or removes it in Vercel's **Production** environment,
+never Preview or Development: non-production cron handling is not a switch.
+
+Before enabling it, all four migrations in **Community P4** above have been
+applied and their required VERIFY checks have passed. P4.3 must be released,
+and the authorized workstation GET must return 200 JSON. D-59 implements and
+mock-tests `node scripts/sync-community-events.mjs --dry-run --source caaci`
+only; the real dry-run waits for P4.3 release and makes no request in this batch.
+
+In the Vercel project environment variables, set the value to `1` for
+Production only, or remove it to disable synchronization. Either change needs
+one new production deployment before it affects the running worker. Follow
+E13 and the supervised release procedure; changing the environment variable
+alone does not update an existing deployment. Do not enable before the
+migration checks: a failed claim cannot record sync state and may report to
+Sentry on every cron tick.
+
+To stop new claims immediately without waiting for a deployment, the release
+owner runs this in the target database SQL editor as `postgres`:
+
+```sql
+INSERT INTO public.community_event_sync_state (source, last_attempt_at)
+VALUES ('caaci', 'infinity')
+ON CONFLICT (source) DO UPDATE SET last_attempt_at = 'infinity';
+```
+
+This also works before the first sync has created a state row. Claim uses a
+strict interval comparison and finish never updates `last_attempt_at`, so
+new claims remain false. To allow claims again:
+
+```sql
+UPDATE public.community_event_sync_state
+   SET last_attempt_at = NULL
+ WHERE source = 'caaci';
+```
+
+Inspect the state and the worker response after enabling:
+
+```sql
+SELECT source, last_attempt_at, last_success_at, last_outcome, last_error_code
+  FROM public.community_event_sync_state
+ WHERE source = 'caaci';
+```
+
+The response's `community_events_sync` is `not_due` when no claim was
+acquired, or `skipped_budget` when cleanup time took priority. Applied
+snapshots finish as `ok` or `partial`; errors use `failed`. A failed,
+partial or rejected-row outcome reports the fixed Sentry message
+`community events sync needs attention`, containing only outcome, code and
+rejected count. With the switch off, existing CAACI rows are neither refreshed
+nor counted absent: disabling does not remove stored events.
 
 ## Member events switch
 
