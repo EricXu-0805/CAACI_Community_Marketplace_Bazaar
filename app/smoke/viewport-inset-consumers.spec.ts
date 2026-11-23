@@ -149,6 +149,8 @@ test('root box height matches the layout viewport at both tablet heights', async
   for (const height of [1180, 830]) {
     await page.setViewportSize({ width: 820, height })
     await expect.poll(() => page.evaluate(() => document.documentElement.clientHeight)).toBe(height)
+    expect(await page.evaluate(() => document.documentElement.scrollHeight > document.documentElement.clientHeight),
+      `home content must exceed the viewport at 820x${height}`).toBe(true)
     await expect.poll(() => page.evaluate(() => {
       const root = document.documentElement
       console.log(`ROOT_HEIGHT box=${Math.round(root.getBoundingClientRect().height)} client=${root.clientHeight}`)
