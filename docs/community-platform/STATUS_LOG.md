@@ -5710,3 +5710,75 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 第4项及最终候选主包待后续记录
 - 下一条: D-59.4
 - 附: 当前只是第3项；同步服务端没有改变app源树。CT后缀和跨香槟日历年时带年份是D59.3的supervisor代定，相对SPEC例文的偏差进入⑧。撤回需改formatEventCheckedAt及对应文案/用例，不能拿设备本地年替代香槟年。
+
+### L426 · 2026-11-23 17:20 CT · D-59桌面页头截图与已过测试不一致，进入定位
+- task_id: D-59.4
+- code_sha: UI9d19bdf+候选tree2e977a17
+- docs_sha: c883c323（本次写回之前材料分支的HEAD）
+- 环境: 固定容器H5/小程序，主会话接管
+- 命令: 恢复H5守卫；用实际页头底边加严允许的第207行；h5 mpci cmd smoke；先归档20个产物，再亲看截图
+- 计数: T230019Z四step rc0、47/47、MP6/6；11项新审计全0；主会话目视4图时发现详情/发起桌面页头未出现在截图
+- ci_run_url: —
+- 未测项: 根因尚未证明，第4项未验收/未提交；未把47通过当成视觉通过
+- 下一条: D-59.4
+- 附: 候选H5守卫已逐字恢复，未遗留变异。三个假设：布局/裁剪导致位置不在视口；sticky合成层未绘制；截图的动画处理或时序改变了绘制。下一步只读矩形、祖先样式、命中结果并比较正常/禁动画/再次正常截图；先记录证据再改应用，不加猜测性的样式补丁。
+
+### L427 · 2026-11-23 17:29 CT · 更正L426：原始截图页头存在，主会话误读批量图片展示
+- task_id: D-59.4核图纠正
+- code_sha: UI9d19bdf+候选tree2e977a17
+- docs_sha: c883c323（本次写回之前材料分支的HEAD）
+- 环境: 固定容器WebKit27.2与原始PNG解码
+- 命令: 只读三页探针；保存正常/禁动画截图；比较原PNG和探针PNG的SHA256；解码1280×56页头像素
+- 计数: 探针3/3；三页矩形均0,0,1280,56，命中页头，动画0；详情三PNG均ec363fa7，发起三PNG均5fd27e94；详情/发起页头RGBA同886acaeb、1143颜色
+- ci_run_url: —
+- 未测项: 批量图片展示链路的具体机制未诊断，不推断工具根因
+- 下一条: D-59.4
+- 附: L426的“未出现在截图”是我对批量展示的误读，不是应用缺陷。原图与页头正常的探针图逐字相同；未修改任何应用样式或永久用例。列表页头hash不同，不能说三页逐字一致；详情与发起页的页头像素一致。临时探针源和产物保留在私有证据，工作树副本将在清理时删除；47条及MP6项验证仍有效。
+
+### L428 · 2026-11-23 17:42 CT · D-59第九次材料推送核对
+- task_id: D-59.3写回
+- code_sha: 8511ddcd
+- docs_sha: c883c323（本次写回之前材料分支的HEAD）
+- 环境: GitHub
+- 命令: scan17d.py cdaf3c4 --log；git push --no-verify origin HEAD:refs/heads/codex/community-plan-v5；git ls-remote
+- 计数: c883c32已推；scan48 exit0/incomplete0；远端一致；材料累计9次推送/9次扫描
+- ci_run_url: —
+- 未测项: P4代码仍未推送
+- 下一条: D-59.6
+- 附: L422–L425与第3项状态、主包表已发布。
+
+### L429 · 2026-11-23 17:42 CT · D-59桌面页头和布局通过并本地集成
+- task_id: D-59.4
+- code_sha: ce3f626b
+- docs_sha: c883c323（本次写回之前材料分支的HEAD）
+- 环境: 固定容器H5、CI参数mpci及浏览器夹具
+- 命令: 接回并恢复末次H5守卫变异；按实测页头底边加严允许的旧207行；h5 mpci cmd smoke；归档产物；本地提交ca4f1ea后cherry-pick
+- 计数: T230019Z h5/mpci/cmd/smoke均rc0；47/47；新增11项视觉审计全0；MP6/6；typecheck T205123Z rc0；66/90完成
+- ci_run_url: —
+- 未测项: 最终36图、全量门禁及真实后端public smoke待后续；A未冻结/P4未推
+- 下一条: D-59.6
+- 附: 改动8文件+255/-7，app tree6cc7839e与已验证候选同源。三页H5≥1024复用56px页头、活动当前项，AppSidebar用CSS隐藏；列表去返回键，详情/发起保留；滚动后页头top0、筛选紧接实际底边。1280容器1200/主栏876/侧栏300/筛选876；S1/S2和描边发起按钮保留，去旧左栏占位及多余列内边距。390/768保持既有行为。父已亲看11图，L426误读已由L427纠正。
+
+### L430 · 2026-11-23 17:42 CT · D-59布局对照、广场不变和小程序字节账
+- task_id: D-59.4验证
+- code_sha: ce3f626b
+- docs_sha: c883c323（本次写回之前材料分支的HEAD）
+- 环境: 本地浏览器与保留的小程序产物
+- 命令: 读取四项负对照实际输出与恢复SHA；比较去data-v后的outerHTML；git diff fe80882c -- app/src/pages/plaza/；逐文件核mp产物
+- 计数: 侧栏none→block、当前项Events→Community、sticky离开视口、去H5守卫后注册CommunityHeader，四项各1失败；恢复后47/47及6/6；广场diff空，DOM同781dcb75
+- ci_run_url: —
+- 未测项: 768未改的共享AppSidebar不在主内容四指标审计范围，不声称整页字号都≥12
+- 下一条: D-59.6
+- 附: 沿既有community-events的.secondary-content审计口径；≥1024另包含新页头。初次新增审计把768旧侧栏9.5px字号纳入而有3失败，范围修正后才通过，原输出保留。主包1469411，余103453，比第3项+34；唯一增量components/CommunityHeader.js的currentItem默认prop从2098到2132。其余11个变化文件长度差0，是scope id/压缩变量名：Header.wxml/wxss及三页js/wxml/wxss。pages/event37679不变。三页无Header注册/标签，新增app源hex0。临时probe和MP脚本副本已删，私有证据保留。
+
+### L431 · 2026-11-23 17:42 CT · D-59桌面导航的具体自决与撤回办法
+- task_id: D-59.4⑧
+- code_sha: ce3f626b
+- docs_sha: c883c323（本次写回之前材料分支的HEAD）
+- 环境: 代码合同
+- 命令: 对照D59.4事件映射及页面栈行为
+- 计数: home/all/board/compose/search/login六组导航通过；当前列表不增栈；详情/发起两种入口各有返回及直达对照
+- ci_run_url: —
+- 未测项: 完整真实账号导航验收仍归发布阶段
+- 下一条: D-59.6
+- 附: [OMO自决] prop名currentItem、默认community；H5三页复用useEventHeader。当前已是列表就不跳，栈中有列表则navigateBack到它，直达详情/发起则redirectTo列表；compose切home、search切all、login进登录页，home/all先写pendingView。撤回可用一个新的反向提交撤销第4项前端增量并还原其用例，不改迁移、不改已推历史。
