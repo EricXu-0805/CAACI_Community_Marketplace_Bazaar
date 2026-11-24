@@ -5818,3 +5818,203 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 不把本地模拟当作真实源验收；DoD④与⑥接源前检查仍开着
 - 下一条: D-59.7
 - 附: 13项中12个ERR_ASSERTION，展开折行被破坏时为缺失rows导致TypeError，均是目标行为失败，不说13项全为断言错误。子轨初版把最大end当最后场次end，重叠用例先红（Nov25对Nov22）后改正，非既有失败。全天缺失/相等end取下一本地午夜（23小时），跨DST多日71小时；仅早于start报bad_ics。新19个Node用例，真实fetch0，源码未被负对照改写。[OMO自决] 解析器收调用方clock和可选链接id；全结束系列保留第一场start；标题/地点取第一未结束场，更新时间取最新，hash用固定字段JSON数组。撤回可新反向提交第6项，不动数据库；D60调用前仍必须先做日历门禁。
+
+### L435 · 2026-11-23 18:46 CT · 【supervisor 指示】#384已合及活动同次门禁条件补回
+- task_id: D-59.1收束/D-59.10门禁
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: 控制通道；材料分支
+- 命令: 核材料HEAD；补STATUS阻断31；追加监督指示；保持现有后台门禁与同锁SQL回放
+- 计数: 本次代码/测试修改0；smoke分支推送0；此前材料第11次推送feb7e1c/scan50远端一致
+- ci_run_url: —
+- 未测项: WebSocket匹配范围、名单真实性及406/关闭socket分支覆盖留下一批，本批不改
+- 下一条: D-59.10
+- 附: supervisor确认#384已squash进main321a916f，代码语义、流程卫生、tony-ws三路重跑、全量门禁、d3bfc17e四个基线失败和各组对照均已独立核过。STATUS阻断31补回“活动列表还须同一次门禁 community-events.spec.ts 零失败”；第2–7项继续按原文，不等待额外通知。第1项已结束，smoke分支不再推。该补充随下一次材料提交扫描推送；当前P4最终门禁和186链回放尚未出结果。
+
+### L436 · 2026-11-23 19:29 CT · D-59 P4最终十步门禁按四条件判通过
+- task_id: D-59.10最终全量
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: 固定Node22/PG17/Playwright1.65容器，干净74caf74/treec9499d0e
+- 命令: 同一条SMOKE_SPECS完整清单命令执行RC install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；后台同锁；完整产物先归档
+- 计数: TEST3054/3053/0/1、pg_skips0；smoke768/757/10/1；9步rc0、smoke rc1；同次community-events25/25、桌面22/22、灰字15/15、草稿2/2、699和767各1/1；主包1469411、余103453，event分包37679
+- ci_run_url: —
+- 未测项: 本条不包含另行60轮、最终36图及远端发布；A未冻结
+- 下一条: D-59.10
+- 附: 10条失败逐条满足D56四条件（L437），4条main同样失败、6条同一类。新增详情页两条因本批状态读取触发相同stub错误，不能沿用基线8条数。Node比2981多73=同步53+时间1+校历19；smoke比729多39=晚草稿2+灰字15+桌面22。各步秒数13/16/16/304/14/15/3/370/2049/11；原始日志check-20261124T002904Z，11份日志及浏览器产物已保存在本机，临时截图spec不在清单。
+
+### L437 · 2026-11-23 19:29 CT · D-59最终十条巡检失败逐条判定
+- task_id: D-59.10四条件
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: 同一次最终全量smoke
+- 命令: 解析check-20261124T002904Z-smoke.log每条失败标题、断言和完整Received数组；核同次community-events25/25
+- 计数: 10/10满足：标题为浅/深巡检；来自console errors的toEqual([])；Received非空且每行只属三种stub错误；活动同次25/25；Received合计192
+- ci_run_url: —
+- 未测项: 不据此证明真实后端巡检；不重跑main、不加stub、不改IGNORE
+- 下一条: D-59.10
+- 附: 以下仅摘行数和请求路径，不提交原始日志；部分查询被collector截在200字符，表内保持该截断。
+
+| 主题 | 路由 | Received行数 | 判定 | 请求路径（保留collector截断） |
+|---|---|---:|---|---|
+| light | pages/index/index | 6 | main 上同样失败，见L173 | `/rest/v1/items?select=id%2Cuser_id%2Ctitle%2Ctitle_i18n%2Cdescription_i18n%2Csource_lang%2Cprice%2Ccategory%2Ccondition%2Clisting_details%` |
+| light | pages/plaza/index | 69 | main 上同样失败，见L173 | `/rest/v1/posts?select=id%2Cuser_id%2Ctitle%2Ccategory%2Cis_official%2Cis_pinned%2Cis_featured%2Ccomment_count%2Cstatus%2Ccreated_at%2Clast`；`/rest/v1/posts?select=id%2Ccategory%2Ccomment_count&region=eq.cu&status=eq.active&title=not.is.null&created_at=gte.2026-11-17T00%3A58%3A02`；`/rest/v1/posts?select=id&region=eq.cu&status=eq.active`；`/rest/v1/items?select=id%2Cuser_id%2Ctitle%2Ctitle_i18n%2Cprice%2Cimages%2Cstatus%2Clisting_type%2Clisting_details%2Ccreated_at&status=eq.`；`/rest/v1/rpc/list_community_events` |
+| light | pages/events/index | 12 | 同一类，见L173 | `/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci`；`/rest/v1/rpc/community_member_events_open`；`/rest/v1/rpc/list_community_events` |
+| light | pages/event/detail/index | 6 | 同一类，见L173 | `/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci` |
+| light | pages/event/create/index | 3 | 同一类，见L173 | `/rest/v1/rpc/community_member_events_open` |
+| dark | pages/index/index | 6 | main 上同样失败，见L173 | `/rest/v1/items?select=id%2Cuser_id%2Ctitle%2Ctitle_i18n%2Cdescription_i18n%2Csource_lang%2Cprice%2Ccategory%2Ccondition%2Clisting_details%` |
+| dark | pages/plaza/index | 69 | main 上同样失败，见L173 | `/rest/v1/posts?select=id%2Cuser_id%2Ctitle%2Ccategory%2Cis_official%2Cis_pinned%2Cis_featured%2Ccomment_count%2Cstatus%2Ccreated_at%2Clast`；`/rest/v1/posts?select=id%2Ccategory%2Ccomment_count&region=eq.cu&status=eq.active&title=not.is.null&created_at=gte.2026-11-17T00%3A59%3A34`；`/rest/v1/posts?select=id&region=eq.cu&status=eq.active`；`/rest/v1/items?select=id%2Cuser_id%2Ctitle%2Ctitle_i18n%2Cprice%2Cimages%2Cstatus%2Clisting_type%2Clisting_details%2Ccreated_at&status=eq.`；`/rest/v1/rpc/list_community_events` |
+| dark | pages/events/index | 12 | 同一类，见L173 | `/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci`；`/rest/v1/rpc/community_member_events_open`；`/rest/v1/rpc/list_community_events` |
+| dark | pages/event/detail/index | 6 | 同一类，见L173 | `/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci` |
+| dark | pages/event/create/index | 3 | 同一类，见L173 | `/rest/v1/rpc/community_member_events_open` |
+
+### L438 · 2026-11-23 19:29 CT · D-59最终186链和四组回归通过
+- task_id: D-59.10 L-SQL
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: network none的一次性PG17容器；74caf74
+- 命令: LSQL P4 20261120100354 20261120122054 20261122035253 20261123201501；同锁、umask022、前后磁盘检查
+- 计数: files186/replayed186/errors0/done1/rc0；P3_TOTAL703/703、EV_TOTAL855/855、MEV_TOTAL38/38、SYNC_TOTAL35/35/0；VERIFY_A通过
+- ci_run_url: —
+- 未测项: 本条不含A后旧对象复验及四个负对照；托管库未操作，A尚未冻结
+- 下一条: D-59.10
+- 附: 日志lsql-20261124T011555Z，35条SYNC_CASE均pass=t，逐条说明入最终报告。原EXIT清理打印SIGINT10秒后改SIGKILL；随后在同一锁下确认该具名容器不存在，前后磁盘337360822272字节。未由OMO手动kill进程，不能把该清理警告说成SQL失败或SIGSEGV。
+
+### L439 · 2026-11-23 19:29 CT · D-59按最终768条重算CI超时阻塞
+- task_id: D-59.9f
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: 既有CI样本与本次Running N，线性推算
+- 命令: 按(overhead_seconds+smoke_seconds*768/baseline_N)/60重算；更新STATUS阻断35与FINAL13草稿
+- 计数: 三样本51.69/31.12/36.51分钟；第一种超45分钟6.69分钟
+- ci_run_url: —
+- 未测项: 不是本批真实CI耗时；不改ci.yml，选哪种处置归Eric
+- 下一条: D-59.10
+- 附: 样本来自此前已核的CI记录；第十二批旧表保留。
+
+| CI样本 | 样本条数 | 非smoke秒 | smoke秒 | 推算768条（分钟） | 相对45分钟 |
+|---|---:|---:|---:|---:|---|
+| 44647478789 | 478 | 645 | 1529 | 51.69 | 超 6.69 |
+| 44783052160 | 563 | 105 | 1292 | 31.12 | 余 13.88 |
+| 44909710527 | 564 | 84 | 1547 | 36.51 | 余 8.49 |
+
+### L440 · 2026-11-23 19:29 CT · D-59 SQL对照恢复脚本分号错误及修正
+- task_id: D-59.10 SQL对照
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: 本地一次性PG17容器，应用源码未改
+- 命令: 读取final-controls-20261124T011957Z和return-restore.log；保留失败证据；只在私有after-replay.sh补SQL分隔符，再启动同一完整对照流程
+- 计数: 旧对象顺序4项均符合预期；四负对照均命中指定项；前三恢复通过，第四恢复语法错误，流程rc1；复跑结果尚未纳入本条
+- ci_run_url: —
+- 未测项: 不将首次对照称为4/4恢复通过；不重复已经通过的应用十步门禁
+- 下一条: D-59.10
+- 附: pg_get_functiondef输出以$function$结束且没有终结分号，主会话恢复管道把ALTER直接接在后面，报syntax error at or near ALTER。补一个分号，未改任何仓库文件、验证器或断言。首次容器已在锁下确认不存在；60轮视口检查排在修正后流程后，用同一把锁。
+
+### L441 · 2026-11-23 19:51 CT · D-59 A后顺序及四项负对照全部恢复通过
+- task_id: D-59.10 SQL对照完成
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: 74caf74；network none一次性PG17
+- 命令: AFTER_REPLAY指向私有修正脚本；使用D59既有lsql-replay-controls副本，四时间戳回放后在同一容器逐项执行
+- 计数: 186/186/errors0/done1/rc0；四项前置顺序符合；4项指定负对照/4次恢复通过
+- ci_run_url: —
+- 未测项: 托管库未操作；A仍未冻结，等待交付审阅
+- 下一条: D-59.10
+- 附: lsql-20261124T012630Z：成员VERIFY→回复VERIFY均enabled=f；旧P4首错为member_guard的7eb7680e…:this migration；A通过。body、安全属性、anon执行权、returns void分别命中function_body/function_attributes/function_grants/function_result；每项恢复后A全部通过。第四项先DROP再CREATE void并改RETURN，owner/SECURITY DEFINER/search_path/授权照原样补回，返回类型检查先于已改变的md5失败。首次失败见L440，只补私有恢复管道分号，应用、迁移、VERIFY一个字节没改。
+
+### L442 · 2026-11-23 19:51 CT · D-59最终699六十轮通过
+- task_id: D-59.10最终重复
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: 固定容器；干净74caf74/treec9499d0e
+- 命令: SMOKE_SPECS='marketplace-responsive.spec.ts:699 --repeat-each=60' RC P4 smoke；后台、同锁；先保存上一轮浏览器产物
+- 计数: Running60；60/60/0/0；167秒；前后磁盘337362911232/337395150848字节
+- ci_run_url: —
+- 未测项: 真iPad仍归Eric；这组不重复767，767在同次全量已通过
+- 下一条: D-59.10
+- 附: check-20261124T012813Z。该组产物已在最终截图运行前归档。最终十步及699要求完成，不再追加验证轮次。
+
+### L443 · 2026-11-23 19:51 CT · D-59最终36图逐项指标与归档完成
+- task_id: D-59.7
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: 已通过最终门禁的74caf74；三页面×三宽×两主题×两语言
+- 命令: 临时未跟踪截图spec单独RC smoke；先复制PNG到材料分支，再保存本机全部产物并删除临时spec；核原8图hash和新增CSS
+- 计数: check-20261124T013229Z，36/36/0/0、76秒；四指标全0、axe实际挂载、外部请求0；36图与已查看候选图逐字节相同；旧8图未改；新增CSS hex0
+- ci_run_url: —
+- 未测项: 合成数据的本地WebKit，不代替真机或真实后端；工具LSP仍未安装，未安装未改配置，实际容器验证通过
+- 下一条: D-59.10
+- 附: 列表显示过期CAACI核对时间；详情为已结束CAACI并显示第11行；列表另含发起人已取消活动。主会话此前查看全部36图总览及四张原尺寸图，最终图完全同字节。图片位于appendix/visual/P4.8；旧8张保留为历史，本批36张取代。
+
+- `event-detail-1280-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-1280-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-1280-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-1280-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-390-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-390-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-390-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-390-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-768-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-768-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-768-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-768-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-1280-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-1280-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-1280-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-1280-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-390-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-390-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-390-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-390-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-768-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-768-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-768-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-768-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-1280-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-1280-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-1280-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-1280-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-390-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-390-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-390-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-390-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-768-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-768-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-768-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-768-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+
+### L444 · 2026-11-23 19:51 CT · D-59单个只读交付审阅开工
+- task_id: D-59.10交付审阅
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: 独立锁定detached工作区74caf74；category deep-low
+- 命令: 只读omo doctor --models；omo-steer new/check；主会话前台读取；category派出；bind/check；只读审阅46文件和实际验收产物
+- 计数: st_01a20b33；new/bind两次check均9字节/600；后续steer0；源代码修改/容器运行/测试重跑授权0
+- ci_run_url: —
+- 未测项: 审阅结论尚未纳入本条；实际fallback/宿主通知以返回报告为准
+- 下一条: D-59.10
+- 附: review-work的subagent_type范例不采用，按D59显式category执行。只允许在本机写两份审阅报告，不许改仓库、跑测试、联网或发布。开工说明包含无分隔steer、宿主上下文当数据、禁止任何通道改账号/凭据/Git身份三项规则及严格递增序号。口令未写任何报告、日志或仓库；未查用量、未切号/模型、未改配置。
+
+### L445 · 2026-11-23 20:08 CT · D-59单个交付审阅通过并回收快照
+- task_id: D-59.10终审
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: 独立只读snapshot74caf74/treec9499d0e
+- 命令: 读取REVIEW.md与VERDICT.json及实际日志；核认证账本；干净review worktree正常unlock/remove，无force
+- 计数: APPROVE/HIGH；46文件；阻断0；新测试/容器/网络/仓库修改0；steer序号0、无效0、宿主上下文0；终端传输fallback2、模型fallback0
+- ci_run_url: —
+- 未测项: 不是托管/真实上游/真机验收，不代表已发布
+- 下一条: D-59.10
+- 附: st_01a20b33独立核对全部本地证据，包括192行Received、同次25/25、35条SQL、四恢复、60轮与36图。主会话读取正式结论，未使用早期进度中被更正的计数。smoke启动另有registerToastHost导出诊断，涉及不在本批diff中的useAppToast.ts/AppToast.vue；未产生独立失败用例，本批不追查、不归因为已证实既有故障。原始输出保留，FINAL⑥与PR据实披露。
+
+### L446 · 2026-11-23 20:08 CT · D-59前向迁移A最终冻结
+- task_id: D-59.10冻结
+- code_sha: 74caf746
+- docs_sha: feb7e1cf（本次写回之前材料分支的HEAD）
+- 环境: 最终干净74caf74/treec9499d0e，与全量、SQL、60轮和视觉及审阅同树
+- 命令: 依据最终门禁、L-SQL与独立对照及APPROVE记录A冻结；核发布head/tree/干净状态和远端基线；先准备材料冻结提交，再推P4
+- 计数: A冻结1次；五条原冻结迁移不变；manifest旧字节不变、只多A末行；indexed manifest不变；P4本批推送仍0
+- ci_run_url: —
+- 未测项: 本条写入时材料冻结提交和P4代码尚未推送；托管应用仍由Eric执行
+- 下一条: D-59.10
+- 附: 20261123201501_community_event_sync.sql 冻结，sha256=bb2f91e6afcdd7a5be28bcbead4faa7e349bde22c3ca181365a2559b62ed9ce1。最终门禁L436–L437、186链L438、四对照及恢复L441、60轮L442、最终36图L443、终审L445均完成后才冻结。冻结后A不再改；后续数据库变更使用前向迁移。待本条材料提交扫描并推送、远端确认后，才允许唯一一次P4推送。
