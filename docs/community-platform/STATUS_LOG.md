@@ -6320,3 +6320,123 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 尚未派出子任务；无用量查询、账号/模型切换或配置改动
 - 下一条: D-60.2并行P3与P4
 - 附: 第17条已逐字重读；子任务派前/派后/每steer前均check，密码只在前台读取、不进材料。截止监听首命令有引用错误、已退出，修正字面引用后重新登记，未到截止、未影响工作。
+
+### L468 · 2026-11-24 16:01 CT · D-60按17条派出P3子任务并核认证
+- task_id: D-60.2a/10h
+- code_sha: 4e7bd214
+- docs_sha: 2783c96b（本次写回之前材料分支的HEAD）
+- 环境: category deep-low；原P3工作区；后台子任务
+- 命令: omo-steer new d60-p3；pending check两次；主会话前台读取；派出后bind及task_id check；发steer前再check并前台读回
+- 计数: st_01a20f92；new与bind均9字节600；四次check均9字节600；认证序号20261124220132已发送；无subagent_type或model覆盖
+- ci_run_url: —
+- 未测项: 子任务尚未交付；接收序号执行回执待核；无推送
+- 下一条: D-60.2b P4 c1
+- 附: doctor已核deep-low为ChatGPT打头。loader只报bun技能未加载，已认证告知绝对技能路径；不是模型或账号fallback。P3仅负责自己的分支，P4与材料由主线程负责；固定main、禁止断言改写、同锁后台门禁与停止条件均在开工说明中。
+
+### L469 · 2026-11-24 16:06 CT · D-60 P3进度检查点后继续原交付范围
+- task_id: D-60.2a/10h
+- code_sha: 80aae635
+- docs_sha: 2783c96b（本次写回之前材料分支的HEAD）
+- 环境: 已有P3子任务st_01a20f92
+- 命令: 任务自动回报合并完成、子集仍运行；check后主会话前台读回口令；认证steer 20261124220630，沿用原后台子集
+- 计数: 本次check9字节600；序号已发送；子任务未推送；没有重跑子集或重派任务
+- ci_run_url: —
+- 未测项: 子集及完整交付仍未完成，不把进度回报当完成
+- 下一条: D-60.2c P4修前对照
+- 附: 子任务回报80aae635与d3597d8b及五样通过，最终证据待其交回；要求保留原目标继续全量、60轮、扫描和一次推送，不能扩大范围。
+
+### L470 · 2026-11-24 16:13 CT · D-60 P4 c1固定main合并与五样核对
+- task_id: D-60.2b
+- code_sha: a324a5bd
+- docs_sha: 2783c96b（本次写回之前材料分支的HEAD）
+- 环境: P4原目录原分支；固定main321a916f
+- 命令: 普通merge --no-ff固定321a916f；身份参数显式；Git interpret-trailers生成一次性消息，merge -F读入；核五样、树及六冻结hash；scan17d 0e7fbc13 --diff-base c1 --log
+- 计数: c1 a324a5bd；树b2952fdd8b46ceecf08fb36a96b22315a1ed3804；恰好4文件+336/-3；supabase及配置diff0；combined diff0；manifest及六冻结一致；祖先返回0；scan60 exit0/incomplete0
+- ci_run_url: —
+- 未测项: c1只跑修前对照，不跑全量门禁；未推送
+- 下一条: D-60.2c
+- 附: 【OMO自决】本机merge没有--trailer选项，以interpret-trailers生成私有消息后用-F实现同一普通合并，避免amend；不改变树或父提交关系。所有要求的身份及唯一co-author均保留。
+
+### L471 · 2026-11-24 16:13 CT · D-60 c1唯一修前对照已排队运行
+- task_id: D-60.2c
+- code_sha: a324a5bd
+- docs_sha: 2783c96b（本次写回之前材料分支的HEAD）
+- 环境: 同一容器锁；后台bash_1029与完成文件订阅
+- 命令: ~/work/evidence/D60/p4/c1-control.sh；SMOKE_SPECS=pages.smoke.spec.ts放在RC前；锁内前后磁盘，原目录755且干净才运行
+- 计数: 本项仅启动1次；等待实际8失败与Received逐路径核对；不把启动算通过
+- ci_run_url: —
+- 未测项: 结果未回；不得进入c2或任何c3以后实现，直到修前条件逐项符合
+- 下一条: D-60.2c回执
+- 附: 脚本有一次性启动记录；无前台门禁、无轮询、没有重复跑。终端提示native PTY不可用，走pipe传输；不是模型或账号fallback。
+
+### L472 · 2026-11-24 16:14 CT · D-60第9h项按授权原文修正17d
+- task_id: D-60.9h
+- code_sha: a324a5bd
+- docs_sha: 2783c96b（本次写回之前材料分支的HEAD）
+- 环境: 材料RUNBOOK；文字仅从D-60原文抽取
+- 命令: 17d推后对账改为最后一条HEAD匹配且exit0的记录；②末尾追加允许合成值与不得改表示的完整原文；git diff --check
+- 计数: 对账条款1处替换；②规则1处追加；未改扫描器或旧账本；材料推送0次
+- ci_run_url: —
+- 未测项: 材料尚未推送，按第10f项随冻结或最终报告推送
+- 下一条: D-60.2c回执及第9项其余更正
+- 附: D59既有5处表示改写按D60豁免保留，不作先例；新命中只有允许域名、基准已有同形值或停下等supervisor例外三种处理。跨本地分支扫描同次记录明确本地分支到远端ref。
+
+### L473 · 2026-11-24 16:20 CT · D-60合作组织合同文字对齐与码位脚本修正
+- task_id: D-60.9f及9e机械核对
+- code_sha: a324a5bd
+- docs_sha: 2783c96b（本次写回之前材料分支的HEAD）
+- 环境: 材料SPEC/BACKLOG；私有码位脚本
+- 命令: 第9f项原文抽取后替换SPEC指定行并追加BACKLOG指定行；码位脚本先读实际W/Z和新§13表，宿主首跑发现误收后文U+200B，改为只解析还剩后的清单
+- 计数: SPEC1行/BACKLOG1行；未改代码或迁移；宿主Node22.23.5/Unicode17.0、W26/Z21；首次差集extra U+200B，已定位为脚本解析范围，重跑待结果
+- ci_run_url: —
+- 未测项: D-32合作组织实现仍未做；容器Node及正式码位对照尚待执行
+- 下一条: D-60.9e双环境核对与D-60.2c回执
+- 附: 文档只写域名白名单和consent_ref必须与组织登记编号一致，未录真实活动。码位清单内容没有迁就首跑错误，修的是把实测例子也算进清单的解析原因；删U+180F负对照保留。
+
+### L474 · 2026-11-24 16:28 CT · D-60 P3合并五样和初始子集通过
+- task_id: D-60.2a阶段证据
+- code_sha: 80aae635
+- docs_sha: 2783c96b（本次写回之前材料分支的HEAD）
+- 环境: P3原工作区；子任务私有证据已读
+- 命令: 读merge-checks.log、merge-numstat.log、SUBSET.md；子集SMOKE_SPECS=pages.smoke.spec.ts viewport-inset-consumers.spec.ts；check-20261124T220245Z；干扫59
+- 计数: 树d3597d8b；4文件+336/-3；supabase/config/combined差异0；manifest06cc023e及冻结hash一致；祖先rc0；子集79/78/0/1，viewport5/5，62巡检0失败、unstubbed0；scan59 exit0/incomplete0
+- ci_run_url: —
+- 未测项: 完整门禁check-20261124T220801Z和六十轮、实际推送仍待交付
+- 下一条: D-60.2a全量及D-60.2c修前对照
+- 附: 本项初始viewport无需修复，也未改route数据或断言。P4的修前对照排在P3全量之后等同一锁，未重复启动。只把已完成的合并和子集记通过，不把子任务进度答复当整轨完成。
+
+### L475 · 2026-11-24 16:28 CT · D-60码位宿主对照通过及合作组织文字对齐
+- task_id: D-60.9e部分
+- code_sha: a324a5bd
+- docs_sha: 2783c96b（本次写回之前材料分支的HEAD）
+- 环境: 宿主Node22.23.5/Unicode17.0；材料文字
+- 命令: 私有unicode-check.mjs只解析差集清单；宿主正对照与删U+180F副本；容器同锁只读核对已排队；§9.4原文替换、四错误码及§13第14行状态更新
+- 计数: 宿主W26/Z21；预期4152=文档4152、missing0/extra0；删U+180F副本4151、missing仅U+180F、exit1；合作组织SPEC/ENGINEERING/BACKLOG文字已一致
+- ci_run_url: —
+- 未测项: 容器Node结果未回；§9.2与同步错误码等剩余9e内容仍待本批对应实现
+- 下一条: D-60.9e容器回执与D-60.2c回执
+- 附: 不新增合作组织代码或迁移，D-32实现仍等待。宿主正对照已过不重复跑；容器仅复核其Unicode属性版本与同一清单。主线程没有取得P3/P4托管权限或发布权限。
+
+### L476 · 2026-11-24 16:33 CT · D-60第8项独立子任务按17条派出
+- task_id: D-60.8/10h
+- code_sha: 321a916f
+- docs_sha: 2783c96b（本次写回之前材料分支的HEAD）
+- 环境: category deep-low；独立新夹具目录与分支
+- 命令: omo-steer new/check pending-d60-fixture；主会话前台读；task带category后台派出；bind/check task_id；完成文件订阅
+- 计数: st_01a20fb0；new/check/bind/check均9字节600；未发steer；没有subagent_type或model参数；当前本批推送仍0
+- ci_run_url: —
+- 未测项: 只完成派出，不提前算新工作区、门禁、草稿或CI完成
+- 下一条: D-60.8独立推进；主线程等c1对照
+- 附: 说明包含单锁后台、截止、最多2推及草稿1次、禁止改P3/P4/材料；Bun技能用明确绝对路径读取，未再通过不可用的技能名加载。未查询账号用量或改变配置。
+
+### L477 · 2026-11-24 16:38 CT · D-60独立材料更正本地检查点
+- task_id: D-60.9d/e/f/h部分
+- code_sha: a324a5bd
+- docs_sha: 2783c96b（本次写回之前材料分支的HEAD）
+- 环境: 材料本地分支；不推送
+- 命令: §3已合并状态9行更正；§9.4与SPEC/BACKLOG合同对齐；§13完整码位表；17d按原文改；更新STATUS当前本地/远端状态；git diff --check
+- 计数: 9h与9f完成；9d仍待新夹具行及E4；9e仍待B及同步码部分、容器证明；材料推送0/3；旧FINAL未改，旧LOG只追加
+- ci_run_url: —
+- 未测项: P3全量/60轮/推送、P4修前对照、新夹具交付、容器码位检查均有现有句柄，不重新发起
+- 下一条: D-60.2c及各完成事件
+- 附: 本地提交只用于保存已完成工作，不消耗材料推送预算。子任务st_01a20f92负责P3，st_01a20fb0负责第8项；主线程负责P4和材料。

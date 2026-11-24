@@ -744,7 +744,7 @@ GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO aut
 ### 9.4 合作组织（P4.5）
 
 - `upsert_event_partner`、`set_event_partner_status` 管理组织；D-32 的书面同意登记之前不建 partner 行。
-- `create_partner_event`、`update_partner_event`：OWNER 角色，`created_by` 写 `COMMUNITY_OFFICIAL_PROFILE_ID`。校验：组织 active；`page_url` 是 https、≤500 字；有报名链接时，`register_url` 的 host 小写后必须完全等于该组织 `allowed_link_hosts` 中的一项，且不带 userinfo 和端口；`summary` ≤120 字；`starts_at` 在 `[now(), now() + 180 days]`。`consent_ref` 从组织记录复制，约束保证非空。
+- `create_partner_event`、`update_partner_event`：OWNER 角色，`created_by` 写 `COMMUNITY_OFFICIAL_PROFILE_ID`。校验：组织 active；`page_url` 走与 `isAllowedEventLink(page_url, 该组织 allowed_link_hosts)`（api/_community-events.js 第 166 行一带）相同的白名单：https、≤500 字、不带 userinfo 和端口，host 是 caaciorg.com、illinois.edu 或其子域（forms.illinois.edu 除外）或该组织登记的域名，否则 `event_link_not_allowed`；有报名链接时 `register_url` 的 host 小写后必须完全等于该组织 `allowed_link_hosts` 中的一项，不带 userinfo 和端口；`consent_ref` 由管理端必填，RPC 与组织记录逐字比较，不等返回 `partner_consent_mismatch`，写入的是组织记录里的值；合作组织行的 `organizer_name` 写 NULL（组织名由 list_community_events 的 partner_name_* 给出；name_zh 允许 1 字，organizer_name 要求 2–80 字）；地点必填，去两端空白后 1–160 字；`summary` 1–120 字；`starts_at` 在 `[now(), now() + 180 days]`；`update_partner_event` 不能改 page_url、partner_id、consent_ref（source_key 依赖 page_url），要换原页先 hide_event 再新建；四个动作都只给 OWNER；`upsert_event_partner` 逐项校验 allowed_link_hosts（小写 DNS 名、不带 scheme 和端口、去重、不能是 forms.illinois.edu）。
 - 取消或撤回：单场取消用 `hide_event`；组织撤回同意时改为 `revoked`，公开读策略立刻隐藏它的全部活动，不需要逐行更新。
 
 ### 9.5 网友发起（P4.6）
@@ -802,6 +802,7 @@ GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO aut
 | `unexpected_failure` | 不能归入上述已知类别的I/O或实现异常，沿用既有background-jobs通用码 | 不外抛、不记录任意异常消息；已claim且预算足够时finish记failed |
 | `rows_rejected` | apply拒绝了至少一行 | outcome仍为ok或partial；有效key算已见，unavailable被拒行保持状态及缺席计数，坏key使整份partial |
 | `campus_unexpected_tz`、`campus_uid_mismatch`、`campus_too_many_occurrences`、`campus_calendar_not_allowed` | 校历数据异常或日历不在白名单 | 写入时拒绝；刷新时不动 |
+| `event_link_not_allowed`、`partner_consent_mismatch`、`event_partner_not_active`、`partner_event_exists` | 合作组织写入未满足外链、授权编号、组织状态或唯一性条件 | 写入时拒绝 |
 
 面向用户的错误码各对应一个 i18n key，key 与文案在 SPEC.md §11「P4 活动」：`member_event_rpc_required`、`member_event_not_eligible`、`member_event_time_out_of_range`、`member_event_active_limit`、`member_event_reserved_wording`、`member_event_link_not_allowed`、`member_event_title_too_long`、`member_event_location_invalid`、`member_event_cancel_final`、`event_discussion_closed`、`official_profile_not_configured`、`member_events_closed`（P0001，D-57）。
 
@@ -910,6 +911,6 @@ OMO 的 GitHub 令牌没有 Variables 权限（D-07），读不到 `PR_SMOKE_SUP
 | 10 | Supabase 后台生效的 Auth 邮件模板是否等于仓库 `supabase/email-templates/` 副本 | BRAND.2 之后的邮件品牌 | Eric | E10 粘贴前先对比 |
 | 11 | Vercel `redirects` 用 host 条件加 `statusCode: 301`、排除 `/api/` 时的实际行为 | BRAND.6 的 DoD ①② | OMO | 在 demo 项目的预览部署上验证（不碰生产）。BRAND.6 开工后 |
 | 12 | `api/auth/delete-account.js` 的删除顺序与网友发起活动的外键是否冲突 | P4.6 删号断言 | OMO | 读源码后在 L-SQL 跑一次删号。P4.6 |
-| 13 | 成员活动的保留词、链接预检还会漏掉 U+034F 和 U+206A–U+206F；标题、说明若仅含 U+061C、韩文填充符或 U+034F，也可能显示为空；客户端只剔除 EVENT_INVISIBLE，仍有同样缺口（D-59.9a） | 开成员活动之前是否先建立可见文本边界；范围不只地点 | Eric（决定）；OMO（本批第8项只测） | D-59.8逐条探针写进STATUS_LOG与第十三批④；本批不修，平台级规则另派 |
-| 14 | §9.4的page_url只要求https，而SPEC §6.7.9外链要求域名白名单；§9.4从组织记录复制consent_ref，而SPEC §6.7.11要求管理端填写授权编号 | 合作组织原页按钮可能被客户端隐藏；授权编号录入责任不一致 | OMO（D-60） | D-60对齐两处合同；本批仅记录，不改§9.4、既有迁移或合作组织代码（D-59.9g） |
+| 13 | 成员活动守卫的 Z（20261122035253 第 103 行）和客户端 EVENT_INVISIBLE（app/src/utils/communityEvents.ts 第 6 行）各 21 码位；在它们和 W（同文件第 5 行）之外，Unicode 的 Default_Ignorable_Code_Point 还剩 U+034F、U+061C、U+115F–U+1160、U+17B4–U+17B5、U+180B–U+180D、U+180F、U+2065、U+206A–U+206F、U+3164、U+FE00–U+FE0F、U+FFA0、U+FFF0–U+FFF8、U+1BCA0–U+1BCA3、U+1D173–U+1D17A、U+E0000–U+E0FFF（U+2065、U+FFF0–U+FFF8 和 E0000–E0FFF 里的空位未分配）。插进保留词或链接能绕过两道预检；标题、说明、地点只由这些码位组成时服务端和客户端都放行，可能显示为空。只有 U+200B、U+3164、U+034F、U+061C 实测过（在 main 的话题、评论、商品上，L403），其余按 Unicode 属性推出，没做渲染测试 | 开成员活动之前是否先建立可见文本边界；范围不只地点 | Eric（决定） | D-59.8 的探针见 STATUS_LOG L402–L403；修就按整类 Default_Ignorable 定边界，不逐个补码位；本批不修，由 Eric 决定 |
+| 14 | §9.4的page_url只要求https，而SPEC §6.7.9外链要求域名白名单；§9.4从组织记录复制consent_ref，而SPEC §6.7.11要求管理端填写授权编号 | 合作组织原页按钮可能被客户端隐藏；授权编号录入责任不一致 | OMO（D-60） | 已对齐（D-60）：见 §9.4、SPEC §6.7.11、BACKLOG P4.5 ① |
 

@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-24 15:50 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-24 16:38 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-60.2`
+`next_task_id: D-60.2c`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-60第十四批进行中：第1项已完成，P4原目录在0e7fbc13上重建原名跟踪分支，旧74caf746改名保留且无upstream；D59交付树退役只读。目标范围0–10，唯一续跑提醒已建。接下来固定合321a916f，先P4修前对照再c2名单；本批材料推送预算3次，目前0次，所有开工记录暂留本地。
+D-60第十四批进行中：P3本地80aae635、P4本地a324a5bd已普通合入固定321a916f，两边五样和预期树已核；P3初始子集79/78/0/1、viewport5/5，无需修复。P3全量在运行；P4唯一c1修前对照在同锁排队，未进入c2。第8项由独立子任务进行。材料9h、9f已本地改完，9e码位与合作组织文字已对齐，容器码位核对仍待回执。材料推送0/3，尚未有本批代码推送。
 
 本批只按D-60的逐项提交顺序推进；六条冻结迁移及manifest前189行不改，B只能追加。2026-11-26 12:00 CT软截止按原文逐子项削减，2026-11-27 12:00 CT硬截止按当前门禁整体判。第十三批完成线63aff4b、收尾2540db8，旧FINAL原文不改，本批更正另写第十四批。
 
@@ -54,16 +54,16 @@ D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已�
 | code_sha | 321a916f1d5cf41fa101d5bed35eceffc674921d（main，#384于2026-11-23 19:26:06Z合并，与已验证a9c271b同树；L408） |
 | 基线 main | 321a916f1d5cf41fa101d5bed35eceffc674921d（本批固定合并目标；后续前进按D-60抬头逐提交判，不再合main；初次范围321a916f..origin/main为空） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | 9081b6b6（本批开工写回之前材料HEAD） |
+| docs_sha | 2783c96b（本次本地检查点写回之前材料HEAD） |
 | 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e7bd21（base codex/community-restricted-20261113，D-58已推送，L343）；#380 codex/community-events-20261120 0e7fbc1（base P3，D-59唯一推送与正文读回完成，L457–L459）；#383 codex/community-viewport-consumers-20261121 cca63d9（已合main d3bfc17e，D-59.0）；#384 codex/community-smoke-stub-20261123 a9c271b（已合main321a916f，本批仅一次代码推送）；#379、#380仍为草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）、#383（d3bfc17e）、#384（321a916f）；#373、#378 已合进各自 base 分支 [当前#384由2026-11-23 gh pr view与git ls-remote核对；其余沿用D59.0或各原记录] |
-| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 0e7fbc13（D-60.1已恢复原名跟踪；旧74改名wip/d59-p4-scan-blocked-74caf74保留、无upstream、不推）；illini-viewport-consumers cca63d9（已随#383合main，本批不改）；illini-smoke-stub a9c271b（已随#384合main321a916f，本地完整门禁、60轮及CI通过）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
-| 本批交付worktree | `~/work/illini-events-20261120`，`codex/community-events-20261120`，起点0e7fbc13；D59 delivery-tree退役只读；第1项核对见L463–L464 |
+| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 80aae635（D-60本地合main及子集通过；远端仍4e7bd214）；illini-events-20261120 a324a5bd（D-60 c1五样已过，修前对照排队；远端仍0e7fbc13；旧74改名保留不推）；illini-viewport-consumers cca63d9（已随#383合main，本批不改）；illini-smoke-stub a9c271b（已随#384合main321a916f，本地完整门禁、60轮及CI通过）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
+| 本批交付worktree | `~/work/illini-events-20261120`，原名分支本地c1 a324a5bd；远端仍0e7fbc13；D59 delivery-tree退役只读，L463–L471 |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
 ## CI
 
-合并后main321a916f的push run45248909343七个job全部success，schedule run45264381766 success（2026-11-24本地只读核对）。本批P3/P4尚未推送，其base不是main、不触发CI；第8项新分支尚未建立，后续按其PR实际CI记录。
+合并后main321a916f的push run45248909343七个job全部success，schedule run45264381766 success（2026-11-24本地只读核对）。本批P3/P4尚未推送，其base不是main、不触发CI；第8项独立子任务进行中，分支、PR和CI以实际交付回执更新。
 
 #383已由supervisor合进main：PR最终head cca63d95的run [45103933628](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45103933628) completed/success，五job成功，protected staging与production readiness按条件跳过；main d3bfc17e的run [45133719064](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45133719064) 七job全部成功。本批已独立读取元数据（D-59.0/9b）；原45043777896只是较早head的历史结果。
 
