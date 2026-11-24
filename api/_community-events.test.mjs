@@ -247,3 +247,26 @@ test('DoD ⑤: all 22 required synthetic fixtures exist and contain only fixture
 })
 
 test('DoD ⑥: fixtures and pure functions made zero fetch calls', () => assert.equal(fetchCalls, 0))
+
+test('mode A checks the calendar allowlist before processing input and accepts only exact detail links', async () => {
+  const { parseCampusEventLink } = await import('./_community-events.js')
+  const calendars = [{ id: '3715', name_en: 'Synthetic calendar' }]
+  const link = 'https://calendars.illinois.edu/detail/3715/90000001'
+  const withUserInfo = new URL(link)
+  withUserInfo.username = "user"
+  for (const input of [link, null, { toString() { throw new Error('input must remain unread') } }]) {
+    assert.deepEqual(parseCampusEventLink(input), { error: 'campus_calendar_not_allowed' })
+  }
+  for (const suffix of ['', '/']) {
+    assert.deepEqual(parseCampusEventLink(link + suffix, calendars), { calendar_id: '3715', event_id: '90000001' })
+  }
+  assert.deepEqual(parseCampusEventLink(link.replace('/3715/', '/852/'), calendars), { error: 'campus_calendar_not_allowed' })
+  for (const input of [
+    null, link.replace('https:', 'http:'), link.replace('calendars.', 'CALENDARS.'),
+    link.replace('/3715/', '/1234567/'), link.replace('/90000001', '/1234567890123'),
+    link + '?tracking=1', link + '#fragment', link + '//', link + '\n',
+    link.replace('calendars.illinois.edu', 'calendars.illinois.edu.evil.test'),
+    withUserInfo.href,
+    link.replace('calendars.illinois.edu', 'calendars.illinois.edu:443'),
+  ]) assert.deepEqual(parseCampusEventLink(input, calendars), { error: 'bad_ics' })
+})

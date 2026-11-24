@@ -130,6 +130,17 @@ export function normalizeCaaciEvents(payload) {
   return { complete: payload.complete, rows }
 }
 
+export function parseCampusEventLink(value, calendars = CAMPUS_CALENDARS) {
+  // Keep the production deny-all gate ahead of input processing.
+  if (!calendars.length) return { error: 'campus_calendar_not_allowed' }
+  const match = typeof value === 'string'
+    && /^https:\/\/calendars[.]illinois[.]edu\/detail\/([0-9]{1,6})\/([0-9]{1,12})\/?$/.exec(value)
+  if (!match) return { error: 'bad_ics' }
+  const [, calendar_id, event_id] = match
+  return calendars.some(calendar => String(calendar.id) === calendar_id)
+    ? { calendar_id, event_id } : { error: 'campus_calendar_not_allowed' }
+}
+
 // Input is the safe parsed projection from _campus-ics.js, not raw ICS.
 // Production callers omit calendars; fixtures can explicitly supply a calendar.
 export function normalizeCampusEvent(event, calendars = CAMPUS_CALENDARS) {
