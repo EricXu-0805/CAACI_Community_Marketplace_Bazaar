@@ -198,9 +198,16 @@ const STUB_TABLES = new Set([
   'items',
   // Plaza reads public feeds, topic summaries and the post count on mount.
   'posts',
+  // The events list (onShow) and event detail (load) read CAACI's last successful sync; no row keeps the stale line hidden.
+  'community_event_sync_state',
 ])
-// The logged-out main page sweep makes no RPC requests in the baseline.
-const STUB_RPC = new Map<string, string>()
+// Logged-out RPC reads in the sweep; values are serialized JSON bodies.
+const STUB_RPC = new Map<string, string>([
+  // Plaza's upcoming-events rail and the events list have no events in the sweep.
+  ['list_community_events', '[]'],
+  // The events list and create page read the members switch, which ships off.
+  ['community_member_events_open', 'false'],
+])
 
 test('stub backend enablement requires an exact stub origin outside GitHub Actions', () => {
   const cases = [
