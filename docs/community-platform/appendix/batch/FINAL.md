@@ -1395,3 +1395,181 @@ P3原check-20261122T224520Z已过install/typecheck/h5，h5accept中断；check-2
 | 根高度测量等待精确Open filters按钮可见 | 等首页真实内容而非启动壳挂载，纯height:auto控制已在根高度断言变红 | 反向提交用例变更 |
 | 追认头像检查只排除.evc-avatar子树 | SPEC要求20px发起人头像，其他图片仍被检查 | 撤回对应测试/实现并重新核SPEC |
 | 追认通知与收藏的三处断言边界修正 | 区分无障碍副本与toast，并等待真实写请求；期望和负对照保留 | 反向提交断言修正 |
+
+## 第十三批（D-59）
+
+### ① 起止与 SHA 范围
+
+本批范围仅 D-59 第 0–10 项，开始于 2026-11-23 CT，收尾报告写于 2026-11-23 21:58 CT。材料起点 `9b8db4a8`；本节和 STATUS 同一提交，提交前材料 HEAD 为 `fce3a16f`，推送回执见随后追加的 STATUS_LOG。日志范围 L370–L460。
+
+| 分支 / PR | 本批范围与最终状态 |
+|---|---|
+| main | `d3bfc17e` → `321a916f`，#384 由 supervisor 合并；P4 未合 main。生产仍按 supervisor 记录为 `9171976e`，OMO 未发布生产 |
+| 材料 / #370 | OPEN、草稿，base main；本节提交前HEAD `fce3a16f`，本节与STATUS同一提交 |
+| 新巡检分支 / #384 | `d3bfc17e` → `a9c271b`，先开草稿，再由 supervisor 于 2026-11-23 19:26:06Z squash；CI 45186897514 成功，main 树与验收树一致 |
+| P3 / #379 | `4e7bd214`，本批未改；OPEN、草稿，base `codex/community-restricted-20261113` |
+| P4 / #380 | `fe80882c` → `0e7fbc13`；OPEN、草稿，base `codex/community-p3-20261120`，正文已核读回一致。只推送一次，未改 base、未转 ready、未合并 |
+
+表中远端 SHA 和 PR 状态在最终写回前用 `gh pr view`、`git ls-remote` 核对，证据见 L459。
+
+### ② 完成的任务
+
+| 项目 | 结论与证据 |
+|---|---|
+| D-59.0 / 开工 | [本地测] 核对上线背景、配额口径和五条冻结迁移；目标及唯一小时提醒已设，安全补充继续执行 |
+| D-59.1 巡检夹具 | [本地测] `a9c271b`，显式 GET/HEAD/RPC 名单、单行零结果 406、表外 501 并记入 errs、关闭 stub WebSocket；只在本地三个 stub origin 启用，CI 不启用。根高度两档增加内容高于视口的前置断言。全量 Node 2664/2663/0/1、pg_skips=0；smoke 571/570/0/1；:699 ×60 为 60/60。主包 1,381,447，不变。L397–L401、L406、L408 |
+| D-59.2 同步服务端 | [本地测] `de1e58a` 新增 A 及伴随文件，`3e549ae` 接入 worker、CLI 和测试。默认不开同步；白名单投影、12 分钟领取、逐行拒绝处理、错误分类和预算均已实现。离线 handler 握手 HTTP 200、两行合成数据；真实请求仍挂起。最终 SQL 结果见下表 |
+| D-59.3 核对时间 | [本地测] `8511ddc`，并行读取 CAACI 状态；列表超过两小时才显示，详情仅 CAACI 显示；缺失、空值、读取失败不挡列表。15 条 smoke、两项变异、Chicago 时间格式验证通过。L422–L425 |
+| D-59.4 桌面活动页 | [本地测] `ce3f626`，三页复用 CommunityHeader，活动当前项、56px 吸顶及筛选偏移；1280 隐藏 AppSidebar，1200 容器、876/300 双栏及 S1/S2 补齐。广场去 data-v-* 后 DOM 相同，小程序产物无该页头，三个 UI 变异及 H5 守卫变异成立。父验证 47/47，MP 6/6。L426–L431 |
+| D-59.5 两处小修 | [本地测] `cdb4d13`，胶囊断言检查最后生效的 padding 声明；提交失败时草稿保存再次失败会保留警告。两个页面胶囊负对照、晚失败负对照均红，源码逐字恢复；74 条归属套件通过，无 supabase 差异。L409–L412 |
+| D-59.6 校历纯解析 | [本地测] `0e7fbc1`，新增纯时间转换、ICS 解析和先查白名单的链接解析，既有 fixtures 不改。35522 点时间对照、三个指定值和 13 个负对照完成；等价表示修正33/33及scan53通过，新head全量见下表。日历白名单仍空，fetch、写库、撤下判断归 D-60。L433–L434 |
+| D-59.7 视觉矩阵 | [本地测] 新head最终36/36通过、79秒，四指标全0、axe已挂载，外部请求0；图片同已检视版本，旧8图未改；旧8图保留，最终36图取代旧图；私有截图spec不提交 |
+| D-59.8 可见文本探针 | [本地测] 182/182 回放；6 种输入作为 authenticated 原样存储，SQLSTATE 00000、各 1 行；3 个阳性对照通过，无重复或限流混淆，全部事务回滚、内容残留 0。只测本地服务端，未改代码。L402–L403 |
+| D-59.9 材料更正 | [本地测] SPEC/ENGINEERING 固定讨论正文、12 分钟及预算规则、错误码、部署开关和急停说明；已知文本缺口、依赖环和 CI 阻塞补齐；旧原地修改例外标记到期。FINAL 第十二批原文不改 |
+| D-59.10 最终门禁与冻结 | [本地测] 新head十步按D56逐条判通过，Node3054/3053/0/1、smoke768/757/10/1；186链及703/855/38/35、四恢复、60轮全部通过；A在原候选全套验收后按L446冻结并先推0785419，重建后A字节不变、不重冻；新head证据先写回材料，再唯一推P4 |
+
+| 最终检查 | 新交付0e7fbc1实际结果 |
+|---|---|
+| 十步同一命令 | check-20261124T023745Z；9步rc0，smoke rc1按D56逐条判通过；Node3054/3053/0/1、pg_skips0 |
+| smoke及必须通过项 | Running768，757/10/1；同次events25/25、桌面22/22、灰字15/15、晚草稿2/2、699/767各1；192行Received均符合规定 |
+| 独立699重复 | check-20261124T032854Z；60/60，0失败/跳过，157秒 |
+| 主包 | CI环境1,469,411字节，余103,453；event分包37,679 |
+| 最终L-SQL | lsql-20261124T032427Z；186/186/errors0/done1/rc0；703/855/38/35全过，VERIFY_A通过 |
+| A后顺序及四项对照 | lsql-20261124T032702Z；member→reply均enabled=f，旧P4指定首错，A通过；4负对照/4恢复正确 |
+| 最终36图 | check-20261124T033233Z；36/36，79秒，四指标全0；36图与已检视图同字节，旧8图未改 |
+| 审阅与扫描 | 原整轨APPROVE/HIGH；新5文件增量APPROVE/HIGH；新历史scan53 exit0，旧74不在交付祖先 |
+
+TEST 增量按本批 diff 解释：基线 2981；同步部分增加 53，核对时间增加 1，校历增加 19，合计 3054。smoke 的最终 Running N 与新增用例逐项对应为 729+晚草稿2+灰字15+桌面22=768；未用临时截图 spec 凑数。
+
+SYNC_TOTAL 的35项均通过，下面逐项列出其实际断言；每个场景在本地事务内回滚。
+
+| # | SQL用例 | 验证内容 |
+|---:|---|---|
+| 1 | `complete-upsert` | 完整快照插入字段并初始化首次/末次看到时间和缺席计数；通过 |
+| 2 | `partial-upserts-without-absence` | partial更新已有行，不为未返回行累计缺席；通过 |
+| 3 | `complete-missing-twice` | 完整快照连续两次缺席转unavailable；通过 |
+| 4 | `present-after-one-missing` | 缺席一次后再次看到，清零计数及缺席时间；通过 |
+| 5 | `unavailable-reappears-with-new-fields` | unavailable重新出现时使用新字段恢复visible；通过 |
+| 6 | `hidden-present-stays-hidden` | hidden仍隐藏，保留管理原因但更新有效源字段并清缺席；通过 |
+| 7 | `hidden-missing-stays-hidden` | hidden缺席只加计数，不自动变成unavailable；通过 |
+| 8 | `window-effective-end-and-exact-boundary` | 按有效结束时间核179天窗口，精确边界包括在内；通过 |
+| 9 | `schedule-change-near-start` | 改到48小时边界内，保留旧时间、升revision并置审核标记；通过 |
+| 10 | `schedule-change-outside-near-window` | 48小时外一秒仍记改期和revision，不置临近开始标记；通过 |
+| 11 | `unchanged-schedule-keeps-revision` | 时间没改时revision和首次看到不变，只更新末次看到；通过 |
+| 12 | `claim-absent-then-not-due` | 无状态行时首次claim插入，紧接第二次返回false；通过 |
+| 13 | `claim-exact-interval-refused` | 严格间隔：刚好12分钟不能领取；通过 |
+| 14 | `claim-older-than-interval` | 超过12分钟一秒可以领取；通过 |
+| 15 | `claim-infinity-refused` | infinity急停不能领取；通过 |
+| 16 | `claim-null-and-campus` | 已有NULL尝试时间可领取，campus来源也受既有source约束；通过 |
+| 17 | `claim-invalid-source-constraint` | 未知source由约束以23514拒绝；通过 |
+| 18 | `finish-ok-writes-success` | finish ok更新成功时间，清错误码，不改尝试时间；通过 |
+| 19 | `finish-partial-writes-success-and-code` | finish partial记录成功时间和错误码，保留infinity急停；通过 |
+| 20 | `finish-failed-preserves-success` | finish failed保留旧成功时间及infinity，记录失败码；通过 |
+| 21 | `finish-absent-returns-false` | finish缺状态行返回false，不擅自插入；通过 |
+| 22 | `moderated-visible-counts-as-seen` | 被审核拒绝的visible行算看到，不换字段/时间/revision，其他缺席行正常累计；通过 |
+| 23 | `moderated-hidden-counts-as-seen` | 被审核拒绝的hidden行保留隐藏及原因，并清缺席状态；通过 |
+| 24 | `moderated-unavailable-retains-all-state` | 被审核拒绝的unavailable行整行保持原值；通过 |
+| 25 | `rejected-new-row-does-not-block-good-row` | 坏的新行不阻断同份快照中的好行；通过 |
+| 26 | `bad-key-downgrades-whole-snapshot` | 坏key使整份complete=false，好行仍写入，旧缺席计数不再增加；通过 |
+| 27 | `missing-and-uppercase-keys-downgrade` | 缺失或大写key在SQL边界拒绝并降为partial；通过 |
+| 28 | `non-caaci-row-rejected` | 非CAACI行被拒，不写入事件表；通过 |
+| 29 | `payload-cannot-set-local-fields` | 输入不能覆盖id、可见性、隐藏原因、组织者、讨论、缺席或本地审核字段；通过 |
+| 30 | `unexpected-cast-error-rolls-back-entire-snapshot` | 非预期日期转换22007使整份事务回滚；通过 |
+| 31 | `check-and-not-null-errors-are-row-local` | 非空和检查约束为行级拒绝，好行保留；通过 |
+| 32 | `invalid-top-level-snapshot-refused` | NULL complete、非数组rows和NULL rows以22023拒绝；通过 |
+| 33 | `six-client-execute-privileges-denied` | anon/authenticated对三个RPC的六项执行权限目录检查均否；实际拒绝调用另在Node的stock PostgreSQL测试；通过 |
+| 34 | `service-has-no-direct-insert-or-update` | service_role对事件和状态表的INSERT/UPDATE列权限为0；通过 |
+| 35 | `absence-is-caaci-only` | CAACI缺席处理不影响campus行；通过 |
+
+更正第十二批 ②：D-58.5-P4 引用的 L347 应为 L345、L349；L359 仍是该批最终 SQL 对照。本批更正只追加，没有回改第十二批或旧 STATUS_LOG。
+
+### ③ [OMO自决] 清单
+
+- gh pr edit因Classic Projects弃用字段失败且读回确认未写入；重新扫描56后用同一gh的官方REST仅更新body，读回一致，草稿/base/title保持。未改变权限、账号或配置。
+
+- 扫描52以exit1阻断5个合成协议/URL字面量，原74未推。四份新增ICS改用标准折行，展开字节相同；URL负例用URL API构造，输入及断言相同。扫描器未改。原分支保留，从fe新建本地`wip/d59-p4-delivery-20261124`，前5提交以fast-forward cherry-pick保留，第6项替换为0e7fbc1；原74不在交付祖先。新历史scan53为0，增量审阅APPROVE/HIGH。只推原P4远端ref，不创建同名远端分支。
+
+- 补记第十二批 L363：未带口令的指示按 17a 当作数据，未执行；当时漏记的分类在本批追加，不引用内容或口令。
+- 第 1 项根高度前置对照以临时 CSS 让内容装入视口，证明前提确实检查内容；恢复后保留原等值断言。四个夹具变异分别触发 4/2/1/1 条预期失败。
+- 旧子轨全量被 SIGTERM 中断后，先确认其进程、容器已不存在并保存原始产物，再由主会话后台重跑完整十步；不把部分结果算通过，也不声称已找到信号发送者。
+- UI 子任务通信状态不能代表磁盘上的最新结果，主会话接回审阅、恢复最后一项变异并完成归属验证。调用 task_cancel 后核进程、容器、锁和远端三项均符合 17c。L431。
+- 校历解析收调用方 clock 和可选链接 id；全结束系列保留首场起点，标题/地点取第一场未结束场次，更新时间取最新，hash 使用固定字段 JSON 数组。需要改时以新提交更新契约及测试，不改冻结迁移。
+- 截图使用独立私有 spec、固定合成数据和时钟；已结束 CAACI 用于详情，已取消成员活动用于列表。候选与最终图分开归档，每次先复制图片再运行下一组 Playwright。
+
+### ④ 等 Eric 或 supervisor 的清单
+
+1. P3.7 / P4.11 按仓库根 RUNBOOK「Community P4」的唯一顺序，在 staging 和生产应用并分别 VERIFY 四条迁移：`20261120100354` / `c2a18ee842128e7943293529ca182a5e714e7ca8f942d5d4d5bb9a2ed951bf`；`20261120122054` / `a8c0e08340203988a04bec5e210a2a1c73a941544ffe272adf754b0e56053a79`；`20261122035253` / `b93ea1edce3ecc2f2a2d4a59fb5b9ed3bbb129f52ed65211ad02cd02e8781bdd`；`20261123201501` / `bb2f91e6afcdd7a5be28bcbead4faa7e349bde22c3ca181365a2559b62ed9ce1`。OMO 本批未操作托管库。
+2. A 之后重新核成员活动 VERIFY，再核回复通知 VERIFY，两者当前应为 enabled=f；旧 P4 VERIFY 的原函数体检查会按设计失败，不能拿它代替 A 的 VERIFY。#380 合并之前，public smoke 要在已经应用四条迁移的库上跑绿。
+3. 回复通知开关、成员活动开关分别按其 RUNBOOK 前提打开；成员活动开关之前，先决定是否补平台级可见文本边界。探针已证明标题、评论、商品标题可以原样保存视觉空白字符；已知缺口还包括 U+034F、U+206A–U+206F，客户端 EVENT_INVISIBLE 也未覆盖。
+4. CAACI 同步开关仅在 Production 设 `COMMUNITY_SYNC_CAACI_EVENTS=1`：四条迁移及 VERIFY、P4.3 上线、工作站一次 GET 返回 200 JSON 都满足后，照 E13 新部署。删除变量也需要新部署；紧急停用按 RUNBOOK 把 CAACI 的 last_attempt_at 置为 infinity。本批没有对 CAACI 发真实请求。
+5. P4.10 本批不写代码。生产可见活动的前提要等 A、P4.3 和同步开关，或 D-60 的学校活动写入。建议将依赖环拆为 P4.11a（迁移和 #380，沿用第一步导航）与 P4.11b（P4.10 和小程序，前提成立后再发）；此项是建议，尚未批准。
+6. E8 与上游 PR、E6、D-33 使用条款、D-28 及既有运营待定项仍由 Eric 处理；校历整本导出的接源前检查、fetch/写库/撤下判断归 D-60。校园活动第 11 行需要后续 last_checked_at，不在本批实现。
+7. CI public sweep 的 45 分钟上限如何处理，归 Eric；本批不改 ci.yml。下面按最终 N=768 线性推算，公式为 `(样本非smoke秒数 + 样本smoke秒数 × N / 样本条数) / 60`，不是本批 CI 实测。
+
+| CI样本 | 样本条数 | 非smoke秒 | smoke秒 | 推算768条（分钟） | 相对45分钟 |
+|---|---:|---:|---:|---:|---|
+| 44647478789 | 478 | 645 | 1529 | 51.69 | 超 6.69 |
+| 44783052160 | 563 | 105 | 1292 | 31.12 | 余 13.88 |
+| 44909710527 | 564 | 84 | 1547 | 36.51 | 余 8.49 |
+
+【supervisor 做】已合并新分支 #384；以后合并 #379、#380 时手写 squash 说明。OMO 没有替 supervisor 合并、转 ready、改 base 或发布。
+
+### ⑤【硬】与【暂停推送】事件
+
+五条冻结迁移逐字未改；A 只在最后通过后冻结一次。没有修改其他 manifest 行、workflow、依赖、配置或账号；没有 force push、rebase、改写已有本地分支；没有托管库写入或真实 CAACI 请求。容器始终使用同一把锁，umask 022、worktree 755、运行前后磁盘不少于 50 GiB。
+
+截至本节提交前，已发生并已核远端的记录如下；本节提交和随后关闭条目的扫描/推送，由后续实际回执追加，不在本表提前计为完成。
+
+| 分支 | 推送次数 | 有对应扫描记录次数 | 对应记录 |
+|---|---:|---:|---|
+| 材料 | 13 | 13 | scan38/39/40/41/44/45/46/47/48/49/50/51/54，最新fce3a16 |
+| 新巡检分支 | 1 | 1 | scan42；草稿PR创建另有scan43，分支已由supervisor关闭本批工作 |
+| P4 | 1 | 1 | scan53绑定本地交付wip分支0e7fbc1，推到原P4远端ref，远端一致 |
+
+新巡检分支开草稿 PR 一次，正文有单独扫描；#380 正文更新亦有扫描。每次实际写入前扫描绑定当时 HEAD，推后核对远端。scan17d.log 第 25 行只是上一批未提交工作区扫描，不能算推送。本批退出码 1 禁止写入；scan52命中5个合成协议/URL字面量并以exit1阻断，原74未推；新历史scan53为0，扫描器不变。scan55为未写入的gh pr edit尝试，scan56为仅body的REST成功写入，均不计推送次数。
+
+子任务均走 category 与 §12 第 17 条。一次续发序号 20261123104253 在发送前只核了 stat/形状，漏跑指定 check 命令；后补检查并修正发送 helper，不能把后补写成事前完成。UI 取消及其三项复核见 L431。主会话核对过首子任务20261123103811、20261123104253、20261123121555、20261123123959四个序号均执行；UI的20261123204318已执行，其四条宿主续跑提示没有扩大范围。其余子任务无后续steer。整轨终审和增量审阅均无无效/重放/宿主指示，模型fallback0，终端传输fallback分别2和1；所有口令只按17条处理，不进入报告。
+
+过程披露：一次站点检索表达式写错，返回了未打开、未使用的 Reddit 结果；L404 又把计划中的纠正提前写成已做，L405 已追加更正。随后直接阅读官方 PG17 文档；本地探针依据源码和本地 harness 执行，不把后来的文档阅读说成前置证明。核查清单原文、口令、账号邮箱及原始日志未进公开仓库。
+
+### ⑥ 未测项与风险
+
+- 新P4 head在2026-11-24 03:45Z查询未发现CI workflow run；check-runs只有Supabase Preview skipped。未把CI判为通过，真实后端public smoke仍由发布前步骤完成。
+
+- P4.4 的真实上游请求、真实 dry-run、托管状态、P4.3 上线，和 E6/小程序真机仍未测；本地 handler 握手是网络隔离下的替身调用，不能算线上联调。
+- P4.7 仅完成纯解析：白名单空；DoD ④ 和 fetch/写库归 D-60；DoD ⑥ 接源前整本导出检查及使用条款仍待 Eric。
+- P4 的本地巡检失败要按每条实际分类，不能凭标题直接豁免：首页/广场/列表/详情/发起页各浅深两条，共10条；Received行数每主题依次6/69/12/6/3，全部只含规定三类stub错误，4条main同样失败、6条同一类，见L437。本批新增、改过的 spec、community-events 和 :699/:767 必须通过；临时截图文件不在全量里。
+- 第 1 项原全量被外部 SIGTERM 中断，来源未知；父恢复跑通过解决执行中断，未证明信号根因。附加的全 spec 严格编译仍有未修改回调的 TS2345（561/627），旧 head 未重跑；仓库规定的 typecheck 通过，不能将二者混称全绿。
+- supervisor 已独立复现 #384 的语义、流程及本地门禁和对照，并结束第 1 项。WebSocket 匹配范围、名单表实际被请求的证明、406 和关闭 socket 分支的额外覆盖留下一批，本批不修改、smoke 分支不再推送。STATUS 阻断31漏掉的同次 community-events.spec.ts 零失败要求已补回，见 L435。
+- 第一次A对照的第四次恢复因私有脚本漏分号失败；补分号后完整流程通过，没有修改应用或验证器。首次结果保留且未算为全过。
+- 全量smoke启动时另有registerToastHost导出诊断，涉及本批未改的useAppToast.ts/AppToast.vue；未形成独立失败用例，原因未定位，本批不追查。
+- 校历负对照 13 项中，12 项是断言失败，折行变异为缺失 rows 引发的 TypeError；均触及目标行为。子轨曾把最大结束值当作最后场次结束值，重叠场次先红后修正，不能说成既有故障。
+- 12 分钟撤下时限是固定 cron/缓存模型下的推算，依赖每拍剩余预算大于 12 秒；跳过的拍会顺延。可见文本边界的缺口只做探针，没有顺带修复。
+- 原74的全套门禁和36图保留为扫描阻断前的历史证据，不当成0e7的新head验收；新结果只取新回执。
+- 原 8 张 P4.8 图片保留为历史证据，本批 36 张是最终 head 的合成数据截图；不会将旧桌面左栏图当作当前外观。
+
+### ⑦ 下一批
+
+本批完成后结束目标、取消提醒、追加实际关闭记录，随后停止，不接 BACKLOG。下一轮只在收到新指示后开工；候选事项为④中由 Eric 决定的上线顺序和 D-60，不构成本会话的继续授权。
+
+### ⑧ 代 Eric 定的事
+
+| 选择 | 理由 | 撤回办法 |
+|---|---|---|
+| 巡检显式名单；表外 501 并进入 errs；single 零行 406；GitHub Actions 守卫 | 暴露新增请求，不把真实 CI 后端藏在通配替身后 | 新提交修改名单与测试；含夹具 head 的零失败规则若要改变，另请 supervisor 定 |
+| 含夹具 head 不再用四条件巡检豁免 | 原 stub DNS 原因已被本地夹具消除 | 不随移除夹具自动恢复豁免，另定门禁契约 |
+| CAACI 12 分钟领取；首次无行时插入 | 严格间隔、缓存和抖动模型下约 27 分钟，满足 30 分钟目标 | 改常量前重算时限、重做节奏测试；SQL合同改变用前向迁移 |
+| 被拒行仍算看到；visible/hidden 清缺席计数但不换字段；unavailable 保持不动 | 避免把仍存在的坏行误撤下，也不复活旧时间地点 | 前向迁移并重跑对应回归 |
+| key 小写；坏 key 使整份 partial | 匹配已有数据库约束，坏数据不能批量制造缺席 | 同步投影和前向迁移配套调整 |
+| partial 也更新 last_success_at | 成功读取并处理部分响应仍记核对时间，失败不冒充成功 | 前向迁移调整 finish 及测试 |
+| 开关只认 '1'，只设 Production，设删都重新部署 | 非生产的 releasedCron 也能执行，不能仅凭 cron 判断环境 | 删除变量后依 E13 新部署；立即停先按下一行 |
+| 急停将 last_attempt_at 设为 infinity | 不等待环境变量重新部署 | 按 RUNBOOK 恢复为可再次领取的值，再核开关和状态；由 Eric 操作 |
+| 三函数返回 boolean/jsonb，不返回 void | 调用端对响应解析 JSON，204 空正文会成为 provider_malformed | 前向迁移与调用协议配套调整 |
+| call 增加可选 timeout 参数；剩余大于12秒才同步，各段预留5秒 | 保留原调用行为，并给后续清理和账本留预算 | 新提交调整预算及变异用例，不删失败断言 |
+| 同步不向外抛；failed/partial/rejected 只报一次固定 Sentry 消息 | 不把整个 background job 变503，同时暴露持续部分失败 | 新提交调整分类和集成测试；仍不得记录上游正文 |
+| 新增 http_404/http_403/http_4xx/bad_json/deadline/claim_failed 分类 | 区分源失败与预算/领取问题，CAACI 4xx 不撤下已存行 | 更新工程契约、实现和测试；状态语义改变需前向迁移 |
+| 灰字仅 CAACI，无状态就不显示；列表“CAACI 活动信息上次核对：{when}”/“CAACI event info last checked {when}”，详情“来源信息核对于 {when}”/“Source last checked {when}”；CT绝对时间，跨年加年份 | 状态读取失败不阻断活动；iOS小程序不依赖完整ICU | 新提交调整文案和格式测试；campus 第11行留D-60 |
+| CommunityHeader 当前项prop默认社区，活动传活动；吸顶只加在活动页 | 保留广场DOM/样式和小程序行为，满足桌面活动页规格 | 新提交恢复活动页接线；重复广场DOM及MP验证 |
+| 不改全站 token | 防止对比度修复波及二手、消息、我的 | 本批候选审计无须改token；若后续需要，仅在活动页使用现有合格token并记录偏差 |
+| P4.9 讨论正文采用冻结迁移现有中文模板，英文界面也相同 | 改期后仍有效，避免改已冻结迁移 | 真要双语或改模板，另建前向迁移 |
+| P4.10 本批不写代码，建议拆P4.11a/b | 生产可见活动前提尚未成立，现有依赖成环 | Eric 确定发布方案后另轮实现 |

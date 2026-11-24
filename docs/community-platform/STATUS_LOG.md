@@ -6188,3 +6188,51 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 本条写入时新验证材料和P4尚未推送；托管与真实上游仍未操作
 - 下一条: D-59.10
 - 附: A保持L446同一冻结sha256，材料0785419已于scan51后先推；本次只补新交付head验证，不重冻。原74完整保留且不在交付祖先，五个旧提交以ff保留。最终推送目标只为已有codex/community-events-20261120，不推新的wip远端分支。
+
+### L457 · 2026-11-23 21:43 CT · D-59验证材料先推与唯一P4推送确认
+- task_id: D-59.10发布回执
+- code_sha: 0e7fbc13
+- docs_sha: fce3a16f（本次写回之前材料分支的HEAD）
+- 环境: GitHub远端；材料先行，P4快进
+- 命令: 材料scan54后git push --no-verify并核远端fce3a16；随后交付工作区按scan53绑定head，git push --no-verify origin HEAD:refs/heads/codex/community-events-20261120，再核远端
+- 计数: 材料累计13次推送/13对应扫描；P4本批推送1/对应绿色扫描1（53）；远端0e7fbc1；原74未推，新wip未创建远端分支
+- ci_run_url: —
+- 未测项: PR正文更新尚待其专门扫描；P4 CI及托管后端不由此判为通过
+- 下一条: D-59.10
+- 附: A的冻结材料0785419/scan51先推，新head验证材料fce3a16/scan54也先推，之后才唯一推P4。扫描52 exit1不算推送；扫描53的本地wip分支明确映射原P4远端ref，head一致。每次--no-verify均记入命令字段，没有合并/ready/base/force/rebase操作。
+
+### L458 · 2026-11-23 21:49 CT · D-59正文命令失败后的受限REST处理
+- task_id: D-59.10 PR正文
+- code_sha: 0e7fbc13
+- docs_sha: fce3a16f（本次写回之前材料分支的HEAD）
+- 环境: GitHub CLI；同一已授权PR
+- 命令: scan55后gh pr edit --body-file返回projectCards弃用错误；REST读回确认仍是原正文；读取官方CLI/REST文档；重新scan后仅以PATCH body更新
+- 计数: gh pr edit退出1；正文未变化；head0e7fbc1/OPEN/草稿/base原P3均不变；本条尚未把REST更新算成功
+- ci_run_url: —
+- 未测项: P4 CI未获通过证据；需实际写入后再读回正文
+- 下一条: D-59.10
+- 附: [OMO自决] 错误来自已弃用Classic Projects查询字段，不是用户拒绝或返回403的权限拒绝；不换账号、不改权限、不升级或改配置，只换官方同一gh CLI的REST端点且仅传body。03:45Z按head查询没有CI workflow run；另查check-runs只有Supabase Preview skipped，不能称CI通过。public smoke仍须在已应用四迁移的库上完成。
+
+### L459 · 2026-11-23 21:58 CT · D-59正文读回及最终远端核对
+- task_id: D-59.10正文完成/FINAL①
+- code_sha: 0e7fbc13
+- docs_sha: fce3a16f（本次写回之前材料分支的HEAD）
+- 环境: GitHub REST/CLI与git远端
+- 命令: scan56 exit0后gh api PATCH仅body；REST GET全文比对；gh pr view370/379/380/384；git ls-remote核对应head；未提交state/base/ready字段
+- 计数: 正文成功写入1，内容与扫描稿相同；#380 OPEN草稿/base P3/head0e7fbc1/title不变；材料#370 OPEN草稿/base main；#379 OPEN草稿4e7bd214；#384 MERGED321a916f
+- ci_run_url: —
+- 未测项: P4 CI未取得通过证据，仍不代替四迁移库上的public smoke
+- 下一条: FINAL第十三批
+- 附: scan55对应gh pr edit未写入的失败尝试，scan56对应REST成功写入；都不是代码推送。主会话最后核对首子任务四序号103811/104253/121555/123959（均20261123 UTC）在其最终工具回执中均执行；UI序号20261123204318已执行。其余子任务未发steer，终审/增量认证及模型fallback均0，终端回退分别2/1。无需重启已停止子任务。
+
+### L460 · 2026-11-23 21:58 CT · D-59第十三批最终报告与STATUS同提交准备
+- task_id: D-59 FINAL/STATUS
+- code_sha: 0e7fbc13
+- docs_sha: fce3a16f（本次写回之前材料分支的HEAD）
+- 环境: 最终交付0e7fbc1；材料父提交fce3a16
+- 命令: 核原FINAL完整sha256不变；末尾追加第十三批八节；更新STATUS最终状态、三分支推送扫描账本；同提交并按17d扫描推送
+- 计数: 截至本提交前：材料13推/13对应扫描，smoke分支1推/1对应扫描，P4 1推/1对应扫描；额外扫描与失败尝试单列，不冒充推送
+- ci_run_url: —
+- 未测项: 本条写入时FINAL提交尚未推送，目标与提醒尚未关闭；关闭记录必须等完成线后追加
+- 下一条: 完成线后关闭目标/提醒并追加日志
+- 附: 最终报告保留35条SQL说明、全部代定理由与撤回办法及Eric人工前提。旧FINAL第十二批及更早内容不改，旧STATUS_LOG只追加。代码与PR均仍未合并，P4未ready/base变更。完成线为本FINAL和STATUS同提交推送；之后只做明确收尾，不接BACKLOG。
