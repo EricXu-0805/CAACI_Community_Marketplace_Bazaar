@@ -6018,3 +6018,173 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 本条写入时材料冻结提交和P4代码尚未推送；托管应用仍由Eric执行
 - 下一条: D-59.10
 - 附: 20261123201501_community_event_sync.sql 冻结，sha256=bb2f91e6afcdd7a5be28bcbead4faa7e349bde22c3ca181365a2559b62ed9ce1。最终门禁L436–L437、186链L438、四对照及恢复L441、60轮L442、最终36图L443、终审L445均完成后才冻结。冻结后A不再改；后续数据库变更使用前向迁移。待本条材料提交扫描并推送、远端确认后，才允许唯一一次P4推送。
+
+### L447 · 2026-11-23 20:25 CT · D-59冻结材料已推及P4扫描阻断后的自决
+- task_id: D-59.10扫描阻断
+- code_sha: 74caf746
+- docs_sha: 0785419e（本次写回之前材料分支的HEAD）
+- 环境: 材料远端0785419；P4远端仍fe80882c
+- 命令: 材料scan51 exit0后git push --no-verify并核远端；P4以fe80882c为基准scan17d.py --log，scan52 exit1，禁止推送
+- 计数: 材料12次推送/12次对应扫描；P4推送0；P4邮箱形状命中5，pool/凭据/路径/核查原文0，incomplete0
+- ci_run_url: —
+- 未测项: 尚未发布P4；重建交付head需重新全量验收，旧74的结果保留而不冒充新head结果
+- 下一条: D-59.10
+- 附: [OMO自决] 命中为4个合成iCalendar UID协议值及1个URL用户信息负例，未输出其值。保持解析合同：新fixture用标准iCalendar折行表示同一UID，URL负例用URL API构造同一输入；扫描器规则、断言和已有fixtures不改。因为逐提交扫描仍会命中原74，原提交不进入推送历史；按D59.10从fe新建本地交付分支、按5→2→3→4→6顺序保留原已验提交，原分支保留，不reset/amend/rebase、不force。A与五条冻结文件不改、不重冻；新head重新跑全量、SQL、对照、60轮和最终36图后，先推验证材料再唯一推P4。命中位置：四个新增campus-allday-*.ics各第4行；api/_community-events.test.mjs:267。
+
+### L448 · 2026-11-23 20:44 CT · D-59重建交付历史与等价表示验证通过
+- task_id: D-59.10交付重建
+- code_sha: 0e7fbc13
+- docs_sha: 0785419e（本次写回之前材料分支的HEAD）
+- 环境: 本地wip/d59-p4-delivery-20261124；固定容器；原74分支和目录保留
+- 命令: 从fe80882c新建755 worktree；按序cherry-pick --ff五个已验提交；原74只取改动不提交该SHA；修正5处表示后RC install cmd，33通过才提交0e7fbc1；scan17d.py fe80882c --log
+- 计数: 33/33/0/0，cmd3秒；6提交、前5个SHA不变；原74不是新head祖先；scan53 exit0/incomplete0，各类命中0；app及supabase子树与74相同
+- ci_run_url: —
+- 未测项: 新head全量正在后台，186链排在同锁后；其余新head复验尚未完成，旧74结果不冒充新结果；P4推送仍0
+- 下一条: D-59.10
+- 附: [OMO自决] 仅四个新增ICS的标准折行和一个URL负例的构造方式改变；展开后4份fixture字节相同，构造后的负例输入相同，断言及生产解析器不变。旧文件中一个未改的既有字面量保留，正式扫描范围内新增行命中0。扫描器没改，scan52被阻断的提交没有进入新交付历史。新本地分支只用于最终快进到原P4远端ref，不创建同名远端分支。A保持L446原冻结哈希，不重冻。首次文件订阅因父目录未建失败，立即改为命令订阅，没有重复启动门禁。
+
+### L449 · 2026-11-23 20:44 CT · D-59五文件增量审阅开工
+- task_id: D-59.10增量审阅
+- code_sha: 0e7fbc13
+- docs_sha: 0785419e（本次写回之前材料分支的HEAD）
+- 环境: 独立锁定detached快照；category deep-low
+- 命令: omo-steer new/check；主会话前台读取；category派出；bind/check；审阅语义、隐私处理和安全重建历史
+- 计数: st_01a20b6e；两次check9字节/600；后续steer0；无测试/容器/网络/仓库修改授权
+- ci_run_url: —
+- 未测项: 增量结论待回传；新head全量仍由主会话执行，不能把增量审阅当成全量通过
+- 下一条: D-59.10
+- 附: 仅核5处变化是否保留原UID及负例语义、原断言和解析约束，是否没有真实联系数据被隐藏或扫描规则被放宽；如有具体违约须拒绝。原整轨APPROVE/HIGH保留为74的历史结论。子任务不得输出邮箱形状值，只报告计数和文件位置；认证与宿主上下文规则同17条。
+
+### L450 · 2026-11-23 20:48 CT · D-59交付增量审阅通过
+- task_id: D-59.10增量审阅完成
+- code_sha: 0e7fbc13
+- docs_sha: 0785419e（本次写回之前材料分支的HEAD）
+- 环境: 独立锁定快照0e7fbc1，审阅后正常回收
+- 命令: 读取REVIEW.md/VERDICT.json；核序号账本；干净工作区unlock/remove；无测试重跑
+- 计数: APPROVE/HIGH；5文件；阻断0；4份展开字节及URL负例输入独立比对相同；扫描器及scope指纹未变；steer/无效/宿主0；模型fallback0，终端fallback1
+- ci_run_url: —
+- 未测项: 只批准增量；新head十步/SQL/60轮/36图仍待主会话结果，不等于已经发布
+- 下一条: D-59.10
+- 附: st_01a20b6e确认没有隐藏真实联系数据/凭据、没有削弱断言或解析限制；原74未进入交付祖先，原分支保留，前5提交和所有冻结数据不变。A延续原冻结，未重冻；scan53为正式绿色记录。主会话读取正式报告后回收审阅快照，未取消或再派审阅。
+
+### L451 · 2026-11-23 21:28 CT · D-59新交付head十步门禁逐条判通过
+- task_id: D-59.10新head全量
+- code_sha: 0e7fbc13
+- docs_sha: 0785419e（本次写回之前材料分支的HEAD）
+- 环境: 干净0e7fbc1/tree6852682f；固定Node22/PG17/Playwright1.65容器
+- 命令: SMOKE_SPECS全量清单同一命令执行RC install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；先归档浏览器产物再准备后续PW
+- 计数: TEST3054/3053/0/1、pg_skips0；Running768，757/10/1；同次events25/25、桌面22/22、灰字15/15、晚草稿2/2、699/767各1；主包1469411、余103453、event37679
+- ci_run_url: —
+- 未测项: 本条不含新head另行60轮和最终36图；P4仍未推送
+- 下一条: D-59.10
+- 附: check-20261124T023745Z。9步rc0、smoke rc1；10条逐条满足D56四条件，4条main同样失败、6条同一类，192行Received全属于三种规定stub错误；下表是这次新运行的路径，不能用L437旧回执替代。新N仍768，CI推算表数字不变。证据解析初次因缺失谓词变量中断，补纯解析谓词后只重新分类日志，没有重复测试或复制产物。
+
+| 主题 | 路由 | Received行数 | 判定 | 请求路径（collector截断原样保留） |
+|---|---|---:|---|---|
+| light | pages/index/index | 6 | main 上同样失败，见L173 | `/rest/v1/items?select=id%2Cuser_id%2Ctitle%2Ctitle_i18n%2Cdescription_i18n%2Csource_lang%2Cprice%2Ccategory%2Ccondition%2Clisting_details%` |
+| light | pages/plaza/index | 69 | main 上同样失败，见L173 | `/rest/v1/posts?select=id%2Cuser_id%2Ctitle%2Ccategory%2Cis_official%2Cis_pinned%2Cis_featured%2Ccomment_count%2Cstatus%2Ccreated_at%2Clast`；`/rest/v1/posts?select=id%2Ccategory%2Ccomment_count&region=eq.cu&status=eq.active&title=not.is.null&created_at=gte.2026-11-17T03%3A06%3A37`；`/rest/v1/posts?select=id&region=eq.cu&status=eq.active`；`/rest/v1/items?select=id%2Cuser_id%2Ctitle%2Ctitle_i18n%2Cprice%2Cimages%2Cstatus%2Clisting_type%2Clisting_details%2Ccreated_at&status=eq.`；`/rest/v1/rpc/list_community_events` |
+| light | pages/events/index | 12 | 同一类，见L173 | `/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci`；`/rest/v1/rpc/community_member_events_open`；`/rest/v1/rpc/list_community_events` |
+| light | pages/event/detail/index | 6 | 同一类，见L173 | `/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci` |
+| light | pages/event/create/index | 3 | 同一类，见L173 | `/rest/v1/rpc/community_member_events_open` |
+| dark | pages/index/index | 6 | main 上同样失败，见L173 | `/rest/v1/items?select=id%2Cuser_id%2Ctitle%2Ctitle_i18n%2Cdescription_i18n%2Csource_lang%2Cprice%2Ccategory%2Ccondition%2Clisting_details%` |
+| dark | pages/plaza/index | 69 | main 上同样失败，见L173 | `/rest/v1/posts?select=id%2Cuser_id%2Ctitle%2Ccategory%2Cis_official%2Cis_pinned%2Cis_featured%2Ccomment_count%2Cstatus%2Ccreated_at%2Clast`；`/rest/v1/posts?select=id%2Ccategory%2Ccomment_count&region=eq.cu&status=eq.active&title=not.is.null&created_at=gte.2026-11-17T03%3A08%3A09`；`/rest/v1/posts?select=id&region=eq.cu&status=eq.active`；`/rest/v1/items?select=id%2Cuser_id%2Ctitle%2Ctitle_i18n%2Cprice%2Cimages%2Cstatus%2Clisting_type%2Clisting_details%2Ccreated_at&status=eq.`；`/rest/v1/rpc/list_community_events` |
+| dark | pages/events/index | 12 | 同一类，见L173 | `/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci`；`/rest/v1/rpc/community_member_events_open`；`/rest/v1/rpc/list_community_events` |
+| dark | pages/event/detail/index | 6 | 同一类，见L173 | `/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci` |
+| dark | pages/event/create/index | 3 | 同一类，见L173 | `/rest/v1/rpc/community_member_events_open` |
+
+### L452 · 2026-11-23 21:28 CT · D-59新交付head的186链及四组回归通过
+- task_id: D-59.10新head L-SQL
+- code_sha: 0e7fbc13
+- docs_sha: 0785419e（本次写回之前材料分支的HEAD）
+- 环境: network none的一次性PG17容器；同锁
+- 命令: LSQL delivery-tree 20261120100354 20261120122054 20261122035253 20261123201501；原脚本不改
+- 计数: files186/replayed186/errors0/done1/rc0；703/703、855/855、38/38、SYNC35/35/0；VERIFY_A通过
+- ci_run_url: —
+- 未测项: 本条不包含新head A后四项对照；托管库未操作
+- 下一条: D-59.10
+- 附: lsql-20261124T032427Z。35条case名称与原验证一致且这次各自pass=t。原EXIT清理打印SIGINT10秒后SIGKILL；同锁确认该具名容器不存在，磁盘前后336858574848字节。随后启动新head的A后对照，60轮排在同锁后。A保持L446冻结字节，不重冻。
+
+### L453 · 2026-11-23 21:31 CT · D-59新交付head的A后四对照及恢复通过
+- task_id: D-59.10新head SQL对照
+- code_sha: 0e7fbc13
+- docs_sha: 0785419e（本次写回之前材料分支的HEAD）
+- 环境: network none PG17；0e7fbc1
+- 命令: 私有回放副本重放四时间戳；AFTER_REPLAY按规定顺序跑旧对象与A，再分别变异和恢复
+- 计数: 186/186/errors0/done1/rc0；member/reply均enabled=f；旧P4指定首错；A通过；4负对照/4恢复均通过
+- ci_run_url: —
+- 未测项: 托管未测；P4尚未推送；A延续原冻结，不重冻
+- 下一条: D-59.10
+- 附: lsql-20261124T032702Z。函数体、安全属性、anon授权、void返回类型分别命中指定项，且每项恢复后VERIFY_A通过。使用已修正分号的同一私有控制脚本，没有改迁移、验证器或断言。此为新head实际回放，不沿用原74回执。
+
+### L454 · 2026-11-23 21:33 CT · D-59新交付head最终699六十轮通过
+- task_id: D-59.10新head重复
+- code_sha: 0e7fbc13
+- docs_sha: 0785419e（本次写回之前材料分支的HEAD）
+- 环境: 固定容器；干净0e7fbc1/tree6852682f
+- 命令: SMOKE_SPECS='marketplace-responsive.spec.ts:699 --repeat-each=60' RC delivery-tree smoke；同锁后台；产物先归档
+- 计数: Running60；60/60/0/0；157秒；前后磁盘336917970944/336950341632字节
+- ci_run_url: —
+- 未测项: 真实iPad归Eric；最终36图正在同一新head拍摄
+- 下一条: D-59.10
+- 附: check-20261124T032854Z。新head全量中的699/767也已分别通过；本条为单独60轮，不沿用原74的167秒回执。不再追加重复轮次。
+
+### L455 · 2026-11-23 21:36 CT · D-59新交付head最终36图通过并归档
+- task_id: D-59.7新head最终图
+- code_sha: 0e7fbc13
+- docs_sha: 0785419e（本次写回之前材料分支的HEAD）
+- 环境: 0e7fbc1已过最终门禁；三个页面/三宽/浅深/中英
+- 命令: 临时未跟踪spec单独RC smoke；立即复制最终PNG到材料，保存本机产物，再删除临时spec
+- 计数: 36/36/0/0，79秒；四指标全0、axe实际挂载、外部请求0；36PNG与已检视图逐字节相同；旧8图未改
+- ci_run_url: —
+- 未测项: 本地合成数据，不替代真实后端或真机
+- 下一条: D-59.10
+- 附: check-20261124T033233Z。本次确为新head运行，不能拿原74的76秒记录替代。图片虽字节相同，已从新输出复制并保留新JSON指标/日志；应用及CSS未改变，新增hex0的检查由相同app树证明继续成立。
+
+- `event-detail-1280-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-1280-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-1280-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-1280-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-390-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-390-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-390-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-390-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-768-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-768-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-768-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `event-detail-768-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-1280-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-1280-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-1280-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-1280-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-390-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-390-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-390-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-390-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-768-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-768-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-768-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `events-768-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-1280-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-1280-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-1280-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-1280-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-390-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-390-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-390-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-390-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-768-dark-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-768-dark-zh.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-768-light-en.png`: small=0 contrast=0 axe=0 overflow=0
+- `home-events-768-light-zh.png`: small=0 contrast=0 axe=0 overflow=0
+
+### L456 · 2026-11-23 21:36 CT · D-59重建交付head验证材料准备
+- task_id: D-59.10交付材料
+- code_sha: 0e7fbc13
+- docs_sha: 0785419e（本次写回之前材料分支的HEAD）
+- 环境: 交付分支wip/d59-p4-delivery-20261124；远端P4仍fe80882c
+- 命令: 汇总L451–L455新head回执及增量审阅；准备材料提交/17d扫描，材料远端确认后才唯一推P4
+- 计数: 新head全部本地要求完成；原整轨APPROVE/HIGH+新增量APPROVE/HIGH；scan53 exit0绑定0e7fbc1；P4推送0
+- ci_run_url: —
+- 未测项: 本条写入时新验证材料和P4尚未推送；托管与真实上游仍未操作
+- 下一条: D-59.10
+- 附: A保持L446同一冻结sha256，材料0785419已于scan51后先推；本次只补新交付head验证，不重冻。原74完整保留且不在交付祖先，五个旧提交以ff保留。最终推送目标只为已有codex/community-events-20261120，不推新的wip远端分支。
