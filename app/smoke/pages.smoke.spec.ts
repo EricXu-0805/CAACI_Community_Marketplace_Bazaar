@@ -1,6 +1,8 @@
 import { test, expect, type Page, type ConsoleMessage } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { supabaseUrlForBuild } from './supabase-ref'
+import { installStubBackend, stubBackendEnabled } from './stub-backend'
 
 /**
  * Page-load smoke: every route renders with no unexpected console errors,
@@ -191,6 +193,45 @@ test('profile listing action stays mouse and keyboard discoverable', () => {
   expect(moreAction).toContain('@keydown.space.stop.prevent="onCardLongPress(item)"')
 })
 
+const STUB_TABLES = new Set([
+  // Home reads the listing feed on mount; plaza reads its public listing rail on mount.
+  'items',
+  // Plaza reads public feeds, topic summaries and the post count on mount.
+  'posts',
+])
+// The logged-out main page sweep makes no RPC requests in the baseline.
+const STUB_RPC = new Map<string, string>()
+
+test('stub backend enablement requires an exact stub origin outside GitHub Actions', () => {
+  const cases = [
+    { url: 'https://00000000000000000000.supabase.co', env: {}, enabled: true },
+    { url: 'https://ci-stub.supabase.co', env: {}, enabled: true },
+    { url: 'https://pre-push-stub.supabase.co', env: {}, enabled: true },
+    { url: 'https://00000000000000000000.supabase.co', env: { GITHUB_ACTIONS: 'true' }, enabled: false },
+    { url: 'https://ci-stub.supabase.co', env: { GITHUB_ACTIONS: 'true' }, enabled: false },
+    { url: 'https://pre-push-stub.supabase.co', env: { GITHUB_ACTIONS: 'true' }, enabled: false },
+    { url: 'https://abcdefghijklmnopqrst.supabase.co', env: {}, enabled: false },
+    { url: 'https://ci-stub.supabase.co/rest/v1', env: { GITHUB_ACTIONS: 'false' }, enabled: true },
+    { url: 'https://ci-stub.supabase.co.example.invalid', env: {}, enabled: false },
+  ] as const
+  for (const { url, env, enabled } of cases) {
+    expect(stubBackendEnabled(url, env), `${url} GITHUB_ACTIONS=${'GITHUB_ACTIONS' in env ? env.GITHUB_ACTIONS : 'unset'}`).toBe(enabled)
+  }
+})
+
+test('stub backend reports an unlisted RPC without opening the application', async ({ page }) => {
+  const errs: string[] = []
+  const origin = 'https://00000000000000000000.supabase.co'
+  expect(page.url()).toBe('about:blank')
+  await installStubBackend(page, errs, { origin, tables: STUB_TABLES, rpc: STUB_RPC })
+  const status = await page.evaluate(async url => {
+    const response = await fetch(`${url}/rest/v1/rpc/__not_stubbed__`, { method: 'POST' })
+    return response.status
+  }, origin)
+  expect(errs).toEqual(['unstubbed POST /rest/v1/rpc/__not_stubbed__'])
+  expect(status).toBe(501)
+})
+
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`page sweep [${theme}]`, () => {
     test.use({ colorScheme: theme })
@@ -198,6 +239,7 @@ for (const theme of ['light', 'dark'] as const) {
       test(`${route} loads clean`, async ({ page }) => {
         await page.addInitScript(() => localStorage.setItem('welcomed', '1'))
         const errs = attachConsoleCollector(page)
+        if (stubBackendEnabled(supabaseUrlForBuild(), process.env)) await installStubBackend(page, errs, { origin: new URL(supabaseUrlForBuild()).origin, tables: STUB_TABLES, rpc: STUB_RPC })
         await page.goto(`/#/${route}`, { waitUntil: 'networkidle' })
         await page.waitForTimeout(1200)
         expect(errs, `console errors on ${route}`).toEqual([])
