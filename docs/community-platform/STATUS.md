@@ -1,15 +1,25 @@
 # STATUS
 
-写于 2026-11-23 22:01 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-24 15:50 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: STOP（D-59完成线后只关闭目标/提醒并追加日志，等下一条指示）`
+`next_task_id: D-60.2`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-59第十三批范围内交付完成：P4已唯一快进推送0e7fbc1，#380仍OPEN草稿、base保持P3，正文按scan56后REST仅body更新并读回一致。新head十步按D56四条件判通过，Node3054/3053/0/1、smoke768/757/10/1、同次events25/25；186链及703/855/38/35、四项恢复、60/60和最终36图均通过。原74保留未推；新交付历史scan53绿色，整轨及增量审阅均APPROVE/HIGH。A原冻结0785419及新验证材料fce3a16均先推。本FINAL第十三批与STATUS同提交；推送后才结束目标、取消提醒并追加实际关闭记录，不接BACKLOG。P4在03:45Z未查到CI workflow run，仅Supabase Preview skipped，不判CI通过。
+D-60第十四批进行中：第1项已完成，P4原目录在0e7fbc13上重建原名跟踪分支，旧74caf746改名保留且无upstream；D59交付树退役只读。目标范围0–10，唯一续跑提醒已建。接下来固定合321a916f，先P4修前对照再c2名单；本批材料推送预算3次，目前0次，所有开工记录暂留本地。
 
-第1项#384由supervisor合main321a916f，smoke分支本批结束、不再推。P4实际交付顺序5→2→3→4→6，前5提交保留，第6项为0e7fbc1；P3未动、P4未合main。扫描52阻断原74后保留原分支，扫描器和断言不变，新head重新完成全部要求。A延续L446一次冻结，不重冻；P4本批只有一次代码推送。本批没有真实CAACI请求或托管操作。
+本批只按D-60的逐项提交顺序推进；六条冻结迁移及manifest前189行不改，B只能追加。2026-11-26 12:00 CT软截止按原文逐子项削减，2026-11-27 12:00 CT硬截止按当前门禁整体判。第十三批完成线63aff4b、收尾2540db8，旧FINAL原文不改，本批更正另写第十四批。
 
-D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已结束、提醒已取消。第十二批FINAL不改，第十三批另写更正。P4当前基线fe80882c的门禁、SQL与终审结果仍见L358–L369。
+D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已结束、提醒已取消。第十二批FINAL不改，第十三批另写更正。第十二批P4基线fe80882c的门禁、SQL与终审结果仍见L358–L369。
+
+## 第十四批开工背景（D-60第0项，逐字照录）
+
+- 现场事实（supervisor 2026-11-24 约 09:50Z 实查，UTC）：main 是 321a916f，#384 于 2026-11-23T19:26:06Z 由 supervisor squash 合入；main 上 run 45248909343（19:26:09Z 起）和 45264381766（20:55:42Z 起）都是 success。生产仍是 dpl_9KmHcW（9171976e）；#384 只动测试，生产不用发布。草稿 PR：#379 P3 4e7bd214（base codex/community-restricted-20261113）；#380 P4 0e7fbc13（base codex/community-p3-20261120）。材料分支 codex/community-plan-v5 在本条写入前是 2540db88（#370）。
+- 第十三批验收：supervisor 做了七个维度的独立核查（迁移 A、同步服务端、客户端、校历与视觉、门禁、文档、报告与过程），配对抗复核，最后由覆盖审阅逐项核。没有阻断项；三处 major 复核后都降为 minor：FINAL 第十三批里一个 sha256 写错、缺席计数会溢出、768 来源标签被截断（旧问题）。在 tony-ws 复现了：P4 0e7fbc13 TEST 3054/3053/0/1、pg_skips 0；smoke 768 条 757 passed、10 failed、1 skipped（10 条都是 pages.smoke 巡检，Received 都属于三类 stub 主机报错，其中 4 条在 main 9171976e 上同样失败）；:699 ×60 60/60；L-SQL 186/186、703/855/38/35，VERIFY_A 和它的四个负对照都按要求报出指定项；mpci 主包 1,469,411，event 分包 37,679；manifest 核对通过，五条原冻结迁移逐字节相同。
+- 本批要修的：A 的缺席计数没有上限，smallint 会溢出，溢出后每次完整同步都整体回滚（第 3 项）；VERIFY_A 不查 proisstrict 和参数名（第 3 项的 VERIFY_B 补上）；apply、finish 两次 Supabase 调用失败时被记成 CAACI 风格的码（第 4 项）；完整但为空的快照没有自己的码（第 4 项）；同步测试的四处缺口：worker 测试看不见 apply 调用、失败用例不查调用序列、预算用例分不出公式和常量、投影只查了 7 个不该有的键（第 4 项）；活动页页头搜索输入的词交不到广场（第 5 项 W1）；从活动页登录后回不到原页（W2）；详情页、发起页吸顶没有测试（W3）；「上次核对」灰字在加载中、加载失败和往期视图下也出现（W4b）；详情页不分来源都读同步状态（W4a）；768 宽时英文来源标签被截断并被 S2 盖住（W5a、W5b）；胶囊检查只认选择器逐字等于 `.header` 的规则（W6）；校历解析的系列结束时间、按码元截断、地点超长、重复规则四处（第 6 项）；FINAL 第十三批和 #380 正文里一个 sha256 少两位、冻结顺序措辞、L 号、灰字偏差、开关前提、探针结果、scan52 的描述、registerToastHost、768 截断没记（第 9 项）；STATUS 多条过期、材料 RUNBOOK §3 表过期、17d 按分支名对账、根 RUNBOOK 里 E13 悬空（第 1、9 项）；ENGINEERING §9.2 的计数、§9.9 的码、§13 第 13 行码位不全、第 14 行合作组织合同没对齐（第 9 项）；tony-ws 上 P4 目录停在 74caf746（第 1 项）；main 上巡检夹具的 WebSocket 范围和分支覆盖（第 8 项）。
+- 账本：生产和 staging 的账本在 20261110 之后都只有 20261112120000、20261114015420 两条；P3、P4 的四条（20261120100354、20261120122054、20261122035253、20261123201501）和本批的 B 都没有应用到任何托管库。
+- 用号（照 D-59 第 0 项不变）：ChatGPT login-3 不设上限，用到 OMO 自己在 95% 跳号为止（reset 由 Eric 做，supervisor 提醒他）；Claude 各号 7d 上限 85%，顺序 default → account-2 → account-5 → account-4，account-3 登录过期排最后；ChatGPT default、login-2 登录过期，等 Eric 重新接回。supervisor 09:44Z 的读数：login-3 7d 51%，11-29 14:59 重置；Claude 各号的读数是几天前的（default 88%、account-2 54%、account-4 33%、account-5 9%），以 supervisor 后续的通知为准。主会话上下文 94.6%，会自动压缩（第 1 项先把本条存一份）。用量由 supervisor 看，OMO 不查用量、不切号、不切模型、不改 ~/.omo。子任务的类别只用 D-57 第 10 项那 7 个，派子任务一律带 category，不用 subagent_type 代替；开工只读跑 `omo doctor --models` 核对；失败后最多改派一次；出现 fallback 或换号时记一行。停下以 supervisor 的通知为准，停下时照 D-51 第 1 项把已完成的部分写进 STATUS 和 FINAL。
+
+【supervisor 指示补充，2026-11-24 20:56Z】login-3 7d读数54%，11-29 14:59重置；此为控制通知，OMO未查询用量。
 
 ## 第十三批开工背景（D-59第0项，逐字照录）
 
@@ -42,18 +52,18 @@ D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已�
 |---|---|
 | 代码分支 / PR | #369、#375、#374、#377、#372 已由 supervisor 依次 squash 进 main（ad986c9、e9c2604、4900722、05e0959、3778952、66e14a45（#381）；D-54 第 0 项、L151，D-56 第 0 项） [本地测：2026-11-21 gh pr view] |
 | code_sha | 321a916f1d5cf41fa101d5bed35eceffc674921d（main，#384于2026-11-23 19:26:06Z合并，与已验证a9c271b同树；L408） |
-| 基线 main | 321a916f1d5cf41fa101d5bed35eceffc674921d（D-59第1项合并后已核祖先及树；P4对照仍用9171976e，P4不合main） |
+| 基线 main | 321a916f1d5cf41fa101d5bed35eceffc674921d（本批固定合并目标；后续前进按D-60抬头逐提交判，不再合main；初次范围321a916f..origin/main为空） |
 | 材料分支 / PR | codex/community-plan-v5 / #370（草稿，OPEN，不合并）[本地测：2026-11-13 git ls-remote] |
-| docs_sha | fce3a16f（本次FINAL/STATUS提交之前的材料HEAD） |
+| docs_sha | 9081b6b6（本批开工写回之前材料HEAD） |
 | 其余代码分支（远端 head） | #379 codex/community-p3-20261120 4e7bd21（base codex/community-restricted-20261113，D-58已推送，L343）；#380 codex/community-events-20261120 0e7fbc1（base P3，D-59唯一推送与正文读回完成，L457–L459）；#383 codex/community-viewport-consumers-20261121 cca63d9（已合main d3bfc17e，D-59.0）；#384 codex/community-smoke-stub-20261123 a9c271b（已合main321a916f，本批仅一次代码推送）；#379、#380仍为草稿。已合进 main：#369、#371、#372、#374、#375、#376、#377、#381（66e14a45）、#382（9171976e，2026-11-21 16:09:20Z squash）、#383（d3bfc17e）、#384（321a916f）；#373、#378 已合进各自 base 分支 [当前#384由2026-11-23 gh pr view与git ls-remote核对；其余沿用D59.0或各原记录] |
-| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 74caf74（第5、2、3、4、6项已本地提交；远端已0e7fbc1，A冻结L446已随0785419推送；本目录74仅保留不推）；illini-viewport-consumers cca63d9（已随#383合main，本批不改）；illini-smoke-stub a9c271b（已随#384合main321a916f，本地完整门禁、60轮及CI通过）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
-| 本批交付worktree | `~/work/evidence/D59/delivery-tree`，本地`wip/d59-p4-delivery-20261124`，head0e7fbc1；原目录/分支74保留不可推；已唯一快进到原P4远端ref，L457；不再推代码 |
+| tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 4e7bd21（D-58已推送；门禁、699六十轮及SQL通过）；illini-events-20261120 0e7fbc13（D-60.1已恢复原名跟踪；旧74改名wip/d59-p4-scan-blocked-74caf74保留、无upstream、不推）；illini-viewport-consumers cca63d9（已随#383合main，本批不改）；illini-smoke-stub a9c271b（已随#384合main321a916f，本地完整门禁、60轮及CI通过）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：本批三个工作树为本次更新；其余为此前记录] |
+| 本批交付worktree | `~/work/illini-events-20261120`，`codex/community-events-20261120`，起点0e7fbc13；D59 delivery-tree退役只读；第1项核对见L463–L464 |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
 | 小程序 | wxc3da81aa8852a6ff「香槟市集」，开发版 2026-10-26 上传，未提审 [真人：Eric 记录] |
 
 ## CI
 
-#384（head a9c271b，已合main321a916f）的run45186897514已completed/success：五个job成功，protected staging与production readiness按条件跳过；本地完整十步与60轮通过，合并与同树已核（L397–L401、L406、L408）；合并后main的新CI未查询。
+合并后main321a916f的push run45248909343七个job全部success，schedule run45264381766 success（2026-11-24本地只读核对）。本批P3/P4尚未推送，其base不是main、不触发CI；第8项新分支尚未建立，后续按其PR实际CI记录。
 
 #383已由supervisor合进main：PR最终head cca63d95的run [45103933628](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45103933628) completed/success，五job成功，protected staging与production readiness按条件跳过；main d3bfc17e的run [45133719064](https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45133719064) 七job全部成功。本批已独立读取元数据（D-59.0/9b）；原45043777896只是较早head的历史结果。
 

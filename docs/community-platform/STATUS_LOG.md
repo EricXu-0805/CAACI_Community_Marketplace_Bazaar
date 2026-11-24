@@ -6248,3 +6248,75 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 本条自身的最后扫描/推送尚未发生，不提前计成功；人工发布与未测项按FINAL④/⑥保留
 - 下一条: STOP；等下一条指示，不接BACKLOG
 - 附: 完成线已在63aff4b达到，再结束目标、取消唯一提醒，最后只追加本条。为遵守这个先后关系，todo的目标后管理项临时drop移出前置待办，目标结束后立即start恢复执行，不代表放弃或提前完成；最后远端确认后才done。关闭提交成功后的工具回执计材料第15次和其扫描，不再追加第二条日志。无新目标、无续跑提醒、无后续BACKLOG任务。
+
+### L462 · 2026-11-24 15:38 CT · 【supervisor 指示】D-60第十四批启动并保存全文
+- task_id: D-60.1a
+- code_sha: 0e7fbc13
+- docs_sha: 9081b6b6（本次写回之前材料分支的HEAD）
+- 环境: tony-ws；材料9081b6b6
+- 命令: git pull --ff-only；逐字保存D-60全文到~/work/evidence/D60/D-60.md并逐段读取抬头和0–10；不读账号用量、不切号或模型
+- 计数: 原文318行；条目0–10已读；当前详细待办114项；推送0次
+- ci_run_url: —
+- 未测项: 代码门禁尚未开始；第0项PR核对待第1项完成后执行
+- 下一条: D-60.1b–e
+- 附: 依据9081b6b6原文；材料最多3次、P3/P4及正文各受预算约束，截止按D-60第10项。保持六条冻结迁移及manifest前189行，D59原FINAL只追加更正。恢复用原文按项重读，不凭压缩摘要执行。
+
+### L463 · 2026-11-24 15:38 CT · D-60第1项保留旧分支并恢复P4跟踪
+- task_id: D-60.1b–c
+- code_sha: 0e7fbc13
+- docs_sha: 9081b6b6（本次写回之前材料分支的HEAD）
+- 环境: P4原目录；P3只读核对
+- 命令: 先核工作区0行；fetch origin；branch -m为wip/d59-p4-scan-blocked-74caf74；unset-upstream；switch -c原分支名 --track origin/codex/community-events-20261120；核四项及保留分支upstream
+- 计数: P4 HEAD0e7fbc13、工作区0行、upstream正确；P3 HEAD4e7bd214、工作区0行；旧74caf746完整保留且无upstream；未reset/stash/clean/推送
+- ci_run_url: —
+- 未测项: 第2项合并及门禁未开始
+- 下一条: D-60.1d
+- 附: 用户具名授权的分支保留与重建，不改写旧提交。delivery-tree起点0e7fbc13退役只读；两个wip永不推送。一次只读格式参数未引用导致Bun shell解析错误，修正引用后取得完整核对结果，没有重复改名或改动代码。
+
+### L464 · 2026-11-24 15:38 CT · D-60第1项scan52与scan53映射对账
+- task_id: D-60.1d–e
+- code_sha: 0e7fbc13
+- docs_sha: 9081b6b6（本次写回之前材料分支的HEAD）
+- 环境: 本机scan17d追加账本；材料工作区表
+- 命令: 只读scan17d.log第52、53行及D59交付回执；更新RUNBOOK§3 P4目录与退役交付树说明；本项不推送
+- 计数: scan52：74caf74/exit1/旧P4本地名，无推送；scan53：0e7fbc1/exit0，有一次原P4远端推送；账本未改
+- ci_run_url: —
+- 未测项: RUNBOOK变化等待D-60第一次或第二次材料推送
+- 下一条: D-60.0及目标初始化
+- 附: 本地wip/d59-p4-delivery-20261124 → 远端refs/heads/codex/community-events-20261120。D60起提交、扫描、推送使用原P4目录的原名分支；17d按被推HEAD与exit0记录对账，改表示绕过邮箱扫描不作先例。
+
+### L465 · 2026-11-24 15:50 CT · D-60目标与唯一续跑提醒建立
+- task_id: D-60.10i
+- code_sha: 0e7fbc13
+- docs_sha: 9081b6b6（本次写回之前材料分支的HEAD）
+- 环境: 目标与调度工具
+- 命令: create_goal范围D-60第0–10项；先list确认无job，再建3600秒续跑提醒sch_5aeda868de04；登记软硬截止事件
+- 计数: 目标active；续跑提醒1；截止2026-11-26 12:00 CT及2026-11-27 12:00 CT已登记
+- ci_run_url: —
+- 未测项: 完成线、冻结与发布尚未发生；计数不提前当完成
+- 下一条: D-60.2
+- 附: 结束仅认FINAL第十四批和STATUS同提交推送；然后结束目标、取消提醒及截止监听、追加唯一关闭日志并按材料第三次推送后停止。材料最多3次，第四次需停下等通知。
+
+### L466 · 2026-11-24 15:50 CT · D-60背景逐字照录及首次main前进判定
+- task_id: D-60.0及第2项开工
+- code_sha: 0e7fbc13
+- docs_sha: 9081b6b6（本次写回之前材料分支的HEAD）
+- 环境: GitHub只读元数据与本机refs
+- 命令: gh pr view379/380/384的state/mergeCommit/baseRefName/isDraft/headRefOid；gh run view45248909343和45264381766；git log --stat 321a916f..origin/main
+- 计数: 三个PR与第0项一致；main321a916f；前进范围0提交；push run七job成功、schedule成功；背景五条逐字写入STATUS
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45248909343
+- 未测项: 生产部署和托管账本仅照录supervisor事实，未访问生产或托管库
+- 下一条: D-60.2
+- 附: 原第十一至十三批背景保留逐字；控制通知20:56Z的54%读数另记，不改第0项09:44Z的51%原文。main开工判为无前进可继续；每次P3/P4推前再按抬头判。
+
+### L467 · 2026-11-24 15:50 CT · D-60开工工具链与模型路由核对
+- task_id: D-60开工
+- code_sha: 0e7fbc13
+- docs_sha: 9081b6b6（本次写回之前材料分支的HEAD）
+- 环境: tony-ws；只读doctor与同一容器锁
+- 命令: node/npm版本；gh身份只输出匹配数；vercel whoami；umask022后同锁podman版本/镜像/容器列表；前后磁盘；omo doctor --models只读
+- 计数: node22.23.5/npm10.9.9；gh匹配1；podman5.7.0；pw1.65与PG17镜像存在；残留容器0；磁盘332866043904→332865986560字节；七个允许类别均ChatGPT打头、exclude openai/*
+- ci_run_url: —
+- 未测项: 尚未派出子任务；无用量查询、账号/模型切换或配置改动
+- 下一条: D-60.2并行P3与P4
+- 附: 第17条已逐字重读；子任务派前/派后/每steer前均check，密码只在前台读取、不进材料。截止监听首命令有引用错误、已退出，修正字面引用后重新登记，未到截止、未影响工作。
