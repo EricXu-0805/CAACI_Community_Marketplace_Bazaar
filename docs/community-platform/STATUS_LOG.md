@@ -5782,3 +5782,39 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 完整真实账号导航验收仍归发布阶段
 - 下一条: D-59.6
 - 附: [OMO自决] prop名currentItem、默认community；H5三页复用useEventHeader。当前已是列表就不跳，栈中有列表则navigateBack到它，直达详情/发起则redirectTo列表；compose切home、search切all、login进登录页，home/all先写pendingView。撤回可用一个新的反向提交撤销第4项前端增量并还原其用例，不改迁移、不改已推历史。
+
+### L432 · 2026-11-23 18:16 CT · D-59第十次材料推送核对
+- task_id: D-59.4写回
+- code_sha: ce3f626b
+- docs_sha: 35be348d（本次写回之前材料分支的HEAD）
+- 环境: GitHub
+- 命令: scan17d.py c883c32 --log；git push --no-verify origin HEAD:refs/heads/codex/community-plan-v5；git ls-remote
+- 计数: 35be348已推，scan49 exit0/incomplete0；远端一致；材料累计10次推送/10次扫描
+- ci_run_url: —
+- 未测项: P4代码仍未推送
+- 下一条: D-59.7
+- 附: L426–L431已发布。一次多文件补丁因STATUS的hunk顺序倒退失败，但LOG已追加；按回执重读失败文件并检查LOG依赖后，只重试STATUS，没有重复追加日志。
+
+### L433 · 2026-11-23 18:16 CT · D-59校历纯解析通过并本地提交
+- task_id: D-59.6
+- code_sha: 74caf746
+- docs_sha: 35be348d（本次写回之前材料分支的HEAD）
+- 环境: 固定Node22/PG17容器，全部离线
+- 命令: 审阅2eb5539十一文件及实际证据；cherry-pick --no-commit；手工合并SHARED_MODULES保留两组新增模块；run-checks test；git commit
+- 计数: T235911Z TEST3054/3053/0/1、pg_skips0、368秒；提交treec9499d0e等于测试候选；11文件+470/-1；71/90完成
+- ci_run_url: —
+- 未测项: 真实校历、fetch、写库、撤下判断归D-60；完整导出与使用条款等Eric；A未冻结/P4未推送
+- 下一条: D-59.7
+- 附: 四个合成全天fixture新增，既有fixture未改；CAMPUS_CALENDARS仍空；白名单先于输入处理。折行/反转义后仅投影允许字段，丢弃DESCRIPTION/ORGANIZER/CONTACT/URL；取消标题沿既有normalizeCampusEvent写review_flag，不自动取消。同步和校历两组共享模块均保留，旧normalizer主体和旧测试前缀未改。manifest、依赖和迁移无本项差异。
+
+### L434 · 2026-11-23 18:16 CT · D-59校历逐点对照、负对照与实现选择
+- task_id: D-59.6验证/⑧
+- code_sha: 74caf746
+- docs_sha: 35be348d（本次写回之前材料分支的HEAD）
+- 环境: Node22.23.5、ICU78.3、tz2026e，本地合成数据
+- 命令: 审阅check-20261123T204844Z-cmd.log及加载时变异脚本；对照TypeScript/esbuild与Chicago Intl；读取重叠场次修前失败
+- 计数: 全年每15分钟35040点，加两切换日482点，共35522点；三固定DoD值通过；13负对照各选中1失败且skip0；子轨759/758/0/1，父全量见L433
+- ci_run_url: —
+- 未测项: 不把本地模拟当作真实源验收；DoD④与⑥接源前检查仍开着
+- 下一条: D-59.7
+- 附: 13项中12个ERR_ASSERTION，展开折行被破坏时为缺失rows导致TypeError，均是目标行为失败，不说13项全为断言错误。子轨初版把最大end当最后场次end，重叠用例先红（Nov25对Nov22）后改正，非既有失败。全天缺失/相等end取下一本地午夜（23小时），跨DST多日71小时；仅早于start报bad_ics。新19个Node用例，真实fetch0，源码未被负对照改写。[OMO自决] 解析器收调用方clock和可选链接id；全结束系列保留第一场start；标题/地点取第一未结束场，更新时间取最新，hash用固定字段JSON数组。撤回可新反向提交第6项，不动数据库；D60调用前仍必须先做日历门禁。
