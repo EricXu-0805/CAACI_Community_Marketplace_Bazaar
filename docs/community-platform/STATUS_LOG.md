@@ -6236,3 +6236,15 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: 本条写入时FINAL提交尚未推送，目标与提醒尚未关闭；关闭记录必须等完成线后追加
 - 下一条: 完成线后关闭目标/提醒并追加日志
 - 附: 最终报告保留35条SQL说明、全部代定理由与撤回办法及Eric人工前提。旧FINAL第十二批及更早内容不改，旧STATUS_LOG只追加。代码与PR均仍未合并，P4未ready/base变更。完成线为本FINAL和STATUS同提交推送；之后只做明确收尾，不接BACKLOG。
+
+### L461 · 2026-11-23 22:09 CT · D-59完成线后目标结束、提醒取消与停止
+- task_id: D-59关闭
+- code_sha: 0e7fbc13
+- docs_sha: 63aff4b8（本次写回之前材料分支的HEAD）
+- 环境: 目标工具与调度器；材料完成线远端已确认
+- 命令: FINAL/STATUS同提交63aff4b经scan57推送并核远端；随后update_goal complete、schedule_prompt cancel sch_78d31502fa7b；本条提交随后scan17d.py --log并git push --no-verify
+- 计数: 目标工具status complete；timeUsedSeconds64774（17小时59分34秒），tokensUsed3668528；提醒已取消；截至本条编写材料14推/14对应扫描、smoke1/1、P4 1/1
+- ci_run_url: —
+- 未测项: 本条自身的最后扫描/推送尚未发生，不提前计成功；人工发布与未测项按FINAL④/⑥保留
+- 下一条: STOP；等下一条指示，不接BACKLOG
+- 附: 完成线已在63aff4b达到，再结束目标、取消唯一提醒，最后只追加本条。为遵守这个先后关系，todo的目标后管理项临时drop移出前置待办，目标结束后立即start恢复执行，不代表放弃或提前完成；最后远端确认后才done。关闭提交成功后的工具回执计材料第15次和其扫描，不再追加第二条日志。无新目标、无续跑提醒、无后续BACKLOG任务。
