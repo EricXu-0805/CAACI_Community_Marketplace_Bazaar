@@ -130,6 +130,7 @@ rm "$T"/node-$V-linux-x64.tar.xz "$T"/SHASUMS256.txt && rmdir "$T"
 | ~/work/illini-viewport | codex/community-viewport-20261121（PR #382，已合 main 9171976e） | D-56 第 1 项：聊天页视口 inset，已结束，保留不改 | `git -C ~/work/illini worktree add -b codex/community-viewport-20261121 ~/work/illini-viewport 66e14a45` |
 | ~/work/illini-viewport-consumers | codex/community-viewport-consumers-20261121（PR #383，已合 main d3bfc17e） | D-57 第8项及D-58 第1项：根高度与视口消费者验证 | 已合并，保留不改；本批不再推送 |
 | ~/work/illini-smoke-stub | codex/community-smoke-stub-20261123（从 d3bfc17e 起，PR #384，supervisor 于 2026-11-23 19:26:06Z squash 进 main 321a916f） | D-59 第 1 项，已结束，不再推送 | 已建好，保留不改 |
+| ~/work/illini-smoke-fixture | codex/community-smoke-fixture-20261124（从 321a916f 起，草稿 PR，base main） | D-60 第 8 项：夹具加固；最多两次推送 | umask 022 后从固定 321a916f 建立，目录 755；D-60 具名授权表外分支，合并归 supervisor |
 | ~/work/caaciorg | feat/public-events-feed；origin = fork EricXu-0805/caaciorg，upstream = a2751012962/caaciorg | P4.3 | 按 BACKLOG P4.3 的命令：E8 之前只读 clone 上游并把 remote 改名为 upstream，在本地写；E8 之后再加 fork 为 origin 并推送。git 已配置用 gh 做凭据（2026-11-12 核对） |
 | ~/work/demo-publish | 不是 git 目录 | demo 预览部署（P1.13、BRAND.7）。全机只有这里允许有 .vercel | 见 §9 |
 | ~/work/evidence/\<任务编号\> | 不是 git 目录 | BACKLOG 的 `$EV`：每个任务的原始输出 | `mkdir -p "$EV"` |
@@ -723,6 +724,7 @@ OMO 自己的规则：
   2. 在 Mac 上执行 `git fetch && git switch codex/community-topics-20261112 && git pull`，再执行 `shasum -a 256 supabase/migrations/20261112120000_community_post_topics.sql`，结果要与冻结值一致。
   3. 按仓库 RUNBOOK.md 托管迁移一节（「2026-07 candidate release sequence」第 15–16 条，出处见 [ENGINEERING.md](ENGINEERING.md) §11），只对 hygkwxugskijadgfisji 依次执行：只读 PRECHECK_20261112120000、经 ledger-aware migrations 端点应用、只读 VERIFY_20261112120000。不用 db push、raw psql 或 dashboard 的 SQL 编辑器。
   4. 在 PR #369 留言应用时间和 VERIFY 的输出。
+  - P3.7、P4.11：在 P4 head 上执行 `(cd supabase/migrations && shasum -a 256 -c manifest.sha256)`，相关几行都要 OK，不手抄哈希来比；应用顺序照仓库根 RUNBOOK『Community P4』和『Community P3+P4 release』；结果留言到 #379、#380。
 - **E5**【已完成 2026-11-20：supervisor 把 #371 squash 合进 main，mergeCommit 057d07de5cf78f3b0f3bedf91f367c5ae29db001，CI run 44737046939 全绿（在 6d481d0 上）；见 DECISIONS D-53 第 0 项 g、第 9 项】合并配置修正 PR（解锁 P1.8）。P1.7 的 PR 全绿后审阅 diff，按仓库习惯合并到 main，OMO 不合并。D-41 如果选了单独的依赖修复 PR，同样由 Eric 合并。
 - **E6** 官方账号的 profile id（D-13；P3.5、P4.9、P4.11 之前）。用 admin@caaciorg.com 在 staging（本地 dev 指向 staging）和生产站点各登录一次，并接受同意书。把两个 profile id 留言到 PR，它们不是机密。P4.11 发布时，在生产 Vercel 环境变量里设 COMMUNITY_OFFICIAL_PROFILE_ID。
 - **E7** 微信后台核对与改名（D-27、D-30；解锁 BRAND.5）。

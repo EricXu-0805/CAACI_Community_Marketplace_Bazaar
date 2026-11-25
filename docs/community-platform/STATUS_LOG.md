@@ -6440,3 +6440,249 @@ L284同一轮完成记录的SMOKE_SPECS（56文件）：
 - 未测项: P3全量/60轮/推送、P4修前对照、新夹具交付、容器码位检查均有现有句柄，不重新发起
 - 下一条: D-60.2c及各完成事件
 - 附: 本地提交只用于保存已完成工作，不消耗材料推送预算。子任务st_01a20f92负责P3，st_01a20fb0负责第8项；主线程负责P4和材料。
+
+### L478 · 2026-11-24 16:59 CT · D-60 c1唯一修前对照完全符合八失败条件
+- task_id: D-60.2c
+- code_sha: a324a5bd
+- docs_sha: f340e63f（本次写回之前材料分支的HEAD）
+- 环境: P4 c1；同锁后台；unstaged=no
+- 命令: SMOKE_SPECS=pages.smoke.spec.ts RC smoke；check-20261124T224856Z；逐失败核主题、路由、去重请求及Received允许类别
+- 计数: 80/71/8/1；四路由各浅深两条；plaza1/events3/detail1/create1个去重请求；原三类stub主机错误0；磁盘332770496512→332774481920
+- ci_run_url: —
+- 未测项: 尚未改c2；本对照只运行一次，不重跑
+- 下一条: D-60.2d c2
+- 附: Received闭集与D-60.2c逐条相同，其他路由、首页及两条自检通过。以下仅摘用户要求的技术Received原文，不含完整日志或机器路径。
+
+#### light · pages/plaza/index
+
+```text
+unstubbed POST /rest/v1/rpc/list_community_events
+http 501: https://00000000000000000000.supabase.co/rest/v1/rpc/list_community_events
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+[community home] events unavailable
+```
+
+#### light · pages/events/index
+
+```text
+unstubbed GET /rest/v1/community_event_sync_state
+http 501: https://00000000000000000000.supabase.co/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+unstubbed POST /rest/v1/rpc/community_member_events_open
+http 501: https://00000000000000000000.supabase.co/rest/v1/rpc/community_member_events_open
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+unstubbed POST /rest/v1/rpc/list_community_events
+http 501: https://00000000000000000000.supabase.co/rest/v1/rpc/list_community_events
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+```
+
+#### light · pages/event/detail/index
+
+```text
+unstubbed GET /rest/v1/community_event_sync_state
+http 501: https://00000000000000000000.supabase.co/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+```
+
+#### light · pages/event/create/index
+
+```text
+unstubbed POST /rest/v1/rpc/community_member_events_open
+http 501: https://00000000000000000000.supabase.co/rest/v1/rpc/community_member_events_open
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+```
+
+#### dark · pages/plaza/index
+
+```text
+unstubbed POST /rest/v1/rpc/list_community_events
+http 501: https://00000000000000000000.supabase.co/rest/v1/rpc/list_community_events
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+[community home] events unavailable
+```
+
+#### dark · pages/events/index
+
+```text
+unstubbed GET /rest/v1/community_event_sync_state
+unstubbed POST /rest/v1/rpc/community_member_events_open
+http 501: https://00000000000000000000.supabase.co/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+unstubbed POST /rest/v1/rpc/list_community_events
+http 501: https://00000000000000000000.supabase.co/rest/v1/rpc/community_member_events_open
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+http 501: https://00000000000000000000.supabase.co/rest/v1/rpc/list_community_events
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+```
+
+#### dark · pages/event/detail/index
+
+```text
+unstubbed GET /rest/v1/community_event_sync_state
+http 501: https://00000000000000000000.supabase.co/rest/v1/community_event_sync_state?select=source%2Clast_success_at&source=eq.caaci
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+```
+
+#### dark · pages/event/create/index
+
+```text
+unstubbed POST /rest/v1/rpc/community_member_events_open
+http 501: https://00000000000000000000.supabase.co/rest/v1/rpc/community_member_events_open
+Failed to load resource: the server responded with a status of 501 (Not Implemented)
+```
+
+### L479 · 2026-11-24 16:59 CT · D-60双环境码位表及删项负对照通过
+- task_id: D-60.9e机械核对
+- code_sha: a324a5bd
+- docs_sha: f340e63f（本次写回之前材料分支的HEAD）
+- 环境: 宿主与pw1.65容器均Node22.23.5/Unicode17.0
+- 命令: 私有unicode-check.mjs解析源码W/Z和文档差集；宿主正反对照；同锁无网络只读容器核对
+- 计数: 两环境W26/Z21；expected4152/documented4152；missing0/extra0；宿主删U+180F副本仅缺该点、exit1；容器exit0
+- ci_run_url: —
+- 未测项: 未对未实测码位做渲染测试；没有修改输入边界代码或数据库
+- 下一条: D-60.9e剩余同步与B文字
+- 附: 宿主首次解析误收后文实测例子U+200B已定位并修正，完整记录L473/L475。最终机械对照没有通过改文档迁就脚本。
+
+### L480 · 2026-11-24 16:59 CT · D-60 P3全量被信号终止的排查启动
+- task_id: D-60.2a基础设施排查/10h
+- code_sha: 80aae635
+- docs_sha: f340e63f（本次写回之前材料分支的HEAD）
+- 环境: P3旧全量check-20261124T220801Z；主线程只读发现
+- 命令: 读取原full-console/full-wrapper及smoke末段；认证steer 20261124225705交原子任务查原句柄；另以20261124225705通知新夹具核后台生命周期
+- 计数: 原smoke停在305号用例；22:34:29Z出现signal15转发错误；缺STEP smoke/npmaudit与完成回执；两次check均9字节600；无盲重跑、无推送
+- ci_run_url: —
+- 未测项: 终止原因尚未确认，不称测试失败或通过；原子任务须核自己会话及残留归属
+- 下一条: D-60.2a原因回执；P4继续c2
+- 附: 可能的会话截止、auto-reap、外部信号或资源原因必须以原始会话参数和运行证据区分；不改测试timeout/retries。P4唯一修前对照及容器码位随后正常完成，无需停止已结束会话。
+
+### L481 · 2026-11-24 17:06 CT · D-60子任务恢复及完成标记澄清
+- task_id: D-60.2a/8/10h
+- code_sha: a324a5bd
+- docs_sha: f340e63f（本次写回之前材料分支的HEAD）
+- 环境: 原P3及夹具子任务；没有改派
+- 命令: check后前台读回；P3 Resume序号20261124230234；夹具最终标记序号20261124230234；P3保留现有运行序号20261124230620
+- 计数: 三次check均9字节600；P3原bash_6后台、未显式reap覆盖，终止来源未证实；22:57:41Z子任务报原进程/容器已空；已有1次替代全量和独立60轮，不再新起
+- ci_run_url: —
+- 未测项: 替代运行与60轮结果尚未回；不把原因称为已修复；子任务发送回执在最终核对
+- 下一条: D-60.2d c2子集
+- 附: 夹具RESULT.json的in_progress只作进度；终态另写DONE.json并观察watch_135。不因Task completed提示把未交付工作算完成。
+
+### L482 · 2026-11-24 17:06 CT · D-60 c2授权名单改动进入子集验证
+- task_id: D-60.2d
+- code_sha: a324a5bd
+- docs_sha: f340e63f（本次写回之前材料分支的HEAD）
+- 环境: P4暂存树7d20f10087bed700fae2f125570f12443dc1a287；后台bash_1038
+- 命令: 只改STUB_TABLES、STUB_RPC和注释，两个RPC值为字符串；diff --check；暂存精确树；同锁SMOKE_SPECS=pages.smoke.spec.ts viewport-inset-consumers.spec.ts；先核没有现存容器
+- 计数: 修改文件1；断言/IGNORE改动0；c2尚未提交；子集待回执
+- ci_run_url: —
+- 未测项: LSP服务未安装，按本批不提问、不新增依赖约束不安装；现有Playwright实际编译与运行验证正在排队
+- 下一条: D-60.2d c2提交及L1-L3
+- 附: c1预期八失败已由L478证明，c2允许推进；尚未进入c3。只在c2 pages文件通过后提交，viewport若红按原文处理c2b。
+
+### L483 · 2026-11-24 17:11 CT · D-60接回异常子任务的既有运行观察
+- task_id: D-60.2a基础设施记录
+- code_sha: 80aae635
+- docs_sha: f340e63f（本次写回之前材料分支的HEAD）
+- 环境: 原P3子任务回执文件；主会话只读观察
+- 命令: 读取INTERRUPTION.md和PROGRESS_RECEIPT.json；为原有full.receipt及repeat.receipt补主会话文件订阅；不启动命令、不停止在跑门禁
+- 计数: 原bash_6中断；替代full为子会话bash_2、后台true/reap0/timeout14400，repeat为bash_3；原工作区head不变；替代日志check-20261124T230132Z
+- ci_run_url: —
+- 未测项: 原SIGTERM来源仍未证实；子任务出现interrupted及no-output错误，尚未交付；实际推送前先核唯一写入者和远端
+- 下一条: 原有回执及D-60.2d子集
+- 附: 原记录已证明22:57:41Z残留进程0、同锁容器0。不能把后台生命周期调整当成已证明的根因修复。若既有替代再次中断，不再自动开新尝试，交主会话处理。
+
+### L484 · 2026-11-24 17:15 CT · D-60私有B生成器准备与同步码文档核对
+- task_id: D-60.3a只读准备及9e部分
+- code_sha: a324a5bd
+- docs_sha: f340e63f（本次写回之前材料分支的HEAD）
+- 环境: 私有生成器；P4只读；材料ENGINEERING
+- 命令: generate-cap.mjs从A第30–128行生成候选，只替换声明及LEAST行；核唯一替换与body md5；官方PostgREST错误文档只读核对；按D60原文更新§9.9
+- 计数: A匹配manifest；函数体恰好1行不同；body md5=55227c4b42b7ac90e9b1ba34f274b057；候选133行；实际P4迁移文件0、新manifest行0
+- ci_run_url: —
+- 未测项: c2子集未回，尚未开展c3写入或时间戳/最新定义检查；没有SQL回放或托管实测
+- 下一条: D-60.2d回执；c3仍等c2完成
+- 附: 生成器及预览只在私有证据目录，不能当B已实现或已冻结。PostgREST文档给出默认SQL错误400、42883和PGRST202为404；文档按用户原文保留通常及没实测，不把stub测试说成托管测量。
+
+### L485 · 2026-11-24 17:26 CT · D-60 B三件套与回放接口私有准备
+- task_id: D-60.3只读准备
+- code_sha: a324a5bd
+- docs_sha: f340e63f（本次写回之前材料分支的HEAD）
+- 环境: ~/work/evidence/D60私有文件；不改P4暂存树
+- 命令: 依据A及D-60生成PRECHECK_B、VERIFY_B、REGRESSION_B草稿；复用A的63行助手及逐例回滚骨架；复制D59 lsql-replay-controls.sh到D60
+- 计数: 私有三件套3份；CAP场景8；未写实际B迁移文件或manifest；未运行L-SQL；原脚本及归档未动
+- ci_run_url: —
+- 未测项: 全部SQL草稿尚未验证，不能计c3或冻结完成；时间戳及main最新定义前置仍待c2通过后做
+- 下一条: D-60.2d c2子集完成回执
+- 附: 当前P4只暂存c2名单文件；不把私有准备内容放进c2或跳过提交顺序。后续早跑与正式回放均使用D60同一份controls副本。
+
+### L486 · 2026-11-24 17:51 CT · [OMO自决] 子任务宿主失联后由主会话接回
+- task_id: D-60.2a/8及RUNBOOK17c
+- code_sha: 80aae635
+- docs_sha: f340e63（本次写回之前材料分支的HEAD）
+- 环境: 两个子任务均persisted_only；主会话后台句柄正常
+- 命令: 读取full/repeat回执与实际日志；task_output读状态；task_cancel P3返回error/not running/no change；pgrep、flock -n、同锁podman ps、git ls-remote
+- 计数: P3两回执exit143；repeat还在等锁；两个子任务均host_unavailable；fixture full回执rc0但日志为空，不算通过；取消检查进程0、容器0、锁rc0；远端仍4e7bd214
+- ci_run_url: —
+- 未测项: 精确SIGTERM发送者仍未证实，不称已修复平台故障；P3与fixture全量未完成；不改配置、账号、模型
+- 下一条: 主会话P3全量及c2三变异
+- 附: 两次终止分别22:34:29Z和23:34:29Z；父会话c2在23:34:30Z接到锁并完成，未受同次终止影响。P3替代运行已过Node2800/2799/0/1，但smoke/audit未结束，不能拼成通过。子任务不再Resume，不改派；余下验证由主会话做。
+
+### L487 · 2026-11-24 17:51 CT · D-60 c2名单子集通过并独立提交
+- task_id: D-60.2d
+- code_sha: e5097bea
+- docs_sha: f340e63（本次写回之前材料分支的HEAD）
+- 环境: pw1.65-node22-pg17；P4原目录
+- 命令: SMOKE_SPECS="pages.smoke.spec.ts viewport-inset-consumers.spec.ts" run-checks.sh smoke；git按17b身份commit；scan17d.py 0e7fbc13 --diff-base a324a5bd --log
+- 计数: check-20261124T233431Z：85/84/0/1；viewport5/5；pages文件0失败；scan61 exit0；改动1文件+9/-2；无--no-verify
+- ci_run_url: —
+- 未测项: L1-L3由bash_1041在同一次持锁中逐个验证，尚未完成；未推送
+- 下一条: D-60.2d c2名单子集及三项变异
+- 附: 两个RPC值均为JSON字符串，未改断言或IGNORE。viewport无需修复，c2b不适用。c2子集不重跑。
+
+### L488 · 2026-11-24 17:51 CT · D-60 P3全量改由主会话后台执行
+- task_id: D-60.2a
+- code_sha: 80aae635
+- docs_sha: f340e63（本次写回之前材料分支的HEAD）
+- 环境: 主会话bash_1042；同一全局容器锁
+- 命令: scan17d.py 4e7bd214 --diff-base 80aae635 --log；parent-gate.sh full；run_in_background=true auto_reap_minutes=0；watch_140
+- 计数: scan62 exit0；P3代码未变；只排一个主会话全量；60轮暂不重开
+- ci_run_url: —
+- 未测项: 完整门禁仍待回执；新运行不能使用子任务旧的partial或空日志当成功
+- 下一条: 主会话全量回执
+- 附: 只改变运行归属，未改门禁内容、worker、timeout或断言。每次拿锁后再查进程/容器/磁盘；保留旧证据。
+
+### L489 · 2026-11-24 18:00 CT · D-60 c2变异判读器修正
+- task_id: D-60.2d
+- code_sha: e5097bea
+- docs_sha: f340e63（本次写回之前材料分支的HEAD）
+- 环境: 私有L1判读器；源码已恢复
+- 命令: 第一轮L1运行及恢复；检查实际Received缩进；修正解析器允许加号前空白；以同一原始日志验证四组主题/路由；第二轮bash_1043/watch_141整组重跑
+- 计数: check-20261124T234757Z实际80/75/4/1；四失败均为events/detail浅深；只缺community_event_sync_state；原spec sha256恢复一致；私有判读器首轮失败1
+- ci_run_url: —
+- 未测项: L2、L3首轮未执行；第二轮全组待回执；不把判读器错误当应用失败
+- 下一条: D-60.2d c2名单子集及三项变异
+- 附: 这是主会话编写判读器时遗漏缩进导致的错误。原始日志和首轮失败回执保留；只修私有判读器，不改测试断言或应用。
+
+### L490 · 2026-11-24 18:00 CT · D-60第8项已有提交与对照接收核对
+- task_id: D-60.8c1/c2
+- code_sha: 4fc14fff
+- docs_sha: f340e63（本次写回之前材料分支的HEAD）
+- 环境: 夹具新工作区755，基线321a916f；尚未推送
+- 命令: git status/log/diff及ls-remote；逐项读取T1-T4、M1-M9原始日志和c2红绿对照；计算四个源文件恢复hash
+- 计数: c1=4e5a713，c2=4fc14fff；T1-T4各1/1/0/0；M1-M7各1红，M8三红，M9两红；修前Node2/1/1，修后2/2/0，包回条件又2/1/1；原hash均相符
+- ci_run_url: —
+- 未测项: 全量、60轮、扫描、PR和CI未完成；空的full-gate.log不能按其rc0回执算通过；远端新分支不存在
+- 下一条: 第8项主会话全量与后续交付
+- 附: M8初次私有命令引号错误及c2首次未复现的测试原型已留存；有效对照随后成立，主会话不重跑这些已核实证明。两提交只改授权的五个文件，IGNORE、旧名单和小程序回退保留。
+
+### L491 · 2026-11-24 18:21 CT · D-60材料9d完成及早跑回放准备
+- task_id: D-60.9d/3c准备
+- code_sha: e5097bea
+- docs_sha: f340e63（本次写回之前材料分支的HEAD）
+- 环境: 材料本地草稿及私有控制脚本；尚未推送
+- 命令: 按原文新增夹具工作区行与E4子项；ENGINEERING开关前提改全部迁移；diff --check；生成10个负对照与4个变异的私有SQL；bash -n检查回放钩子
+- 计数: 9d本地完成；材料diff --check=0；候选B生成body md5符合；控制SQL10+4；两份子任务BRIEF口令命中0且cache check各9字节600
+- ci_run_url: —
+- 未测项: 控制SQL未在数据库执行；实际B尚未写入P4；c3前须重新核main并选当前UTC时间戳，按实际B文件生成控制输入；新分支PR未创建
+- 下一条: C2三变异及P3主会话全量回执
+- 附: 旧子任务结果观察器watch130/131/135已关闭。只保留主会话门禁、重跑变异和截止观察器；未重启子任务、未修改账号或运行时配置。

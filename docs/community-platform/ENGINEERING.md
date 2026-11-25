@@ -694,7 +694,7 @@ GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO aut
   `INSERT INTO public.community_event_sync_state AS s (source, last_attempt_at) VALUES (source_in, now()) ON CONFLICT (source) DO UPDATE SET last_attempt_at = now() WHERE s.last_attempt_at IS NULL OR s.last_attempt_at < now() - interval_in RETURNING true`。
   返回行就是 true，没有返回行就是 false；间隔边界严格小于，正好相隔 interval 不领取，infinity 也不领取。source_in 只允许 caaci/campus，其他值由既有表约束报23514。CAACI 间隔为12分钟，是同步模块导出的常量，测试读同一个常量（D-59.2b）。
 - 预算：模块只收 deadline、call 和注入的 fetch，不收 serviceCall、不读 Supabase 密钥、不自行构造 RPC 请求。background-jobs 的 call 只增加可选第三参 timeoutMs，执行 `rpc(origin, name, args, timeoutMs == null ? timeLeft() : Math.min(timeoutMs, timeLeft()))`；原调用不改，不传第三参时行为与原来相同。claim、上游、apply、finish 每步开始前重新计算 `min(5000, deadline - Date.now() - 5000)`，给 call 第三参或 fetchBounded.timeoutMs，给 purge/status 保留至少5秒。
-- 某一步的预算不足1000毫秒就停在它之前，outcome=failed、code=deadline。已claim但finish也放不下时，只记日志、不调finish；因此deadline不写入sync_state，下一次须等满领取间隔。claim本身报错则code=claim_failed，不调finish；没有成功领取，因此可能每分钟报告一次，打开开关前必须确认四条迁移已应用并VERIFY。
+- 某一步的预算不足1000毫秒就停在它之前，outcome=failed、code=deadline。已claim但finish也放不下时，只记日志、不调finish；因此deadline不写入sync_state，下一次须等满领取间隔。claim本身报错则code=claim_failed，不调finish；没有成功领取，因此可能每分钟报告一次，打开开关前必须确认Community P4 列出的全部迁移已应用并VERIFY。
 - 请求用 `fetchBounded`：固定 `https://caaciorg.com/api/public-events?window=recent`，上限256 KB，`redirect: 'manual'`，超时按上述预算且最多5秒；请求头只有 `accept: application/json` 和 `user-agent: CornfieldSync/1 (+https://www.illinimarket.com)`，不携带授权或cookie。D-59期间真实请求0次；dry-run脚本只实现 `--dry-run --source caaci`，等P4.3上线后，才按RUNBOOK §12第2条允许一次GET，不读数据库环境变量、不写库。
 - 归一化仍用 `normalizeCaaciEvents`（`api/_community-events.js`）：schema不符为schema_mismatch；隐私字段检测照原样，任何id不是UUID仍使整份bad_json。投影只选数据库白名单列，不能把含partner_name_zh、allowed_link_hosts、comment_count等的卡片对象直接交给apply。
   - `source_key ← id.toLowerCase()`；`title ← title_zh`、`title_en ← title_en`、`summary ← summary_zh`、`summary_en ← summary_en`、`organizer_name ← 'CAACI'`、`registration_mode = takes_registrations ? 'caaci_site' : 'info_only'`，其余同名白名单字段；starts_at、非空ends_at投影时都用 `new Date(v).toISOString()`。
@@ -798,11 +798,15 @@ GRANT UPDATE (cancelled_at, status_note) ON TABLE public.community_events TO aut
 | `timeout`、`too_large`、`upstream_redirect` | 超过预算超时（最多5秒）/正文上限/遇到跳转 | 不动，CAACI记failed |
 | `bad_json`、`bad_ics`、`schema_mismatch`、`unexpected_private_fields` | 200非JSON或解析失败、形状/隐私字段不合约 | 不动，last_outcome=failed |
 | `deadline` | 某步剩余可用预算不足1000毫秒 | 停在该步之前；finish也放不下时不记sync_state，已claim的须等满间隔，报告Sentry |
-| `claim_failed` | 领取RPC报错 | 不发上游请求、不调finish；可能每分钟报告，开关前须四迁移VERIFY通过 |
+| `claim_failed` | 领取RPC报错 | 不发上游请求、不调finish；可能每分钟报告，开关前须 Community P4 列出的全部迁移 VERIFY 通过 |
 | `unexpected_failure` | 不能归入上述已知类别的I/O或实现异常，沿用既有background-jobs通用码 | 不外抛、不记录任意异常消息；已claim且预算足够时finish记failed |
 | `rows_rejected` | apply拒绝了至少一行 | outcome仍为ok或partial；有效key算已见，unavailable被拒行保持状态及缺席计数，坏key使整份partial |
 | `campus_unexpected_tz`、`campus_uid_mismatch`、`campus_too_many_occurrences`、`campus_calendar_not_allowed` | 校历数据异常或日历不在白名单 | 写入时拒绝；刷新时不动 |
 | `event_link_not_allowed`、`partner_consent_mismatch`、`event_partner_not_active`、`partner_event_exists` | 合作组织写入未满足外链、授权编号、组织状态或唯一性条件 | 写入时拒绝 |
+| `apply_http_<状态码>`、`apply_timeout`、`apply_failed`、`apply_result_invalid` | Supabase 的 apply 调用失败或返回形状不对；apply_failed 也包括同一个 try 里、发出 apply 调用之前的投影异常（投影输入已由 normalizeCaaciEvents 校验），以及请求没到达 Supabase 的网络、DNS、TLS 失败（fetch 抛出的错误由 api/background-jobs.js 第 130–134 行原样重抛）；apply 是一个事务，本次快照没写入；400 通常是 apply 里行级名单以外的 SQL 错误，404 通常是函数不存在或 schema cache 没刷新（PostgREST 文档的映射，没实测）| 已入库行不动，last_outcome=failed；查 Supabase 的 Postgres/API 日志，不查官网；apply_failed 而 Supabase 日志里没有这次 apply 请求的，是投影异常或请求没到达 Supabase：同一次运行的 Vercel 函数日志里有 `[community-events-sync] finish not recorded` 或 `[background-jobs] worker incomplete` 的，多半是连不上 Supabase；两行都没有的，从日志分不出这两种（apply 失败本身不写日志，Sentry 只带 outcome、code、rejected） |
+| `empty_snapshot` | 最终完整、rows_in 为空的快照 | 照常记缺席；outcome=ok，不报 Sentry |
+
+`finish_*` 码只进日志，不写 sync_state；`schema_mismatch` 只指上游 schema 不符
 
 面向用户的错误码各对应一个 i18n key，key 与文案在 SPEC.md §11「P4 活动」：`member_event_rpc_required`、`member_event_not_eligible`、`member_event_time_out_of_range`、`member_event_active_limit`、`member_event_reserved_wording`、`member_event_link_not_allowed`、`member_event_title_too_long`、`member_event_location_invalid`、`member_event_cancel_final`、`event_discussion_closed`、`official_profile_not_configured`、`member_events_closed`（P0001，D-57）。
 
