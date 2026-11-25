@@ -31,17 +31,28 @@ function httpFailureCode(status, headers) {
 function failureCode(error) {
   // This is an untrusted I/O boundary. Arbitrary error messages never become codes.
   try {
-    if (error instanceof SyncDeadlineError) return 'deadline'
     if (error instanceof SyntaxError) return 'bad_json'
     if (!(error instanceof Error)) return 'unexpected_failure'
-    if (error.name === 'AbortError' || error.message === 'request_timeout' || error.message === 'provider_timeout') return 'timeout'
+    if (error.name === 'AbortError' || error.message === 'request_timeout') return 'timeout'
     if (error.message === 'response_too_large') return 'too_large'
-    if (error.message === 'upstream_redirect' || error.message === 'provider_redirect') return 'upstream_redirect'
-    if (error.message === 'provider_malformed' || error.message === 'response_malformed') return 'bad_json'
-    const status = /^provider_status_([45]\d{2})$/.exec(error.message)
-    return status ? httpFailureCode(Number(status[1])) : 'unexpected_failure'
+    if (error.message === 'upstream_redirect') return 'upstream_redirect'
+    if (error.message === 'response_malformed') return 'bad_json'
+    return 'unexpected_failure'
   } catch {
     return 'unexpected_failure'
+  }
+}
+
+// Supabase RPC failures name the step, so they never read as a CAACI response.
+function rpcFailureCode(step, error) {
+  try {
+    if (error instanceof SyncDeadlineError) return 'deadline'
+    if (!(error instanceof Error)) return step + '_failed'
+    if (error.message === 'provider_timeout') return step + '_timeout'
+    const status = /^provider_status_([45]\d{2})$/.exec(error.message)
+    return status ? step + '_http_' + status[1] : step + '_failed'
+  } catch {
+    return step + '_failed'
   }
 }
 
@@ -97,14 +108,15 @@ export async function syncCaaciEvents({ deadline, call, fetch }) {
       }, stepTimeout(deadline))
       if (!applied || typeof applied.complete !== 'boolean'
           || !Number.isSafeInteger(applied.rejected) || applied.rejected < 0 || applied.rejected > rows.length
-          || (applied.complete && !snapshot.complete)) result = failed('schema_mismatch')
+          || (applied.complete && !snapshot.complete)) result = failed('apply_result_invalid')
       else result = {
         outcome: applied.complete ? 'ok' : 'partial',
-        code: applied.rejected ? 'rows_rejected' : null, rejected: applied.rejected,
+        code: applied.rejected ? 'rows_rejected' : applied.complete && rows.length === 0 ? 'empty_snapshot' : null,
+        rejected: applied.rejected,
       }
     }
   } catch (error) {
-    result = failed(failureCode(error))
+    result = failed(rpcFailureCode('apply', error))
   }
   if (result.code === 'deadline') {
     console.error('[community-events-sync] finish skipped', { code: 'deadline' })
@@ -116,7 +128,7 @@ export async function syncCaaciEvents({ deadline, call, fetch }) {
     }, stepTimeout(deadline))
     if (finished !== true) console.error('[community-events-sync] finish not recorded', { code: 'unexpected_failure' })
   } catch (error) {
-    const code = failureCode(error)
+    const code = rpcFailureCode('finish', error)
     if (error instanceof SyncDeadlineError) result = failed('deadline', result.rejected)
     console.error('[community-events-sync] finish not recorded', { code })
   }

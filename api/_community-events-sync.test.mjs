@@ -117,6 +117,14 @@ test('partial snapshots and successful valid-key row rejection are distinct outc
   assert.deepEqual(rejected.result, { outcome: 'ok', code: 'rows_rejected', rejected: 1 })
 })
 
+test('a complete empty snapshot records its own successful finish code', async () => {
+  const actual = await run({ feed: { ...complete, events: [] } })
+  assert.deepEqual(actual.result, { outcome: 'ok', code: 'empty_snapshot', rejected: 0 })
+  assert.deepEqual(actual.calls.at(-1).args, {
+    source_in: 'caaci', outcome_in: 'ok', error_code_in: 'empty_snapshot',
+  })
+})
+
 test('the offline producer handler response retains its shape through normalization', async () => {
   const actual = await run({ feed: JSON.parse(text('caaci-handler-28d59b1.json')) })
   assert.deepEqual(actual.result, { outcome: 'ok', code: null, rejected: 0 })
@@ -145,10 +153,14 @@ test('upstream and RPC failure classes are stable codes without source content',
     ['schema', { feed: { schema: 'v2' } }, 'schema_mismatch'],
     ['private fields', { feed: JSON.parse(text('caaci-event-register-signed-in.json')) }, 'unexpected_private_fields'],
     ['unexpected fetch', { fetchError: new Error('Synthetic private detail') }, 'unexpected_failure'],
-    ['apply timeout', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_timeout') }, 'timeout'],
-    ['apply malformed', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_malformed') }, 'bad_json'],
-    ['apply status', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_503') }, 'http_503'],
-    ['hostile error', { throwOn: 'apply_caaci_event_snapshot', error: { get message() { throw new Error('Synthetic private detail') } } }, 'unexpected_failure'],
+    ['apply timeout', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_timeout') }, 'apply_timeout'],
+    ['apply malformed', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_malformed') }, 'apply_failed'],
+    ['apply status', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_503') }, 'apply_http_503'],
+    ['hostile error', { throwOn: 'apply_caaci_event_snapshot', error: { get message() { throw new Error('Synthetic private detail') } } }, 'apply_failed'],
+    ['apply 400', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_400') }, 'apply_http_400'],
+    ['apply 404', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_404') }, 'apply_http_404'],
+    ['apply redirect', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_redirect') }, 'apply_failed'],
+    ['apply size', { throwOn: 'apply_caaci_event_snapshot', error: new Error('response_too_large') }, 'apply_failed'],
   ]
   for (const [name, options, code] of cases) await t.test(name, async () => {
     const actual = await run(options)
@@ -157,22 +169,28 @@ test('upstream and RPC failure classes are stable codes without source content',
     assert.equal(actual.calls.at(-1).args.error_code_in, code)
     assert.equal(actual.calls.filter(call => call.name === 'finish_community_event_sync').length, 1)
     assert.deepEqual(actual.logs, [])
+    assert.equal(code.startsWith('apply_'), options.throwOn === 'apply_caaci_event_snapshot')
   })
 })
 
 test('malformed apply results fail closed instead of pretending the snapshot completed', async () => {
   for (const applied of [null, true, {}, { complete: true, rejected: -1 }, { complete: true, rejected: 2 }]) {
     const actual = await run({ applied })
-    assert.equal(actual.result.code, 'schema_mismatch')
+    assert.equal(actual.result.code, 'apply_result_invalid')
     assert.equal(actual.calls.at(-1).args.outcome_in, 'failed')
   }
 })
 
-test('finish failures log once and never retry or replace the completed snapshot outcome', async () => {
-  for (const options of [{ finish: false }, { throwOn: 'finish_community_event_sync', error: new Error('provider_malformed') }]) {
+for (const [name, options, code] of [
+  ['false', { finish: false }, 'unexpected_failure'],
+  ['malformed', { throwOn: 'finish_community_event_sync', error: new Error('provider_malformed') }, 'finish_failed'],
+  ['503', { throwOn: 'finish_community_event_sync', error: new Error('provider_status_503') }, 'finish_http_503'],
+]) {
+  test(`finish ${name} logs once without retrying or replacing the completed snapshot`, async () => {
     const actual = await run(options)
     assert.deepEqual(actual.result, { outcome: 'ok', code: null, rejected: 0 })
     assert.equal(actual.calls.filter(call => call.name === 'finish_community_event_sync').length, 1)
     assert.equal(actual.logs.length, 1)
-  }
-})
+    assert.deepEqual(actual.logs[0][1], { code })
+  })
+}

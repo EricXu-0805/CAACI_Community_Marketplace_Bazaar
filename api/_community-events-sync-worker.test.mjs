@@ -60,6 +60,9 @@ async function worker(flag, options = {}) {
       case 'claim_community_event_sync': options.onClaim?.(); return json(options.claim ?? true)
       case 'apply_caaci_event_snapshot':
         if (options.applyThrows) throw new Error('Synthetic internal sync failure')
+        if (options.applyStatus !== undefined) return new Response('{"code":"22003","message":"Synthetic database detail"}', {
+          status: options.applyStatus, headers: { 'content-type': 'application/json' },
+        })
         return json(options.applied ?? { complete: true, rejected: 0 })
       case 'finish_community_event_sync':
         return options.emptyFinish ? new Response('', { status: 200 }) : json(true)
@@ -86,6 +89,29 @@ const diagnosticStrings = value => {
   if (value && typeof value === 'object') return Object.values(value).flatMap(diagnosticStrings)
   return []
 }
+
+test('an apply HTTP 400 reports the database step without exposing its response detail', async () => {
+  const result = await worker('1', { applyStatus: 400 })
+  assert.equal(result.status, 200)
+  assert.equal(result.body.community_events_sync, 'failed')
+  const finish = result.calls.find(call => call.url.pathname.endsWith('/finish_community_event_sync'))
+  assert.equal(finish.body.error_code_in, 'apply_http_400')
+  assert.equal(result.events.length, 1)
+  assert.deepEqual(result.events[0].extra, { outcome: 'failed', code: 'apply_http_400', rejected: 0 })
+  assert.equal(diagnosticStrings([result.logs, result.events, finish.body])
+    .some(value => value.includes('Synthetic database detail')), false)
+})
+
+test('a complete empty worker snapshot records empty_snapshot without a Sentry event', async () => {
+  const feed = JSON.parse(await readFile(new URL('caaci-v1-complete.json', fixtureUrl), 'utf8'))
+  feed.events = []
+  const result = await worker('1', { sourceBody: JSON.stringify(feed) })
+  assert.equal(result.status, 200)
+  assert.equal(result.body.community_events_sync, 'ok')
+  const finish = result.calls.find(call => call.url.pathname.endsWith('/finish_community_event_sync'))
+  assert.equal(finish.body.error_code_in, 'empty_snapshot')
+  assert.deepEqual(result.events, [])
+})
 
 test('only the exact sync flag opens a new worker response field or any sync request', async () => {
   for (const flag of [undefined, '', '0', 'true', '1 ']) {
