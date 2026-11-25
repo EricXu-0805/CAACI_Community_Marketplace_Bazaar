@@ -540,7 +540,7 @@ and then production:
    later, or at any time, hold only until then.
 
 **Community P4 (`20261120122054_community_events`).**
-This is the application order for the four community migrations. The release
+This is the application order for the five community migrations. The release
 owner follows it on staging and production, using the approved frozen files:
 
 1. Complete the Community P3 procedure above for
@@ -557,7 +557,11 @@ owner follows it on staging and production, using the approved frozen files:
 4. Run `supabase/_ops/PRECHECK_20261123201501_community_event_sync.sql`, apply
    `20261123201501_community_event_sync.sql`, then pass
    `supabase/_ops/VERIFY_20261123201501_community_event_sync.sql`.
-   After A, run `VERIFY_20261122035253_community_member_events.sql` again,
+5. Run `supabase/_ops/PRECHECK_20261125004742_community_event_sync_cap.sql`,
+   apply `20261125004742_community_event_sync_cap.sql`, then pass
+   `supabase/_ops/VERIFY_20261125004742_community_event_sync_cap.sql`.
+   Its NOTICE reads `community_event_sync_cap_verified`.
+   After B, run `VERIFY_20261122035253_community_member_events.sql` again,
    followed by `VERIFY_reply_notice_switch.sql` (both under `supabase/_ops/`).
    Both switch notices must still report `enabled=f`.
 
@@ -565,9 +569,14 @@ After the member-events migration, `VERIFY_20261120122054_community_events.sql` 
 by design with this first error:
 `community_events_function_body:private.community_events_member_guard():7eb7680e59995c1dc8e9d754603ed790:this migration`.
 
+After B, `VERIFY_20261123201501_community_event_sync.sql` stops by design
+with this first error:
+`community_event_sync_function_body:public.apply_caaci_event_snapshot(boolean,jsonb):55227c4b42b7ac90e9b1ba34f274b057`.
+
 Before pull request #380 is merged, its public smoke (`public-smoke` in
 `ci.yml`) must run green against a database that has `20261120100354`,
-`20261120122054`, `20261122035253`, and `20261123201501` applied and verified: neither the events page (`pages/events/index`)
+`20261120122054`, `20261122035253`, `20261123201501`, and `20261125004742`
+applied and verified: neither the events page (`pages/events/index`)
 nor the plaza page as P4 has it (`pages/plaza/index`, which from P4 on also
 calls `rpc/list_community_events`) has had its page sweep run against a real
 backend.
@@ -684,9 +693,13 @@ and no script.
      After `20261122035253`, run
      `supabase/_ops/VERIFY_20261122035253_community_member_events.sql`, then
      `supabase/_ops/VERIFY_reply_notice_switch.sql`. If A (`20261123201501`)
-     is also applied, first pass
+     is applied and B is not, first pass
      `supabase/_ops/VERIFY_20261123201501_community_event_sync.sql`, then run
-     those two checks in the same order, as listed in Community P4 above.
+     those two checks in the same order. If A and B are both applied, first
+     pass `supabase/_ops/VERIFY_20261125004742_community_event_sync_cap.sql`
+     instead (`VERIFY_20261123201501_community_event_sync.sql` stops by design
+     after B), then run those two checks in the same order, as listed in
+     Community P4 above.
      The member and reply switch notices must both read `enabled=f`; the
      reply notice is `community_reply_notice_switch|enabled=f`.
 2. The H5 deployment that reads this database is the P3 release or later. The
@@ -768,16 +781,18 @@ The sync switch is `COMMUNITY_SYNC_CAACI_EVENTS`. Only the exact value `1`
 enables it. Eric sets or removes it in Vercel's **Production** environment,
 never Preview or Development: non-production cron handling is not a switch.
 
-Before enabling it, all four migrations in **Community P4** above have been
+Before enabling it, all migrations in **Community P4** above have been
 applied and their required VERIFY checks have passed. P4.3 must be released,
-and the authorized workstation GET must return 200 JSON. D-59 implements and
-mock-tests `node scripts/sync-community-events.mjs --dry-run --source caaci`
-only; the real dry-run waits for P4.3 release and makes no request in this batch.
+and the authorized workstation GET must return 200 JSON. The repository
+implements `node scripts/sync-community-events.mjs --dry-run --source caaci`
+and tests it only with an injected fetch; the first real dry-run is one
+authorized workstation GET after P4.3 is released.
 
 In the Vercel project environment variables, set the value to `1` for
 Production only, or remove it to disable synchronization. Either change needs
-one new production deployment before it affects the running worker. Follow
-E13 and the supervised release procedure; changing the environment variable
+one new production deployment before it affects the running worker. Deploy it
+through the supervised release procedure in `docs/SUPERVISED_RELEASE.md`;
+changing the environment variable
 alone does not update an existing deployment. Do not enable before the
 migration checks: a failed claim cannot record sync state and may report to
 Sentry on every cron tick.
@@ -807,6 +822,38 @@ Inspect the state and the worker response after enabling:
 SELECT source, last_attempt_at, last_success_at, last_outcome, last_error_code
   FROM public.community_event_sync_state
  WHERE source = 'caaci';
+```
+
+**Reading last_error_code**
+
+| code | first action |
+|---|---|
+| `http_*`, `timeout`, `too_large`, `upstream_redirect`, `bad_json`, `schema_mismatch`, `unexpected_private_fields` | Check the CAACI site, feed or edge response. |
+| `apply_*` | Check Supabase. `apply_http_400` usually means invalid RPC arguments or data; `apply_http_404` usually means the reviewed migration or RPC schema is missing. |
+| `claim_failed` | Check the reviewed migrations and their VERIFY results. |
+| `deadline` | Check Sentry; this code is not written to sync_state. |
+| `rows_rejected` | Individual rows were rejected by constraints or moderation. |
+| `empty_snapshot` | CAACI returned a complete but empty snapshot. Open caaciorg.com/events in a browser; if events are present there, the feed is wrong. Immediately use the infinity stop above to freeze the current state. |
+
+`apply_failed` also covers a projection error raised before the call and a
+request that never reached Supabase (a network, DNS or TLS failure). For an
+`apply_failed` with no matching apply request in the Supabase logs, a
+`[community-events-sync] finish not recorded` or
+`[background-jobs] worker incomplete` line in that run's Vercel function logs
+points to a connection problem. With neither line the logs cannot tell the two
+apart, because the apply failure itself is not logged and Sentry carries only
+outcome, code and rejected.
+
+The infinity stop prevents further absence counting; a row missed only once
+remains visible. After the feed recovers, restore last_attempt_at to NULL with
+the statement above; returning rows recover automatically.
+
+Before B is applied, the release owner can recover an overflowed absence
+counter by running this as `postgres` in the SQL editor. It is unnecessary
+after B:
+
+```sql
+UPDATE public.community_events SET missing_checks = 2 WHERE source_type = 'caaci' AND missing_checks > 2;
 ```
 
 The response's `community_events_sync` is `not_due` when no claim was
@@ -974,6 +1021,7 @@ functions, where nobody is watching a screen — the `logger` tag says which.
 | `api/auth/delete-account` | job store unavailable | the deletion worker cannot read its queue at all | check `SUPABASE_SECRET_KEY` and the table |
 | `api/resend-webhook` | hard bounced / marked as spam | mail is failing after Resend accepted it | see below |
 | `api/notification-digest` | any | the nightly digest run had send or mark failures | check the digest run's Vercel log |
+| `api/background-jobs` | community events sync needs attention | CAACI sync failed or partial, or rows were rejected; `apply_*` codes point to Supabase | [CAACI events sync](#caaci-events-sync) |
 
 **The repeat count is the signal, not the single event.** Sentry groups these by
 message, so a cron that has failed every hour for a week is one issue with a
