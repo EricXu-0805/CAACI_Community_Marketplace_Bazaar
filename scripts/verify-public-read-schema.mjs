@@ -69,6 +69,28 @@ export async function verifyPublicReadSchema({ url, key, fetchImpl = fetch }) {
   }
   if (typeof await memberEvents.json() !== 'boolean') throw new Error('public_schema_unexpected_response')
   results.push({ name: 'community member events switch rpc', status: memberEvents.status })
+  for (const [routine, args] of [
+    ['claim_community_event_sync', { source_in: null, interval_in: null }],
+    ['apply_caaci_event_snapshot', { complete_in: null, rows_in: null }],
+    ['finish_community_event_sync', { source_in: null, outcome_in: null, error_code_in: null }],
+  ]) {
+    const name = `community event sync rpc ${routine}`
+    const sync = await fetchImpl(new URL(`/rest/v1/rpc/${routine}`, url), {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+      redirect: 'error', signal: AbortSignal.timeout(10_000),
+    })
+    await sync.body?.cancel()
+    if (sync.status === 401) {
+      results.push({ name, status: sync.status })
+      continue
+    }
+    if (sync.status === 404) {
+      throw new Error(`public_schema_mismatch: ${name} returned HTTP 404; apply the reviewed migrations to this test target before testing the candidate`)
+    }
+    throw new Error('public_schema_unexpected_response')
+  }
   // P3.6: the topic page asks this function why a topic cannot be read. It ships in one transaction
   // with the watch and save tables and the author's hidden-topic list, which the publishable key
   // cannot reach, so its answer stands for them too. Asking about a topic that does not exist

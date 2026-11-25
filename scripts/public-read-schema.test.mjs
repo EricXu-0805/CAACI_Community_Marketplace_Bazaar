@@ -4,15 +4,23 @@ import { verifyPublicReadSchema } from './verify-public-read-schema.mjs'
 const url = 'https://abcdefghijklmnopqrst.supabase.co'
 const key = 'sb_publishable_synthetic'
 // What a migrated target answers: no rows for a limit=0 read, and "missing" for a topic that does not exist.
-const migrated = target => new Response(target.pathname.endsWith('/rpc/community_member_events_open') ? 'false'
-  : target.pathname.endsWith('/rpc/community_post_state') ? '"missing"' : '[]', { status: 200 })
+const syncRpcs = new Map([
+  ['claim_community_event_sync', { source_in: null, interval_in: null }],
+  ['apply_caaci_event_snapshot', { complete_in: null, rows_in: null }],
+  ['finish_community_event_sync', { source_in: null, outcome_in: null, error_code_in: null }],
+])
+const migrated = target => {
+  if (syncRpcs.has(target.pathname.split('/').at(-1))) return new Response(null, { status: 401 })
+  return new Response(target.pathname.endsWith('/rpc/community_member_events_open') ? 'false'
+    : target.pathname.endsWith('/rpc/community_post_state') ? '"missing"' : '[]', { status: 200 })
+}
 test('public schema preflight checks listing, post and comment projections without write access', async () => {
   const seen = []
   const results = await verifyPublicReadSchema({ url, key, fetchImpl: async (target, init) => {
     seen.push({ target, init }); return migrated(target)
   } })
-  // Six projections, search, events, the member switch, and topic state.
-  assert.equal(results.length, 10)
+  // Six projections, search, events, the member switch, three sync functions, and topic state.
+  assert.equal(results.length, 13)
   const reads = seen.filter(({ target }) => !target.pathname.includes('/rpc/'))
   assert.equal(reads.length, 6)
   for (const { target, init } of reads) {
@@ -109,5 +117,35 @@ test('service-role and opaque secrets are refused before any request', async () 
   const secretJwt = 'e30.'+Buffer.from(JSON.stringify({role:'service_role'})).toString('base64url')+'.signature'
   for(const secret of [secretJwt,'sb_secret_no_client_access','']) {
     await assert.rejects(verifyPublicReadSchema({url,key:secret,fetchImpl:()=>assert.fail('must not send secret')}), /requires_publishable_or_anon_key/)
+  }
+})
+
+test('community sync probes require 401 for each function and send only null arguments', async () => {
+  for (const routine of syncRpcs.keys()) {
+    for (const status of [404, 200, 400]) {
+      await assert.rejects(verifyPublicReadSchema({ url, key, fetchImpl: async target =>
+        target.pathname === `/rest/v1/rpc/${routine}` ? new Response('{}', { status }) : migrated(target) }),
+      { message: status === 404
+        ? `public_schema_mismatch: community event sync rpc ${routine} returned HTTP 404; apply the reviewed migrations to this test target before testing the candidate`
+        : 'public_schema_unexpected_response' }, `${routine}: HTTP ${status}`)
+    }
+  }
+  const requests = new Map()
+  const results = await verifyPublicReadSchema({ url, key, fetchImpl: async (target, init) => {
+    const routine = target.pathname.split('/').at(-1)
+    if (syncRpcs.has(routine)) requests.set(routine, init)
+    return migrated(target)
+  } })
+  assert.deepEqual(results.filter(result => result.name.startsWith('community event sync rpc ')),
+    [...syncRpcs.keys()].map(routine => ({ name: `community event sync rpc ${routine}`, status: 401 })))
+  for (const [routine, args] of syncRpcs) {
+    const request = requests.get(routine)
+    assert.ok(request)
+    assert.equal(request.method, 'POST')
+    assert.deepEqual(JSON.parse(request.body), args)
+    assert.equal(request.headers['Content-Type'], 'application/json')
+    assert.equal(request.headers.Authorization, undefined)
+    assert.equal(request.redirect, 'error')
+    assert.ok(request.signal instanceof AbortSignal)
   }
 })
