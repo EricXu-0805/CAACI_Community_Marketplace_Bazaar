@@ -4,7 +4,7 @@ import { communityNavigation, openCommunityBoard } from '../api/communityNavigat
 
 /** The H5 event pages share the community header's viewport and tab handoff. */
 export function useEventHeader() {
-  const { isLoggedIn } = useAuth()
+  const { isLoggedIn, requireAuth } = useAuth()
   const search = ref('')
   const media = window.matchMedia('(min-width: 1024px)')
   const desktop = ref(media.matches)
@@ -21,6 +21,6 @@ export function useEventHeader() {
   const home = () => openCommunity('home')
   const all = () => openCommunity('all')
   const submit = () => openCommunity('all', search.value)
-  const login = () => uni.navigateTo({ url: '/pages/login/index' })
+  const login = () => { requireAuth() }
   return { desktop, search, isLoggedIn, home, all, submit, board: openCommunityBoard, login }
 }

@@ -136,11 +136,14 @@ const LOGIN_NO_PARAM_ROUTES = new Set([
   '/pages/blocked/index',
   '/pages/illini-verify/index',
   '/pages/profile/edit',
+  '/pages/events/index',
+  '/pages/event/create/index',
 ])
 
 const LOGIN_UUID_ROUTES = new Set([
   ...WELCOME_UUID_ROUTES,
   '/pages/publish/edit',
+  '/pages/event/detail/index',
 ])
 
 let pendingHomeNavigationIntent: OwnedHomeNavigationIntent | null = null
@@ -229,7 +232,7 @@ export function parseReturnRoute(
   if (
     rawPath.includes('%')
     || rawPath.includes('..')
-    || !/^\/pages\/[a-z0-9-]+\/[a-z0-9-]+$/.test(rawPath)
+    || !/^\/pages(?:\/[a-z0-9-]+){2,3}$/.test(rawPath)
   ) return null
 
   const policy = routePolicy(rawPath, purpose)

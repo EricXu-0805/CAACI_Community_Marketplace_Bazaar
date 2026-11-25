@@ -140,7 +140,17 @@ for (const width of [390, 1280]) {
       await openFresh(page, 'pages/events/index')
       await expect(page.getByRole('button', { name: organize }).first()).toBeVisible()
       await page.getByRole('button', { name: organize }).first().click()
-      await expect(page).toHaveURL(/pages\/login\/index/)
+      await expect(page).toHaveURL(/pages\/login\/index\?intent=[A-Za-z0-9_-]{12,80}$/)
+      const route: unknown = await page.evaluate(() => JSON.parse(sessionStorage['caaci.login-return.v1']).route)
+      expect(route).toMatchObject({ path: '/' + CREATE })
+    })
+
+    test('a guest opening the form directly retains the form login return', async ({ page }) => {
+      await installMemberEvents(page, { reader: 'guest', open: true })
+      await openFresh(page, CREATE)
+      await expect(page).toHaveURL(/pages\/login\/index\?intent=[A-Za-z0-9_-]{12,80}$/)
+      const route: unknown = await page.evaluate(() => JSON.parse(sessionStorage['caaci.login-return.v1']).route)
+      expect(route).toEqual({ path: '/' + CREATE, params: {} })
     })
 
     test('an unverified member is sent to campus verification', async ({ page }) => {

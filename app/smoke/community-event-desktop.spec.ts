@@ -2,9 +2,10 @@ import { test, expect, type Page } from '@playwright/test'
 import { installMemberEvents, EVENT_ID, NOW } from './community-member-event-fixture'
 import { visualAudit } from './visual-audit'
 
-async function fixture(page: Page, options: { lang?: 'zh' | 'en'; theme?: 'light' | 'dark'; guest?: boolean } = {}) {
+async function fixture(page: Page, options: { lang?: 'zh' | 'en'; theme?: 'light' | 'dark'; guest?: boolean; open?: boolean } = {}) {
   const state = await installMemberEvents(page, {
     reader: options.guest ? 'guest' : 'member', lang: options.lang ?? 'en', theme: options.theme ?? 'light',
+    open: options.open ?? true,
   })
   state.rows = Array.from({ length: 20 }, (_, index) => ({
     ...state.member,
@@ -120,7 +121,7 @@ test.describe('desktop event navigation', () => {
     })
   }
 
-  for (const action of ['home', 'all', 'board', 'compose', 'login'] as const) {
+  for (const action of ['home', 'all', 'board', 'compose'] as const) {
     test(`${action} control reaches its destination after a previous plaza view`, async ({ page }) => {
       await fixture(page, { guest: true })
       const previousView = action === 'all' ? 'home' : 'all'
@@ -129,18 +130,14 @@ test.describe('desktop event navigation', () => {
       await expect(header(page)).toBeVisible()
       if (action === 'home') await header(page).locator('.cx-brand').click()
       if (action === 'compose') await header(page).locator('.cx-compose').click()
-      if (action === 'login') await header(page).locator('.cx-login').click()
       if (action === 'all' || action === 'board') {
         await header(page).locator('[aria-controls="cx-boards"]').click()
         await header(page).locator(action === 'all' ? '.cx-pop-all' : '.cx-pop-i').first().click()
       }
-      if (action === 'login') await expect(page).toHaveURL(/pages\/login\/index/)
-      else {
-        await expect(page).toHaveURL(/pages\/plaza\/index/)
-        if (action === 'home' || action === 'compose') await expect(page.locator('.ch')).toBeVisible()
-        if (action === 'all') await expect(page.locator('.search-wrap')).toBeAttached()
-        if (action === 'board') await expect(page.locator('.board-head')).toBeVisible()
-      }
+      await expect(page).toHaveURL(/pages\/plaza\/index/)
+      if (action === 'home' || action === 'compose') await expect(page.locator('.ch')).toBeVisible()
+      if (action === 'all') await expect(page.locator('.search-wrap')).toBeAttached()
+      if (action === 'board') await expect(page.locator('.board-head')).toBeVisible()
     })
   }
 
@@ -233,6 +230,24 @@ test.describe('desktop event search handoff', () => {
       const body: unknown = request.postDataJSON()
       expect(body).toMatchObject({ terms_in: ['synthetic'] })
       await expect(page.locator('.cx-hdr:visible input')).toHaveValue('Synthetic')
+    })
+  }
+})
+
+test.describe('desktop event login return', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, screen: { width: 1280, height: 800 }, isMobile: false, deviceScaleFactor: 1 })
+  for (const scenario of [
+    { name: 'list', path: '/pages/events/index', params: {}, query: '', open: true },
+    { name: 'detail', path: '/pages/event/detail/index', params: { id: EVENT_ID }, query: `?id=${EVENT_ID}`, open: true },
+    { name: 'create', path: '/pages/event/create/index', params: {}, query: '', open: false },
+  ] as const) {
+    test(`${scenario.name} header preserves its login return target`, async ({ page }) => {
+      await fixture(page, { guest: true, open: scenario.open })
+      await page.goto('/#' + scenario.path + scenario.query, { waitUntil: 'networkidle' })
+      await header(page).locator('.cx-login').click()
+      await expect(page).toHaveURL(/pages\/login\/index\?intent=[A-Za-z0-9_-]{12,80}$/)
+      const route: unknown = await page.evaluate(() => JSON.parse(sessionStorage['caaci.login-return.v1']).route)
+      expect(route).toEqual({ path: scenario.path, params: scenario.params })
     })
   }
 })
