@@ -87,8 +87,8 @@
             <text class="ev-link" role="button" tabindex="0" data-test="events-past-link"
               @click="showPast(true)" @keydown.enter.prevent="showPast(true)">{{ t('events.pastLink') }}</text>
           </view>
+          <text v-if="staleCheckedAt" class="ev-stale" data-test="events-stale">{{ t('events.empty.stale', { when: staleCheckedAt }) }}</text>
         </template>
-        <text v-if="staleCheckedAt" class="ev-stale" data-test="events-stale">{{ t('events.empty.stale', { when: staleCheckedAt }) }}</text>
       </view>
 
       <!-- #ifdef H5 -->

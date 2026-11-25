@@ -113,3 +113,62 @@ test('CAACI detail without a timestamp omits the checked line', async ({ page })
   await expect(page.locator('.ed-title')).toHaveText('Synthetic event')
   await expect(page.locator('[data-test="event-checked"]')).toHaveCount(0)
 })
+
+test.describe('future-only list freshness', () => {
+  test('a failed list omits the stale caption', async ({ page }) => {
+    await fixture(page)
+    await sync(page, STALE)
+    await page.route('**/rest/v1/rpc/list_community_events', route => route.fulfill({
+      status: 500, contentType: 'application/json', body: '{"message":"Synthetic list failure"}',
+    }))
+    const checked = page.waitForResponse(syncPath)
+    await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+    await expect(page.locator('[data-test="events-failed"]')).toBeVisible()
+    await checked
+    await page.waitForTimeout(500)
+    await page.screenshot({ path: 'test-results/d60-w4b/failed.png', animations: 'disabled' })
+    expect(await page.locator('[data-test="events-stale"]').count()).toBe(0)
+  })
+
+  test('the past view omits the stale caption', async ({ page }) => {
+    const state = await fixture(page)
+    await sync(page, STALE)
+    const checked = page.waitForResponse(syncPath)
+    await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+    await checked
+    await expect(page.locator('[data-test="events-stale"]')).toBeVisible()
+    state.rows = []
+    const past = page.waitForResponse('**/rest/v1/rpc/list_community_events')
+    const pastChecked = page.waitForResponse(syncPath)
+    await page.locator('[data-test="events-past-link"]').click()
+    await past
+    await pastChecked
+    await expect(page.locator('[data-test="events-empty"]')).toBeVisible()
+    await page.waitForTimeout(500)
+    await page.screenshot({ path: 'test-results/d60-w4b/past.png', animations: 'disabled' })
+    expect(await page.locator('[data-test="events-stale"]').count()).toBe(0)
+  })
+
+  test('a pending list omits freshness until the rows arrive', async ({ page }) => {
+    await fixture(page)
+    await sync(page, STALE)
+    let release: (() => void) | undefined
+    const pending = new Promise<void>(resolve => { release = resolve })
+    await page.route('**/rest/v1/rpc/list_community_events', async route => {
+      await pending
+      await route.fallback()
+    })
+    const checked = page.waitForResponse(syncPath)
+    try {
+      await page.goto('/#/pages/events/index', { waitUntil: 'domcontentloaded' })
+      await checked
+      await expect(page.locator('.ev-main [aria-busy="true"]')).toBeVisible()
+      await page.waitForTimeout(500)
+      await page.screenshot({ path: 'test-results/d60-w4b/loading.png', animations: 'disabled' })
+      expect(await page.locator('[data-test="events-stale"]').count()).toBe(0)
+    } finally {
+      release?.()
+    }
+    await expect(page.locator('[data-test="events-stale"]')).toBeVisible()
+  })
+})
