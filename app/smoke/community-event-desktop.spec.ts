@@ -179,7 +179,16 @@ test.describe('desktop event search handoff', () => {
       page.on('request', request => {
         if (new URL(request.url()).pathname === '/rest/v1/rpc/search_community_posts') searchRequests += 1
       })
-      await page.goto(`/#/pages/plaza/index?view=${scenario.previousView}`, { waitUntil: 'networkidle' })
+      // A query-bearing entry is recreated by switchTab; use the UI to retain this tab's state.
+      await page.goto('/#/pages/plaza/index', { waitUntil: 'networkidle' })
+      if (scenario.previousView === 'all') {
+        await page.locator('.cx-hdr:visible [aria-controls="cx-boards"]').click()
+        const feedResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/posts'
+          && response.request().method() === 'GET')
+        await page.locator('.cx-hdr:visible .cx-pop-all').click()
+        await feedResponse
+        await expect(page).toHaveURL(/pages\/plaza\/index\?view=all$/)
+      }
       if (scenario.following) {
         const following = page.getByRole('tab', { name: 'Following', exact: true })
         await following.click()
