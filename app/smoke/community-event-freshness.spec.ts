@@ -172,3 +172,45 @@ test.describe('future-only list freshness', () => {
     await expect(page.locator('[data-test="events-stale"]')).toBeVisible()
   })
 })
+
+test.describe('detail sync-state reads', () => {
+  for (const source of ['member', 'partner', 'campus'] as const) {
+    test(`${source} detail makes no CAACI state request`, async ({ page }) => {
+      await fixture(page, 'en', source)
+      await sync(page, STALE)
+      let reads = 0
+      page.on('request', request => {
+        if (new URL(request.url()).pathname === '/rest/v1/community_event_sync_state') reads += 1
+      })
+      await page.goto(`/#/pages/event/detail/index?id=${EVENT_ID}`, { waitUntil: 'networkidle' })
+      await expect(page.locator('.ed-title')).toHaveText('Synthetic event')
+      await page.waitForTimeout(500)
+      expect(reads).toBe(0)
+    })
+  }
+
+  test('CAACI detail reads and displays its checked state', async ({ page }) => {
+    await fixture(page)
+    await sync(page, STALE)
+    let reads = 0
+    page.on('request', request => {
+      if (new URL(request.url()).pathname === '/rest/v1/community_event_sync_state') reads += 1
+    })
+    await page.goto(`/#/pages/event/detail/index?id=${EVENT_ID}`, { waitUntil: 'networkidle' })
+    await expect(page.locator('[data-test="event-checked"]')).toHaveText('Source last checked Nov 12, 2:05 PM CT')
+    expect(reads).toBeGreaterThanOrEqual(1)
+  })
+
+  test('a detail without an id makes no CAACI state request', async ({ page }) => {
+    await fixture(page)
+    await sync(page, STALE)
+    let reads = 0
+    page.on('request', request => {
+      if (new URL(request.url()).pathname === '/rest/v1/community_event_sync_state') reads += 1
+    })
+    await page.goto('/#/pages/event/detail/index', { waitUntil: 'networkidle' })
+    await expect(page.locator('[data-test="event-gone"]')).toBeVisible()
+    await page.waitForTimeout(500)
+    expect(reads).toBe(0)
+  })
+})

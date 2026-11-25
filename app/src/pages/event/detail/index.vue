@@ -139,14 +139,12 @@ async function load() {
   loading.value = true
   loadError.value = false
   lastSuccess.value = null
-  void caaciLastSuccess().then(value => {
-    if (mine === epoch) lastSuccess.value = value
-  })
   try {
     const row = eventId.value ? await findEvent(eventId.value) : null
     if (mine !== epoch) return
     now.value = Date.now()
     event.value = row
+    if (row?.source_type === 'caaci') void caaciLastSuccess().then(value => { if (mine === epoch) lastSuccess.value = value })
   } catch {
     if (mine !== epoch) return
     loadError.value = true
