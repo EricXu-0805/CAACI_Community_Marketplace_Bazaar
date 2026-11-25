@@ -153,7 +153,7 @@ export function normalizeCampusEvent(event, calendars = CAMPUS_CALENDARS) {
   const sourceKey = `${event.calendar_id}/${event.event_id}`
   return normalizeEventCard({
     ...event, source_type: 'campus', source_key: sourceKey,
-    title_en: event.title_en.trim().slice(0, 160),
+    title_en: Array.from(event.title_en.trim()).slice(0, 160).join(''),
     organizer_name: event.organizer_name ?? calendar.name_en,
     page_url: `https://calendars.illinois.edu/detail/${sourceKey}`,
     review_flag: /^(cancel+ed|postponed)\b/i.test(event.title_en.trim()) ? 'title_says_cancelled' : null,

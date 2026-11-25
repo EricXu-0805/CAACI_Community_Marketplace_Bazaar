@@ -178,3 +178,74 @@ test('data-URL handler loading resolves the transitive campus clock import', asy
   assert.equal(result.rows[0].starts_at, '2027-03-14T06:00:00.000Z')
   assert.equal(result.rows[0].ends_at, '2027-03-15T05:00:00.000Z')
 })
+
+test('a series without a final DTEND ends at the last occurrence start', async () => {
+  const source = text('campus-series-3.ics').replace('DTEND:20261122T133000\n', '')
+  const { rows: [row] } = await parseCampusIcs(source, clock)
+  assert.equal(row.ends_at, '2026-11-22T17:30:00.000Z')
+})
+
+for (const prefixLength of [159, 160]) {
+  test(`SUMMARY preserves code points at the ${prefixLength}-character boundary`, async () => {
+    const emoji = String.fromCodePoint(0x1f600)
+    const title = 'a'.repeat(prefixLength) + emoji + 'tail'
+    const source = sample.replace('SUMMARY:Synthetic campus gathering', 'SUMMARY:' + title)
+    const { rows: [row] } = await parseCampusIcs(source, clock)
+    assert.equal(row.title_en.isWellFormed(), true)
+    assert.equal([...row.title_en].length, 160)
+    assert.equal(row.title_en, prefixLength === 159 ? 'a'.repeat(159) + emoji : 'a'.repeat(160))
+  })
+}
+
+for (const scenario of ['long-ascii', 'surrogate-boundary']) {
+  test(`LOCATION is bounded by code points for ${scenario}`, async () => {
+    const emoji = String.fromCodePoint(0x1f600)
+    const location = scenario === 'long-ascii' ? 'L'.repeat(300) : 'L'.repeat(159) + emoji + 'tail'
+    const source = sample.replace('LOCATION:Synthetic public hall', 'LOCATION:' + location)
+    const { rows: [row] } = await parseCampusIcs(source, clock)
+    assert.equal(row.location.isWellFormed(), true)
+    assert.equal([...row.location].length, 160)
+    assert.equal(row.location, scenario === 'long-ascii' ? 'L'.repeat(160) : 'L'.repeat(159) + emoji)
+  })
+}
+
+for (const property of [
+  'RRULE:FREQ=WEEKLY;COUNT=5',
+  'RDATE:20261127T113000',
+  'EXDATE:20261120T113000',
+  'RECURRENCE-ID:20261120T113000',
+  'DURATION:PT2H',
+]) {
+  test(`VEVENT rejects unsupported ${property.split(':')[0]}`, async () => {
+    const source = property.startsWith('DURATION:')
+      ? sample.replace('DTEND:20261120T133000', property)
+      : sample.replace('END:VEVENT', property + '\nEND:VEVENT')
+    assert.deepEqual(await parseCampusIcs(source, clock), { error: 'bad_ics' })
+  })
+}
+
+test('VALARM duration and trigger do not reject a valid event', async () => {
+  const source = sample.replace('END:VEVENT',
+    'BEGIN:VALARM\nTRIGGER:-PT15M\nDURATION:PT15M\nACTION:DISPLAY\nEND:VALARM\nEND:VEVENT')
+  const result = await parseCampusIcs(source, clock)
+  assert.equal(result.rows.length, 1)
+})
+
+test('a UID series cannot mix all-day and timed occurrences', async () => {
+  const source = text('campus-series-3.ics')
+    .replace('DTSTART;VALUE=DATE-TIME:20261120T113000', 'DTSTART;VALUE=DATE:20261120')
+    .replace('DTEND;VALUE=DATE-TIME:20261120T133000\n', '')
+  assert.deepEqual(await parseCampusIcs(source, clock), { error: 'bad_ics' })
+})
+
+test('LOCATION preserves escaped text after exactly one unescape', async () => {
+  const source = sample.replace('LOCATION:Synthetic public hall', 'LOCATION:C:\\\\new\\\\,x\\\\;y')
+  const { rows: [row] } = await parseCampusIcs(source, clock)
+  assert.equal(row.location, 'C:\\new\\,x\\;y')
+})
+
+test('a quoted parameter containing a colon is rejected before source intake', async () => {
+  const source = sample.replace('LOCATION:Synthetic public hall',
+    'LOCATION;ALTREP="cid:room1.example.invalid":Synthetic public hall')
+  assert.deepEqual(await parseCampusIcs(source, clock), { error: 'bad_ics' })
+})

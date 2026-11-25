@@ -270,3 +270,21 @@ test('mode A checks the calendar allowlist before processing input and accepts o
     link.replace('calendars.illinois.edu', 'calendars.illinois.edu:443'),
   ]) assert.deepEqual(parseCampusEventLink(input, calendars), { error: 'bad_ics' })
 })
+
+for (const prefixLength of [159, 160]) {
+  test(`campus normalization preserves code points at the ${prefixLength}-character boundary`, async () => {
+    const { parseCampusIcs } = await import('./_campus-ics.js')
+    const sample = text('campus-sample.ics')
+    const { rows: [projection] } = await parseCampusIcs(sample, { now })
+    const emoji = String.fromCodePoint(0x1f600)
+    const source = sample.replace('SUMMARY:Synthetic campus gathering',
+      'SUMMARY:' + 'a'.repeat(prefixLength) + emoji + 'tail')
+    const summary = /^SUMMARY:(.*)$/m.exec(source)
+    assert.ok(summary)
+    const card = normalizeCampusEvent({ ...projection, calendar_id: '3715', title_en: summary[1] },
+      [{ id: '3715', name_en: 'Synthetic calendar' }])
+    assert.equal(card.title_en.isWellFormed(), true)
+    assert.equal([...card.title_en].length, 160)
+    assert.equal(card.title_en, prefixLength === 159 ? 'a'.repeat(159) + emoji : 'a'.repeat(160))
+  })
+}

@@ -35,10 +35,10 @@ function parseOccurrence(fields) {
     endsAt = campusWallClockToInstant(next.toISOString().slice(0, 10), '00:00')
   }
   return {
-    event_id: uid[1], title_en: title.slice(0, 160),
+    event_id: uid[1], title_en: Array.from(title).slice(0, 160).join(''),
     starts_at: start.instant.toISOString(), ends_at: endsAt?.toISOString() ?? null,
     all_day: start.allDay, time_zone: 'America/Chicago',
-    location: fields.LOCATION?.value ?? null,
+    location: fields.LOCATION ? Array.from(fields.LOCATION.value).slice(0, 160).join('') : null,
     source_updated_at: modified?.instant.toISOString() ?? null,
   }
 }
@@ -76,6 +76,9 @@ export async function parseCampusIcs(text, { now, event_id } = {}) {
       }
     } else {
       if (!stack.length) return { error: 'bad_ics' }
+      if (stack.at(-1) === 'VEVENT' && ['RRULE', 'RDATE', 'EXDATE', 'RECURRENCE-ID', 'DURATION'].includes(name)) {
+        return { error: 'bad_ics' }
+      }
       if (stack.at(-1) !== 'VEVENT' || !FIELDS.has(name)) continue
       if (fields[name]) return { error: 'bad_ics' }
       const params = {}
@@ -96,12 +99,13 @@ export async function parseCampusIcs(text, { now, event_id } = {}) {
   }
   const rows = []
   for (const group of groups.values()) {
+    if (group.some(row => row.all_day !== group[0].all_day)) return { error: 'bad_ics' }
     group.sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
     const first = group.find(row => Date.parse(row.ends_at ?? row.starts_at) >= Date.parse(now)) ?? group[0]
     const end = group.at(-1)
     const updated = group.map(row => row.source_updated_at).filter(Boolean).sort().at(-1) ?? null
     const row = {
-      ...first, ends_at: end.ends_at, occurrence_count: group.length,
+      ...first, ends_at: end.ends_at ?? (group.length > 1 ? end.starts_at : null), occurrence_count: group.length,
       all_day: group.every(item => item.all_day), source_updated_at: updated,
     }
     const content = JSON.stringify([row.title_en, row.starts_at, row.ends_at, row.location, row.occurrence_count])
