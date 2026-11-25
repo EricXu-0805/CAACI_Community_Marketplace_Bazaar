@@ -96,6 +96,7 @@ const label = computed(() => {
 .evc-tag {
   font-size: 12px; line-height: 18px; padding: 0 var(--space-2); border-radius: var(--radius-xs);
   color: var(--ink-soft); box-shadow: inset 0 0 0 1px var(--line-soft); white-space: nowrap;
+  max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis;
 }
 .evc-tag-st { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-bold); }
 .evc-who { font-size: 12px; line-height: 18px; color: var(--ink-quiet); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }

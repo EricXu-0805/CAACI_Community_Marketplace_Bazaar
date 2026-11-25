@@ -36,9 +36,6 @@ const rules = ['eligibility', 'active', 'time'] as const
 .ev-side-t { font-size: 13px; line-height: 20px; color: var(--ink-soft); overflow-wrap: anywhere; }
 .ev-create-h { display: block; font-size: 17px; line-height: 24px; font-weight: 600; color: var(--ink); }
 .ev-create-rules { display: flex; flex-direction: column; gap: var(--space-3); margin: var(--space-4) 0; }
-@media (min-width: 768px) {
-  .events-sidebar.with-create { display: flex; flex-direction: column; gap: var(--space-4); }
-}
 @media (min-width: 1024px) {
   .events-sidebar { display: flex; flex-direction: column; gap: var(--space-4); flex-basis: 300px; }
   .ev-sources { display: block; }
