@@ -42,7 +42,7 @@ async function worker(flag, options = {}) {
   globalThis.fetch = async (input, init = {}) => {
     const url = new URL(String(input))
     const body = init.body ? JSON.parse(init.body) : null
-    calls.push({ url, body, init })
+    calls.push({ url, body, init, armed: options.lastTimer?.() })
     if (url.hostname === 'sentry.test') { events.push(body); return json({}) }
     if (url.hostname === 'caaciorg.com') {
       options.onSource?.()
@@ -59,6 +59,7 @@ async function worker(flag, options = {}) {
       case 'claim_chat_media_orphan': options.onOrphan?.(); return json(null)
       case 'claim_community_event_sync': options.onClaim?.(); return json(options.claim ?? true)
       case 'apply_caaci_event_snapshot':
+        options.onApply?.()
         if (options.applyThrows) throw new Error('Synthetic internal sync failure')
         if (options.applyStatus !== undefined) return new Response('{"code":"22003","message":"Synthetic database detail"}', {
           status: options.applyStatus, headers: { 'content-type': 'application/json' },
@@ -81,7 +82,7 @@ async function worker(flag, options = {}) {
 
 const rpcNames = result => result.calls.filter(call => call.url.hostname === 'supabase.test')
   .map(call => call.url.pathname.split('/').at(-1))
-const syncCalls = result => rpcNames(result).filter(name => name.includes('community_event'))
+const syncCalls = result => rpcNames(result).filter(name => /community_event|caaci_event/.test(name))
 const diagnosticStrings = value => {
   if (typeof value === 'string') return [value]
   if (value instanceof Error) return [value.message]
@@ -111,6 +112,38 @@ test('a complete empty worker snapshot records empty_snapshot without a Sentry e
   const finish = result.calls.find(call => call.url.pathname.endsWith('/finish_community_event_sync'))
   assert.equal(finish.body.error_code_in, 'empty_snapshot')
   assert.deepEqual(result.events, [])
+})
+
+test('upstream HTTP failures finish without applying a snapshot', async () => {
+  for (const sourceStatus of [403, 404, 500, 503]) {
+    const result = await worker('1', { sourceStatus, sourceBody: '{}' })
+    assert.deepEqual(syncCalls(result), ['claim_community_event_sync', 'finish_community_event_sync'])
+  }
+})
+
+test('the worker arms each sync request with its remaining budget and preserves cleanup time', async t => {
+  const start = 100_000
+  let now = start
+  Date.now = () => now
+  const timer = globalThis.setTimeout
+  let lastTimer
+  t.mock.method(globalThis, 'setTimeout', (callback, timeout, ...args) => {
+    lastTimer = timeout
+    return timer(callback, timeout, ...args)
+  })
+  const result = await worker('1', {
+    lastTimer: () => lastTimer,
+    onOrphan: () => { now = start + 25_000 - 12_500 },
+    onClaim: () => { now += 4000 },
+    onSource: () => { now += 1000 },
+    onApply: () => { now += 1000 },
+  })
+  const timedCalls = result.calls.filter(call => call.url.hostname === 'caaciorg.com'
+    || /\/(?:claim_community_event_sync|apply_caaci_event_snapshot|finish_community_event_sync|purge_completed_background_jobs)$/.test(call.url.pathname))
+  assert.deepEqual(timedCalls.map(call => call.url.hostname === 'caaciorg.com' ? 'caaciorg' : call.url.pathname.split('/').at(-1)), [
+    'claim_community_event_sync', 'caaciorg', 'apply_caaci_event_snapshot', 'finish_community_event_sync', 'purge_completed_background_jobs',
+  ])
+  assert.deepEqual(timedCalls.map(call => call.armed), [5000, 3500, 2500, 1500, 5000])
 })
 
 test('only the exact sync flag opens a new worker response field or any sync request', async () => {

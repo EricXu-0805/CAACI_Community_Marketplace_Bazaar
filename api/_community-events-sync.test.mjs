@@ -99,6 +99,15 @@ test('the upstream request is fixed, unauthenticated, bounded and projects only 
   for (const key of ['id', 'partner_id', 'partner_name_zh', 'allowed_link_hosts', 'comment_count', 'availability', 'discussion_post_id']) {
     assert.equal(Object.hasOwn(row, key), false, key)
   }
+  const expectedKeys = [
+    'all_day', 'content_hash', 'ends_at', 'location', 'occurrence_count', 'organizer_name', 'page_url', 'region',
+    'register_url', 'registration_mode', 'registration_open', 'source_key', 'source_type', 'source_updated_at',
+    'starts_at', 'summary', 'summary_en', 'takes_registrations', 'time_zone', 'title', 'title_en',
+  ]
+  for (const projected of applied.args.rows_in) assert.deepEqual(Object.keys(projected).sort(), expectedKeys)
+  const migration = readFileSync(new URL('../supabase/migrations/20261123201501_community_event_sync.sql', import.meta.url), 'utf8')
+  const databaseKeys = [...new Set([...migration.matchAll(/source_row ->> '([^']+)'/g)].map(match => match[1]))].sort()
+  assert.deepEqual(databaseKeys, expectedKeys)
 })
 
 test('null ends remain null and effective database completeness controls finish', async () => {
@@ -170,6 +179,9 @@ test('upstream and RPC failure classes are stable codes without source content',
     assert.equal(actual.calls.filter(call => call.name === 'finish_community_event_sync').length, 1)
     assert.deepEqual(actual.logs, [])
     assert.equal(code.startsWith('apply_'), options.throwOn === 'apply_caaci_event_snapshot')
+    assert.deepEqual(actual.calls.map(call => call.name), options.throwOn === 'apply_caaci_event_snapshot'
+      ? ['claim_community_event_sync', 'apply_caaci_event_snapshot', 'finish_community_event_sync']
+      : ['claim_community_event_sync', 'finish_community_event_sync'])
   })
 })
 

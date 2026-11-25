@@ -43,6 +43,31 @@ test('each step recomputes its timeout while reserving five seconds for cleanup'
   ])
 })
 
+test('upstream timeout shrinks below the cap as earlier steps spend budget', async t => {
+  process.env.COMMUNITY_SYNC_CAACI_EVENTS = '1'
+  let now = 100_000
+  Date.now = () => now
+  const seen = []
+  const timer = globalThis.setTimeout
+  t.mock.method(globalThis, 'setTimeout', (callback, timeout, ...args) => {
+    seen.push(['upstream', timeout])
+    return timer(callback, timeout, ...args)
+  })
+  const call = async (name, args, timeout) => {
+    seen.push([name, timeout])
+    if (name === 'claim_community_event_sync') now += 4000
+    else if (name === 'apply_caaci_event_snapshot') now += 1000
+    return name === 'apply_caaci_event_snapshot' ? { complete: true, rejected: 0 } : true
+  }
+  const fetch = async () => { now += 1000; return new Response(feed) }
+  const result = await syncCaaciEvents({ deadline: now + 12_500, call, fetch })
+  assert.deepEqual(result, { outcome: 'ok', code: null, rejected: 0 })
+  assert.deepEqual(seen, [
+    ['claim_community_event_sync', 5000], ['upstream', 3500],
+    ['apply_caaci_event_snapshot', 2500], ['finish_community_event_sync', 1500],
+  ])
+})
+
 test('an insufficient pre-finish budget does not record success or call finish', async () => {
   process.env.COMMUNITY_SYNC_CAACI_EVENTS = '1'
   const start = 100_000
