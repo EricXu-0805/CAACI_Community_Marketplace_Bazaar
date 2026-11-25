@@ -6686,3 +6686,711 @@ Failed to load resource: the server responded with a status of 501 (Not Implemen
 - 未测项: 控制SQL未在数据库执行；实际B尚未写入P4；c3前须重新核main并选当前UTC时间戳，按实际B文件生成控制输入；新分支PR未创建
 - 下一条: C2三变异及P3主会话全量回执
 - 附: 旧子任务结果观察器watch130/131/135已关闭。只保留主会话门禁、重跑变异和截止观察器；未重启子任务、未修改账号或运行时配置。
+
+### L492 · 2026-11-24 18:29 CT · D-60十六进制检查器自身对照通过
+- task_id: D-60.10g准备
+- code_sha: e5097bea
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 私有脚本；manifest来源为P4 c2；未核最终报告
+- 命令: hexcheck.sh第一行export LC_ALL=C；从真实manifest生成样本；后台bash_1045在C.UTF-8调用环境核白名单、删d4、紧贴汉字与未知值
+- 计数: 有效值rc0/full1；删d4后rc1/short1；紧贴汉字rc0/full2；未知64位rc1/unknown1；脚本自身4/4
+- ci_run_url: —
+- 未测项: 最终head、FINAL第十四批、#380正文及读回正文尚未产生；原文要求的最终副本对照仍待执行
+- 下一条: P3主会话全量与c2三变异回执
+- 附: 本地材料已保存为01de955，未推送。这个脚本自身测试不能替代最终报告和正文的机械核对。
+
+### L493 · 2026-11-24 18:34 CT · D-60 P3主会话全量十步通过
+- task_id: D-60.2a
+- code_sha: 80aae635
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: pw1.65-node22-pg17；主会话bash_1042
+- 命令: D-60.10b原完整命令；check-20261124T235148Z；十个STEP均rc0；parent-gate.sh repeat另排同锁bash_1046/watch_142
+- 计数: TEST2800/2799/0/1，pg_skips0；smoke623/622/0/1；mpci主包1422771；npmaudit0；磁盘332341161984→332263235584
+- ci_run_url: —
+- 未测项: 60轮尚未完成；推送前main前进核对、17d及远端复核仍待做；未推送
+- 下一条: D-60.2a六十轮及c2三变异回执
+- 附: 这是完整通过的主会话运行，不复用两次被中断的子任务片段。已通过的全量不重跑，除非后续代码改动或规定检查失败。原信号发送者仍未证实，不称平台根因已修好。
+
+### L494 · 2026-11-24 18:36 CT · D-60只读记录#379现有正文的过时表述
+- task_id: D-60.2a正文记录
+- code_sha: 80aae635
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: gh pr view只读；当前远端仍4e7bd214，草稿、base不变
+- 命令: gh pr view 379 --json body,url,headRefOid,baseRefName,isDraft,state；正文不写入
+- 计数: 记录4项当前说明需更新；历史批次证据和仍成立的数值不改写为错误；正文写入0次
+- ci_run_url: —
+- 未测项: P3六十轮和推送仍待完成；下列说明交supervisor，不替代其发布决定
+- 下一条: P3六十轮、推送前核对
+- 附: ①「当前 head `597b7fa`。」已与远端4e7bd214不符，推送成功后应为P3′；②「依据 DECISIONS D-53 至 D-57 的指定范围。」未覆盖后续批次；③当前概述仍只列「本分支按 D-57 普通合入固定 main `9171976e`」，需补本批普通合入321a916f及新全量日志；④末尾「按 E4 第2步核上述 sha256」和「改 base 之前只普通 git merge origin/main，D-55 第2项l」已不合本批E4子项与固定main/发布核对口径。主包1422771仍成立，597b7fa下的旧测量作为历史保留；旧批次门禁表不改为本批结果，须另补新证据。
+
+### L495 · 2026-11-24 19:05 CT · D-60 c2三个独立变异全部成立
+- task_id: D-60.2d
+- code_sha: e5097bea
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话bash_1043；三轮同一次持锁
+- 命令: c2-mutations.sh；L1/L2/L3各跑pages.smoke.spec.ts，分别恢复后核原sha256
+- 计数: 三轮各80/75/4/1；L1 events/detail，L2 events/create，L3 plaza/events，均浅深两条；Received各只有规定的去重unstubbed路径；恢复3/3
+- ci_run_url: —
+- 未测项: P4最终全量仍待后续提交；本证明只绑定c2，不在最终head重跑
+- 下一条: D-60.3 c3
+- 附: 日志依次check-20261125T003240Z、T003629Z、T004018Z；首轮私有解析器错误见L489，修正轮整体rc0。
+
+### L496 · 2026-11-24 19:05 CT · D-60 B最新定义与时间戳前置通过
+- task_id: D-60.3a
+- code_sha: e5097bea
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: P4洁净c2，main321a916f、P3 80aae635
+- 命令: fetch origin；git log origin/main --since=2026-11-23 --format=%H%x20%s -- supabase/migrations；git grep -l apply_caaci_event_snapshot origin/main -- supabase/migrations；各head ls-tree；date -u +%Y%m%d%H%M%S；私有生成器
+- 计数: main迁移log为空rc0，定义grep为空rc1；最大时间戳main20261114015420/P3 20261120100354/P4 20261123201501；写文件UTC20261125004742全部更晚；body md5符合55227c4b42b7ac90e9b1ba34f274b057
+- ci_run_url: —
+- 未测项: 未应用任何托管库；这不是冻结记录
+- 下一条: c3计数对照和早跑
+- 附: 20261125004742_community_event_sync_cap.sql由A字节生成，两处替换各唯一。文件sha256由shasum生成：80395cc72112aa1ac9ff6899e2fe1d264057ae397f27cc5b54209f0e6f3d54d3。
+
+### L497 · 2026-11-24 19:05 CT · D-60 c3计数修前修后及冻结边界通过
+- task_id: D-60.3a
+- code_sha: 77b83569
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 容器；提交前候选树364b285c
+- 命令: node --test scripts/release-migration-count-boundary.test.mjs先红；仅37行186改187；再与database-operations-boundary一同跑；npm run verify:migrations；冻结diff和manifest字节核对
+- 计数: 修前check-20261125T004937Z：2/1/1/0，actual187 expected186；修后T005114Z：7/7/0/0；全部checksum通过；六条冻结迁移diff0；manifest前189行原字节，只追加190行
+- ci_run_url: —
+- 未测项: TS LSP未安装，未新增依赖；实际Node运行已编译并验证改动
+- 下一条: c3早跑与提交
+- 附: README仅186→187和B候选项；没有改其他分项、现有迁移或既有manifest行。
+
+### L498 · 2026-11-24 19:05 CT · D-60 c3提交前完整SQL早跑及独立提交通过
+- task_id: D-60.3c
+- code_sha: 77b83569
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 一次性supabase/postgres17.6.1.104；同锁bash_1050
+- 命令: D60 controls副本回放五个候选时间戳含B；七步后置、十负对照、四变异；git按17b身份commit；scan17d干跑65
+- 计数: lsql-20261125T005350Z：187/187 errors0 done1 rc0；P3 703/703，EV855/855，MEV38/38，SYNC35/35，CAP8/8；后置7/7、负控10/10、变异4/4；恢复后全部绿；scan65 exit0
+- ci_run_url: —
+- 未测项: 这次仅是c3早跑，不替代最终head正式L-SQL；B尚未冻结、P4未推送
+- 下一条: D-60.3b c4
+- 附: c3=77b835696fd211e2bf8312e334f102a3ef0b412c，树与已测候选364b285c相同；无--no-verify。m1恰好1/2/3/4红且1/2均22003；m2同四条；m3仅6；m4仅8。前三条设计报错与D60.7a文字逐字一致，apply实测md5与文件字节一致。
+
+### L499 · 2026-11-24 19:05 CT · D-60 P3首次推送与远端扫描对账完成
+- task_id: D-60.2a
+- code_sha: 80aae635
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 原P3分支，PR379仍草稿、base未改
+- 命令: 60轮check-20261125T004407Z；fetch origin；321a916f..origin/main无前进；scan63；git push origin codex/community-p3-20261120；ls-remote与账本HEAD解析核对；gh pr view
+- 计数: 60/60；正式十步全量见L493；推送1次，有对应扫描1次（scan63；另有干扫62）；远端80aae6354d0849fcea47a9576a38565f6f8380a5；草稿OPEN；正文写入0
+- ci_run_url: —
+- 未测项: gh run list对新head暂为空，未据此判CI通过；旧正文问题见L494，交supervisor
+- 下一条: P4 c4及第8项门禁
+- 附: 普通推送未加--no-verify；既有pre-push额外执行本机boundary/typecheck/H5/MP，全绿。scan63的缩写HEAD解析成同一个完整提交。本head为P3′，c15之前没有新viewport缺陷则不再推P3。
+
+### L500 · 2026-11-24 19:05 CT · [OMO自决] 平台终止源保留未证实风险
+- task_id: D-60基础设施旁项及8
+- code_sha: 80aae635
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话已恢复P3完整验证和推送；旧子任务不再恢复
+- 命令: 保留终止证据与terminal-debug-journal；停止扩大平台排查；第8项scan64后启动主会话bash_1051/watch_146全量
+- 计数: P3所需全量与60轮完成；原始信号发送者未证实；第8项全量在跑；运行时配置改动0，账号/模型改动0
+- ci_run_url: —
+- 未测项: 不声称修好了RPC宿主或找到了精确SIGTERM来源；平台风险进FINAL⑥
+- 下一条: D-60.3b及第8项完成事件
+- 附: 取消的是额外扩展的平台根因追查，不扣D60任何用户要求的交付项。B和应用工作继续，父会话持有全部后续门禁。
+
+### L501 · 2026-11-24 19:34 CT · D-60 c4候选与后续准备
+- task_id: D-60.3b/9e准备
+- code_sha: 77b83569
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: P4 c4候选暂存；第8项全量先占同一锁
+- 命令: 仅在原夹具末尾追加startEventSyncCapDatabase；新增7个Node用例；旧A夹具字节前缀及原9测试未变；bash_1053/watch_147排队正向验证；准备私有六变异脚本
+- 计数: 候选2文件+184行；预期旧9+新7共16，尚未实测；B文件未变；ENGINEERING已写实际B文件名和封顶语义
+- ci_run_url: —
+- 未测项: c4未提交；六变异未启动；私有c5-tests.patch和c5-code.patch未应用，API代码仍未改
+- 下一条: c4正向回执、提交后六变异
+- 附: 按D60.10a在c4提交后的head做六个变异，恢复后工作区应为空；正向实验仍用提交的db.as，私有溢出诊断仅用于变异SQLSTATE记录。
+
+### L502 · 2026-11-24 19:34 CT · D-60最终CI推算的五份固定样本已收集
+- task_id: D-60.10i CI输入
+- code_sha: 321a916f
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: GitHub只读作业元数据；未读认证日志或凭据
+- 命令: 读取第十三批既有公式和三样本；gh run view45248909343；补用jobs API取步骤时间；以旧44647478789验证非smoke=作业墙钟时长减smoke
+- 计数: 旧三样本沿用478/645/1529、563/105/1292、564/84/1547；新增public571/658/1314，authenticated571/80/1577（条数/非smoke秒/smoke秒）
+- ci_run_url: —
+- 未测项: P4最终N尚未确定，未生成预测结果；预测不是本批CI实测；workflow不改
+- 下一条: 最终P4 Running N后计算新表
+- 附: 两新作业均npm run smoke；认证配置只控制已注册用例的skip，不改注册数。public作业1972秒、smoke1314；authenticated1657秒、smoke1577。样本固定保存在私有CI_SAMPLES.json，不重复查询已收集数据。
+
+### L503 · 2026-11-24 19:43 CT · D-60 c4普通PG对照通过并提交
+- task_id: D-60.3b
+- code_sha: 2a163663
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 普通PostgreSQL17夹具，容器bash_1053
+- 命令: node --test --test-concurrency=2 scripts/community-event-sync.test.mjs scripts/community-event-sync-cap.test.mjs；提交c4；scan66；同锁六变异bash_1056/watch_148
+- 计数: check-20261125T013714Z：16/16/0/0，含原A9条和新7条；原夹具字节前缀不变；候选树c36d2087与提交相同；scan66 exit0
+- ci_run_url: —
+- 未测项: 六变异尚未回，B未冻结；不能在它们结束前改P4或进入c5
+- 下一条: c4六变异完成事件
+- 附: 合同含proisstrict，A-only明确22003，B实验组提交Fresh更新；连续五次、missing_since、unhide阈值、窗口、双守卫和纯字节差均通过。未跑普通PG上的VERIFY。
+
+### L504 · 2026-11-24 19:43 CT · D-60第8项主会话完整门禁通过
+- task_id: D-60.8
+- code_sha: 4fc14fff
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话bash_1051，pw1.65-node22-pg17
+- 命令: D60.8十步完整命令；check-20261125T005840Z；另排同锁60轮bash_1057/watch_149
+- 计数: 十步rc0；TEST2665/2664/0/1 pg_skips0；smoke575/574/0/1；mpci主包1381447；npmaudit0；磁盘332344782848→332317458432
+- ci_run_url: —
+- 未测项: 60轮、实际推送、草稿PR和PR CI待完成；不重复全量
+- 下一条: 第8项60轮完成后扫描与首次发布
+- 附: 可选c2已包含；T1-T4和M1-M9有效证明见L490。旧子任务空日志的rc0未计为门禁。当前分支仍未推送，没有PR。
+
+### L505 · 2026-11-24 20:11 CT · D-60 c4六个B变异全部成立
+- task_id: D-60.3b
+- code_sha: 2a163663
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话bash_1056，pw1.65-node22-pg17，同锁
+- 命令: c4-mutations.sh；check-20261125T014152Z 至 check-20261125T014314Z
+- 计数: 六变异成立；分别4/4/5/1/1/2条红；恢复6/6；正向旧A9+新B7=16/16，skipped0
+- ci_run_url: —
+- 未测项: 最终head正式L-SQL和冻结另做
+- 下一条: D-60 c5错误码
+- 附: 去掉封顶的额外诊断check-20261125T014206Z确认SQLSTATE 22003。各轮恢复B原sha256；窗口变异由重复应用守卫及纯字节检查抓到，未声称窗口行为用例变红。c4扫描66通过。
+
+### L506 · 2026-11-24 20:11 CT · D-60第8项60轮通过并首次发布草稿385
+- task_id: D-60.8
+- code_sha: 4fc14fff
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话bash_1057、bash_1060、bash_1062；本地合成环境及GitHub
+- 命令: check-20261125T014328Z；普通git push；gh pr create --draft --base main；gh pr view；gh run watch 45529252152
+- 计数: 60/60；夹具推送1/2，开草稿1/1；scan67和68均exit0；远端、PR及scan67解析出的完整head一致
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45529252152
+- 未测项: PR CI进行中，由bash_1063持续观察；尚未记CI通过
+- 下一条: 等CI完成回执，继续本地c6
+- 附: PR #385为OPEN草稿、base main。完整门禁沿用L504，不重跑。只读GitHub元数据包含既有Supabase Preview集成链接的生产标识；该检查为SKIPPED，没有打开该地址或连接目标库，未命中D-42第2项(a)的执行或请求条件。后续只观察CI workflow。
+
+### L507 · 2026-11-24 20:11 CT · D-60 c5分类与空快照独立提交
+- task_id: D-60.4a
+- code_sha: abd96f45
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话bash_1059、bash_1064，pw1.65-node22-pg17，同锁
+- 命令: c5修前测试、c5-checks.sh green、c5-mutations.sh；check-20261125T014833Z；17d干扫69
+- 计数: 修前15条红；修后62/62，fail0 skipped0；六变异分别15/8/6/1/2/2条红，恢复6/6；扫描exit0
+- ci_run_url: —
+- 未测项: c6、后续客户端改动及最终全量；P4尚未推送
+- 下一条: D-60.4b修正调用助手及调用序列断言
+- 附: 三文件独立提交；上游、apply、finish分类按调用位置拆开。完整空快照写empty_snapshot，worker仍ok且Sentry为0。旧worker、预算、CLI和A库用例通过；原先允许翻转以外的期望未改。六变异结束后模块恢复到同一sha256。
+
+### L508 · 2026-11-24 20:23 CT · D-60第8项PR CI完成
+- task_id: D-60.8
+- code_sha: 4fc14fff
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: GitHub CI，主会话bash_1063观察
+- 命令: gh run watch 45529252152 --exit-status；gh run view；gh pr view 385
+- 计数: workflow success；5个作业success，2个skipped；各成功作业均有步骤；本地60/60沿用L506
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45529252152
+- 未测项: 本次run的protected staging account和Production release readiness均skipped、0步骤，不计为验收通过
+- 下一条: 继续D-60第5项
+- 附: run head与已测、已扫、远端head一致；#385仍OPEN草稿、base main。第8项完成，推送仍1次、创建草稿仍1次；不重跑通过项。
+
+### L509 · 2026-11-24 20:23 CT · D-60 c6测试缺口和变异全部完成
+- task_id: D-60.4b
+- code_sha: 65f23f63
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话bash_1065、bash_1066、bash_1068，pw1.65-node22-pg17，同锁
+- 命令: check-20261125T021113Z、check-20261125T021344Z；c6-mutations.sh；17d干扫70
+- 计数: 先修助手后旧worker7/7；新旧用例65/65、skipped0；11个变异成立；旧模块四例4/4、skipped0；所有恢复通过；scan70 exit0
+- ci_run_url: —
+- 未测项: 编辑器LSP缺typescript-language-server，未运行LSP诊断；最终项目typecheck另做；P4尚未推送
+- 下一条: D-60.5W1提交c7搜索交接与八条用例
+- 附: c6只改三份测试。原预算21–44行不变，生产行为不变。M8旧助手18条红且worker新用例过；新助手19条红，多出的恰好是worker sourceStatus用例。M6b红armed一条，M6c红预算①b和armed两条；三投影变异各一条。旧预算下限、三个RPC省第三参、节奏、正文隐私变异分别3/6/1/10条红。证据在D60/c6-mutations/RESULT.json。
+- 附: 旧模块0e7fbc13只选以下四个用例，全部通过后恢复并核sha256：upstream timeout shrinks below the cap as earlier steps spend budget；the worker arms each sync request with its remaining budget and preserves cleanup time；upstream HTTP failures finish without applying a snapshot；the upstream request is fixed, unauthenticated, bounded and projects only source columns。调用序列由M8证明，不拿旧模块的c5期望作为c6失败。
+
+### L510 · 2026-11-24 20:47 CT · D-60 W1修前页头基线
+- task_id: D-60.5W1
+- code_sha: 65f23f63
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话bash_1069，pw1.65-node22-pg17，同锁；1280浅深两主题
+- 命令: 私有zz-d60-w1-header-c6.spec.ts；check-20261125T023301Z；拍完先归档再删除临时spec
+- 计数: 2/2；两张均small=0 contrast=0 axe=0 overflow=0；三类主机请求0
+- ci_run_url: —
+- 未测项: c7尚未应用；八条搜索修前对照由bash_1070/watch_157运行
+- 下一条: 接收修前结果，应用W1最小补丁
+- 附: 两张图已看，页头完整且无重叠；DOM只移除data-v-*属性。浅色sha256为4afe4d812cd9a7f3cd8fcd9ee02fbc4ff8c0f26663f2c4834b2d7d25ac781d66，深色为365fe90684cca5b931d15e2a225f65003ce4e314b348f6202fdfb66a4f642e8d；等待c7同法比对。产物在D60/w1/c6/。
+- 附: [OMO自决] 第七条用例用现有英文可访问标签Following的精确role定位，点后核aria-selected=true；依据为页面role=tab及语言包的plaza.tab.following。作用限本测试，撤回可随c7正常反向提交。600ms是D60明确要求的无搜索观察窗口，不作为异步就绪条件；Enter前先订阅请求。
+
+### L511 · 2026-11-24 21:22 CT · D-60 c7功能通过，第三变异待查
+- task_id: D-60.5W1
+- code_sha: b1f0bc7c
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁
+- 命令: check-20261125T024328Z、check-20261125T024849Z、check-20261125T025739Z；17d干扫71；w1/mutations.sh；诊断bash_1075/watch_161
+- 计数: 修前8例为1过7红，七条都在URL提前离开处红；修后路由18/18、typecheck rc0、页头29/29；授权替换search一档、新增8档，smoke净增7；两主题广场DOM哈希分别与L510相同
+- ci_run_url: —
+- 未测项: W1验收未完成。只赋值变异的四个previous-all用例在check-20261125T030435Z仍4/4通过；旧current-item与H5守卫尚未执行
+- 下一条: 查明赋值变异为何未被捕获，保留所有预期，不重跑已成立的前两项
+- 附: 输入即跳转、忽略pendingSearch两项变异各选一条list/home用例，均按指定原因变红并恢复。第三项的工作区已恢复。当前临时诊断只在授权onShow段加状态记录，并另放未跟踪私有spec；结束后恢复原字节、删除spec。不据源码推测宣布根因。
+- 附: CommunityHeader.vue相对0e7fbc13无差异，plaza目录差异仅onShow；七条deepEqual只增加pendingSearch:null。Vue LSP也未安装，本项实际使用项目vue-tsc检查通过，没有安装依赖或改工具配置。
+
+### L512 · 2026-11-24 21:38 CT · D-60 W1测试前置条件修正
+- task_id: D-60.5W1
+- code_sha: 164e599b（c7修复，按D-60第10项a追加独立提交）
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: Node22.23.5、Playwright WebKit；主会话后台同锁
+- 命令: check-20261125T032058Z运行时四场景诊断；check-20261125T033130Z修正验证；17d干扫72；bash_1078/watch_163续跑未完成控制
+- 计数: 四场景诊断完成；修正后路由18/18、typecheck rc0、页头29/29；scan72 exit0；原有断言未改、用例数未变
+- ci_run_url: —
+- 未测项: 赋值变异和两个旧守卫仍待续跑结果，不记W1通过
+- 下一条: 接收mutations-after-fix回执，再进入c8
+- 附: 测试前置条件是OMO设置错误。带查询入口的两场景实测sameHeader=false、返回onShow进入时view=home，赋值变异仍发出1次搜索；从无查询入口用真实菜单切到all的两场景sameHeader=true、返回仍view=all，active/following保留，赋值变异搜索0次。故原测试被新页面载入路径掩盖。诊断仅观察本构建行为，不把文档当缓存行为的证明。
+- 附: 修复只改新增W1用例的前置操作，进入all前先订阅并等实际posts响应。生产app/src相对b1f0bc7无差异，之前广场DOM证明保留。临时onShow记录和私有spec已清理，plaza原sha256恢复。前两项变异保留原日志和head；本次不重跑，首次四过的假绿日志也保留。
+
+### L513 · 2026-11-24 21:50 CT · D-60 W1全部控制完成
+- task_id: D-60.5W1
+- code_sha: 164e599b（c7及其独立修复）
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话bash_1078、bash_1079；pw1.65-node22-pg17，同锁
+- 命令: check-20261125T033623Z、check-20261125T034035Z、check-20261125T034540Z、check-20261125T034556Z
+- 计数: 三个搜索变异有效红1/1/4；旧当前项守卫1条红；旧H5守卫三页WXML均出现community-header，恢复后JSON/WXML均无；全部源码恢复；正常mpci主包1469529，相对1469411增加118，event分包37679不变
+- ci_run_url: —
+- 未测项: 本条不替代最终全量、最终60轮和36张截图
+- 下一条: D-60.5W2提交c8登录返回白名单修复
+- 附: 第三变异已在修复head上按期望四条全红，假绿问题关闭。旧当前项用例实际正确报Expected Events、Received Community；私有读日志脚本误等Expected string标签而退出，修正读取后核准原日志，没有重跑该用例，也没改它的断言。原错误记录保留。
+- 附: H5负对照的三页JSON usingComponents未出现Header，但三页WXML均出现，所以守卫按要求变红；不把两种产物都说成失败。恢复构建三页JSON/WXML都不含Header。汇总在D60/w1/final-guards/RESULT.json，前两变异保留b1f0bc7的有效记录，其余在164e599上完成。W1完成。
+
+### L514 · 2026-11-24 22:14 CT · D-60 c8登录返回修复提交
+- task_id: D-60.5W2
+- code_sha: 2142b81d
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁
+- 命令: check-20261125T035758Z修前；check-20261125T040050Z修后；17d干扫73；bash_1083/watch_167执行三变异
+- 计数: 修前Node15/14/1/0，七个浏览器目标均因缺intent变红；修后Node15/15/0/0、typecheck0、两spec105/105、mpci0；主包1469604，比基线增加193、比c7增加75，event分包37679不变；scan73 exit0
+- ci_run_url: —
+- 未测项: 三组变异仍在运行；不把W2记为完整验收
+- 下一条: 接收W2控制后，按顺序做c9a W4b
+- 附: 只扩login两份白名单及最多三段路径正则，welcome集合未动；页头改用requireAuth，三个既有门禁调用处未改。Node新增1条；浏览器新页头3条、替换旧login一档、直接进入发起页新声明在390/1280各跑一次，净增4条；既有会员入口仅按授权收紧并补返回路径断言。
+- 附: 读取现有run-checks的防误指代码时看见其中固有的生产标识检查；本项只跑cmd/typecheck/smoke/mpci，没有执行probe或访问那些地址。原有Sass legacy-js-api警告仍在，未改依赖、未压制警告。
+
+### L515 · 2026-11-24 22:20 CT · D-60 W2三变异完成
+- task_id: D-60.5W2
+- code_sha: 2142b81d
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话bash_1083，pw1.65-node22-pg17，同锁
+- 命令: check-20261125T041146Z、check-20261125T041241Z、check-20261125T041413Z
+- 计数: 裸登录Node0红/smoke3红；两段正则Node1红/smoke6红；删detail白名单Node1红/smoke1红；目标七例其余均过；三次恢复sha256成立
+- ci_run_url: —
+- 未测项: 不替代最终全量与真机验收
+- 下一条: D-60.5W4b提交c9a灰字视图位置修复
+- 附: 失败名称、收到的无intent登录URL均与目标匹配；不是编译、启动或夹具异常。结果在D60/w2/mutations/RESULT.json。W2完成。
+
+### L516 · 2026-11-24 22:31 CT · D-60 c9a灰字位置完成
+- task_id: D-60.5W4b
+- code_sha: 92e9e54c
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁
+- 命令: check-20261125T042150Z修前；check-20261125T042514Z修后；check-20261125T042913Z.log变异；17d干扫74
+- 计数: 修前三条均0预期/1实得；修后freshness18/18、typecheck0、mpci0；移回旧位置三条全红并恢复；主包1469602（基线+191、c8-2），event37679不变；scan74 exit0
+- ci_run_url: —
+- 未测项: 不替代最终36张矩阵与全量
+- 下一条: D-60.5W4a提交c9b详情按来源读取
+- 附: 只移动唯一灰字行，staleCheckedAt保留；原有freshness源码字节前缀未变。失败、往期空态、加载中截图修前均有灰字，修后均无；手机和桌面未来列表仍有灰字，图片已看。响应等待后保持500ms再取数量，加载中的等待在finally释放。W4b完成。
+
+### L517 · 2026-11-24 22:47 CT · D-60 c9b详情按来源读取完成
+- task_id: D-60.5W4a
+- code_sha: 3c97b7db
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁
+- 命令: check-20261125T043213Z修前；check-20261125T043522Z修后；check-20261125T044354Z.log变异；17d干扫75
+- 计数: 修前五例1过4红；修后freshness23/23、typecheck0、mpci0；恢复无条件读取后member/partner/campus/无id四条红、CAACI正对照过，恢复sha256成立；主包1469602不变，event分包37721（基线+42）；scan75 exit0
+- ci_run_url: —
+- 未测项: 不替代最终全量和36张矩阵
+- 下一条: D-60.5W5提交c10来源标签与侧栏修复
+- 附: 同步读取只移到event.value赋值之后并检查source_type=caaci，epoch守卫保留。旧18条freshness源码前缀逐字保留；STUB_TABLES中的community_event_sync_state保留，因为列表仍使用。W4a完成。
+
+### L518 · 2026-11-24 23:00 CT · D-60 c10来源标签及768侧栏完成
+- task_id: D-60.5W5
+- code_sha: 1ec29ec6
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁
+- 命令: check-20261125T044905Z修前；check-20261125T045141Z修后；check-20261125T045616Z.log标签变异；check-20261125T045827Z.log侧栏变异；17d干扫76
+- 计数: 修前六例1过5红；修后新六例及旧desktop31例37/37、typecheck0、mpci0；删四声明后390/768列表及390/1280首页四红、1280列表过；恢复768规则后指定一条红，display flex、main216而available480；两文件sha256恢复；scan76 exit0
+- ci_run_url: —
+- 未测项: 候选及最终36张矩阵仍待拍；本项六组修前/修后画面已逐张查看
+- 下一条: D-60.5W3提交c11a详情发起页吸顶测试
+- 附: with-create模板绑定保留，nowrap保留，详情来源条未改。768主列从216变480；1280旧量尺1200/876/300/876仍通过。主包1469678（较0e7fbc13基线+267、c9b+76），event分包37721（基线+42）。[OMO自决] 新建独立layout spec，未改受限的desktop fixture。Vue LSP不可用，未安装新依赖；已有项目typecheck通过。W5完成。
+
+### L519 · 2026-11-24 23:08 CT · D-60 c11a两页吸顶测试完成
+- task_id: D-60.5W3
+- code_sha: 23d32c82
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁
+- 命令: check-20261125T050143Z；check-20261125T050453Z.log；check-20261125T050713Z.log；17d干扫77
+- 计数: 新两例2/2；两页各删sticky后指定用例各1红，均先通过scrollY>120再在toBeInViewport收到ratio0；两页sha256恢复；scan77 exit0
+- ci_run_url: —
+- 未测项: 最终全量待c15；本项不改应用，不重复量主包
+- 下一条: D-60.5W6提交c11b胶囊级联测试
+- 附: 1280×600、member、开关打开；详情夹具在新用例内填长summary，fixture函数与旧断言前缀未改。页头top绝对值≤1和(640,28)命中均通过，两张底部截图已看。首次详情日志读取把失败上下文里的scrollY源码误判为前置失败；核实实际错误为viewport ratio0后接受原日志，未重跑。新describe按D60指定追加到desktop文件。W3完成。
+
+### L520 · 2026-11-24 23:24 CT · D-60 c11b胶囊级联测试完成
+- task_id: D-60.5W6
+- code_sha: a3d3a96f
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁
+- 命令: check-20261125T050852Z正向；w6十个独立控制；17d干扫78
+- 计数: 新旧4/4、skipped0；列表和详情各四变异失败数1/1/1/2，最后一项新旧守卫同时红；两处header后代选择器对照均4/4；八变异及两正对照全部恢复，两份Vue sha256一致，工作区洁净；scan78 exit0
+- ci_run_url: —
+- 未测项: 候选及最终36张矩阵待核；最终全量待c15
+- 下一条: D-60.5候选及最终截图四指标比对
+- 附: 只追加一条Node测试，旧用例前缀逐字保留。MP条件编译和sass后按最后复合选择器、important、特异性及源码顺序选padding最终声明；不把header的后代当成header。Node净增1，smoke不变，应用未改。W1–W6代码与各自指定控制已完成。
+
+### L521 · 2026-11-24 23:31 CT · D-60候选36张矩阵
+- task_id: D-60.5候选截图
+- code_sha: a3d3a96f
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁；D59原拍法
+- 命令: check-20261125T052446Z；与材料2540db88逐张SHA-256对照
+- 计数: 36/36；36张已逐张查看；四指标全0，axe均非null；三类主机请求0；变化恰为四张events-768中英文浅深图，其余32张逐字一致；临时spec已移除，工作区洁净
+- ci_run_url: —
+- 未测项: 本次是候选head，最终head仍须重拍；尚未向材料复制任何图
+- 下一条: D-60.6a提交c12五处解析行为修正
+- 附: 768列表占满主列且页头发起按钮保留；1280保留来源/发起侧栏。390详情截图顶栏的回退与标题未绘出，与旧图逐字一致，本项不另改拍法或应用；这是既有截图局限，未调查原因。下列overflow仅390计入本项判定。
+- events-390-light-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-390-light-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-390-light-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- events-390-light-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-390-light-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-390-light-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- events-390-dark-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-390-dark-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-390-dark-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- events-390-dark-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-390-dark-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-390-dark-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- events-768-light-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-768-light-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-768-light-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- events-768-light-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-768-light-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-768-light-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- events-768-dark-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-768-dark-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-768-dark-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- events-768-dark-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-768-dark-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-768-dark-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- events-1280-light-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-1280-light-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-1280-light-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- events-1280-light-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-1280-light-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-1280-light-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- events-1280-dark-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-1280-dark-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-1280-dark-zh ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- events-1280-dark-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- event-detail-1280-dark-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+- home-events-1280-dark-en ｜ small=0 contrast=0 axe=0 overflow=0 ｜ 三类主机请求 0
+
+### L522 · 2026-11-24 23:37 CT · D-60 c12修复提交及校历合同
+- task_id: D-60.6a、D-60.6c
+- code_sha: bdc26d32（完整SHA见提交及scan79）
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁
+- 命令: check-20261125T053117Z修前；check-20261125T053227Z修后；17d干扫79
+- 计数: 新增16例；新旧46例修前35过11红、修后46/46，skipped0；旧两份测试前缀逐字保留；scan79 exit0
+- ci_run_url: —
+- 未测项: 八组变异正在逐项执行；学校写库及接源仍未实现，留D61和D33
+- 下一条: D-60.6b新增边界用例及八组变异
+- 附: 系列末场缺DTEND取其开始，单场缺DTEND仍null；标题两处和地点按160码点截断；拒收仅限VEVENT层五属性；全天/定时混组拒收。无新UID或新api模块，SHARED_MODULES未改。ENGINEERING§9.3补齐拒收、码点、末场、12小时边界封顶2、自然顺延、只读last_seen_at函数及256KB容量推算合同；本批没有实现该写库路径。
+
+### L523 · 2026-11-24 23:53 CT · D-60校历八组变异完成
+- task_id: D-60.6b
+- code_sha: bdc26d32
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁
+- 命令: c12十三个独立负控（八组，标题含parser/normalizer两处、拒收含五属性）；每项恢复sha256
+- 计数: 13/13控制成立；地点两条红，其余各一条指定红；每轮总数46、skipped0；二次反转义只有新增LOCATION用例红，原15条ICS用例均过；最终两文件sha256恢复、工作区洁净
+- ci_run_url: —
+- 未测项: P4.7写库、整本导出接源检查及D33条款仍开放；最终全量待c15
+- 下一条: D-60.7b提交c13三函数schema探测
+- 附: 第6项代码、指定控制和材料合同已完成。读取仓库既有RUNBOOK时输出含既有生产项目ref，仅源码读取、没有发请求；按D42原文读取例外记录，不触发暂停。
+
+### L524 · 2026-11-25 00:03 CT · D-60 c13同步schema探测完成
+- task_id: D-60.7b
+- code_sha: 9c2a73a3
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁；注入fetch，未连接托管库
+- 命令: check-20261125T055315Z修前；check-20261125T055456Z修后；check-20261125T055803Z.log；check-20261125T060133Z.log；17d干扫80
+- 计数: 新旧6例修前4过2红、修后6/6；三RPC各404/200/400拒绝及401通过、null参数/POST/请求头/redirect/timeout合同；放宽非404时200档红；删整段时404档及13项计数红；恢复sha256成立；scan80 exit0
+- ci_run_url: —
+- 未测项: 本批不跑S-1；实际ACL仍由Eric应用时核；探测只证明A，不能证明B
+- 下一条: D-60.9g提交c14a根RUNBOOK发布与告警规则
+- 附: 三探测在member switch之后、topic state之前；旧results.at(-1)断言未改。missingState/oddState原本已经用migrated兜底，保持原文。Node净增1，最终门禁仍待c15。
+
+### L525 · 2026-11-25 00:20 CT · c14a完成及第10a持锁过程纠正
+- task_id: D-60.9g、D-60.10a
+- code_sha: ff62d668
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁
+- 命令: check-20261125T060341Z；17d干扫81；原头detached工作区准备
+- 计数: c14a安全/链接4/4；E13、four migrations、four community migrations均0；scan81 exit0
+- ci_run_url: —
+- 未测项: c10、c11a、c11b、c12、c13的整组单次持锁证据需补齐；此前逐项结果不冒充该过程验收
+- 下一条: D-60.10a补齐c10原头单次持锁控制
+- 附: 主会话遗漏第10a“每个提交的变异在一次持锁里跑完”，上述五组虽串行、每项均持同一把锁，但中途释放再获取。保留此前日志，在每组各自原提交上重新完成整组，一把锁从组开始持有到最后恢复核哈希；不在最终head重跑，也不改代码提交。新增私有detached工作区只服务这一纠正，完成后正常移除。c14a已独立提交，后续c14b采用同一整组控制器。
+
+### L526 · 2026-11-25 00:30 CT · c10原头整组单次持锁复核完成
+- task_id: D-60.10a c10
+- code_sha: 1ec29ec6373ca01a0f5eeb11661856d8902a93aa
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；私有detached复核工作区；同一PID全组持续持锁
+- 命令: protocol/driver.sh c10；逐步apply_patch变异、读实际日志、恢复并核sha256
+- 计数: 2/2控制符合指定失败/通过；所有字节恢复；锁收据获取1次、释放1次；每步前后磁盘≥50GB
+- ci_run_url: —
+- 未测项: 不替代最终head门禁；未改任何代码提交
+- 下一条: D-60.10a 补齐c11a原头单次持锁控制
+- 附: tags 1/4 (check-20261125T062539Z.log)；sidebar 0/1 (check-20261125T062732Z.log)。本条补齐L525记录的持锁过程要求，原逐项证据保留。
+
+### L527 · 2026-11-25 00:39 CT · c11a原头整组单次持锁复核完成
+- task_id: D-60.10a c11a
+- code_sha: 23d32c82095b832cec57442fa03fd93b00e58796
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；私有detached复核工作区；同一PID全组持续持锁
+- 命令: protocol/driver.sh c11a；逐步apply_patch变异、读实际日志、恢复并核sha256
+- 计数: 2/2控制符合指定失败/通过；所有字节恢复；锁收据获取1次、释放1次；每步前后磁盘≥50GB
+- ci_run_url: —
+- 未测项: 不替代最终head门禁；未改任何代码提交
+- 下一条: D-60.10a 补齐c11b原头单次持锁控制
+- 附: detail 0/1 (check-20261125T063038Z.log)；create 0/1 (check-20261125T063449Z.log)。本条补齐L525记录的持锁过程要求，原逐项证据保留。
+
+### L528 · 2026-11-25 00:55 CT · c11b原头整组单次持锁复核完成
+- task_id: D-60.10a c11b
+- code_sha: a3d3a96f8f6b5a5c3fc14f66ae9b88815bcedcdd
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；私有detached复核工作区；同一PID全组持续持锁
+- 命令: protocol/driver.sh c11b；逐步apply_patch变异、读实际日志、恢复并核sha256
+- 计数: 10/10控制符合指定失败/通过；所有字节恢复；锁收据获取1次、释放1次；每步前后磁盘≥50GB
+- ci_run_url: —
+- 未测项: 不替代最终head门禁；未改任何代码提交
+- 下一条: D-60.10a 补齐c12原头单次持锁控制
+- 附: list-specificity 3/1 (check-20261125T063949Z.log)；list-group 3/1 (check-20261125T064230Z.log)；list-logical 3/1 (check-20261125T064359Z.log)；list-order 2/2 (check-20261125T064955Z.log)；list-descendant 4/0 (check-20261125T065015Z.log)；detail-specificity 3/1 (check-20261125T065104Z.log)；detail-group 3/1 (check-20261125T065242Z.log)；detail-logical 3/1 (check-20261125T065333Z.log)；detail-order 2/2 (check-20261125T065359Z.log)；detail-descendant 4/0 (check-20261125T065411Z.log)。本条补齐L525记录的持锁过程要求，原逐项证据保留。
+
+### L529 · 2026-11-25 01:03 CT · c12原头整组单次持锁复核完成
+- task_id: D-60.10a c12
+- code_sha: bdc26d3294872765664dacfca9281ec45cb2b18f
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；私有detached复核工作区；同一PID全组持续持锁
+- 命令: protocol/driver.sh c12；逐步apply_patch变异、读实际日志、恢复并核sha256
+- 计数: 13/13控制符合指定失败/通过；所有字节恢复；锁收据获取1次、释放1次；每步前后磁盘≥50GB
+- ci_run_url: —
+- 未测项: 不替代最终head门禁；未改任何代码提交
+- 下一条: D-60.10a 补齐c13原头单次持锁控制
+- 附: series-end 45/1 (check-20261125T065506Z.log)；parser-title 45/1 (check-20261125T065559Z.log)；normalizer-title 45/1 (check-20261125T065640Z.log)；location 44/2 (check-20261125T065700Z.log)；reject-RRULE 45/1 (check-20261125T065717Z.log)；reject-RDATE 45/1 (check-20261125T065801Z.log)；reject-EXDATE 45/1 (check-20261125T065816Z.log)；reject-RECURRENCE-ID 45/1 (check-20261125T065834Z.log)；reject-DURATION 45/1 (check-20261125T065934Z.log)；nested-rejection 45/1 (check-20261125T065957Z.log)；mixed-series 45/1 (check-20261125T070119Z.log)；double-unescape 45/1 (check-20261125T070206Z.log)；optional-quote 45/1 (check-20261125T070247Z.log)。本条补齐L525记录的持锁过程要求，原逐项证据保留。
+
+### L530 · 2026-11-25 01:07 CT · c13原头整组单次持锁复核完成
+- task_id: D-60.10a c13
+- code_sha: 9c2a73a33e7a4faa693b9b52b89aa7bbe7a54607
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；私有detached复核工作区；同一PID全组持续持锁
+- 命令: protocol/driver.sh c13；逐步apply_patch变异、读实际日志、恢复并核sha256
+- 计数: 2/2控制符合指定失败/通过；所有字节恢复；锁收据获取1次、释放1次；每步前后磁盘≥50GB
+- ci_run_url: —
+- 未测项: 不替代最终head门禁；未改任何代码提交
+- 下一条: D-60.7a提交c14b发布清单与机械测试
+- 附: accept-non404 5/1 (check-20261125T070352Z.log)；omit-probes 4/2 (check-20261125T070457Z.log)。本条补齐L525记录的持锁过程要求，原逐项证据保留。
+
+### L531 · 2026-11-25 01:10 CT · c14b机械发布清单提交
+- task_id: D-60.7a、D-60.9e
+- code_sha: d72f3eca
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主会话；pw1.65-node22-pg17；后台同锁
+- 命令: check-20261125T070645Z.log修前；check-20261125T070749Z.log修后；17d干扫82
+- 计数: 修前5例4过1红（缺发布节），修后5/5；五迁移文件/去事务hash、各唯一BEGIN/COMMIT行及十一元命令行均对；scan82 exit0
+- ci_run_url: —
+- 未测项: 三个清单变异接着整组持锁执行；托管方式本地演练尚未启动；没有托管操作
+- 下一条: D-60.7a完成哈希顺序缺行三变异
+- 附: 新节在指定位置，17步NOTICE及三条设计报错从既有SQL与早跑记录核定。ENGINEERING§9.2/9.3/9.4/9.9/§13的全部指定文字已核齐，码位机械证据沿用已过记录。L525五组持锁过程纠正已在L526–L530补齐，私有复核工作区已正常移除，没有force；主P4未切头。
+
+### L532 · 2026-11-25 01:15 CT · c14b三变异整组通过
+- task_id: D-60.7a
+- code_sha: d72f3eca
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主P4工作区；单PID整组持同一把锁
+- 命令: protocol/driver.sh c14b；改一位hash、交换两行、遗漏B行；每项恢复核sha256
+- 计数: 三控制各5例4过1预期红；旧安全/链接4条每轮均过；RUNBOOK原字节恢复；锁获取1次、释放1次
+- ci_run_url: —
+- 未测项: 托管方式本地演练已从本提交准备并排队，尚无结论；未操作托管库
+- 下一条: D-60.2e c15合P3新head并核树祖先
+- 附: 三份日志为check-20261125T071055Z.log、check-20261125T071142Z.log、check-20261125T071316Z.log。7a完成；7c只在本地网络隔离容器内做，结果另记。
+
+### L533 · 2026-11-25 01:18 CT · D-60托管方式本地演练通过
+- task_id: D-60.7c
+- code_sha: d72f3eca（git archive来源；演练副本不是Git工作区）
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 本地supabase/postgres17.6.1.104，network none；同锁串行两次独立182链
+- 命令: hosted/checks.sh；lsql-20261125T071406Z.log；lsql-20261125T071544Z.log；无时间戳参数，AFTER_REPLAY分别main/controls
+- 计数: 两次files182/replayed182/errors0/done1/rc0；主演练17步rc0、NOTICE逐字符合c14b，三条旧VERIFY首错逐字符合D60；SQL事务WARNING0；原P3带事务行对照两条指定WARNING各1，保留set对照服务端syntax error at or near反斜杠；两对照通过
+- ci_run_url: —
+- 未测项: 托管库实际NOTICE显示和默认ACL仍归Eric；本次没有访问托管库
+- 下一条: D-60.2e c15合P3新head并核树祖先
+- 附: 两次归档副本均无Git元数据，通用回放器输出fatal: not a git repository并留空head；来源提交和每个payload哈希由prepared.json另行记录、核过，不伪造head。两次原回放器退出清理自建容器时均有StopSignal SIGINT超10秒转SIGKILL提示，发生在全部SQL完成之后；未改原脚本。SQL步骤没有那两条事务WARNING。第7项全部完成，未修改c14b迁就结果。
+
+### L534 · 2026-11-25 01:21 CT · c15普通合并核对通过并进入最终门禁
+- task_id: D-60.2e、D-60.10b
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主P4工作区；干净树af4c532c；pw1.65-node22-pg17；后台同锁
+- 命令: fetch origin；普通merge --no-ff --no-commit P3′后核write-tree及暂存diff；commit --no-edit；两次祖先检查；scan83逐提交、scan84最终门禁前整段
+- 计数: c15父提交为d72f3eca和80aae635；暂存diff0，提交树与c14b相同；P3′及321a916f祖先检查均0；工作区0行；scan83/84均exit0
+- ci_run_url: —
+- 未测项: 本条启动最终十步门禁，结果未出；60轮、最终截图和正式187链后续执行
+- 下一条: D-60.10b对账Node与smoke用例增量
+- 附: origin/main仍321a916f、origin/P3仍80aae635、origin/P4仍0e7fbc13。P3本批没有viewport修复，故c15按原文要求树不变；没有改base、转ready或合PR。
+
+### L535 · 2026-11-25 01:52 CT · D-60逐提交扫描和顺序核对
+- task_id: D-60.10a
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主P4分支，正式全量门禁仍在后台运行
+- 命令: first-parent reverse log；逐条匹配scan17d.log的HEAD、exit和扫描时间；不重跑扫描
+- 计数: 19个本批提交全部有提交后的exit0扫描；c1至c15顺序符合原文，c7之后独立追加164e599修复；整段门禁前scan84已过
+- ci_run_url: —
+- 未测项: 最终门禁和后续推送尚未完成，干扫不替代推送前扫描
+- 下一条: D-60.10b最终全量结果
+- 附: c1=a324a5bd/scan60；c2=e5097bea/scan61；c3=77b83569/scan65；c4=2a163663/scan66；c5=abd96f45/scan69；c6=65f23f63/scan70；c7=b1f0bc7c/scan71；c7修复=164e599b/scan72；c8=2142b81d/scan73；c9a=92e9e54c/scan74；c9b=3c97b7db/scan75；c10=1ec29ec6/scan76；c11a=23d32c82/scan77；c11b=a3d3a96f/scan78；c12=bdc26d32/scan79；c13=9c2a73a3/scan80；c14a=ff62d668/scan81；c14b=d72f3eca/scan82；c15=962f785b/scan83。当前实际推送：材料0/3，P3=1，P4=0，新分支=1；#380正文写入0，#385草稿创建1。未新增推送。
+
+### L536 · 2026-11-25 02:07 CT · D-60子任务检查与序号回执对账
+- task_id: D-60.10h、RUNBOOK17
+- code_sha: P3 80aae635；第8项4fc14fff
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 两子任务均deep-low类别，无subagent_type/model覆盖；现在均persisted_only
+- 命令: 核L468、L469、L476、L482–L483、L491；读取七条发送账本、P3 MESSAGES、fixture RESULT和当前只读终态
+- 计数: 派出前后check均9字节600；七次steer的发送前check记录均9字节600，序号在各自子任务内递增；P3发送5、回执列4，末执行20261124230620；fixture发送2、回执列2
+- ci_run_url: —
+- 未测项: P3回执缺20261124225705，工具终态error；fixture工具终态completed，但RESULT仍in_progress、最后说明仅6/11并没有DONE，不算合格交付回执
+- 下一条: D-60.10b最终全量结果
+- 附: P3发送序号20261124220132、20261124220630、20261124225705、20261124230234、20261124230620；fixture发送20261124225705、20261124230234。没有补造缺失回执，也没有恢复旧子任务。L486已接回主会话；P3正式全量/60轮/推送见L493、L499，第8项完整验证/推送/CI见L506、L508，均由主会话独立核过。子任务的部分或空日志结果不充当门禁通过；本条是审计完成，不是把旧子任务标合格。口令没有写入本条或证据。
+
+### L537 · 2026-11-25 02:18 CT · P4最终head十步门禁全部通过
+- task_id: D-60.10b
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: pw1.65-node22-pg17；同一命令十步、62个smoke spec、后台单锁；工作区开跑前0行
+- 命令: check-20261125T072124Z；install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；SMOKE_SPECS同一命令环境；浏览器产物已归档再接60轮
+- 计数: 十步全部rc0；Node3093/3092/0/1、pg_skips0；smoke802/801/0/1；巡检68、viewport5、events25、desktop33、freshness23、member74、layout6、699及767各1，均通过；h5accept52/52
+- ci_run_url: —
+- 未测项: 同head独立60轮和正式187链已按同锁顺序启动/排队，最终36图尚未重拍；本条不算B冻结
+- 下一条: D-60.10b六十轮及D-60.10c正式SQL
+- 附: Node较3054增加39、smoke较768增加34，逐文件与源码新增/替换数对齐。mpci主包1469678（基线+267、余103186），event分包37721（基线+42）。首次私有解析误取前面的mp步骤JSON（1469769），已改为仅取===mpci至STEP mpci段；差91字节的非CI口径不进正式表，不重跑已过构建。主包变化分解：W1+118、W2+75、W4b−2、W4a主包0/event+42、W5主包+76；之后测试/API/文档提交不改变这些包。
+
+### L538 · 2026-11-25 02:21 CT · 最终699六十轮通过
+- task_id: D-60.10b
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: pw1.65-node22-pg17；后台同锁、工作区开跑前0行
+- 命令: SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60" run-checks.sh smoke；check-20261125T081658Z.log
+- 计数: Running60、60passed、0failed、0skipped；smoke rc0；前后磁盘均大于50GB
+- ci_run_url: —
+- 未测项: 正式187链及SQL全部控制正在下一持锁运行；最终36图待其完成后拍
+- 下一条: D-60.10c最终187链和五套回归
+- 附: 本轮与L537同一head，没有再改代码。mpci口径沿L537：主包1469678、基线+267、余103186；event37721、基线+42。35分钟的全量smoke和本轮60次是不同的明确验收项，没有把一次结果复用成另一项。
+
+### L539 · 2026-11-25 02:30 CT · 最终187链与全部SQL控制通过
+- task_id: D-60.10c
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 本地supabase/postgres17.6.1.104、network none；主会话后台单锁；B时间戳20261125004742
+- 命令: D60 controls回放副本；lsql-20261125T081932Z.log；五个指定时间戳；同容器AFTER_REPLAY七步、10负对照和4变异
+- 计数: files187/replayed187/errors0/done1/rc0；P3 703/703、EV855/855、MEV38/38、SYNC35/35、CAP8/8；PRECHECK_B、VERIFY_B通过；七步7/7；负对照10/10且10次恢复通过；四变异4/4且各自REGRESSION_B8/8与VERIFY_B恢复通过
+- ci_run_url: —
+- 未测项: 托管ACL及真实库仍未测；最终截图另记，不把SQL通过写成托管验收
+- 下一条: D-60.5最终矩阵四指标与哈希集合
+- 附: 第3、4、5步的首错已直接与D60第7a项原文逐字比对，全部相同；apply实际body md5为55227c4b42b7ac90e9b1ba34f274b057。m1/m2恰好用例1、2、3、4红，m1前两条原文均22003:smallint out of range；m3恰好6红，m4恰好8红。七步及十个首错原文如下。
+  - D60_CAP_POSITIVE step1 rc=0 notice=community_member_events_switch|enabled=f
+  - D60_CAP_POSITIVE step2 rc=0 notice=community_reply_notice_switch|enabled=f
+  - D60_CAP_EXPECTED step3 rc=3 first=community_events_function_body:private.community_events_member_guard():7eb7680e59995c1dc8e9d754603ed790:this migration
+  - D60_CAP_EXPECTED step4 rc=3 first=community_watch_save_function_body:public.admin_list_moderation_audit_log(integer,integer,text):720fe81c9d72c7729ce2d184a8a8fd36:this migration
+  - D60_CAP_EXPECTED step5 rc=3 first=community_event_sync_function_body:public.apply_caaci_event_snapshot(boolean,jsonb):55227c4b42b7ac90e9b1ba34f274b057
+  - D60_CAP_BODY_MD5 55227c4b42b7ac90e9b1ba34f274b057
+  - D60_CAP_POSITIVE step6 rc=0 notice=community_event_sync_cap_verified
+  - D60_CAP_EXPECTED step7 rc=3 first=community_event_sync_cap_precheck_function:public.apply_caaci_event_snapshot(boolean,jsonb):55227c4b42b7ac90e9b1ba34f274b057
+  - D60_CAP_NEGATIVE claim-body pass=1 restored=1 rc=3 first=community_event_sync_cap_function_body:public.claim_community_event_sync(text,interval):74aa188e65527517d61fe98da1c527f7
+  - D60_CAP_NEGATIVE apply-body pass=1 restored=1 rc=3 first=community_event_sync_cap_function_body:public.apply_caaci_event_snapshot(boolean,jsonb):4db0cb82fa491847b108cc24990ddca3
+  - D60_CAP_NEGATIVE finish-body pass=1 restored=1 rc=3 first=community_event_sync_cap_function_body:public.finish_community_event_sync(text,text,text):c4a0bedb4dd4b5333b41ba227c0e93d2
+  - D60_CAP_NEGATIVE apply-invoker pass=1 restored=1 rc=3 first=community_event_sync_cap_function_attributes:public.apply_caaci_event_snapshot(boolean,jsonb)
+  - D60_CAP_NEGATIVE finish-strict pass=1 restored=1 rc=3 first=community_event_sync_cap_function_attributes:public.finish_community_event_sync(text,text,text)
+  - D60_CAP_NEGATIVE claim-strict pass=1 restored=1 rc=3 first=community_event_sync_cap_function_attributes:public.claim_community_event_sync(text,interval)
+  - D60_CAP_NEGATIVE apply-grants pass=1 restored=1 rc=3 first=community_event_sync_cap_function_grants:public.apply_caaci_event_snapshot(boolean,jsonb):anon,service_role
+  - D60_CAP_NEGATIVE finish-result pass=1 restored=1 rc=3 first=community_event_sync_cap_function_result:public.finish_community_event_sync(text,text,text)
+  - D60_CAP_NEGATIVE apply-arguments pass=1 restored=1 rc=3 first=community_event_sync_cap_function_arguments:public.apply_caaci_event_snapshot(boolean,jsonb)
+  - D60_CAP_NEGATIVE apply-overload pass=1 restored=1 rc=3 first=community_event_sync_cap_function_overloads:4
+
+### L540 · 2026-11-25 02:36 CT · 最终36图与四张768替换通过
+- task_id: D-60.5截图、D-60.10b尾部
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: pw1.65-node22-pg17；390/768/1280、浅深色、中英文、三表面，固定合成数据和时钟；axe已挂载
+- 命令: check-20261125T082505Z；原截图spec逐字复制后单独smoke；先复制36PNG和36JSON，再移除临时spec；逐张shasum -a256与2540db88比
+- 计数: 36/36，四指标全0、三类主机请求0；PNG签名/宽高全部符合；恰好events-768-dark-en、dark-zh、light-en、light-zh四张变化；其余32张与基线相同，旧8张不改
+- ci_run_url: —
+- 未测项: 仅三类主机统计，不代表零外发；真实iPad、微信及生产仍未测
+- 下一条: D-60.10d范围审计及B冻结
+- 附: 最终36张与L521已逐张看过的候选图全同字节；主会话另实际查看最终四张变化图，中英文来源标签完整可读、未被侧栏覆盖。只把这四张复制到材料同名文件并核目标哈希；图留在工作区，按D60随第二次材料推送，不纳入冻结首推。矩阵后无临时spec；缺失LSP仍未安装或声称通过。逐张指标如下：
+  - event-detail-1280-dark-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - event-detail-1280-dark-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - event-detail-1280-light-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - event-detail-1280-light-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - event-detail-390-dark-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - event-detail-390-dark-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - event-detail-390-light-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - event-detail-390-light-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - event-detail-768-dark-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - event-detail-768-dark-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - event-detail-768-light-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - event-detail-768-light-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-1280-dark-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-1280-dark-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-1280-light-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-1280-light-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-390-dark-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-390-dark-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-390-light-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-390-light-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-768-dark-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-768-dark-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-768-light-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - events-768-light-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-1280-dark-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-1280-dark-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-1280-light-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-1280-light-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-390-dark-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-390-dark-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-390-light-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-390-light-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-768-dark-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-768-dark-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-768-light-en: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+  - home-events-768-light-zh: small=0 contrast=0 axe=0 overflow=0 三类主机请求=0
+
+### L541 · 2026-11-25 02:47 CT · D-60最终改动范围核对
+- task_id: D-60.10d
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 主P4工作区；全部运行门禁结束、临时截图spec已删除
+- 命令: 六冻结文件diff；manifest原文前缀比对；plaza unified0；CommunityHeader/.github/vercel diff；status；fetch origin；材料pull --ff-only
+- 计数: 六文件字节diff0；manifest原189行逐字相同，仅追加B第190行；plaza只在原1015、1017、1026行的onShow内；三个禁止路径diff0；工作区0行；材料ahead3/behind0，快进同步Already up to date
+- ci_run_url: —
+- 未测项: 本条不替代P4推送前再次判main前进和扫描；未推送P4
+- 下一条: D-60.10冻结B并首次推材料
+- 附: 本次fetch后321a916f..origin/main为空，P3远端80aae635、P4远端0e7fbc13、材料远端9081b6b6。全量42文件清单已核，既有六冻结、受限路径、依赖/工作流没有越界改动。
+
+### L542 · 2026-11-25 02:47 CT · 20261125004742_community_event_sync_cap.sql 冻结
+- task_id: D-60.3、D-60.10e
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: 01de955e（本次写回之前材料分支的HEAD）
+- 环境: 本地已验收P4最终head；没有应用任何托管迁移
+- 命令: L537全量、L538六十轮、L539正式187链及全部控制、L540最终矩阵、L533托管方式本地演练；shasum -a256 B文件；L541范围核对
+- 计数: 十步全部rc0；Node3093/3092/0/1、pg_skips0；smoke802/801/0/1；60/60；187/187和703/855/38/35/8全过；七步7/7、10负对照和4变异/恢复全部符合；36图合规；7c两次182链和两个反例符合
+- ci_run_url: —
+- 未测项: P3.7、P4.11的托管应用、默认ACL、真实public smoke及人工发布前提仍待Eric；本条不是托管应用记录
+- 下一条: 冻结记录首次材料推送，然后P4扫描快进推送
+- 附: `20261125004742_community_event_sync_cap.sql` 冻结，sha256 `80395cc72112aa1ac9ff6899e2fe1d264057ae397f27cc5b54209f0e6f3d54d3`；这是B首次冻结，代码头为962f785bee12045242ddf3b79e37e22e1255e3e6，此前未冻结。A和其余五条既有冻结文件没有改动，manifest只追加B一行。冻结记录必须先推送，再推P4；B不再原地修改，推送后只能另起获批前向迁移。四张图片排除在此次暂存外，留到FINAL/STATUS的第二次材料推送。
