@@ -251,3 +251,29 @@ test.describe('desktop event login return', () => {
     })
   }
 })
+
+test.describe('desktop detail and creation sticky headers', () => {
+  test.use({ viewport: { width: 1280, height: 600 }, screen: { width: 1280, height: 600 },
+    isMobile: false, deviceScaleFactor: 1 })
+  for (const route of ['detail', 'create'] as const) {
+    test(`${route} header stays pinned after scrolling the document`, async ({ page }) => {
+      const state = await fixture(page, { open: true })
+      if (route === 'detail') {
+        state.rows = state.rows.map(row => ({ ...row, summary_en: 'Synthetic event information.\n'.repeat(30) }))
+      }
+      await page.goto(`/#/pages/event/${route}/index${route === 'detail' ? `?id=${EVENT_ID}` : ''}`,
+        { waitUntil: 'networkidle' })
+      await expect(page.locator(route === 'detail' ? '.ed-title' : '.me-form')).toBeVisible()
+      const scrollY = await page.evaluate(async () => {
+        window.scrollTo(0, document.documentElement.scrollHeight)
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+        return window.scrollY
+      })
+      expect(scrollY).toBeGreaterThan(120)
+      await expect(header(page)).toBeInViewport()
+      expect(Math.abs(await header(page).evaluate(element => element.getBoundingClientRect().top))).toBeLessThanOrEqual(1)
+      expect(await page.evaluate(() => Boolean(document.elementFromPoint(640, 28)?.closest('.cx-hdr')))).toBe(true)
+      await page.screenshot({ path: `test-results/d60-sticky/${route}.png`, animations: 'disabled' })
+    })
+  }
+})
