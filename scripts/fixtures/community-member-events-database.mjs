@@ -68,3 +68,15 @@ export function startEventSyncDatabase() {
     throw error
   }
 }
+
+// Keep the A-only fixture available for the overflow control.
+export function startEventSyncCapDatabase() {
+  const db = startEventSyncDatabase()
+  try {
+    db.sql(readMigration('20261125004742_community_event_sync_cap.sql'))
+    return db
+  } catch (error) {
+    db.stop()
+    throw error
+  }
+}
