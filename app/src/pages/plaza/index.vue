@@ -1012,9 +1012,10 @@ function refreshStaleHome() {
 }
 onShow(() => {
   // A board link on another page stages its target before switchTab, which carries no query (P2.10).
-  const { pendingBoard, pendingView } = communityNavigation
+  const { pendingBoard, pendingView, pendingSearch } = communityNavigation
   communityNavigation.pendingBoard = null
   communityNavigation.pendingView = null
+  communityNavigation.pendingSearch = null
   if (pendingBoard !== null || pendingView !== null) {
     const route = routeOf({ board: pendingBoard, view: pendingView })
     if (route.board) showBoard(route.board)
@@ -1024,6 +1025,7 @@ onShow(() => {
     followAddress()
   }
   syncAddress()
+  if (pendingSearch) { searchText.value = pendingSearch; onSearchSubmit() }
   if (homeStale) refreshStaleHome()
 })
 

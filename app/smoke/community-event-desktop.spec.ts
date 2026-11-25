@@ -120,16 +120,15 @@ test.describe('desktop event navigation', () => {
     })
   }
 
-  for (const action of ['home', 'all', 'board', 'compose', 'search', 'login'] as const) {
+  for (const action of ['home', 'all', 'board', 'compose', 'login'] as const) {
     test(`${action} control reaches its destination after a previous plaza view`, async ({ page }) => {
       await fixture(page, { guest: true })
-      const previousView = action === 'all' || action === 'search' ? 'home' : 'all'
+      const previousView = action === 'all' ? 'home' : 'all'
       await page.goto(`/#/pages/plaza/index?view=${previousView}`, { waitUntil: 'networkidle' })
       await page.locator('.cx-hdr [data-test="nav-events"]').click()
       await expect(header(page)).toBeVisible()
       if (action === 'home') await header(page).locator('.cx-brand').click()
       if (action === 'compose') await header(page).locator('.cx-compose').click()
-      if (action === 'search') await header(page).locator('input').fill('Synthetic')
       if (action === 'login') await header(page).locator('.cx-login').click()
       if (action === 'all' || action === 'board') {
         await header(page).locator('[aria-controls="cx-boards"]').click()
@@ -139,7 +138,7 @@ test.describe('desktop event navigation', () => {
       else {
         await expect(page).toHaveURL(/pages\/plaza\/index/)
         if (action === 'home' || action === 'compose') await expect(page.locator('.ch')).toBeVisible()
-        if (action === 'all' || action === 'search') await expect(page.locator('.search-wrap')).toBeAttached()
+        if (action === 'all') await expect(page.locator('.search-wrap')).toBeAttached()
         if (action === 'board') await expect(page.locator('.board-head')).toBeVisible()
       }
     })
@@ -153,6 +152,78 @@ test.describe('desktop event navigation', () => {
       await page.screenshot({ path: `test-results/d59-desktop/${route}-1280-zh-dark.png`, animations: 'disabled' })
       expect(await visualAudit(page, `event-${route}-1280-zh-dark`, { include: '.page.secondary-page' }))
         .toEqual({ small: [], contrast: [], axe: [], overflow: 0 })
+    })
+  }
+})
+
+test.describe('desktop event search handoff', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, screen: { width: 1280, height: 800 }, isMobile: false, deviceScaleFactor: 1 })
+  const scenarios = [
+    { route: 'list', previousView: 'home', following: false, query: 'Synthetic' },
+    { route: 'list', previousView: 'all', following: false, query: 'Synthetic' },
+    { route: 'detail', previousView: 'home', following: false, query: 'Synthetic' },
+    { route: 'detail', previousView: 'all', following: false, query: 'Synthetic' },
+    { route: 'create', previousView: 'home', following: false, query: 'Synthetic' },
+    { route: 'create', previousView: 'all', following: false, query: 'Synthetic' },
+    { route: 'list', previousView: 'all', following: true, query: 'Synthetic' },
+    { route: 'list', previousView: 'all', following: false, query: '' },
+  ] as const
+
+  for (const scenario of scenarios) {
+    test(`${scenario.route} submits from ${scenario.previousView}${scenario.following ? ' following' : ''}${scenario.query ? '' : ' with empty input'}`, async ({ page }) => {
+      await fixture(page, { guest: scenario.route !== 'create' })
+      let searchRequests = 0
+      await page.route('**/rest/v1/rpc/search_community_posts', route => route.fulfill({
+        contentType: 'application/json', body: '[]',
+      }))
+      page.on('request', request => {
+        if (new URL(request.url()).pathname === '/rest/v1/rpc/search_community_posts') searchRequests += 1
+      })
+      await page.goto(`/#/pages/plaza/index?view=${scenario.previousView}`, { waitUntil: 'networkidle' })
+      if (scenario.following) {
+        const following = page.getByRole('tab', { name: 'Following', exact: true })
+        await following.click()
+        await expect(following).toHaveAttribute('aria-selected', 'true')
+      }
+      await page.locator('.cx-hdr:visible [data-test="nav-events"]').click()
+      await expect(page.locator('.ev-main .evc').first()).toBeVisible()
+      switch (scenario.route) {
+        case 'list': break
+        case 'detail':
+          await page.locator('.ev-main .evc').first().click()
+          await expect(page.locator('.ed-title')).toBeVisible()
+          break
+        case 'create':
+          await page.locator('.header .me-entry').click()
+          await expect(page.locator('.me-form')).toBeVisible()
+          break
+        default: {
+          const unexpected: never = scenario
+          throw new TypeError(String(unexpected))
+        }
+      }
+      const input = header(page).locator('input')
+      if (!scenario.query) {
+        await expect(input).toHaveValue('')
+        await input.press('Enter')
+        await expect(page).toHaveURL(/pages\/plaza\/index\?view=all$/)
+        await page.waitForTimeout(600)
+        expect(searchRequests).toBe(0)
+        return
+      }
+      const originalUrl = page.url()
+      await input.pressSequentially('Synthetic')
+      await page.waitForTimeout(600)
+      await expect(page).toHaveURL(originalUrl)
+      expect(searchRequests).toBe(0)
+      await expect(input).toHaveValue('Synthetic')
+      const requestPromise = page.waitForRequest('**/rest/v1/rpc/search_community_posts')
+      await input.press('Enter')
+      const request = await requestPromise
+      await expect(page).toHaveURL(/pages\/plaza\/index\?view=all$/)
+      const body: unknown = request.postDataJSON()
+      expect(body).toMatchObject({ terms_in: ['synthetic'] })
+      await expect(page.locator('.cx-hdr:visible input')).toHaveValue('Synthetic')
     })
   }
 })

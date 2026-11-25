@@ -56,7 +56,7 @@ test('a staged board opens that board page, and a later visit does not replay it
     assert.deepEqual(page.feedReads, [board])
     assert.equal(page.searchText.value, '')
     assert.equal(page.activeTab.value, 'active', 'a board page has no following tab; it opens on 最新回复')
-    assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
+    assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null, pendingSearch: null })
 
     page.showHome()
     page.onShow()
@@ -75,7 +75,7 @@ test("a staged view 'all' opens all discussions, and a later visit does not repl
   assert.equal(page.view.value, 'all')
   assert.equal(page.selectedCategory.value, null)
   assert.deepEqual(page.feedReads, [null])
-  assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
+  assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null, pendingSearch: null })
 
   page.showHome()
   page.onShow()
@@ -103,7 +103,7 @@ test('an unknown staged board or view opens the home', async () => {
     assert.equal(page.selectedCategory.value, null)
     assert.equal(page.searchText.value, '')
     assert.deepEqual(page.feedReads, ['campus-life'], 'the home reads no list')
-    assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
+    assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null, pendingSearch: null })
   }
 })
 

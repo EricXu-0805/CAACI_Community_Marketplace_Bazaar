@@ -12,13 +12,15 @@ export function useEventHeader() {
   media.addEventListener('change', onChange)
   onUnmounted(() => media.removeEventListener('change', onChange))
 
-  function openCommunity(view: 'home' | 'all') {
+  function openCommunity(view: 'home' | 'all', query = '') {
     communityNavigation.pendingBoard = null
     communityNavigation.pendingView = view
+    communityNavigation.pendingSearch = query.trim() || null
     uni.switchTab({ url: '/pages/plaza/index' })
   }
   const home = () => openCommunity('home')
   const all = () => openCommunity('all')
+  const submit = () => openCommunity('all', search.value)
   const login = () => uni.navigateTo({ url: '/pages/login/index' })
-  return { desktop, search, isLoggedIn, home, all, board: openCommunityBoard, login }
+  return { desktop, search, isLoggedIn, home, all, submit, board: openCommunityBoard, login }
 }

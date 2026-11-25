@@ -5,8 +5,7 @@
     <view v-if="desktop" class="ev-desktop-header">
       <CommunityHeader v-model:search="headerSearch" view="home" :board="null" desktop current-item="events"
         :is-logged-in="headerLoggedIn" @home="headerHome" @all="headerAll" @board="headerBoard"
-        @compose="headerHome" @login="headerLogin" @search-input="headerAll"
-        @search-submit="headerAll" @search-open="headerAll" />
+        @compose="headerHome" @login="headerLogin" @search-submit="headerSubmit" />
     </view>
     <!-- #endif -->
     <view class="secondary-content">
@@ -95,7 +94,7 @@ import AppSidebar from '../../../components/AppSidebar.vue'
 import CommunityHeader from '../../../components/CommunityHeader.vue'
 import { useEventHeader } from '../../../composables/useEventHeader'
 const { desktop, search: headerSearch, isLoggedIn: headerLoggedIn, home: headerHome,
-  all: headerAll, board: headerBoard, login: headerLogin } = useEventHeader()
+  all: headerAll, submit: headerSubmit, board: headerBoard, login: headerLogin } = useEventHeader()
 // #endif
 import { mpChromeVars, mpThemeClass } from '../../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
