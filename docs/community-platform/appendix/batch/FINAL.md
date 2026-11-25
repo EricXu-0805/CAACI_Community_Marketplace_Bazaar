@@ -1573,3 +1573,260 @@ SYNC_TOTAL 的35项均通过，下面逐项列出其实际断言；每个场景�
 | 不改全站 token | 防止对比度修复波及二手、消息、我的 | 本批候选审计无须改token；若后续需要，仅在活动页使用现有合格token并记录偏差 |
 | P4.9 讨论正文采用冻结迁移现有中文模板，英文界面也相同 | 改期后仍有效，避免改已冻结迁移 | 真要双语或改模板，另建前向迁移 |
 | P4.10 本批不写代码，建议拆P4.11a/b | 生产可见活动前提尚未成立，现有依赖成环 | Eric 确定发布方案后另轮实现 |
+
+## 第十四批（D-60）
+
+### ① 起止与 SHA 范围
+
+2026-11-24 15:38 CT开工，2026-11-25 03:40 CT定稿；STATUS_LOG L462–L549。范围限D-60.0–10，不接BACKLOG。以下状态在本批最终推送前以gh pr view和git ls-remote核对，回执见L547。
+
+| 对象 | 起点 | 本批交付或最终状态 |
+|---|---|---|
+| main | 321a916f | 321a916f1d5cf41fa101d5bed35eceffc674921d；本批只合固定321a916f |
+| 材料 | 9081b6b6 | 冻结记录79f80eac先推；本节与STATUS同一提交，前置HEAD为a3da055f5ab37cce521e83989e5317a5a1ab59d9 |
+| P3 #379 | 4e7bd214 | 80aae635；草稿、base仍codex/community-restricted-20261113 |
+| P4 #380 | 0e7fbc13 | 962f785bee12045242ddf3b79e37e22e1255e3e6；草稿、base仍codex/community-p3-20261120 |
+| 新分支 #385 | 321a916f | 4fc14fff；codex/community-smoke-fixture-20261124，草稿、base main |
+
+### ② 完成的任务
+
+| 项 | 结论与提交 | 证据和范围 |
+|---|---|---|
+| D-60.0 | 完成 | 开工背景逐字保留，现场差异另记；没有查用量、切号或切模型 |
+| D-60.1 | 完成 | 原74与D59交付wip保留、永不推送；原目录恢复原名分支、跟踪既有远端 |
+| D-60.2 | 完成 | P3普通merge 80aae635；P4 c1=a324a5bd、c2=e5097bea、c15=962f785b。修前恰好8失败，c2子集85/84/0/1、viewport5/5，三名单变异分别命中规定四条；无需c2b。c15树不变、两个祖先通过。按实际推送退役四条件豁免 |
+| D-60.3 | 完成 | c3=77b83569、c4=2a163663；B仅将missing_checks封顶2，原函数其余字节不变；Node旧9+新7、六变异和A溢出对照通过；正式187链见下表。B冻结见L542 |
+| D-60.4 | 完成 | c5=abd96f45、c6=65f23f63；apply/finish按调用位置分码，empty_snapshot成功且不报Sentry；新旧65/65、11控制及旧模块四例、21键投影等证明通过 |
+| D-60.5 | 完成 | c7至c11b完成W1、W2、W4b、W4a、W5、W3、W6；c7另以164e599修正缓存页前置，保留原断言。候选与最终36图、四指标和四张变化见L540 |
+| D-60.6 | 完成 | c12=bdc26d32；系列结束、码点截断、地点上限、重复规则及独立反例通过；ENGINEERING §9.3定稿。学校fetch/写库留D-61 |
+| D-60.7 | 完成 | c13=9c2a73a3、c14b=d72f3eca；13探测、19/19机械检查和变异通过。托管方式本地两次182链、17步、三条指定旧VERIFY首错及两反例通过，见L533 |
+| D-60.8 | 完成 | 4e5a713、4fc14fff；T1–T4及M1–M9、toast红绿红完成；十步、60/60和CI run45529252152通过。该run的protected staging account、Production release readiness为skipped，不计通过 |
+| D-60.9 | 完成 | 报告11条更正、STATUS、材料RUNBOOK、ENGINEERING、SPEC和BACKLOG按限定范围改；c14a=ff62d668。#380正文只写一次并按指定JSON比较读回，见L546 |
+| D-60.10 | 完成 | 19提交逐提交干扫及整段扫描、最终验收、冻结和代码发布按顺序完成；本报告为第二次材料推送，目标/提醒关闭及唯一结项日志第三推在其后执行 |
+
+| 最终检查 | 实际结果 |
+|---|---|
+| 十步同一命令 | check-20261125T072124Z；全部rc0；Node3093/3092/0/1、pg_skips0；h5accept52/52 |
+| smoke与必须通过项 | Running802，801passed/0failed/1skipped；巡检68、viewport5、events25、desktop33、freshness23、member74、layout6、699/767各1全部通过 |
+| 独立699重复 | check-20261125T081658Z；60/60、0失败/跳过，154秒 |
+| CI环境主包/分包 | 主包1,469,678，余103,186，较1,469,411增加267；event37,721，较37,679增加42；仅取mpci段 |
+| 最终L-SQL | lsql-20261125T081932Z；187/187/errors0/done1/rc0；P3/EV/MEV/SYNC/CAP分别703/855/38/35/8全部通过 |
+| 回放后及独立控制 | 七步7/7，三条首错逐字对应D60原文；10负对照/10恢复；四变异失败集合为1–4、1–4、6、8，全部恢复8/8和VERIFY_B |
+| 托管方式本地演练 | 两次独立182链；17步与NOTICE、三条旧VERIFY首错、事务/元命令两反例均符合；没有访问托管库 |
+| 最终36图 | check-20261125T082505Z；36/36，78秒，四指标全0、三类主机请求0；仅四张events-768变化；与已逐张检视候选全同字节，最终四张另已查看 |
+
+Node计数以3054为基线；smoke以768为基线，main带入7条。逐文件增量如下，合计与真实最终日志相等：
+
+| 类别 | 文件 | 净增 |
+|---|---|---:|
+| Node | `scripts/community-event-sync-cap.test.mjs` | +7 |
+| Node | `api/_community-events-sync.test.mjs` | +7 |
+| Node | `api/_community-events-sync-worker.test.mjs` | +4 |
+| Node | `api/_community-events-sync-budget.test.mjs` | +1 |
+| Node | `app/smoke/navigation-intent-boundary.test.mjs` | +1 |
+| Node | `app/smoke/mp-component-wxss-boundary.test.mjs` | +1 |
+| Node | `api/_campus-ics.test.mjs` | +14 |
+| Node | `api/_community-events.test.mjs` | +2 |
+| Node | `scripts/public-read-schema.test.mjs` | +1 |
+| Node | `scripts/community-release-checklist-boundary.test.mjs` | +1 |
+| Node合计 | 3054 → 3093 | +39 |
+| smoke | `app/smoke/pages.smoke.spec.ts` | +2 |
+| smoke | `app/smoke/viewport-inset-consumers.spec.ts` | +5 |
+| smoke | `app/smoke/community-event-desktop.spec.ts` | +11 |
+| smoke | `app/smoke/community-member-events.spec.ts` | +2 |
+| smoke | `app/smoke/community-event-freshness.spec.ts` | +8 |
+| smoke | `app/smoke/community-event-layout.spec.ts` | +6 |
+| smoke合计 | 768 → 802（main +7，本批 +27） | +34 |
+
+P3的正式十步门禁check-20261124T235148Z全部rc0：Node2800/2799/0/1、pg_skips0，smoke623/622/0/1；check-20261125T004407Z为60/60。第8项check-20261125T005840Z全部rc0：Node2665/2664/0/1、pg_skips0，smoke575/574/0/1；check-20261125T014328Z为60/60。P4正式结果只使用最终head的日志，不拼接候选结果。
+
+更正第十三批：
+
+① ④1 中 P3 迁移哈希少一组 d4、只有62位。962f785b 的 manifest 给出的正确值为 `c2a18ee842128e7943293529ca182a5e714e7ca8f942d5d4d4d5bb9a2ed951bf`。应用前运行 `(cd supabase/migrations && shasum -a 256 -c manifest.sha256)`，不从旧报告复制哈希。
+② A 在原候选74caf746的门禁、186链、四对照、60轮、36图和终审之后按L446冻结，冻结记录0785419e先推；0e7fbc13的check-20261124T023745Z和lsql-20261124T032427Z都在冻结之后。两者supabase树均为c04dbb1d，A没有重冻。与D-59第10项的字面顺序不符，实质不受影响。
+③ 第十三批⑥的巡检回执引用应为L451；L437是74caf746的回执。
+④ 灰字的CT后缀和“与今天不在同一年时带年份”偏离SPEC第673、766行例文；D-59写的764是漂移前行号。SPEC例文未改。
+⑤ 两个开关的前提从P4最终头`962f785bee12045242ddf3b79e37e22e1255e3e6`的根RUNBOOK按标题取出，原文如下。它们仍是开关前提；④提出的改法只是supervisor建议，尚未批准。
+
+**Reply notice switch**
+
+**Before turning it on, all of these hold for the database in question:**
+
+1. Which files this step runs depends on whether
+   `20261120122054_community_events` has been applied to that database.
+   - Not applied yet:
+     `supabase/_ops/VERIFY_20261120100354_community_watch_save_activity.sql`
+     passes. Its notice line reads `community_reply_notice_switch|enabled=f`.
+   - Already applied: the P3 file stops with an error there, by design (the
+     events migration replaces functions and vocabularies it pins, and its
+     pins are not changed for that). Before `20261122035253` is applied,
+     run `supabase/_ops/VERIFY_20261120122054_community_events.sql`, then
+     `supabase/_ops/VERIFY_reply_notice_switch.sql`; both must pass.
+     After `20261122035253`, run
+     `supabase/_ops/VERIFY_20261122035253_community_member_events.sql`, then
+     `supabase/_ops/VERIFY_reply_notice_switch.sql`. If A (`20261123201501`)
+     is applied and B is not, first pass
+     `supabase/_ops/VERIFY_20261123201501_community_event_sync.sql`, then run
+     those two checks in the same order. If A and B are both applied, first
+     pass `supabase/_ops/VERIFY_20261125004742_community_event_sync_cap.sql`
+     instead (`VERIFY_20261123201501_community_event_sync.sql` stops by design
+     after B), then run those two checks in the same order, as listed in
+     Community P4 above.
+     The member and reply switch notices must both read `enabled=f`; the
+     reply notice is `community_reply_notice_switch|enabled=f`.
+2. The H5 deployment that reads this database is the P3 release or later. The
+   same deployment carries `api/notification-digest.js`, which keeps both keys
+   out of the digest mail.
+3. The P3 Mini Program version is released, and the release owner has decided
+   what happens to Mini Program versions from before P3 that are still
+   installed. An older version shows the raw key for every notice written after
+   the switch is on.
+
+**Member events switch**
+
+**Before turning it on, all four conditions hold for this database:**
+
+1. `supabase/_ops/VERIFY_20261122035253_community_member_events.sql` passes
+   and prints `community_member_events_switch|enabled=f`.
+2. Somebody is assigned to handle member event reports within 48 hours,
+   as required by DECISIONS D-28.
+3. The H5 deployment reading this database includes the P4.6 client.
+4. The P4.6 Mini Program version is released, or the release owner has
+   decided how versions from before P4.6 will be handled.
+
+L403的六条本地探针：话题标题只含U+200B、U+3164、U+034F、U+061C，评论正文只含U+200B，商品标题只含U+200B，均以authenticated存入，SQLSTATE00000、各1行；三个阳性对照通过，全部回滚。旧④3的码位表不全，完整边界见本批ENGINEERING §13第13行。边界外码位插进保留词或链接能绕过两道预检，仅由这些码位构成的标题、说明、地点可以存入并显示为空白；除L403点名的四个码位外，其余是按Unicode属性推得，未做渲染测试。
+
+⑥ 第十二批⑥的“客户端会拦”只对Z以内成立；Z以外的Default_Ignorable码位能拆开保留词与链接，仅由这些码位构成的标题、说明、地点，服务端和客户端都不拦。全表和实测范围见ENGINEERING §13第13行。
+⑦ scan52是5个邮箱形状命中：4个合成iCalendar UID和1个URL用户信息负例。清除方式是改表示，不作以后绕扫描的先例。D-59既有五处按D-60豁免保留：`api/__fixtures__/community-events/`下`campus-allday-earlier-end.ics`、`campus-allday-equal-end.ics`、`campus-allday-multiday-dst.ics`、`campus-allday-spring-no-end.ics`第4–5行的UID在@前折行，以及`api/_community-events.test.mjs`第255–256行通过URL API构造用户信息负例。上述五处行号指0e7fbc13。以后不新增，走RUNBOOK17d的具名例外通道。
+⑧ registerToastHost诊断是已知旧问题：旧报告第626、1369行早已归因于`#ifndef H5`条件编译，main同样存在。本批第8项c2在4fc14fff修正，并有修前、修后、变异证据；草稿#385尚待supervisor合并。
+⑨ D-59.7漏记768英文合作组织标签被截断、被S2盖住（events-768-light-en、events-768-dark-en）。四个自动指标测不到，fe80882c起即存在。本批W5a、W5b在c10修复。
+⑩ scan17d.log第53行（0e7fbc1、exit0）在本地`wip/d59-p4-delivery-20261124`名下，对应远端`codex/community-events-20261120`；第52行（74caf74、exit1）没有任何对应推送；第25行是视口子任务对未提交工作区的扫描。本批按HEAD和远端ref对账。
+⑪ D-59.7“外部请求0”只统计caaciorg.com、calendars.illinois.edu、*.example.test三类主机，其余route.continue()，容器没有断网。更正为“三类主机请求0”，不据此声称拍图零外发。
+
+本批更正只追加，没有回改第十三批或旧STATUS_LOG。
+
+### ③ [OMO自决] 清单
+
+- 两个子任务宿主不可用，旧全量被信号终止，且fixture旧rc0回执的日志为空；不计通过。按17c核进程、容器、锁和远端后由主会话接回，不Resume、不改派、不改配置。完整验证后来由主会话完成，L486、L493、L499、L506、L508。
+- 原始SIGTERM发送者仍未证实；停止的是额外扩展的平台追查，不是D60用户项。未声称修好RPC宿主或平台，见L500。
+- W1第七例用真实英文role=tab、名称Following定位，点击后核aria-selected；无查询入口经真实菜单进入all，以实际posts响应确认缓存页，避免重载页掩盖漏submit。仅改测试，164e599；撤回时以新提交修改测试，不改已验证应用行为。
+- W5量尺放在独立layout spec，避免改被限定的desktop fixture；其余量尺和断言保持。可在后续提交迁移测试归属，不能删除它保护的布局合同。
+
+- 17h对账（L536）：P3五个发送序号的回执只列四个，缺20261124225705；第8项两条序号齐，但RESULT仍in_progress，最后说明只完成6/11，没有DONE。两者都不算合格交付回执；主会话独立完成剩余验证、推送和CI，没有补造回执。
+
+- [OMO自决] 首次材料扫描的七处为连续日志文件名，16个分词窗口逐个证明成立。按17d⑤保留原始exit2，另由复核过程返回0、追加标明raw_scan_line/raw_exit的findings_review收据；原扫描器和既有日志不改。原因是既有误报许可需要与D60的HEAD/exit0对账同时保留；若supervisor改变此做法，追加新判定，不回改原始记录。L543–L544。
+
+### ④ 等 Eric 或 supervisor 的清单
+
+以下均为supervisor建议，建议不是批准。
+
+1. **P4.11a / b分拆。** 建议批准：a为五条迁移、#379和#380合并及一次H5受监督发布，沿用第一步导航；b为P4.10、小程序及原DoD②③。
+2. **P3.7与P4.11迁移。** 按下表顺序在staging、生产分别操作并分别VERIFY。哈希从P4最终head的manifest生成；应用前运行`(cd supabase/migrations && shasum -a 256 -c manifest.sha256)`。建议A、B同一窗口，不接受缺席计数溢出作为已知问题。B之后先过VERIFY_B，再member→reply，均enabled=f；不再跑VERIFY_A。
+
+| 顺序 | 迁移 | sha256 |
+|---|---|---|
+| 1 | `20261120100354_community_watch_save_activity.sql` | `c2a18ee842128e7943293529ca182a5e714e7ca8f942d5d4d4d5bb9a2ed951bf` |
+| 2 | `20261120122054_community_events.sql` | `a8c0e08340203988a04bec5e210a2a1c73a941544ffe272adf754b0e56053a79` |
+| 3 | `20261122035253_community_member_events.sql` | `b93ea1edce3ecc2f2a2d4a59fb5b9ed3bbb129f52ed65211ad02cd02e8781bdd` |
+| 4 | `20261123201501_community_event_sync.sql` | `bb2f91e6afcdd7a5be28bcbead4faa7e349bde22c3ca181365a2559b62ed9ce1` |
+| 5 | `20261125004742_community_event_sync_cap.sql` | `80395cc72112aa1ac9ff6899e2fe1d264057ae397f27cc5b54209f0e6f3d54d3` |
+
+3. **托管默认ACL。** staging的VERIFY_A报`community_event_sync_function_grants:…`或VERIFY_B报`community_event_sync_cap_function_grants:…`，先停，把proacl原文交supervisor，不改函数授权。精确授权期望只在supabase/postgres 17.6.1.104镜像证明过，托管默认ACL未核。
+4. **public smoke。** #380合并前，在五条迁移依次应用且分别VERIFY通过的库上跑绿。第7b探测在A缺失时会红；B只能靠VERIFY_B。
+5. **CI超时。** 按最终Running N=802重算，公式为`(otherSeconds + smokeSeconds × N / sampleTests) / 60`。表为推算，不是本批CI实测；第十三批表保留。
+
+| 样本run / job | 样本N | 非smoke秒 | smoke秒 | 本批802条推算分钟 |
+|---|---:|---:|---:|---:|
+| 44647478789 | 478 | 645 | 1529 | 53.51 |
+| 44783052160 | 563 | 105 | 1292 | 32.42 |
+| 44909710527 | 564 | 84 | 1547 | 38.06 |
+| 45248909343 / 137952961284 Smoke (public page sweep) | 571 | 658 | 1314 | 41.73 |
+| 45248909343 / 137952961575 Smoke (protected staging account) | 571 | 80 | 1577 | 38.25 |
+
+建议Eric批准后，由supervisor在#379 squash之前开config PR，把public和authenticated两job的timeout改为70分钟并加镜像步骤；.github属于9a【硬】，本批未改。
+
+6. **回复通知、成员活动开关。** 原样前提逐条见②末尾更正⑤；B之后先过VERIFY_B，不跑VERIFY_A。建议先核齐前提，仍由Eric或具名授权人分库操作。
+7. **成员活动可见文本边界。** 建议按整类Default_Ignorable另起前向迁移，补齐之前不开成员开关；不挡P4.11a。
+8. **D-33使用条款。** 白名单保持[]。建议Eric读完UIUC日历使用条款后在#380定白名单，候选3715、7；不把留言当作本会话指令。
+9. **E8。** 建议现在启动，它是P4.3到P4.11b最长的一段。
+10. **E6。** 建议创建P4发布候选前设置COMMUNITY_OFFICIAL_PROFILE_ID。
+11. **D-28。** 建议开成员开关前点名48小时内处理举报的轮值人。
+12. **回复通知前提3。** 建议改为“P3 H5已发布，且没有任何已安装的小程序版本”；需Eric确认没有体验版在用户手中。当前RUNBOOK原前提仍有效。
+13. **预挂CAACI同步。** 建议仅在E8已启动后做：先插infinity行，再在Production设COMMUNITY_SYNC_CAACI_EVENTS=1，然后创建候选。
+14. **iPad。** 建议在docs/SUPERVISED_RELEASE.md第4步的候选唯一URL上检查。
+
+【supervisor 做】合并新分支#385；以后合并#379、#380时手写squash说明；改base和`-s ours`照根RUNBOOK“Community P3+P4 release”。P3旧正文的过期项见L494，本批没有改写#379正文。
+
+### ⑤ 【硬】与【暂停推送】事件
+
+| 对象 | 本报告发布时的累计次数 | 扫描/远端依据 |
+|---|---|---|
+| 材料分支 | 推送2次、有扫描记录2次；第三次关闭日志尚待执行 | 首推a3da055：原扫86 exit2、⑤复核87 exit0；本报告第二推的实际扫描及远端回执在后续日志追加 |
+| P3 | 推送1次、有扫描记录1次 | scan63，80aae635，L499；干扫不另算推送 |
+| P4 | 推送1次、有扫描记录1次 | 原扫88 exit0，962f785b，L545 |
+| 新分支 | 推送1次、有扫描记录1次 | scan67，4fc14fff，L506 |
+| #380正文 | 写入1次、有扫描记录1次 | scan89 exit0；指定JSON比较True，L546 |
+| #385草稿创建 | 创建1次、有扫描记录1次 | scan68，L506；未转ready、未改base |
+
+scan85时没有执行推送；随后原扫86及明确标记的复核87共同对应首推。原始⑤7条和exit2保留，不把复核0说成原扫描器0。第二材料推送以新提交的完整扫描为准，关闭记录第三推另记，不提前计入本表。
+
+六条既有冻结迁移和manifest原189行逐字不变，仅追加B第190行。B在正式门禁、60轮、187链、回放后对照和7c通过后按L542冻结，记录先推，再推P4；没有改写A或旧冻结记录。SPEC仅改D60明确授权的一处；没有应用托管迁移、合PR、转ready、改base、force push、rebase或生产发布。账号、模型、凭据与号池文件未改。新内容扫描按17d执行，口令、邮箱清单、核查清单原文和新绝对路径不入公开材料。
+
+c10–c13最初五组变异逐项持同一把锁，但中途释放，不满足整组持锁。我在L525记下偏差，保留旧日志，在五组各自原提交补齐单次持锁与全部恢复哈希（L526–L530）；旧逐项日志不充当该过程通过证据。c14b直接采用整组控制器，L532。
+
+### ⑥ 未测项与风险
+
+- 托管库三个同步函数的默认ACL是否等于本地镜像仍未测；VERIFY_A和VERIFY_B精确钉住仅给service_role，不等时按设计停止。真实后端public smoke、托管迁移/开关、P4.3上线及真实GET/dry-run、真机/小程序、wechat-seccheck、staging S-1仍待④。
+- #385的CI只把5个success作业计通过；protected staging account和Production release readiness的skipped不算验收。P3/P4的base仍非main，本地结果不冒充托管CI或生产验收。
+- 旧子任务全量的SIGTERM精确来源未证实；主会话重做完整验证解决的是交付证据，不声称平台根因已修复。旧空日志rc0未采用。
+- 7c归档副本没有Git元数据，通用回放器的head为空并输出not a git repository；来源d72f3eca及各payload哈希另存证据。两次自建一次性容器均在SQL完成后的清理阶段提示SIGINT超10秒、转SIGKILL；原回放脚本未改。主演练SQL中的两条事务WARNING为0，原文对照则恰好各1，不能混称整个工具没有warning。
+- 附加的全spec严格编译本批没有另跑；通过的是仓库规定的typecheck。缺失的LSP没有安装，也不记为通过。
+- 本地截图范围仅为指定36格；真实iPad/微信仍未验收。768变化集合准确，未出现需要停图交supervisor的情况。
+
+**第十三批 minor 的去向**
+
+| 问题 | 本批去向或延后理由 |
+|---|---|
+| 缺席计数溢出；VERIFY_A不查strict与参数名 | 第3项B、VERIFY_B和回归/独立控制补齐；A冻结字节不改 |
+| apply/finish误归上游码、空完整快照没有专用码 | 第4项c5修正，empty_snapshot成功且不报Sentry |
+| worker漏apply、失败序列、预算常量盲区、投影键不全 | 第4项c6补齐，保留原预算断言并以变异证明 |
+| 页头搜索不能交接；登录不能回活动原页 | 第5项W1、W2 |
+| 详情/发起页吸顶无保护 | 第5项W3，两条滚动前置和两个变异 |
+| 灰字位置和详情无条件读同步状态 | 第5项W4b、W4a |
+| 768来源标签被截断和侧栏遮挡 | 第5项W5a、W5b，四指标之外另用量尺和图片核查 |
+| 胶囊测试只认选择器完全等于header | 第5项W6，顺序级联、组合选择器和后代对照 |
+| 系列结束、码元截断、地点超长、重复规则 | 第6项c12及13个单锁控制 |
+| 发布清单与真实对象探测 | 第7项c13、c14b、7c本地演练 |
+| main夹具的WebSocket范围、读表集合、406/关闭分支 | 第8项c1和T1–T4/M1–M9 |
+| registerToastHost旧条件导出 | 第8项c2，#385待supervisor合并 |
+| 错哈希、冻结顺序、L号、灰字偏差、开关/探针、扫描与图片措辞 | 第9项十一条追加更正，不回改旧批次 |
+| 过期STATUS、目录、17d映射、工程/合作组织合同 | 第1、9项 |
+| 17a序号20261123104253发送前漏check | 第十三批已事后补跑并修好助手；本批照10h，派出前后及每次steer前均check，逐次记STATUS_LOG |
+| 同步CLI只测--write，门禁没运行CLI本身；skipped_budget不报Sentry | 延后；§9.2写明跳过的拍顺延，真实dry-run等P4.3上线和一次授权GET |
+| 2027-11-07校时仅每15分钟档 | 延后；2026-11-01、2027-03-14已逐分钟，规则按年算，已有逐分钟回拨对照，风险低 |
+| 1280的S1比主栏页头低约130px | 延后；SPEC第644行未要求对齐，属观感 |
+
+### ⑦ 下一批
+
+本批实施结束；本报告推送后仅按10j关闭目标/提醒、追加唯一结项日志并第三次推送，然后停止，不接BACKLOG。候选仅供下次指示：④的发布与人工前提、D-61学校写库（迁移C）、⑥三条延后项。未自行启动。
+
+### ⑧ 代 Eric 定的事
+
+以下选择来自D-60按D-43的supervisor决定；每条都可由Eric推翻。
+
+| 选择 | 理由 | 怎么撤回 |
+|---|---|---|
+| B只封顶，不加DML、新返回键、CHECK | 修smallint溢出并保留A的合同 | B推送后另起获批前向迁移，不能原地改或revertB |
+| 按调用位置分apply_*、finish_*，上游码不变 | 区分数据库调用与上游失败 | 后续代码提交修改分类、日志和对应测试 |
+| 空完整快照照常记缺席，empty_snapshot、不报Sentry | v1删除是唯一取消信号，守卫会使最后活动撤不下 | Eric重新决定后修改worker/合同和测试 |
+| W1回车才交接 | 打字不离页，显式提交才搜索 | 后续客户端提交调整交互与测试 |
+| W2加三条活动路由、最多三段路径 | 登录保留合法原目标 | 后续提交调整白名单及路由边界测试 |
+| W4a详情仅caaci读取同步状态 | 其他来源无此状态；明确偏离D-59第3项 | 后续提交恢复读取策略与相应测试 |
+| W4b灰字只在未来列表 | 遵SPEC位置，加载/错误/往期不显示 | 后续提交调整分支及测试 |
+| W5b在768–1023隐藏S2 | 给主列留空间，推翻D-57/D-59的768侧栏决定 | 后续设计决定后以新提交恢复布局及量尺 |
+| W5a来源标签省略号 | 长标签保持可读布局、不覆盖相邻内容 | 后续设计提交改变标签布局并重拍 |
+| 学校not_found的12小时条件编码进计数、边界用<= | 保持判断可落地且边界明确 | D-61实施前先改工程合同及测试；本批未写库 |
+| 合作组织page_url白名单、consent_ref必填且相等、organizer_name=NULL、page_url不可改、仅OWNER | 对齐组织授权和现有读取字段合同 | Eric改决定后同步SPEC/ENGINEERING/BACKLOG，再另派实现 |
+| 四条件豁免退役、main对照321a916f | main修复与显式名单已进入P3/P4；巡检须0失败 | 由新监督决定更改门禁政策，不能自行放宽 |
+| public schema探测加三个同步函数 | A缺失时能在发布前失败；不宣称能检出B | 后续提交更改探测合同及用例 |
+| main夹具WebSocket仅认realtime路径 | 不掩盖其他socket请求 | 后续提交调整边界并保留反例；#385尚未合并 |

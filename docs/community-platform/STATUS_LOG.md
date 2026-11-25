@@ -7406,3 +7406,87 @@ Failed to load resource: the server responded with a status of 501 (Not Implemen
 - 未测项: 正式推送仍须在新HEAD再做原扫和复核；本条不冒充原扫描器exit0
 - 下一条: 材料新提交扫描、追加复核收据后首次推送
 - 附: 依据17d⑤“日志原文误报照常推送”。分词器丢掉数字，连续文件名的字母发生重合，不是核查清单叙述句。为同时保留原始结果和D60的HEAD/exit0对账，使用单独的复核收据：原始exit2与行号保留，复核成功的实际退出码0另以kind=findings_review记录，含raw_exit、raw_scan_line、误报数及复核脚本指纹；不修改统一扫描器、不抹掉原7条、不回改既有日志。复核只接受可证明的日志名或已公开原文，任一窗口不能证明就失败。首版复核的Unicode单词边界没认出紧贴汉字的文件名，四处保持拒绝；改成显式ASCII边界并补对照后，全部16窗口成立。无凭据、邮箱或路径类豁免。
+
+### L544 · 2026-11-25 03:14 CT · B冻结记录首次材料推送完成
+- task_id: D-60.10e/f
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: a3da055f5ab37cce521e83989e5317a5a1ab59d9（本次写回之前材料分支的HEAD）
+- 环境: 材料codex/community-plan-v5；第一次推送，P4尚未推送
+- 命令: 普通git push origin codex/community-plan-v5；git ls-remote；冻结记录祖先检查；原始扫描86与复核87对账
+- 计数: 材料推送1/3，关联扫描/复核证据1次；远端a3da055f5ab37cce521e83989e5317a5a1ab59d9；冻结记录79f80ea已在远端祖先；正式原扫exit2、⑤误报7，独立复核实际exit0，原始结果全部保留
+- ci_run_url: —
+- 未测项: P4代码和正文尚未推送；四图未暂存，留给第二材料推送
+- 下一条: P4再次fetch判main前进，核快进和扫描后推送
+- 附: 复核收据kind=findings_review、raw_scan_line=86、raw_exit=2、reviewed_false_positives=7，HEAD解析为同一完整远端SHA；不是把原扫描器说成exit0。未用--no-verify。首次推送包含已完成的第1/9项文本及L542冻结记录，不包含FINAL第十四批或四张PNG。
+
+### L545 · 2026-11-25 03:24 CT · P4最终head快进推送完成
+- task_id: D-60.2e/f、D-60.10d/f
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: a3da055f5ab37cce521e83989e5317a5a1ab59d9（本次写回之前材料分支的HEAD）
+- 环境: codex/community-events-20261120原名分支；冻结材料已先推
+- 命令: fetch origin；321a916f..origin/main逐提交检查；远端祖先与洁净树核对；scan88；普通git push origin codex/community-events-20261120；ls-remote、gh pr view、两head的gh run list
+- 计数: main前进0提交；快进核对rc0；HEAD与冻结时相同；scan88各类0/完整性0/exit0；P4推送1/2，远端与扫描HEAD完全相同；#380 OPEN、draft=true、base仍P3
+- ci_run_url: —
+- 未测项: P3、P4按两最终head查询均无workflow run，base非main，不计CI通过；真实后端public smoke与托管发布仍待Eric
+- 下一条: #380新正文17d扫描、REST仅body写入与读回
+- 附: 普通推送0e7fbc13..962f785b，未用--no-verify。P3本批1推80aae635、P4本批1推962f785b，两边都已包含固定321a916f并通过零失败巡检；四条件豁免按D60退役。预算当前为材料1/3、P3 1、P4 1、新分支1/2、开PR1/1、正文0/2。
+
+### L546 · 2026-11-25 03:33 CT · PR380正文REST写入及读回一致
+- task_id: D-60.9b、D-60.10f
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: a3da055f5ab37cce521e83989e5317a5a1ab59d9（本次写回之前材料分支的HEAD）
+- 环境: GitHub PR380，原title、draft及base保持
+- 命令: scan89，以已推P4 head为基准、只加正文文本；gh api -X PATCH仅body；gh api读回JSON；按D60指定Python式规范CRLF并rstrip换行后比较
+- 计数: scan89各类0/完整性0/exit0；正文写入1次；比较打印True；draft=true、base=codex/community-p3-20261120、head=962f785bee12045242ddf3b79e37e22e1255e3e6
+- ci_run_url: —
+- 未测项: 新正文/读回与FINAL第十四批的完整十六进制核对和两个对照接着做；未操作任何托管库或开关
+- 下一条: 最终远端快照、STATUS与FINAL追加及十六进制核对
+- 附: 正文sha256=2682fb94aecf692d0299afd82619bd7a69a5eddf20b3ba78e13f1a5d2cd74b2d；原正文、本地新正文、实际PATCH响应、实际读回JSON各自保留。新表五个哈希直接取最终head manifest；删除过期四迁移/豁免/E13说法，A冻结时序更正，B冻结L542与本地演练写明。没有用gh pr edit、没有第二次写入、没有转ready/改base/合并。
+
+### L547 · 2026-11-25 03:37 CT · 第十四批报告前远端与PR快照
+- task_id: D-60.9c、D-60.10i
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: a3da055f5ab37cce521e83989e5317a5a1ab59d9（本次写回之前材料分支的HEAD）
+- 环境: GitHub只读元数据与git远端引用；本次没有PR状态写入
+- 命令: fetch origin；git ls-remote五条ref；gh pr view 370/379/380/385的state、draft、base、head
+- 计数: main321a916f；材料a3da055f；P3 80aae635；P4 962f785b；新分支4fc14fff；四个PR均OPEN草稿，base依次main、restricted分支、P3分支、main；head与远端及已验证提交一致
+- ci_run_url: —
+- 未测项: main之外没有新生产发布；真实托管前提仍保留；材料最终提交和关闭提交尚未发生
+- 下一条: FINAL第十四批与STATUS同提交的第二次材料写回
+- 附: P3/P4无workflow run见L545；#385已通过的45529252152沿L508，不重跑。主包、SQL和图片只采用本批实际最终日志。各表的人工建议仍不是批准。
+
+### L548 · 2026-11-25 03:40 CT · 第十四批FINAL与STATUS完成本地写回
+- task_id: D-60.9a/c、D-60.10i
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: a3da055f5ab37cce521e83989e5317a5a1ab59d9（本次写回之前材料分支的HEAD）
+- 环境: 材料工作区；第二次材料提交尚未生成
+- 命令: FINAL末尾追加第十四批八节和十一条更正；STATUS按27个限定替换及四个新阻塞改写；背景字节保护；复用已核远端快照L547
+- 计数: 八节齐全、D60.0–10各一行；十一条更正逐条覆盖；两个开关前提按最终头根RUNBOOK标题逐字取出；Node/smoke增量及五CI样本重算对齐；四张图片留在同批
+- ci_run_url: —
+- 未测项: 最终十六进制检查及两个对照接着执行，未把本地草稿当作已推送报告；关闭日志第三推仍在其后
+- 下一条: D-60.10g三份正文十六进制及两个对照
+- 附: 第十一至十四批开工背景逐字部分保留；旧FINAL前缀完整保留，不回改第十三批；STATUS将四条件豁免按P3/P4实际已推头退役，新增阻塞37–40。下一任务设STOP，仅允许目标/提醒及唯一关闭日志收尾，不接BACKLOG。本报告定稿后的实际扫描、推送与关闭回执另追加，不预写实际提交SHA。
+
+### L549 · 2026-11-25 03:43 CT · 第十四批与PR正文十六进制核对通过
+- task_id: D-60.10g
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: a3da055f5ab37cce521e83989e5317a5a1ab59d9（本次写回之前材料分支的HEAD）
+- 环境: 宿主GNU grep；私有hexcheck.sh首行为export LC_ALL=C；名单取P4最终head manifest
+- 命令: 对FINAL第十四批全节、新PR正文、实际JSON读回正文逐一核64位成员资格及50–63位计数；两个对照只在副本进行
+- 计数: 正式FINAL/新正文/读回的64位计数6/5/5，未知值0/0/0、50–63位0/0/0；删P3哈希d4后副本62位计数1、exit1；恢复exit0且计数回6；紧贴汉字新增合法值后计数7，恰好多1、exit0
+- ci_run_url: —
+- 未测项: 第二次材料提交和推送尚未执行，关闭日志第三推在目标/提醒关闭之后
+- 下一条: FINAL与STATUS和四图同提交，扫描并作第二次材料推送
+- 附: 两对照未改公开FINAL、新正文或实际读回；统一名单来自实际manifest，不从报告抄回。PR正文实际写入仍1次；本节没有伪造读回或替换任何失败结果。八节、十一条追加更正、STATUS全部限定改写和前置证据已齐，旧FINAL和历批逐字背景保留。
+
+### L550 · 2026-11-25 03:48 CT · 第二材料工作区预扫描及公开文件名复核
+- task_id: D-60.10f
+- code_sha: 962f785bee12045242ddf3b79e37e22e1255e3e6
+- docs_sha: a3da055f5ab37cce521e83989e5317a5a1ab59d9（本次写回之前材料分支的HEAD）
+- 环境: 第二材料提交之前；工作区扫描不是推送依据
+- 命令: scan90 --worktree；对唯一位置逐条查看；同一复核器验证已公开原文
+- 计数: 七个预期文件，diff --check=0；旧FINAL完整前缀、历批逐字背景和日志追加不变量通过；原扫①–④0、完整性0，⑤1条、exit2；复核published_windows=1、未证明窗口0，实际exit0
+- ci_run_url: —
+- 未测项: 提交后仍须对新HEAD作正式扫描并记录复核，scan90不对应第二次推送
+- 下一条: 生成FINAL/STATUS/四图同提交，正式扫描后第二次推送
+- 附: 命中是按D60要求逐字引用的公开VERIFY文件名，按17d⑤记误报1条；没有改这段要求逐字保留的原文，也没有修改扫描器或旧日志。十六进制核对及两个对照仍是同一份未改的FINAL和正文，L549的结果不需重跑。
