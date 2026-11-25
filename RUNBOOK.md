@@ -630,6 +630,111 @@ only compares the RPC surface — a migration that changes a trigger, a policy, 
 an accepted *value* (which is exactly what 2026-08-06 was) is invisible to it.
 For those, the ordering above and the operator are still the control.
 
+### Community P3+P4 release
+
+Run the complete sequence below in one release operation for each database:
+staging first, then production. Use the project definitions already in this
+runbook. The release owner applies the reviewed files; this checklist does
+not authorize an agent to apply hosted migrations or merge either PR.
+
+#### Migration bytes
+
+Files are under `supabase/migrations/`. Remove only the one top-level
+`BEGIN;` line and the one top-level `COMMIT;` line shown below before sending
+the SQL to the migrations endpoint. Preserve every other byte.
+
+| Migration file | File SHA-256 | BEGIN line | COMMIT line | Sent SQL SHA-256 |
+|---|---|---:|---:|---|
+| `20261120100354_community_watch_save_activity.sql` | `c2a18ee842128e7943293529ca182a5e714e7ca8f942d5d4d4d5bb9a2ed951bf` | 45 | 1701 | `5df0d6b108651eb97de0ce810a6c8ade675bdf72a216e7e9c6298f645327bcfa` |
+| `20261120122054_community_events.sql` | `a8c0e08340203988a04bec5e210a2a1c73a941544ffe272adf754b0e56053a79` | 63 | 1501 | `6c8d4560c57fcf8ea1b9703b3d2b61f0225a68a7d745be5017fbb7842856cb1f` |
+| `20261122035253_community_member_events.sql` | `b93ea1edce3ecc2f2a2d4a59fb5b9ed3bbb129f52ed65211ad02cd02e8781bdd` | 6 | 322 | `8e857842517e2f4a10f9bae1f2cb6bf41f667308c15e88305880f2c460381501` |
+| `20261123201501_community_event_sync.sql` | `bb2f91e6afcdd7a5be28bcbead4faa7e349bde22c3ca181365a2559b62ed9ce1` | 4 | 148 | `e1c7b92d1d81762ba8b327de62a20d6dfcf30fee530d62af47e3c6c0af9bfdfc` |
+| `20261125004742_community_event_sync_cap.sql` | `80395cc72112aa1ac9ff6899e2fe1d264057ae397f27cc5b54209f0e6f3d54d3` | 7 | 133 | `11c176f8ed4e53ae42a5b6ee52729d25bddc651fa73d796f3620f59c972062f9` |
+
+#### SQL client directives
+
+Files are under `supabase/_ops/`. Remove the indicated
+`\set ON_ERROR_STOP on` line before sending SQL through the hosted query
+endpoint. This is a psql directive, not server SQL.
+
+| PRECHECK or VERIFY file | Remove line |
+|---|---:|
+| `PRECHECK_20261120100354_community_watch_save_activity.sql` | 12 |
+| `VERIFY_20261120100354_community_watch_save_activity.sql` | 5 |
+| `PRECHECK_20261120122054_community_events.sql` | 11 |
+| `VERIFY_20261120122054_community_events.sql` | 3 |
+| `PRECHECK_20261122035253_community_member_events.sql` | 3 |
+| `VERIFY_20261122035253_community_member_events.sql` | 5 |
+| `PRECHECK_20261123201501_community_event_sync.sql` | 2 |
+| `VERIFY_20261123201501_community_event_sync.sql` | 3 |
+| `PRECHECK_20261125004742_community_event_sync_cap.sql` | 2 |
+| `VERIFY_20261125004742_community_event_sync_cap.sql` | 3 |
+| `VERIFY_reply_notice_switch.sql` | 19 |
+
+#### Application steps
+
+Apply each migration once through Supabase's official ledger-aware migrations
+endpoint. Its `apply_migration` name is the complete filename stem, for example
+`20261120100354_community_watch_save_activity`, not just the timestamp.
+The ledger's version records the application time; check the ledger by name
+or inspect the objects rather than comparing the version with the filename.
+Use a fresh read-only connection for each PRECHECK and each VERIFY, separate
+from the connection that applies the migration. The endpoint owns the
+migration transaction. Follow the same separation as steps 15-16 of
+[the candidate release sequence](#2026-07-candidate-release-sequence).
+
+Every step must succeed with the NOTICE below; `none` means no NOTICE.
+Do not interleave the two databases or turn either switch on during this
+sequence. PRECHECK/VERIFY filenames are under `supabase/_ops/`; APPLY
+filenames are under `supabase/migrations/`.
+
+| Step | Operation | File | Expected NOTICE |
+|---:|---|---|---|
+| 1 | PRECHECK | `PRECHECK_20261120100354_community_watch_save_activity.sql` | none |
+| 2 | APPLY | `20261120100354_community_watch_save_activity.sql` | none |
+| 3 | VERIFY | `VERIFY_20261120100354_community_watch_save_activity.sql` | `community_reply_notice_switch\|enabled=f` |
+| 4 | PRECHECK | `PRECHECK_20261120122054_community_events.sql` | none |
+| 5 | APPLY | `20261120122054_community_events.sql` | none |
+| 6 | VERIFY | `VERIFY_20261120122054_community_events.sql` | none |
+| 7 | PRECHECK | `PRECHECK_20261122035253_community_member_events.sql` | none |
+| 8 | APPLY | `20261122035253_community_member_events.sql` | none |
+| 9 | VERIFY | `VERIFY_20261122035253_community_member_events.sql` | `community_member_events_switch\|enabled=f` |
+| 10 | PRECHECK | `PRECHECK_20261123201501_community_event_sync.sql` | none |
+| 11 | APPLY | `20261123201501_community_event_sync.sql` | none |
+| 12 | VERIFY | `VERIFY_20261123201501_community_event_sync.sql` | `community_event_sync_verified` |
+| 13 | PRECHECK | `PRECHECK_20261125004742_community_event_sync_cap.sql` | none |
+| 14 | APPLY | `20261125004742_community_event_sync_cap.sql` | none |
+| 15 | VERIFY | `VERIFY_20261125004742_community_event_sync_cap.sql` | `community_event_sync_cap_verified` |
+| 16 | VERIFY | `VERIFY_20261122035253_community_member_events.sql` | `community_member_events_switch\|enabled=f` |
+| 17 | VERIFY | `VERIFY_reply_notice_switch.sql` | `community_reply_notice_switch\|enabled=f` |
+
+The order is `20261120100354` → `20261120122054` → `20261122035253` →
+`20261123201501` → `20261125004742` (B). The last two rows run only after B;
+both switches must report `enabled=f`. Do not run VERIFY_A after B as a
+success gate. If the hosted tool does not expose NOTICE, use the SELECTs
+that return the switch rows in [Reply notice switch](#reply-notice-switch)
+and [Member events switch](#member-events-switch) and require enabled=false.
+The public schema preflight can prove A's three functions exist and deny
+anonymous execution; it cannot prove B. B requires its own VERIFY.
+
+These are the exact first errors from deliberately running superseded
+VERIFY files. They are expected diagnostic results, not release success gates:
+
+- After `20261120122054`, VERIFY_20261120100354:
+  `community_watch_save_function_body:public.admin_list_moderation_audit_log(integer,integer,text):720fe81c9d72c7729ce2d184a8a8fd36:this migration`.
+- After `20261122035253`, VERIFY_20261120122054:
+  `community_events_function_body:private.community_events_member_guard():7eb7680e59995c1dc8e9d754603ed790:this migration`.
+- After B, VERIFY_20261123201501:
+  `community_event_sync_function_body:public.apply_caaci_event_snapshot(boolean,jsonb):55227c4b42b7ac90e9b1ba34f274b057`.
+
+On merge day, the supervisor changes the bases of #379 and #380 through REST
+PATCH. `gh pr edit` fails here on a retired Classic Projects field. Before
+any `git merge -s ours`, require `git rev-parse S^{tree}` to equal
+`git rev-parse H^{tree}`, and require `git merge-base --is-ancestor H HEAD`
+to succeed: H is the reviewed PR head and S its squash commit. Squash without
+`--delete-branch`; deleting a base branch closes dependent PRs and they cannot
+be reopened. Only the supervisor merges and releases these PRs.
+
 ### Checking whether production actually matches the repo
 
 **Do not answer this from `supabase_migrations.schema_migrations`.** That ledger
