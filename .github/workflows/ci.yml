@@ -384,7 +384,7 @@ jobs:
     name: Smoke (public page sweep)
     # Playwright 1.60 browser dependencies support Ubuntu 24.04, not 26.04.
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 70
     # A schema-changing PR must test the prepared candidate database. Main
     # still checks the deployed production schema. These PR values are public
     # anonymous client configuration, never account or service credentials.
@@ -468,7 +468,7 @@ jobs:
     environment: staging-smoke
     # Playwright 1.60 browser dependencies support Ubuntu 24.04, not 26.04.
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 70
     steps:
       - name: Checkout reviewed main commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
