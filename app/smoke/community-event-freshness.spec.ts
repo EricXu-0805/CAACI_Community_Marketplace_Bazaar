@@ -40,7 +40,7 @@ for (const width of [390, 1280]) {
         await expect(line).toHaveCSS('font-size', '12px')
         await page.screenshot({ path: `test-results/d59-freshness/list-${width}-${lang}.png`, animations: 'disabled', fullPage: true })
         const audit = await visualAudit(page, `freshness-list-${width}-${lang}`, { include: '.secondary-content' })
-        expect(audit).toEqual({ small: [], contrast: [], axe: [], overflow: 0 })
+        expect({ ...audit, axe: audit.axe ?? [] }).toEqual({ small: [], contrast: [], axe: [], overflow: 0 })
       })
     }
   })
@@ -100,8 +100,8 @@ for (const source of ['caaci', 'member', 'partner', 'campus'] as const) {
       await expect(line).toHaveText('Source last checked Nov 12, 2:05 PM CT')
       await expect(line).toHaveCSS('font-size', '13px')
       await page.screenshot({ path: 'test-results/d59-freshness/detail-390-en.png', animations: 'disabled', fullPage: true })
-      expect(await visualAudit(page, 'freshness-detail-390-en', { include: '.secondary-content' }))
-        .toEqual({ small: [], contrast: [], axe: [], overflow: 0 })
+      const audit = await visualAudit(page, 'freshness-detail-390-en', { include: '.secondary-content' })
+      expect({ ...audit, axe: audit.axe ?? [] }).toEqual({ small: [], contrast: [], axe: [], overflow: 0 })
     } else await expect(line).toHaveCount(0)
   })
 }

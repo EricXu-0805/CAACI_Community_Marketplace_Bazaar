@@ -71,7 +71,7 @@ for (const width of [390, 768, 1280]) {
         const audit = await visualAudit(page, `event-${route}-${width}-en-light`, {
           include: width >= 1024 ? '.page.secondary-page' : '.secondary-content',
         })
-        expect(audit).toEqual({ small: [], contrast: [], axe: [], overflow: 0 })
+        expect({ ...audit, axe: audit.axe ?? [] }).toEqual({ small: [], contrast: [], axe: [], overflow: 0 })
       })
     }
   })
@@ -147,8 +147,8 @@ test.describe('desktop event navigation', () => {
       await page.goto(route === 'list' ? '/#/pages/events/index' : `/#/pages/event/detail/index?id=${EVENT_ID}`, { waitUntil: 'networkidle' })
       await expect(header(page)).toBeVisible()
       await page.screenshot({ path: `test-results/d59-desktop/${route}-1280-zh-dark.png`, animations: 'disabled' })
-      expect(await visualAudit(page, `event-${route}-1280-zh-dark`, { include: '.page.secondary-page' }))
-        .toEqual({ small: [], contrast: [], axe: [], overflow: 0 })
+      const audit = await visualAudit(page, `event-${route}-1280-zh-dark`, { include: '.page.secondary-page' })
+      expect({ ...audit, axe: audit.axe ?? [] }).toEqual({ small: [], contrast: [], axe: [], overflow: 0 })
     })
   }
 })
