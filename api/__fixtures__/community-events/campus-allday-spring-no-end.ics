@@ -1,0 +1,11 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:90000010
+ @illinois.edu
+SUMMARY:Synthetic spring all-day event
+DTSTART;VALUE=DATE:20270314
+TZID:America/Chicago
+DESCRIPTION:Synthetic description.
+END:VEVENT
+END:VCALENDAR

@@ -36,6 +36,21 @@
           </template>
         </view>
 
+        <!-- Phone (SPEC 5.3 ⑤): organizations' events of the next 30 days, three at most; absent when there are none. -->
+        <view v-if="!desktop && ready && sections.events" class="ch-sec ch-ev" data-block="events">
+          <text class="ch-sb-h ch-ev-h" role="heading" aria-level="2">{{ t('home.events') }}</text>
+          <scroll-view class="ch-strip" scroll-x :show-scrollbar="false">
+            <view class="ch-strip-row">
+              <view v-for="row in homeEvents" :key="row.id" class="ch-ev-card">
+                <EventCard :event="row" :now="now" compact @open="openEvent" />
+              </view>
+              <view class="ch-ev-go" role="button" data-test="all-events" @click="emit('events')">
+                <text class="ch-tile-go-t">{{ t('home.allEventsShort') }}</text>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+
         <view class="ch-cols">
           <view class="ch-main">
             <view class="ch-grid">
@@ -195,6 +210,12 @@
                 <text class="ch-guide-t">{{ row.post.title }}</text>
               </view>
             </view>
+            <!-- SPEC 5.2 S2: member events are not here; their topics are already in the 找搭子 card. -->
+            <view v-if="ready && sections.events" class="ch-sb" data-block="events">
+              <text class="ch-sb-h" role="heading" aria-level="2">{{ t('home.events') }}</text>
+              <EventCard v-for="row in homeEvents" :key="row.id" :event="row" :now="now" compact @open="openEvent" />
+              <text class="ch-ev-all" role="button" data-test="all-events" @click="emit('events')">{{ t('home.allEvents') }}</text>
+            </view>
             <view v-if="ready && sections.hot" class="ch-sb" data-block="hot">
               <text class="ch-sb-h" role="heading" aria-level="2">{{ t('home.hotWeek') }}</text>
               <view v-for="row in sections.hot.rows" :key="row.post.id" class="ch-hot" role="button"
@@ -236,12 +257,14 @@ import { computed, nextTick, ref } from 'vue'
 // #ifdef H5
 import CommunityAbout from './CommunityAbout.vue'
 // #endif
+import EventCard from './EventCard.vue'
 import UAvatar from './UAvatar.vue'
 import UIcon from './UIcon.vue'
 import { useI18n } from '../composables/useI18n'
 import { useTheme } from '../composables/useTheme'
 import type { CommunityHomeItem, CommunityHomePost } from '../composables/useCommunityHome'
 import { BASE_URL, SUPPORT_EMAIL } from '../config/runtime'
+import type { CommunityEvent } from '../utils/communityEvents'
 import { boardFiller, type HomeItem, type HomeLatestSort, type HomeMessage, type HomePostRow, type HomeSections, type HomeText } from '../utils/communityHome'
 import type { PostCategory } from '../utils/communityPost'
 import { listingPriceLabel, thumbUrl } from '../utils'
@@ -255,12 +278,15 @@ const props = defineProps<{
   isLoggedIn: boolean
   /** The order the latest list is in; the page owns it because it builds the sections. */
   latestSort: HomeLatestSort
+  /** When the snapshot was read; event states are judged against it. */
+  now: number
 }>()
 const emit = defineEmits<{
   (event: 'board', category: PostCategory): void
   (event: 'compose', category: PostCategory): void
   (event: 'all', sort?: HomeLatestSort | 'hot'): void
   (event: 'latestSort', sort: HomeLatestSort): void
+  (event: 'events'): void
   (event: 'retry'): void
   (event: 'login'): void
 }>()
@@ -322,6 +348,10 @@ function rowLabel(row: HomePostRow) {
   parts.push(tx(row.time))
   return parts.join(' · ')
 }
+
+// buildHomeSections picks from the rows it was given, so these are the list's own rows.
+const homeEvents = computed(() => (props.sections.events || []) as unknown as CommunityEvent[])
+function openEvent(id: string) { uni.navigateTo({ url: `/pages/event/detail/index?id=${encodeURIComponent(id)}` }) }
 
 const itemTitle = (item: HomeItem) => localize((item as CommunityHomeItem).title_i18n, item.title)
 const itemPrice = (item: HomeItem) => listingPriceLabel(item as CommunityHomeItem, t)
@@ -511,6 +541,14 @@ function copyAbout() {
 .ch-d .ch-side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
 .ch-sb-h { display: block; margin-bottom: var(--space-1); font-size: var(--t-body); line-height: var(--space-7); font-weight: 600; color: var(--ink); }
 .ch-hot { display: flex; align-items: center; gap: var(--space-3); height: 34px; cursor: pointer; }
+/* The events block (SPEC 5.2 S2, 5.3 ⑤): 84px rows on the desktop, 260px cards that scroll sideways on a phone. */
+.ch-ev-all { display: flex; align-items: center; min-height: 36px; font-size: var(--t-caption); color: var(--ink-soft); cursor: pointer; }
+.ch-m .ch-ev-h { padding: var(--space-3) var(--space-4) 0; }
+.ch-ev-card { flex: none; width: 260px; white-space: normal; }
+.ch-ev-go {
+  flex: none; display: flex; align-items: center; justify-content: center; width: 72px; min-height: 84px;
+  border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px var(--line-soft); cursor: pointer;
+}
 .ch-hot .ch-row-t { flex: 1; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .ch-d .ch-foot { margin-top: var(--space-8); border-top: 1px solid var(--line-soft); }
 .ch-d .ch-foot-in {

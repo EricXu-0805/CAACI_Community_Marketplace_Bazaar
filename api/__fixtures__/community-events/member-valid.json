@@ -1,0 +1,21 @@
+{
+  "post": {
+    "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    "title": "示例公共场所羽毛球",
+    "content": "Synthetic description.",
+    "comment_count": 0
+  },
+  "event": {
+    "id": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    "source_type": "member",
+    "source_key": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    "organizer_user_id": "11111111-1111-4111-8111-111111111111",
+    "discussion_post_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    "title": null,
+    "title_en": null,
+    "starts_at": "2026-11-14T20:00:00Z",
+    "ends_at": "2026-11-14T22:00:00Z",
+    "location": "Synthetic public sports hall",
+    "availability": "visible"
+  }
+}

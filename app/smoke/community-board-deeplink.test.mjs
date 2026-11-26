@@ -56,7 +56,7 @@ test('board links stage pendingBoard before switchTab and onShow consumes and cl
   // A board page has no 关注的人, so it opens on the first tab, 最新回复 (P3.4).
   assert.equal(h.activeTab.value, 'active')
   assert.equal(h.searchText.value, '')
-  assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
+  assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null, pendingSearch: null })
   h.onShow()
   assert.deepEqual(h.selected, ['events-social'], 'a later tab visit must not replay the handoff')
   assert.equal(h.view.value, 'board')
@@ -74,7 +74,7 @@ test('direct board query parameters select each supported board and are cleared 
     await h.mounted()
     assert.deepEqual(h.selected, [board], 'the first read lists the board the path named')
     assert.deepEqual(h.homeReads, [])
-    assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
+    assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null, pendingSearch: null })
   }
 })
 
@@ -109,14 +109,14 @@ test('pendingView is consumed and cleared, and a later board intent replaces it'
   h.onShow()
   assert.deepEqual(h.selected, [null])
   assert.equal(h.view.value, 'all')
-  assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
+  assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null, pendingSearch: null })
   h = navigationFixture()
   communityNavigation.pendingView = 'all'
   openCommunityBoard('campus-life')
   h.onShow()
   assert.deepEqual(h.selected, ['campus-life'])
   assert.equal(h.view.value, 'board')
-  assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
+  assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null, pendingSearch: null })
 })
 
 test('an ordinary onShow preserves the current community selection and search', () => {

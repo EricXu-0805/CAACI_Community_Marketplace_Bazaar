@@ -274,6 +274,30 @@
         </view>
       </view>
 
+      <!-- P4.9: every event, hidden ones included. One discussion topic per organization's event; takedown and its undo. -->
+      <view v-else-if="activeTab === 'community_events'" id="admin-tab-panel" class="list u-stagger" role="tabpanel">
+        <view v-if="activeReadState.phase === 'ready' && communityEvents.length === 0" class="empty"><text>{{ t('admin.emptyEvents') }}</text></view>
+        <view v-for="e in communityEvents" :key="e.id" class="card" :data-event-id="e.id">
+          <view class="card-head">
+            <text class="card-title">{{ eventLine(e) }}</text>
+            <text v-if="e.availability === 'hidden'" class="pill pill-pending">{{ t(e.hidden_reason === 'admin' ? 'admin.eventHidden' : 'admin.eventTopicGone') }}</text>
+            <text v-else-if="e.availability === 'unavailable'" class="pill pill-pending">{{ t('admin.eventUnavailable') }}</text>
+            <text v-if="e.duplicate_of" class="pill pill-count">{{ t('admin.eventDuplicate') }}</text>
+            <text v-if="e.discussion_post_id" class="pill pill-count">{{ t('admin.eventHasDiscussion') }}</text>
+          </view>
+          <text class="card-meta">{{ eventConsoleMeta(e, lang === 'zh' ? 'zh' : 'en', t(`events.filter.${e.source_type}`)) }}</text>
+          <!-- A button is offered only where the database would accept its action (utils/eventConsole). -->
+          <view v-if="eventActions(e).length" class="card-actions">
+            <view v-if="eventActions(e).includes('create_event_discussion')" :class="['mini-btn', 'primary', { disabled: eventBusy(e) }]" role="button" :tabindex="eventBusy(e) ? -1 : 0" :aria-disabled="eventBusy(e) ? 'true' : 'false'" data-action="create_event_discussion" @click="onEventDiscussion(e)">{{ t('admin.openDiscussion') }}</view>
+            <view v-if="eventActions(e).includes('unhide_event')" :class="['mini-btn', { disabled: eventBusy(e) }]" role="button" :tabindex="eventBusy(e) ? -1 : 0" :aria-disabled="eventBusy(e) ? 'true' : 'false'" data-action="unhide_event" @click="onUnhideEvent(e)">{{ t('admin.unhideEvent') }}</view>
+            <view v-if="eventActions(e).includes('hide_event')" :class="['mini-btn', { disabled: eventBusy(e) }]" role="button" :tabindex="eventBusy(e) ? -1 : 0" :aria-disabled="eventBusy(e) ? 'true' : 'false'" data-action="hide_event" @click="onHideEvent(e)">{{ t('admin.hideEvent') }}</view>
+          </view>
+        </view>
+        <view v-if="listHasMore.community_events" class="load-more" role="button" :tabindex="listLoadingMore ? -1 : 0" :aria-disabled="listLoadingMore ? 'true' : 'false'" @click="loadMoreAdminList('community_events')">
+          <text>{{ listLoadingMore ? t('admin.checking') : t('admin.loadMore') }}</text>
+        </view>
+      </view>
+
       <view v-else-if="activeTab === 'users'" id="admin-tab-panel" class="list" role="tabpanel">
         <view class="search-row">
           <input
@@ -863,6 +887,7 @@ import { mpChromeVars, mpThemeClass } from '../../composables/useMpChrome'
 const mpChrome = mpChromeVars()
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { POST_CATEGORIES } from '../../utils/communityPost'
+import { eventConsoleActions, eventConsoleMeta, eventConsoleTitle } from '../../utils/eventConsole'
 import { reportWaitLevel } from '../../utils/reportWait'
 import { onHide, onUnload } from '@dcloudio/uni-app'
 import { platformFetch } from '../../composables/useSupabase'
@@ -906,8 +931,8 @@ const ADMIN_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 const ADMIN_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/
 
 type AdminRole = 'operator' | 'security_admin' | 'owner'
-type TabId = 'reports' | 'community_posts' | 'users' | 'plaza' | 'suspensions' | 'appeals' | 'warnings' | 'audit' | 'tokens'
-type PagedAdminTab = 'suspensions' | 'appeals' | 'warnings' | 'audit' | 'community_posts'
+type TabId = 'reports' | 'community_posts' | 'community_events' | 'users' | 'plaza' | 'suspensions' | 'appeals' | 'warnings' | 'audit' | 'tokens'
+type PagedAdminTab = 'suspensions' | 'appeals' | 'warnings' | 'audit' | 'community_posts' | 'community_events'
 type AppealDecision = 'accepted' | 'denied' | 'more_information_required'
 type AppealReviewStatus = 'pending' | 'more_information_required'
 type AdminReadPhase = 'idle' | 'ready' | 'error'
@@ -935,6 +960,16 @@ interface ReportGroup {
   first_created_at: string; last_created_at: string; last_report_id: string
   /** P3.6: when the oldest report still pending was filed. Only the pending queue carries it. */
   oldest_pending_at?: string
+}
+/** P4.9: a row of the events list, with what the three event buttons need. */
+interface CommunityEventRow {
+  id: string; source_type: 'caaci' | 'partner' | 'campus' | 'member'
+  title: string | null; title_en: string | null; organizer_name: string | null
+  starts_at: string; ends_at: string | null; location: string | null
+  availability: 'visible' | 'unavailable' | 'hidden'; hidden_reason: 'admin' | 'post_removed' | null
+  cancelled_at: string | null; duplicate_of: string | null; discussion_post_id: string | null
+  partner: { name_zh: string; name_en: string; status: string } | null
+  topic: { title: string | null; status: string } | null
 }
 /** P3.5: a row of the topic list, with what the five governance buttons need. */
 interface CommunityPostRow {
@@ -1097,6 +1132,7 @@ function showAdminRequestError(err: unknown, fallback: string) {
                 : message === 'self_appeal_decision_forbidden' ? t('admin.appealSelfDecisionForbidden')
                   : message === 'admin_mutation_conflict' ? t('admin.toastMutationConflict')
                     : message === 'official_profile_not_configured' ? t('admin.errOfficialNotConfigured')
+                    : message === 'event_discussion_closed' ? t('events.err.discussionClosed')
                       : message === 'post_not_official_account' ? t('admin.errNotOfficialAccount')
                         : message === 'post_not_official' ? t('admin.featureOfficialOnly')
                           : message === 'post_not_topic' ? t('admin.errNotTopic')
@@ -1337,6 +1373,7 @@ const currentAdmin = computed(() => {
 const allTabs: Array<{ id: TabId; labelKey: string; domain: 'moderation' | 'plaza' | 'tokens' }> = [
   { id: 'reports',     labelKey: 'admin.tabReports', domain: 'moderation' },
   { id: 'community_posts', labelKey: 'admin.tabTopics', domain: 'moderation' },
+  { id: 'community_events', labelKey: 'admin.tabEvents', domain: 'moderation' },
   { id: 'users',       labelKey: 'admin.tabUsers', domain: 'moderation' },
   { id: 'plaza',       labelKey: 'admin.tabPlaza', domain: 'plaza' },
   { id: 'suspensions', labelKey: 'admin.tabSuspensions', domain: 'moderation' },
@@ -1354,6 +1391,7 @@ const activeTab = ref<TabId>('reports')
 const tabReadStates = ref<Record<TabId, AdminReadState>>({
   reports: newAdminReadState(),
   community_posts: newAdminReadState(),
+  community_events: newAdminReadState(),
   users: newAdminReadState(),
   plaza: newAdminReadState(),
   suspensions: newAdminReadState(),
@@ -1803,11 +1841,36 @@ function isStrictLinkedRow(value: unknown): value is LinkedRow {
     && isAdminIsoTimestamp(value.last_seen)
 }
 
+function isStrictCommunityEventRow(value: unknown): value is CommunityEventRow {
+  if (!hasExactAdminKeys(value, [
+    'id', 'source_type', 'title', 'title_en', 'organizer_name', 'starts_at', 'ends_at', 'location',
+    'availability', 'hidden_reason', 'cancelled_at', 'duplicate_of', 'discussion_post_id', 'partner', 'topic',
+  ])) return false
+  return isAdminUuid(value.id)
+    && ['caaci', 'partner', 'campus', 'member'].includes(value.source_type as string)
+    && isNullableAdminString(value.title)
+    && isNullableAdminString(value.title_en)
+    && isNullableAdminString(value.organizer_name)
+    && isAdminIsoTimestamp(value.starts_at)
+    && (value.ends_at === null || isAdminIsoTimestamp(value.ends_at))
+    && isNullableAdminString(value.location)
+    && ['visible', 'unavailable', 'hidden'].includes(value.availability as string)
+    && (value.hidden_reason === null || value.hidden_reason === 'admin' || value.hidden_reason === 'post_removed')
+    && (value.cancelled_at === null || isAdminIsoTimestamp(value.cancelled_at))
+    && (value.duplicate_of === null || isAdminUuid(value.duplicate_of))
+    && (value.discussion_post_id === null || isAdminUuid(value.discussion_post_id))
+    && (value.partner === null || (hasExactAdminKeys(value.partner, ['name_zh', 'name_en', 'status'])
+      && typeof value.partner.name_zh === 'string' && typeof value.partner.name_en === 'string' && typeof value.partner.status === 'string'))
+    && (value.topic === null || (hasExactAdminKeys(value.topic, ['title', 'status'])
+      && isNullableAdminString(value.topic.title) && typeof value.topic.status === 'string'))
+}
+
 function isStrictPagedAdminRows(tab: PagedAdminTab, value: unknown): value is any[] {
   if (tab === 'suspensions') return isStrictAdminRows(value, isStrictSuspensionRow)
   if (tab === 'appeals') return isStrictAdminRows(value, isStrictAppealRow)
   if (tab === 'warnings') return isStrictAdminRows(value, isStrictWarningRow)
   if (tab === 'community_posts') return isStrictAdminRows(value, isStrictCommunityPostRow)
+  if (tab === 'community_events') return isStrictAdminRows(value, isStrictCommunityEventRow)
   return isStrictAdminRows(value, isStrictAuditRow)
 }
 
@@ -1941,12 +2004,15 @@ const warnings = ref<WarningRow[]>([])
 // P3.5: the topic list, visible topics or hidden ones.
 const communityPosts = ref<CommunityPostRow[]>([])
 const topicStatus = ref<'active' | 'hidden'>('active')
+// P4.9: every event, newest start first.
+const communityEvents = ref<CommunityEventRow[]>([])
 const listHasMore = ref<Record<PagedAdminTab, boolean>>({
   suspensions: false,
   appeals: false,
   warnings: false,
   audit: false,
   community_posts: false,
+  community_events: false,
 })
 const listLoadingMore = ref(false)
 let listLoadingMoreEpoch = 0
@@ -1956,6 +2022,7 @@ const listOffsets = ref<Record<PagedAdminTab, number>>({
   warnings: 0,
   audit: 0,
   community_posts: 0,
+  community_events: 0,
 })
 
 interface UserRow {
@@ -2949,6 +3016,8 @@ const DEFINITIVE_ADMIN_NO_COMMIT_ERRORS = new Set([
   'post_not_official_account',
   'post_not_official',
   'post_not_topic',
+  // P4.9: refused before the topic is written.
+  'event_discussion_closed',
   'bad_json',
   'bad_multipart',
   'body_too_large',
@@ -3220,7 +3289,7 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
   if (whoami.value?.role === 'owner') {
     const pendingOnly = reportPendingOnly.value
     const refreshUserReview = !!appliedUserQuery.value.trim()
-    const pagedTabs: PagedAdminTab[] = ['suspensions', 'appeals', 'warnings', 'audit', 'community_posts']
+    const pagedTabs: PagedAdminTab[] = ['suspensions', 'appeals', 'warnings', 'audit', 'community_posts', 'community_events']
     const topicsStatus = topicStatus.value
     const refreshedTabs: TabId[] = [
       'reports', 'plaza', ...pagedTabs, 'tokens',
@@ -3268,6 +3337,7 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
       nextBanners,
       nextInventory,
       nextTopics,
+      nextEvents,
     ] = await Promise.all([
       apiGet<StatsRow>({ resource: 'stats' }, owner),
       // P3.6: the pending view is the queue by longest wait; "all" keeps the grouped list.
@@ -3284,6 +3354,7 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
       apiGet<CommunityPostRow[]>({
         resource: 'community_posts', limit: String(ADMIN_LIST_PAGE + 1), offset: '0', status: topicsStatus,
       }, owner),
+      apiGet<CommunityEventRow[]>({ resource: 'community_events', limit: String(ADMIN_LIST_PAGE + 1), offset: '0' }, owner),
     ]).catch((err) => {
       failStrictRead()
       throw err
@@ -3299,6 +3370,7 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
         ? isStrictAdminRows(nextReports, isStrictReportQueueRow)
         : isStrictAdminRows(nextReports, isStrictReportGroup))
       || !isStrictAdminRows(nextTopics, isStrictCommunityPostRow)
+      || !isStrictAdminRows(nextEvents, isStrictCommunityEventRow)
       || !isStrictAdminRows(nextSuspensions, isStrictSuspensionRow)
       || !isStrictAdminRows(nextAppeals, isStrictAppealRow)
       || !isStrictAdminRows(nextWarnings, isStrictWarningRow)
@@ -3320,6 +3392,7 @@ async function strictReloadAdminState(owner: AdminSessionOwner) {
     applyAdminListFirstPage('warnings', nextWarnings)
     applyAdminListFirstPage('audit', nextAudit)
     applyAdminListFirstPage('community_posts', nextTopics)
+    applyAdminListFirstPage('community_events', nextEvents)
     applyPlazaFirstPages(nextPosts, nextBanners)
     adminTokens.value = nextInventory.tokens
     ownerRecovery.value = nextInventory.owner_recovery
@@ -3502,6 +3575,7 @@ function resetAdminPrivateState() {
   tabReadStates.value = {
     reports: newAdminReadState(),
     community_posts: newAdminReadState(),
+    community_events: newAdminReadState(),
     users: newAdminReadState(),
     plaza: newAdminReadState(),
     suspensions: newAdminReadState(),
@@ -3527,9 +3601,10 @@ function resetAdminPrivateState() {
   warnings.value = []
   auditLog.value = []
   communityPosts.value = []
+  communityEvents.value = []
   topicStatus.value = 'active'
-  listOffsets.value = { suspensions: 0, appeals: 0, warnings: 0, audit: 0, community_posts: 0 }
-  listHasMore.value = { suspensions: false, appeals: false, warnings: false, audit: false, community_posts: false }
+  listOffsets.value = { suspensions: 0, appeals: 0, warnings: 0, audit: 0, community_posts: 0, community_events: 0 }
+  listHasMore.value = { suspensions: false, appeals: false, warnings: false, audit: false, community_posts: false, community_events: false }
   resetListLoadingMore()
   adminTokens.value = []
   ownerRecovery.value = null
@@ -3733,6 +3808,7 @@ function adminListRows(tab: PagedAdminTab): any[] {
   if (tab === 'appeals') return appeals.value
   if (tab === 'warnings') return warnings.value
   if (tab === 'community_posts') return communityPosts.value
+  if (tab === 'community_events') return communityEvents.value
   return auditLog.value
 }
 
@@ -3741,6 +3817,7 @@ function applyAdminListRows(tab: PagedAdminTab, rows: any[]) {
   else if (tab === 'appeals') appeals.value = rows as AppealRow[]
   else if (tab === 'warnings') warnings.value = rows as WarningRow[]
   else if (tab === 'community_posts') communityPosts.value = rows as CommunityPostRow[]
+  else if (tab === 'community_events') communityEvents.value = rows as CommunityEventRow[]
   else auditLog.value = rows as AuditRow[]
 }
 
@@ -3834,7 +3911,7 @@ async function loadTab(
       await loadReports(true, reportsRequest)
     } else if (tab === 'plaza') {
       await loadPlaza(tabRequest)
-    } else if (tab === 'suspensions' || tab === 'appeals' || tab === 'warnings' || tab === 'audit' || tab === 'community_posts') {
+    } else if (tab === 'suspensions' || tab === 'appeals' || tab === 'warnings' || tab === 'audit' || tab === 'community_posts' || tab === 'community_events') {
       await loadPagedAdminTab(tab, true, tabRequest)
     } else if (tab === 'tokens') {
       await loadTokens(tabRequest)
@@ -4345,6 +4422,46 @@ function governTopic(p: CommunityPostRow, label: string, change: Record<string, 
     },
   })
 }
+// P4.9: the events list. The discussion topic is the owner's to open, once per
+// organization's event; a member's event already has its own topic.
+const eventMutationKey = (e: CommunityEventRow) => `event:${e.id}`
+const eventBusy = (e: CommunityEventRow) => moderationMutationBusy(eventMutationKey(e))
+const eventLine = (e: CommunityEventRow) => Array.from(eventConsoleTitle(e) || e.id).slice(0, 60).join('')
+const eventActions = (e: CommunityEventRow) => eventConsoleActions(e, canMarkOfficial.value)
+function governEvent(e: CommunityEventRow, label: string, action: 'create_event_discussion' | 'hide_event' | 'unhide_event') {
+  const owner = captureAdminSessionOwner()
+  const mutationKey = eventMutationKey(e)
+  if (!owner || moderationMutationBusy(mutationKey)) return
+  showModerationReason({
+    title: label,
+    content: eventLine(e),
+    placeholderText: t('admin.governReasonPh'),
+    confirmText: label,
+    success: async (r) => {
+      if (!r.confirm || !isAdminSessionOwnerCurrent(owner) || moderationMutationBusy(mutationKey)) return
+      const reason = moderationReasonOrNotify(r.content)
+      if (reason === null) return
+      if (!beginModerationMutation(mutationKey)) return
+      try {
+        await apiPost({ action, event_id: e.id, reason }, owner, async () => {
+          if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+          await loadTab('community_events', owner, true)
+          if (!isAdminSessionOwnerCurrent(owner)) throw new AdminSessionChangedError()
+        })
+        if (!isAdminSessionOwnerCurrent(owner)) return
+        uni.showToast({ title: t('admin.toastGovernDone'), icon: 'success' })
+      } catch (err: any) {
+        showAdminRequestError(err, t('admin.toastGovernFailed'))
+      } finally {
+        if (isAdminSessionOwnerCurrent(owner)) endModerationMutation(mutationKey)
+      }
+    },
+  })
+}
+function onEventDiscussion(e: CommunityEventRow) { governEvent(e, t('admin.openDiscussion'), 'create_event_discussion') }
+function onHideEvent(e: CommunityEventRow) { governEvent(e, t('admin.hideEvent'), 'hide_event') }
+function onUnhideEvent(e: CommunityEventRow) { governEvent(e, t('admin.unhideEvent'), 'unhide_event') }
+
 function onRestoreTopic(p: CommunityPostRow) {
   governTopic(p, t('admin.restoreContent'), { action: 'restore_content', target_type: 'post', target_id: p.id })
 }

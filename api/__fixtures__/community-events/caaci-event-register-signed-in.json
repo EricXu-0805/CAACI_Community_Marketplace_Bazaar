@@ -1,0 +1,11 @@
+{
+  "schema": "caaci.public-events.v1",
+  "complete": true,
+  "events": [],
+  "registration": {
+    "email": "organizer@example.test",
+    "phone": "synthetic",
+    "questions": ["Synthetic description."],
+    "volunteer": {"email": "organizer@example.test"}
+  }
+}

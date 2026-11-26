@@ -168,7 +168,10 @@ test('the real client source parses, and every call names a function', async () 
   const calls = await clientRpcCalls()
   assert.ok(calls.length >= 20, `expected the app's rpc calls, found ${calls.length}`)
   const names = new Set(calls.map(c => c.name))
-  for (const expected of ['get_my_profile', 'record_consent', 'make_offer', 'set_my_email_language']) {
+  for (const expected of [
+    'get_my_profile', 'record_consent', 'make_offer', 'set_my_email_language',
+    'community_member_events_open', 'create_member_event',
+  ]) {
     assert.ok(names.has(expected), `${expected} is called by the app but the scan missed it`)
   }
   for (const call of calls) {
