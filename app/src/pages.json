@@ -73,6 +73,10 @@
 			"style": { "navigationStyle": "custom" }
 		},
 		{
+			"path": "pages/my-topics/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/legal/index",
 			"style": { "navigationStyle": "custom" }
 		},
@@ -216,6 +220,10 @@
 		},
 		{
 			"root": "pages/my-items",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/my-topics",
 			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
 		},
 		{

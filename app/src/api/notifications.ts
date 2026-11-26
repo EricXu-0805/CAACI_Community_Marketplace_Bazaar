@@ -45,6 +45,23 @@ export function notificationBodyKey(body: string): { key: string; target: string
 }
 
 /*
+ * SPEC 6.8 (P3.3). Three body keys mean "a reply was written": post_comment
+ * for the topic's author, comment_reply for the author of the reply that was
+ * answered, and followed_post_reply for a member who watches the topic. All
+ * three open the topic at that reply. A client cannot read the notice's
+ * source_event_key, so the reply is named by its instant: a notice is written
+ * in the reply's own transaction and carries the same created_at.
+ */
+const REPLY_BODY_KEYS = new Set(['post_comment', 'comment_reply', 'followed_post_reply'])
+const POST_TARGET_KEYS = new Set([...REPLY_BODY_KEYS, 'post_like', 'post_comment_like'])
+
+/** The topic a notice opens, or null when it opens something else. */
+export function notificationPostTarget(notification: Pick<Notification, 'body'>): string | null {
+  const { key, target } = notificationBodyKey(notification.body)
+  return target && POST_TARGET_KEYS.has(key) ? target : null
+}
+
+/*
  * A trigger writes a fixed title as one bilingual string —
  * '报价被接受 · Offer accepted' — so both readers read both languages.
  * The row cannot be composed in the reader's language where it is written: a
@@ -114,8 +131,11 @@ export function notificationDestination(notification: Notification): {
     if (key === 'new_follower') {
       return { url: `/pages/seller/index?id=${encodeURIComponent(target)}` }
     }
-    if (key === 'post_comment' || key === 'post_like' || key === 'post_comment_like') {
-      return { url: `/pages/post/index?id=${encodeURIComponent(target)}` }
+    if (POST_TARGET_KEYS.has(key)) {
+      const reply = REPLY_BODY_KEYS.has(key) && notification.created_at
+        ? `&reply_at=${encodeURIComponent(notification.created_at)}`
+        : ''
+      return { url: `/pages/post/index?id=${encodeURIComponent(target)}${reply}` }
     }
   }
   if (notification.conversation_id) {

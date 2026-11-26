@@ -16,7 +16,7 @@
       <view v-else style="width: 32px;"></view>
     </view>
 
-    <scroll-view v-if="post && !authorBlocked" class="body" scroll-y>
+    <scroll-view v-if="post && !authorBlocked" class="body" scroll-y :scroll-into-view="anchorTarget">
       <view
         class="post-card"
         role="group"
@@ -128,6 +128,21 @@
           <UIcon name="chevron-right" size="sm" color="text-faint" />
         </view>
 
+        <!-- SPEC 6.4: watch (new replies are announced) and save (a private bookmark). -->
+        <view class="topic-marks">
+          <view :class="['mark-btn', { on: marks.watch }]" role="button" tabindex="0" data-test="topic-watch"
+            :aria-pressed="markPressed('watch')" @click="onToggleMark('watch')"
+            @keydown.enter.prevent="onToggleMark('watch')" @keydown.space.prevent="onToggleMark('watch')">
+            <text class="mark-label">{{ t(marks.watch ? 'plaza.watching' : 'plaza.watch') }}</text>
+            <text class="mark-hint">{{ t('plaza.watchHint') }}</text>
+          </view>
+          <view :class="['mark-btn', { on: marks.save }]" role="button" tabindex="0" data-test="topic-save"
+            :aria-pressed="markPressed('save')" @click="onToggleMark('save')"
+            @keydown.enter.prevent="onToggleMark('save')" @keydown.space.prevent="onToggleMark('save')">
+            <text class="mark-label">{{ t(marks.save ? 'plaza.saved' : 'plaza.save') }}</text>
+          </view>
+        </view>
+
         <view class="stats-row">
           <view class="stat-btn" role="button" :aria-label="post.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="post.liked_by_me ? 'true' : 'false'" @click="onToggleLike">
             <image
@@ -161,6 +176,8 @@
         <template v-for="thread in commentThreads" :key="thread.parent.id">
           <view
             class="cs-item u-rise"
+            :id="'reply-' + thread.parent.id"
+            :class="{ 'cs-item--anchor': anchorId === thread.parent.id }"
             role="group"
             tabindex="0"
             :aria-label="localize(thread.parent.content_i18n, thread.parent.content)"
@@ -190,7 +207,7 @@
                   <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                   <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
                 </view>
-                <text class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
+                <text v-if="!post.locked_at" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
               </view>
             </view>
           </view>
@@ -200,6 +217,8 @@
               v-for="child in (expandedReplies.has(thread.parent.id) ? thread.children : thread.children.slice(0, 3))"
               :key="child.id"
               class="cs-item cs-item-child"
+              :id="'reply-' + child.id"
+              :class="{ 'cs-item--anchor': anchorId === child.id }"
               role="group"
               tabindex="0"
               :aria-label="localize(child.content_i18n, child.content)"
@@ -229,7 +248,7 @@
                     <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                     <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
                   </view>
-                  <text class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
+                  <text v-if="!post.locked_at" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
                 </view>
               </view>
             </view>
@@ -273,13 +292,33 @@
       <view class="back-home" role="button" :aria-label="t('home.retry')" @click="loadPostForCurrentAccount">{{ t('home.retry') }}</view>
     </view>
 
+    <!-- SPEC 6.10: a hidden topic. Its author reads their own text under one general sentence;
+         everybody else learns only that it was hidden: no title, author or image.
+         D-54 2e, 2j: no reason is shown, because what a moderator typed for a takedown is an internal
+         note, and no appeal is offered, because a takedown has no appeal record to open yet. The
+         author is told whom to write to, and nothing here opens a mail app or copies an address. -->
+    <view v-else-if="goneState === 'hidden' && ownHidden" class="hidden-own" data-test="hidden-own">
+      <view class="hidden-banner" role="status">
+        <text class="hidden-banner-t">{{ t('plaza.hiddenOwner') }}</text>
+        <text class="hidden-banner-t">{{ t('plaza.hiddenContact') }}</text>
+      </view>
+      <text v-if="ownHidden.title" class="post-topic-title hidden-text">{{ ownHidden.title }}</text>
+      <text class="content hidden-text">{{ ownHidden.content }}</text>
+      <view class="back-home" role="button" @click="goPlaza">{{ t('plaza.backToPlaza') }}</view>
+    </view>
+
+    <view v-else-if="goneState === 'hidden'" class="not-found" data-test="hidden-notice">
+      <text>{{ t('plaza.hidden') }}</text>
+      <view class="back-home" role="button" @click="goPlaza">{{ t('plaza.backToPlaza') }}</view>
+    </view>
+
     <view v-else class="not-found">
       <text>{{ t('plaza.notFound') }}</text>
       <view class="back-home" role="button" @click="goPlaza">{{ t('plaza.backToPlaza') }}</view>
     </view>
 
     <view v-if="post && !authorBlocked" class="input-wrapper" :style="kbLift">
-      <view v-if="replyTo && !replyRestricted" class="reply-bar">
+      <view v-if="replyTo && !replyRestricted && !post.locked_at" class="reply-bar">
         <text class="reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
         <view class="reply-x" role="button" :aria-label="t('a11y.close')" @click="replyTo = null">
           <view class="rx-inner"></view>
@@ -287,6 +326,10 @@
       </view>
       <view v-if="replyRestricted" class="input-bar reply-restricted" role="status">
         <text>{{ t('plaza.restrictedReply') }}</text>
+      </view>
+      <!-- P3.5: a moderator closed this topic to new replies; everybody gets the same notice. -->
+      <view v-else-if="post.locked_at" class="input-bar reply-restricted" role="status" data-test="reply-locked">
+        <text>{{ t('plaza.locked') }}</text>
       </view>
       <view v-else :class="['input-bar', { 'has-note': replyFailed }]">
         <input
@@ -312,7 +355,7 @@
       </view>
       <!-- SPEC 6.4: a reply that did not go out stays in the box, and this line sends it again.
            Not while the account is restricted: the notice above replaces the input, and a retry would only be refused. -->
-      <view v-if="replyFailed && !replyRestricted" class="reply-failed" role="button" @click="retryReply">
+      <view v-if="replyFailed && !replyRestricted && !post.locked_at" class="reply-failed" role="button" @click="retryReply">
         <text class="reply-failed-t">{{ t('plaza.replyFailed') }}</text>
       </view>
     </view>
@@ -329,7 +372,7 @@ const mpChrome = mpChromeVars()
 // #ifndef H5
 import AppToast from '../../components/AppToast.vue'
 // #endif
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { onLoad, onUnload, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useI18n } from '../../composables/useI18n'
 import { useAuth } from '../../composables/useAuth'
@@ -355,6 +398,9 @@ import { clearLocalDuplicate } from '../../utils/contentSafety'
 import { formatTime, friendlyErrorMessage, navigateBackOr, quickTranslate, thumbUrl, listingPriceLabel } from '../../utils'
 import { DIALOG_DANGER, DIALOG_INK } from '../../utils/dialogColors'
 import { isSuspensionActive } from '../../utils/suspension'
+import { captureException } from '../../utils/sentry'
+import { hiddenTopicShare } from '../../utils/communityPost'
+import { useTopicLists, type TopicListRow, type TopicMark } from '../../composables/useTopicLists'
 import { dimsToAspectStyle, readNaturalDims } from '../../utils/imgStyle'
 import type { ImageDim, Post, PostComment } from '../../types'
 import { BASE_URL } from '../../config/runtime'
@@ -385,6 +431,81 @@ const viewportStyle = computed(() => visibleHeight.value == null ? undefined : (
 }))
 
 const post = ref<Post | null>(null)
+const { loadTopicMarks, setTopicMark, fetchGoneTopic } = useTopicLists()
+
+
+// P3.2: the signed-in member's own marks on this topic.
+const marks = ref<Record<TopicMark, boolean>>({ watch: false, save: false })
+// The marks could not be read. "Not watching" would be a guess, so the buttons say neither and
+// the next tap reads them again before anything is written.
+const marksUnknown = ref(false)
+const markPressed = (mark: TopicMark) => (marksUnknown.value ? 'mixed' : marks.value[mark] ? 'true' : 'false')
+const markBusy: Record<TopicMark, boolean> = { watch: false, save: false }
+async function loadMarks(target: Post) {
+  const userId = currentUser.value?.id
+  marks.value = { watch: false, save: false }
+  marksUnknown.value = false
+  if (!userId) return
+  const current = () => post.value?.id === target.id && currentUser.value?.id === userId
+  try {
+    const loaded = await loadTopicMarks(userId, target.id)
+    if (current()) marks.value = loaded
+  } catch (err) {
+    if (!current()) return
+    marksUnknown.value = true
+    captureException(err, { tags: { source: 'post.topic_marks' } })
+    uni.showToast({ title: t('plaza.marksFailed'), icon: 'none', duration: 2500 })
+  }
+}
+async function onToggleMark(mark: TopicMark) {
+  await awaitAuthReady()
+  if (!requireAuth() || !post.value || !currentUser.value || markBusy[mark]) return
+  if (marksUnknown.value) {
+    // Read first: what the button would do depends on a state this page has not seen yet.
+    markBusy[mark] = true
+    try { await loadMarks(post.value) } finally { markBusy[mark] = false }
+    return
+  }
+  const userId = currentUser.value.id
+  const target = post.value.id
+  const next = !marks.value[mark]
+  markBusy[mark] = true
+  marks.value = { ...marks.value, [mark]: next }
+  try {
+    await setTopicMark(userId, target, mark, next)
+  } catch (err: any) {
+    if (post.value?.id === target && currentUser.value?.id === userId) marks.value = { ...marks.value, [mark]: !next }
+    uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('error.actionFailed'), icon: 'none' })
+  } finally {
+    markBusy[mark] = false
+  }
+}
+
+// P3.6: why the topic could not be loaded, and the author's own copy of a hidden one.
+const goneState = ref<'hidden' | 'missing' | null>(null)
+const ownHidden = ref<TopicListRow | null>(null)
+
+// P3.3: a notification link names the reply it is about by its instant, or by its id.
+const anchorQuery = { at: '', id: '' }
+const anchorId = ref('')
+const anchorTarget = ref('')
+function applyReplyAnchor() {
+  if (!anchorQuery.at && !anchorQuery.id) return
+  const instant = anchorQuery.at ? Date.parse(anchorQuery.at) : NaN
+  const hit = comments.value.find(c => c.id === anchorQuery.id || Date.parse(c.created_at) === instant)
+  anchorQuery.at = ''
+  anchorQuery.id = ''
+  if (!hit) {
+    // Removed since, or older than the replies this page loads: say so instead of opening on nothing.
+    uni.showToast({ title: t('plaza.replyNotFound'), icon: 'none', duration: 2500 })
+    return
+  }
+  // A reply folded behind "show more" has to be on screen before it can be scrolled to.
+  if (hit.parent_comment_id) expandedReplies.value = new Set([...expandedReplies.value, hit.parent_comment_id])
+  anchorId.value = hit.id
+  void nextTick(() => { anchorTarget.value = `reply-${hit.id}` })
+  setTimeout(() => { if (anchorId.value === hit.id) anchorId.value = '' }, 2000)
+}
 // SPEC 6.6: a linked item's card says whether it can still be had.
 const refStatusKey = (status: string) => status === 'sold' ? 'plaza.ref.sold'
   : status === 'reserved' ? 'plaza.ref.reserved' : 'plaza.ref.available'
@@ -503,6 +624,7 @@ function resetPostAccountState() {
   translationEpoch += 1
   translatedContent.value = ''
   if (post.value) post.value.liked_by_me = false
+  marks.value = { watch: false, save: false }
   comments.value = comments.value.map(comment => ({ ...comment, liked_by_me: false }))
   reportLoading.cancel()
 }
@@ -637,6 +759,12 @@ onLoad((options) => {
   if (options?.id) {
     postId.value = options.id as string
   }
+  try {
+    anchorQuery.at = options?.reply_at ? decodeURIComponent(String(options.reply_at)) : ''
+  } catch {
+    anchorQuery.at = ''
+  }
+  anchorQuery.id = options?.comment ? String(options.comment) : ''
 })
 
 onUnload(() => {
@@ -645,6 +773,11 @@ onUnload(() => {
 
 onShareAppMessage(() => {
   const p = post.value
+  // SPEC 6.10: a hidden topic is shared as a notice about itself, with none of its text or images.
+  if (!p && goneState.value === 'hidden') {
+    const { title, path, imageUrl } = hiddenTopicShare(postId.value, t)
+    return { title, path, imageUrl }
+  }
   if (!p) return { title: t('share.plaza'), path: '/pages/plaza/index' }
   const firstLine = Array.from((p.title || localize(p.content_i18n, p.content || '')).split('\n')[0]).slice(0, 50).join('').trim() || t('share.plaza')
   return {
@@ -656,6 +789,10 @@ onShareAppMessage(() => {
 
 onShareTimeline(() => {
   const p = post.value
+  if (!p && goneState.value === 'hidden') {
+    const { title, query, imageUrl } = hiddenTopicShare(postId.value, t)
+    return { title, query, imageUrl }
+  }
   if (!p) return { title: t('share.plaza') }
   const firstLine = Array.from((p.title || localize(p.content_i18n, p.content || '')).split('\n')[0]).slice(0, 50).join('').trim() || t('share.plaza')
   return {
@@ -680,6 +817,8 @@ async function loadPostForCurrentAccount() {
   loadingComments.value = true
   loadError.value = false
   commentsError.value = false
+  goneState.value = null
+  ownHidden.value = null
   try {
     // fetchPost/fetchComments annotate liked_by_me from currentUser. Wait for
     // session hydration so a cold deep link does not permanently render every
@@ -696,11 +835,13 @@ async function loadPostForCurrentAccount() {
       post.value = p
       addPostToHistory(p)
       void loadAttachPending(p)
+      void loadMarks(p)
       try {
         const rows = await fetchComments(postId.value)
         if (!pageMounted || requestEpoch !== postLoadEpoch || commentsRequestEpoch !== commentsLoadEpoch) return
         comments.value = rows
         commentsError.value = false
+        applyReplyAnchor()
       } catch (err: any) {
         if (!pageMounted || requestEpoch !== postLoadEpoch || commentsRequestEpoch !== commentsLoadEpoch) return
         // Same discipline the outer catch applies to the post: a transport
@@ -710,6 +851,15 @@ async function loadPostForCurrentAccount() {
         commentsError.value = true
         uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none', duration: 2500 })
       }
+    } else {
+      // Row security answers "no row" for a hidden topic and for a deleted one alike, so ask
+      // which it is. If that cannot be read either, this is a failed load like any other: the
+      // catch below names it and offers the retry. It is never shown as a deleted topic.
+      post.value = null
+      const gone = await fetchGoneTopic(postId.value, !!currentUser.value)
+      if (!pageMounted || requestEpoch !== postLoadEpoch) return
+      ownHidden.value = gone.own
+      goneState.value = gone.state
     }
   } catch (err: any) {
     if (!pageMounted || requestEpoch !== postLoadEpoch) return
@@ -745,6 +895,8 @@ async function retryComments() {
     const rows = await fetchComments(requestPostId)
     if (!isCurrent()) return
     comments.value = rows
+    // A notification link whose first read failed still names its reply.
+    applyReplyAnchor()
   } catch (err: any) {
     if (!isCurrent()) return
     commentsError.value = true
@@ -824,7 +976,7 @@ function onDelete() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
-  if (replyRestricted.value) return
+  if (replyRestricted.value || post.value?.locked_at) return
   replyTo.value = c
 }
 
@@ -874,42 +1026,39 @@ async function onCommentLongPress(c: PostComment) {
     && isAccountRequestCurrent(accountToken)
     && post.value?.id === actionPostId
   )
-  const items = isMine
-    ? [t('plaza.delete')]
-    : [t('plaza.reply'), t('plaza.reportComment'), t('plaza.reportUser')]
+  const confirmDelete = () => uni.showModal({
+    title: t('plaza.commentDeleteConfirm'),
+    confirmColor: DIALOG_DANGER,
+    success: async (r) => {
+      if (!r.confirm || !actionIsCurrent()) return
+      try {
+        await deleteComment(c.id, actionPostId)
+        if (!actionIsCurrent()) return
+        comments.value = comments.value.filter(x => x.id !== c.id)
+        // Mirror the add path (line ~597) — usePlaza.deleteComment only
+        // decrements the feed-list copy, not this detail page's post ref,
+        // so the header count would otherwise go stale.
+        if (post.value) post.value.comment_count = Math.max(0, (post.value.comment_count || 0) - 1)
+      } catch (err: any) {
+        if (!actionIsCurrent()) return
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
+      }
+    },
+  })
+  // A closed topic takes no replies, so its menu does not offer one.
+  const actions: Array<{ label: string; run: () => void }> = isMine
+    ? [{ label: t('plaza.delete'), run: confirmDelete }]
+    : [
+      ...(post.value?.locked_at ? [] : [{ label: t('plaza.reply'), run: () => { if (!replyRestricted.value) replyTo.value = c } }]),
+      { label: t('plaza.reportComment'), run: () => promptReport('comment', c.id) },
+      { label: t('plaza.reportUser'), run: () => promptReportUser(c.user_id) },
+    ]
   uni.showActionSheet({
-    itemList: items,
+    itemList: actions.map(action => action.label),
     itemColor: isMine ? DIALOG_DANGER : DIALOG_INK,
     success: (res) => {
       if (!actionIsCurrent()) return
-      if (isMine && res.tapIndex === 0) {
-        uni.showModal({
-          title: t('plaza.commentDeleteConfirm'),
-          confirmColor: DIALOG_DANGER,
-          success: async (r) => {
-            if (!r.confirm || !actionIsCurrent()) return
-            try {
-              await deleteComment(c.id, actionPostId)
-              if (!actionIsCurrent()) return
-              comments.value = comments.value.filter(x => x.id !== c.id)
-              // Mirror the add path (line ~597) — usePlaza.deleteComment only
-              // decrements the feed-list copy, not this detail page's post ref,
-              // so the header count would otherwise go stale.
-              if (post.value) post.value.comment_count = Math.max(0, (post.value.comment_count || 0) - 1)
-            } catch (err: any) {
-              if (!actionIsCurrent()) return
-              uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh'), icon: 'none' })
-            }
-          },
-        })
-      } else if (!isMine && res.tapIndex === 0) {
-        if (replyRestricted.value) return
-        replyTo.value = c
-      } else if (!isMine && res.tapIndex === 1) {
-        promptReport('comment', c.id)
-      } else if (!isMine && res.tapIndex === 2) {
-        promptReportUser(c.user_id)
-      }
+      actions[res.tapIndex]?.run()
     },
   })
 }
@@ -955,7 +1104,9 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
         await reportTarget(targetType, targetId, reason)
         reportLoading.hide(loadingOwner)
         if (!actionIsCurrent()) return
-        uni.showToast({ title: t('report.thanks'), icon: 'success' })
+        // SPEC 6.10: a report on a topic or a reply says when it will be looked at.
+        if (targetType === 'post' || targetType === 'comment') uni.showToast({ title: t('report.thanksCommunity'), icon: 'none', duration: 2500 })
+        else uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
         reportLoading.hide(loadingOwner)
         if (!actionIsCurrent()) return
@@ -987,7 +1138,8 @@ async function onSubmitComment() {
     const parentId = submittedReply
       ? (submittedReply.parent_comment_id ?? submittedReply.id)
       : undefined
-    const c = await createComment(post.value.id, text, parentId)
+    // SPEC 6.8: the reply that was answered is named too, so its author is the one told.
+    const c = await createComment(post.value.id, text, parentId, submittedReply?.id)
     if (!isAccountRequestCurrent(commentAccountToken)) return
     // fetchComments hydrates reply_to_name from DB on next refresh; for the
     // optimistic push here we mirror the same logic by reading replyTo's nickname.
@@ -1004,6 +1156,8 @@ async function onSubmitComment() {
     uni.showToast({ title: t('plaza.commented'), icon: 'success' })
   } catch (err: any) {
     if (!isAccountRequestCurrent(commentAccountToken)) return
+    // The topic was closed after this page loaded: show the closed notice from now on.
+    if (post.value && String(err?.message || '').includes('post_locked')) post.value.locked_at = new Date().toISOString()
     if (mutationCommitState(err) === 'unknown') {
       // The request went out and no answer says what became of it: a dropped
       // connection, a 5xx, a lost response. A refusal with a reason (a rule the
@@ -1339,4 +1493,28 @@ async function retryReply() {
 .attach-pending-btn.primary { color: var(--brand); border-color: var(--brand); }
 .attach-pending-btn.disabled { opacity: 0.5; pointer-events: none; }
 .post-topic-title { display: block; font-size: 22px; font-weight: 700; line-height: 1.4; margin-bottom: 12px; overflow-wrap: anywhere; }
+
+/* P3.2: watch and save. */
+.topic-marks { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+.mark-btn {
+  display: flex; flex-direction: column; justify-content: center;
+  min-height: 44px; padding: 6px 14px; box-sizing: border-box;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+  background: var(--surface); cursor: pointer;
+  &.on { background: var(--bg-subtle); }
+  &.on .mark-label { font-weight: 600; }
+}
+.mark-label { font-size: 14px; line-height: 20px; color: var(--ink); }
+.mark-hint { font-size: 12px; line-height: 16px; color: var(--ink-soft); }
+/* P3.3: the reply a notification pointed at. */
+.cs-item--anchor { background: var(--warning-soft); }
+/* P3.6: the author's own view of a hidden topic. */
+.hidden-own { padding: var(--space-4); }
+.hidden-banner {
+  display: flex; flex-direction: column; gap: var(--space-1);
+  padding: var(--space-3); border-radius: var(--radius-sm); background: var(--warning-soft);
+}
+.hidden-banner-t { font-size: 14px; line-height: 20px; color: var(--ink); }
+/* Greyed out by its colour, not by opacity: the quieter ink still reads at 4.5:1 on the page. */
+.hidden-text { display: block; margin-top: var(--space-3); color: var(--ink-soft); }
 </style>

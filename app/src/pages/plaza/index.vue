@@ -376,6 +376,8 @@
         :failed="homeFailed"
         :desktop="isDesktop"
         :is-logged-in="isLoggedIn"
+        :latest-sort="homeLatestSort"
+        @latest-sort="homeLatestSort = $event"
         @board="showBoard"
         @all="showAll"
         @compose="openComposer"
@@ -430,7 +432,7 @@
           :aria-label="localize(thread.parent.content_i18n, thread.parent.content)"
           aria-keyshortcuts="Shift+F10"
           @keydown="onCommentKeyboardMenu($event, thread.parent)"
-          @touchstart="commentLongPress.onTouchstart(thread.parent)"
+          @touchstart="!isPendingComment(thread.parent) && commentLongPress.onTouchstart(thread.parent)"
           @touchend="commentLongPress.onTouchend"
           @touchcancel="commentLongPress.onTouchcancel"
           @touchmove="commentLongPress.onTouchmove"
@@ -450,11 +452,11 @@
             </view>
             <text class="cs-content">{{ localize(thread.parent.content_i18n, thread.parent.content) }}</text>
             <view class="cs-actions">
-              <view class="cs-like-btn hit-target" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="thread.parent.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(thread.parent)">
+              <view v-if="!isPendingComment(thread.parent)" class="cs-like-btn hit-target" role="button" :aria-label="thread.parent.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="thread.parent.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(thread.parent)">
                 <image :src="thread.parent.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                 <text v-if="(thread.parent.like_count ?? 0) > 0" :class="['cs-like-num', { active: thread.parent.liked_by_me }]">{{ thread.parent.like_count }}</text>
               </view>
-              <text class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
+              <text v-if="!commentingPost.locked_at && !isPendingComment(thread.parent)" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(thread.parent)">{{ t('plaza.reply') }}</text>
             </view>
           </view>
         </view>
@@ -469,7 +471,7 @@
             :aria-label="localize(child.content_i18n, child.content)"
             aria-keyshortcuts="Shift+F10"
             @keydown="onCommentKeyboardMenu($event, child)"
-            @touchstart="commentLongPress.onTouchstart(child)"
+            @touchstart="!isPendingComment(child) && commentLongPress.onTouchstart(child)"
             @touchend="commentLongPress.onTouchend"
             @touchcancel="commentLongPress.onTouchcancel"
             @touchmove="commentLongPress.onTouchmove"
@@ -489,11 +491,11 @@
               </view>
               <text class="cs-content">{{ localize(child.content_i18n, child.content) }}</text>
               <view class="cs-actions">
-                <view class="cs-like-btn hit-target" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="child.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(child)">
+                <view v-if="!isPendingComment(child)" class="cs-like-btn hit-target" role="button" :aria-label="child.liked_by_me ? t('a11y.unlike') : t('a11y.like')" :aria-pressed="child.liked_by_me ? 'true' : 'false'" @click.stop="onToggleCommentLike(child)">
                   <image :src="child.liked_by_me ? '/static/heart-filled.svg' : '/static/heart.svg'" alt="" class="cs-heart-img" />
                   <text v-if="(child.like_count ?? 0) > 0" :class="['cs-like-num', { active: child.liked_by_me }]">{{ child.like_count }}</text>
                 </view>
-                <text class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
+                <text v-if="!commentingPost.locked_at && !isPendingComment(child)" class="cs-reply-btn hit-target" role="button" @click.stop="onCommentTap(child)">{{ t('plaza.reply') }}</text>
               </view>
             </view>
           </view>
@@ -515,13 +517,17 @@
       <view v-if="!loadingComments && comments.length > 0" class="cmt-end"><text>{{ t('plaza.noMoreComments') }}</text></view>
       </scroll-view>
 
-      <view v-if="replyTo && !replyRestricted" class="ci-reply-bar">
+      <view v-if="replyTo && !replyRestricted && !commentingPost.locked_at" class="ci-reply-bar">
         <text class="ci-reply-label">{{ t('plaza.replyingTo') }} @{{ replyTo.profile?.nickname || t('app.user') }}</text>
         <view class="ci-reply-x" role="button" :aria-label="t('a11y.close')" @click.stop="replyTo = null"><view class="ci-rx"></view></view>
       </view>
 
       <view v-if="replyRestricted" class="ci-input-bar reply-restricted" role="status">
         <text>{{ t('plaza.restrictedReply') }}</text>
+      </view>
+      <!-- P3.5: closed to new replies. The notice stands where the box would be, so nobody types a reply that cannot be sent. -->
+      <view v-else-if="commentingPost.locked_at" class="ci-input-bar reply-restricted" role="status" data-test="reply-locked">
+        <text>{{ t('plaza.locked') }}</text>
       </view>
       <view v-else class="ci-input-bar">
         <textarea
@@ -746,7 +752,7 @@ import { useI18n } from '../../composables/useI18n'
 import { authoredLang } from '../../composables/i18n/format'
 import { useAuth } from '../../composables/useAuth'
 import { useTheme } from '../../composables/useTheme'
-import { usePlaza, groupCommentsByParent, type CreatePostResult } from '../../composables/usePlaza'
+import { usePlaza, groupCommentsByParent, type CreatePostResult, type PlazaSort } from '../../composables/usePlaza'
 import { useFollow } from '../../composables/useFollow'
 import { useModeration } from '../../composables/useModeration'
 import { useItems, type UploadAccountToken, type UploadBatchResult } from '../../composables/useItems'
@@ -779,7 +785,7 @@ import CommunityAbout from '../../components/CommunityAbout.vue'
 import CommunityHeader from '../../components/CommunityHeader.vue'
 import CommunityHome from '../../components/CommunityHome.vue'
 import { useCommunityHome } from '../../composables/useCommunityHome'
-import { boardFiller, buildHomeSections, type HomePostData } from '../../utils/communityHome'
+import { boardFiller, buildHomeSections, type HomeLatestSort, type HomePostData } from '../../utils/communityHome'
 import UAvatar from '../../components/UAvatar.vue'
 import UBadge from '../../components/UBadge.vue'
 import UEmptyArt from '../../components/UEmptyArt.vue'
@@ -850,22 +856,25 @@ let plazaAccountEpoch = 0
 const reportLoading = createOwnedLoading()
 
 /*
- * Feed sub-tabs (SPEC 6.2: 新发布 / 热门 / 关注的人). 热门 and 新发布 both show all
- * posts but差 in server sort — 热门 ranks by engagement, 新发布 by recency —
- * so switching between them re-fetches. 关注的人 is the same list, newest
- * first, narrowed to posts written by the people the reader follows; the
- * people themselves are listed on pages/following. CAACI 官方 posts surface
- * inline (pinned-first + OFFICIAL badge) rather than via a dedicated tab.
+ * Feed sub-tabs (SPEC 6.1, 6.2, from P3.4: 最新回复 / 新发布 / 待回答 / 热门 /
+ * 关注的人, opening on 最新回复). The first four show everyone's posts and differ
+ * in what the server is asked for, so switching between them re-fetches.
+ * 关注的人 is the 新发布 list narrowed to posts written by the people the reader
+ * follows; the people themselves are listed on pages/following. CAACI 官方
+ * posts surface inline (pinned-first + OFFICIAL badge) rather than via a
+ * dedicated tab.
  */
-type FeedTabKey = 'following' | 'hot' | 'recent'
-const activeTab = ref<FeedTabKey>('recent')
-// SPEC 6.1, 6.2, until P3.4: 新发布｜热门｜关注的人, and a board page has no 关注的人.
+type FeedTabKey = PlazaSort | 'following'
+const activeTab = ref<FeedTabKey>('active')
+// A board page has no 关注的人.
 const feedTabs = computed<{ key: FeedTabKey; label: string }[]>(() => [
+  { key: 'active' as const, label: t('plaza.tab.active') },
   { key: 'recent' as const, label: t('plaza.tab.recent') },
+  { key: 'unanswered' as const, label: t('plaza.tab.unanswered') },
   { key: 'hot' as const, label: t('plaza.tab.hot') },
   { key: 'following' as const, label: t('plaza.tab.following') },
 ].filter(tab => view.value !== 'board' || tab.key !== 'following'))
-const feedSort = computed<'recent' | 'hot'>(() => (activeTab.value === 'hot' ? 'hot' : 'recent'))
+const feedSort = computed<PlazaSort>(() => (activeTab.value === 'following' ? 'recent' : activeTab.value))
 const selectedCategory = ref<PostCategory | null>(null)
 const visiblePosts = computed(() => selectedCategory.value
   ? posts.value.filter(post => post.category === selectedCategory.value) : posts.value)
@@ -933,10 +942,12 @@ if (typeof desktopMedia?.addEventListener === 'function') {
 
 const { homeData, homeFailed, loadHome, clearHome } = useCommunityHome()
 const EMPTY_HOME: HomePostData = { candidates: [], weeklyCategories: [], totalDiscussionCount: 0 }
+// SPEC 5.2 ④: the order of the home's latest list, chosen by its tabs.
+const homeLatestSort = ref<HomeLatestSort>('active')
 // No event source exists before P4.8, so the events block has nothing to show.
 const homeSections = computed(() => buildHomeSections(
   homeData.value?.posts ?? EMPTY_HOME, homeData.value?.items ?? [], [], homeData.value?.now ?? 0,
-  isDesktop.value ? 'desktop' : 'phone',
+  isDesktop.value ? 'desktop' : 'phone', homeLatestSort.value,
 ))
 
 // An unknown board or view opens the home (SPEC 4.4).
@@ -1020,7 +1031,7 @@ function showHome() {
 function showBoard(category: PostCategory) {
   view.value = 'board'
   searchText.value = ''
-  if (activeTab.value === 'following') activeTab.value = 'recent'
+  if (activeTab.value === 'following') activeTab.value = 'active'
   selectCategory(category)
   syncAddress()
 }
@@ -1028,7 +1039,9 @@ const boardFillText = computed(() => {
   if (!selectedCategory.value) return ''
   return boardFiller(selectedCategory.value, t, lang.value)
 })
-function showAll() {
+// "查看更多" under the home's latest list names the order that list was in (SPEC 5.2 ④).
+function showAll(sort?: PlazaSort) {
+  if (typeof sort === 'string') activeTab.value = sort
   if (view.value === 'all') return
   view.value = 'all'
   selectCategory(null)
@@ -1129,7 +1142,7 @@ function runSearch() {
   }
   // The search RPC cannot narrow by author, so a search runs over everyone's posts.
   if (activeTab.value === 'following' && searchText.value.trim()) {
-    activeTab.value = 'recent'
+    activeTab.value = 'active'
     return
   }
   pageIdx.value = 0
@@ -1148,6 +1161,7 @@ const emptyText = computed(() => {
   const query = searchText.value.trim()
   if (query) return t('plaza.searchEmpty', { q: query })
   if (activeTab.value === 'following') return t('plaza.emptyFollowing')
+  if (activeTab.value === 'unanswered') return t('plaza.emptyUnanswered')
   return selectedCategory.value ? t('plaza.emptyBoard') : t('plaza.empty')
 })
 // SPEC 6.2: a search that found nothing becomes the title of the topic that asks it.
@@ -1468,6 +1482,11 @@ const commentText = ref('')
 const replyTo = ref<PostComment | null>(null)
 const commentSubmitting = ref(false)
 let commentSheetEpoch = 0
+// A reply is in the list from the moment it is sent, under an id made up here ('temp-…'), until
+// the server's row replaces it. That id names nothing the server knows, so nothing that would send
+// it is offered yet: no reply or like button and no menu, and a reply tap that still arrives is
+// ignored.
+const isPendingComment = (c: PostComment) => c.id.startsWith('temp-')
 // Sheet 打开时 input 不应自动 focus（避免键盘挡评论列表）。
 // inputFocused 由用户显式动作驱动：tap 输入框 / tap 评论 / tap "回复" / tap 长按菜单"回复"。
 // 关闭 sheet / 切评论 reset 回 false，保证下次打开时键盘不会自动起。
@@ -2090,9 +2109,9 @@ function topicExcerpt(post: Post) {
   return Array.from(text).slice(0, TOPIC_EXCERPT_CHARS).join('')
 }
 
-// SPEC 5.5, until P3.4: no reply yet and posted within the last 30 days.
+// SPEC 5.5, from P3.4: nobody but its author has replied, and it was posted within the last 30 days.
 function topicIsUnanswered(post: Post) {
-  return post.comment_count === 0
+  return !post.answered_at
     && Date.now() - new Date(post.created_at).getTime() <= UNANSWERED_WINDOW_MS
 }
 
@@ -2275,6 +2294,8 @@ async function onSubmitComment() {
     ? (reply.parent_comment_id ?? reply.id)
     : undefined
   const replyName = reply ? (reply.profile?.nickname ?? null) : null
+  // SPEC 6.8: the reply that was answered is named too, so its author is the one told.
+  const replyToId = reply?.id
 
   // QA7-r2 #2: optimistic — show the comment instantly. createComment awaits
   // local + AI (OpenAI) moderation + the insert (~1s), which felt as laggy as
@@ -2299,7 +2320,7 @@ async function onSubmitComment() {
   replyTo.value = null
 
   try {
-    const c = await createComment(postId, text, parentId)
+    const c = await createComment(postId, text, parentId, replyToId)
     if (!isAccountRequestCurrent(commentAccountToken)) return
     if (sheetEpoch !== commentSheetEpoch) return
     // fetchComments hydrates reply_to_name from DB on next refresh; mirror it
@@ -2314,6 +2335,10 @@ async function onSubmitComment() {
     if (sheetEpoch !== commentSheetEpoch) return
     const i = comments.value.findIndex(x => x.id === tempId)
     if (i !== -1) comments.value.splice(i, 1)
+    // Closed after this sheet was opened: show the closed notice from now on.
+    if (commentingPost.value?.id === postId && String(err?.message || '').includes('post_locked')) {
+      commentingPost.value.locked_at = new Date().toISOString()
+    }
     // Restore only an untouched composer. A newer draft/reply belongs to the
     // user and must never be replaced by a failed earlier submission.
     if (!commentText.value && !replyTo.value) {
@@ -2335,7 +2360,7 @@ async function onSubmitComment() {
 async function onCommentTap(c: PostComment) {
   await awaitAuthReady()
   if (!requireAuth() || !currentUser.value) return
-  if (replyRestricted.value) return
+  if (replyRestricted.value || commentingPost.value?.locked_at || isPendingComment(c)) return
   replyTo.value = c
   inputFocused.value = true
 }
@@ -2382,38 +2407,45 @@ async function onCommentLongPress(c: PostComment) {
   // Non-owner: 回复 / 举报评论 / 举报用户 — 三选一拆开是因为举报评论内容
   // 和举报用户是不同的 moderation queue case (评论可能炒人 vs 用户多次违规)。
   // ReportTarget type 已含 'comment'（useModeration.ts:4），schema ready 不需要 migration。
-  const items = isMine
-    ? [t('plaza.reply'), t('plaza.delete')]
-    : [t('plaza.reply'), t('plaza.reportComment'), t('plaza.reportUser')]
+  const reply = () => {
+    if (replyRestricted.value) return
+    replyTo.value = c
+    inputFocused.value = true
+  }
+  const confirmDelete = () => uni.showModal({
+    title: t('plaza.commentDeleteConfirm'),
+    confirmColor: DIALOG_DANGER,
+    success: async (r) => {
+      if (!r.confirm || !actionIsCurrent()) return
+      try {
+        await deleteComment(c.id, actionPostId)
+        if (!actionIsCurrent()) return
+        comments.value = comments.value.filter(x => x.id !== c.id)
+      } catch (err: any) {
+        if (!actionIsCurrent()) return
+        uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
+      }
+    },
+  })
+  // A closed update takes no replies. A reply still being sent has no saved row to answer or to
+  // remove, so its menu offers neither; it is always its sender's own, which leaves that menu
+  // empty, and an empty menu is not opened.
+  const pending = isPendingComment(c)
+  const actions: Array<{ label: string; run: () => void }> = [
+    ...(commentingPost.value?.locked_at || pending ? [] : [{ label: t('plaza.reply'), run: reply }]),
+    ...(isMine
+      ? (pending ? [] : [{ label: t('plaza.delete'), run: confirmDelete }])
+      : [
+        { label: t('plaza.reportComment'), run: () => promptReport('comment', c.id) },
+        { label: t('plaza.reportUser'), run: () => promptReportUser(c.user_id) },
+      ]),
+  ]
+  if (!actions.length) return
   uni.showActionSheet({
-    itemList: items,
+    itemList: actions.map(action => action.label),
     success: (res) => {
       if (!actionIsCurrent()) return
-      if (res.tapIndex === 0) {
-        if (replyRestricted.value) return
-        replyTo.value = c
-        inputFocused.value = true
-      } else if (isMine && res.tapIndex === 1) {
-        uni.showModal({
-          title: t('plaza.commentDeleteConfirm'),
-          confirmColor: DIALOG_DANGER,
-          success: async (r) => {
-            if (!r.confirm || !actionIsCurrent()) return
-            try {
-              await deleteComment(c.id, actionPostId)
-              if (!actionIsCurrent()) return
-              comments.value = comments.value.filter(x => x.id !== c.id)
-            } catch (err: any) {
-              if (!actionIsCurrent()) return
-              uni.showToast({ title: friendlyErrorMessage(err, lang.value as 'en' | 'zh') || t('msg.actionFailed'), icon: 'none' })
-            }
-          },
-        })
-      } else if (!isMine && res.tapIndex === 1) {
-        promptReport('comment', c.id)
-      } else if (!isMine && res.tapIndex === 2) {
-        promptReportUser(c.user_id)
-      }
+      actions[res.tapIndex]?.run()
     },
   })
 }
@@ -2456,7 +2488,9 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
         await reportTarget(targetType, targetId, reason)
         reportLoading.hide(loadingOwner)
         if (!actionIsCurrent()) return
-        uni.showToast({ title: t('report.thanks'), icon: 'success' })
+        // SPEC 6.10: a report on a topic, an update or a reply says when it will be looked at.
+        if (targetType === 'post' || targetType === 'comment') uni.showToast({ title: t('report.thanksCommunity'), icon: 'none', duration: 2500 })
+        else uni.showToast({ title: t('report.thanks'), icon: 'success' })
       } catch (err: any) {
         reportLoading.hide(loadingOwner)
         if (!actionIsCurrent()) return
@@ -3057,6 +3091,7 @@ function promptReport(targetType: 'post' | 'user' | 'item' | 'comment', targetId
   align-items: center;
   gap: 12px;
   margin-top: 4px;
+  min-height: var(--space-6);
 }
 .cs-like-btn {
   display: flex;

@@ -140,12 +140,20 @@
               <view v-if="sections.latest.mode === 'list'" class="ch-latest" data-block="latest">
                 <view class="ch-sec-h">
                   <text class="ch-sec-t" role="heading" aria-level="2">{{ t('home.latest') }}</text>
+                  <!-- SPEC 5.2 ④, from P3.4: three orders. A phone adds 本周热议 as a last tab (SPEC 5.3 ⑧). -->
+                  <view class="ch-tabs" role="tablist" :aria-label="t('home.latest')">
+                    <text v-for="tab in latestTabs" :key="tab" :class="['ch-tab', { on: latestTab === tab }]" role="tab"
+                      :tabindex="latestTab === tab ? 0 : -1" :aria-selected="latestTab === tab ? 'true' : 'false'"
+                      @click="selectLatestTab(tab)" @keydown="onLatestTabKeydown($event, tab)"
+                    >{{ t(tab === 'hot' ? 'home.hotWeek' : `plaza.tab.${tab}`) }}</text>
+                  </view>
                   <!-- #ifdef H5 -->
                   <text v-if="desktop" class="ch-link" role="button" @click="emit('all')">{{ t('home.allDiscussions') }}</text>
                   <!-- #endif -->
                 </view>
-                <view class="ch-list">
-                  <view v-for="row in sections.latest.rows" :key="row.post.id" class="ch-lr" role="button"
+                <text v-if="latestRows.length === 0" class="ch-none">{{ sections.latest.empty ? tx(sections.latest.empty) : t('plaza.emptyUnanswered') }}</text>
+                <view v-else class="ch-list">
+                  <view v-for="row in latestRows" :key="row.post.id" class="ch-lr" role="button"
                     :data-post-id="row.post.id" :aria-label="rowLabel(row)" @click="openPost(row.post.id)">
                     <view class="ch-lr-main">
                       <text class="ch-lr-t">{{ row.post.title }}</text>
@@ -163,7 +171,8 @@
                     <text v-else-if="row.unanswered" class="ch-tag ch-tag-ask">{{ t('plaza.unansweredTag') }}</text>
                   </view>
                 </view>
-                <view class="ch-more" role="button" @click="emit('all')">
+                <!-- "查看更多" opens all discussions in the order this list is in. -->
+                <view class="ch-more" role="button" @click="emit('all', latestTab === 'hot' ? 'hot' : latestSort)">
                   <text class="ch-more-t">{{ t(desktop ? 'home.viewMore' : 'home.allDiscussionsBtn') }}</text>
                 </view>
               </view>
@@ -223,7 +232,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 // #ifdef H5
 import CommunityAbout from './CommunityAbout.vue'
 // #endif
@@ -233,25 +242,55 @@ import { useI18n } from '../composables/useI18n'
 import { useTheme } from '../composables/useTheme'
 import type { CommunityHomeItem, CommunityHomePost } from '../composables/useCommunityHome'
 import { BASE_URL, SUPPORT_EMAIL } from '../config/runtime'
-import { boardFiller, type HomeItem, type HomeMessage, type HomePostRow, type HomeSections, type HomeText } from '../utils/communityHome'
+import { boardFiller, type HomeItem, type HomeLatestSort, type HomeMessage, type HomePostRow, type HomeSections, type HomeText } from '../utils/communityHome'
 import type { PostCategory } from '../utils/communityPost'
 import { listingPriceLabel, thumbUrl } from '../utils'
 
-defineProps<{
+const props = defineProps<{
   sections: HomeSections
   /** A snapshot has loaded; until then the cards hold skeleton rows. */
   ready: boolean
   failed: boolean
   desktop: boolean
   isLoggedIn: boolean
+  /** The order the latest list is in; the page owns it because it builds the sections. */
+  latestSort: HomeLatestSort
 }>()
 const emit = defineEmits<{
   (event: 'board', category: PostCategory): void
   (event: 'compose', category: PostCategory): void
-  (event: 'all'): void
+  (event: 'all', sort?: HomeLatestSort | 'hot'): void
+  (event: 'latestSort', sort: HomeLatestSort): void
   (event: 'retry'): void
   (event: 'login'): void
 }>()
+
+// The latest list's tabs. On a phone the week's busiest topics are a last tab of this
+// list instead of a block of their own (SPEC 5.3 ⑧); a desktop shows them in the sidebar.
+type LatestTab = HomeLatestSort | 'hot'
+const hotTabOpen = ref(false)
+const hotAsTab = computed(() => props.sections.hot?.presentation === 'tab')
+const latestTabs = computed<LatestTab[]>(() => (hotAsTab.value
+  ? ['active', 'recent', 'unanswered', 'hot'] : ['active', 'recent', 'unanswered']))
+const latestTab = computed<LatestTab>(() => (hotTabOpen.value && hotAsTab.value ? 'hot' : props.latestSort))
+const latestRows = computed(() => (latestTab.value === 'hot' ? props.sections.hot?.rows || [] : props.sections.latest.rows))
+function selectLatestTab(tab: LatestTab) {
+  hotTabOpen.value = tab === 'hot'
+  if (tab !== 'hot') emit('latestSort', tab)
+}
+function onLatestTabKeydown(event: KeyboardEvent, current: LatestTab) {
+  const order = latestTabs.value
+  let next = order.indexOf(current)
+  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (next + 1) % order.length
+  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (next - 1 + order.length) % order.length
+  else if (event.key === 'Home') next = 0
+  else if (event.key === 'End') next = order.length - 1
+  else return
+  event.preventDefault()
+  const tabList = (event.currentTarget as HTMLElement | null)?.parentElement
+  selectLatestTab(order[next])
+  nextTick(() => tabList?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus())
+}
 
 const { t, lang, localize } = useI18n()
 const { isDark } = useTheme()
@@ -369,6 +408,11 @@ function copyAbout() {
 }
 .ch-sec-t { font-family: var(--font-serif); font-size: var(--t-h2); line-height: var(--lh-h2); font-weight: 500; color: var(--ink); }
 .ch-sec-h { display: flex; align-items: center; gap: var(--space-6); }
+/* SPEC 5.2 ④: 14px tabs, the chosen one underlined 2px. */
+.ch-tabs { display: flex; gap: var(--space-4); min-width: 0; }
+.ch-tab { display: flex; align-items: center; min-height: 44px; font-size: 14px; white-space: nowrap; color: var(--ink-soft); box-shadow: inset 0 -2px 0 transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ch-tab.on { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--ink); }
+.ch-none { display: block; padding: var(--space-5) var(--space-4); font-size: 14px; color: var(--ink-soft); }
 .ch-lr { display: flex; align-items: center; gap: var(--space-3); min-height: 56px; border-top: 1px solid var(--line-hair); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ch-lr:first-child { border-top: 0; }
 .ch-lr-main { flex: 1; min-width: 0; }
@@ -415,7 +459,10 @@ function copyAbout() {
 .ch-tile-go { height: 128px; align-items: center; justify-content: center; border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px var(--line-soft); }
 .ch-tile-go-t { padding: 0 var(--space-2); font-size: var(--t-caption); color: var(--ink-soft); white-space: normal; text-align: center; }
 .ch-m .ch-latest { padding-bottom: var(--space-4); }
-.ch-m .ch-sec-h { min-height: 52px; padding: 0 var(--space-4); }
+/* The title takes a line of its own and the tabs wrap under it, so every tab is on screen and takes a
+   tap at 360px in either language. Nothing here scrolls sideways: the page clips what overflows. */
+.ch-m .ch-sec-h { flex-wrap: wrap; gap: 0 var(--space-4); min-height: 52px; padding: var(--space-3) var(--space-4) 0; }
+.ch-m .ch-tabs { flex: 1 0 100%; flex-wrap: wrap; row-gap: 0; }
 .ch-m .ch-lr { padding: var(--space-3) var(--space-4); }
 .ch-m .ch-more { height: 44px; margin: var(--space-2) var(--space-4) 0; box-shadow: inset 0 0 0 1px var(--line-bold); }
 .ch-m .ch-more-t { font-size: var(--t-body); color: var(--ink); }

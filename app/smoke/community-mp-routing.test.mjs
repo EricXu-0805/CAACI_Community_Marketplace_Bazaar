@@ -55,7 +55,7 @@ test('a staged board opens that board page, and a later visit does not replay it
     assert.equal(page.selectedCategory.value, board)
     assert.deepEqual(page.feedReads, [board])
     assert.equal(page.searchText.value, '')
-    assert.equal(page.activeTab.value, 'recent', 'a board page has no following tab')
+    assert.equal(page.activeTab.value, 'active', 'a board page has no following tab; it opens on 最新回复')
     assert.deepEqual(communityNavigation, { pendingBoard: null, pendingView: null })
 
     page.showHome()

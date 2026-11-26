@@ -23,7 +23,7 @@ const PAGES = [
   'pages/saved-searches/index', 'pages/search/index', 'pages/onboarding/index',
   'pages/reconsent/index', 'pages/profile-recovery/index',
   'pages/suspended/index', 'pages/admin/index', 'pages/my-items/index',
-  'pages/account-link/index',
+  'pages/account-link/index', 'pages/my-topics/index',
 ]
 
 // The Vite frontend-only server has no Edge API. Represent the production
