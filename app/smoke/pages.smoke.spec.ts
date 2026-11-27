@@ -198,7 +198,7 @@ const STUB_TABLES = new Set([
   'items',
   // Plaza reads public feeds, topic summaries and the post count on mount.
   'posts',
-  // The events list (onShow) and event detail (load) read CAACI's last successful sync; no row keeps the stale line hidden.
+  // The events list reads CAACI's last successful sync on show, event detail only once a CAACI row loads; no row keeps the stale line hidden.
   'community_event_sync_state',
 ])
 // Logged-out RPC reads in the sweep; values are serialized JSON bodies.
@@ -242,8 +242,14 @@ test('stub backend reports an unlisted RPC without opening the application', asy
 const STUB_READS: Readonly<Record<string, readonly string[]>> = {
   // Home reads its listing feed on mount.
   'pages/index/index': ['items'],
-  // Plaza reads its public listing rail, public feeds, topic summaries and count on mount.
-  'pages/plaza/index': ['items', 'posts'],
+  // Plaza reads its public listing rail, public feeds, topic summaries, count and upcoming-events rail on mount.
+  'pages/plaza/index': ['items', 'posts', 'rpc:list_community_events'],
+  // The events list reads the upcoming list, CAACI's last successful sync and the members switch on show.
+  'pages/events/index': ['community_event_sync_state', 'rpc:community_member_events_open', 'rpc:list_community_events'],
+  // Opened without an id, event detail reads nothing; the sync state is read only once a CAACI row loads.
+  'pages/event/detail/index': [],
+  // The create page reads the members switch on show; it ships off, so the page stops there.
+  'pages/event/create/index': ['rpc:community_member_events_open'],
 }
 
 test('T1 stub read inventory covers exactly the sweep fixtures and routes', () => {
