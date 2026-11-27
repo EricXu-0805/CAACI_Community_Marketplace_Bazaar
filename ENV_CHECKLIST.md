@@ -239,6 +239,14 @@ The full WeChat provisioning and rotation constraints live in
 [`docs/WECHAT_MP_SETUP.md`](docs/WECHAT_MP_SETUP.md). In particular, do not
 rotate an in-use legacy password salt without a migration plan.
 
+### Community events (background-jobs worker and admin API)
+
+| Var | Vercel | GH Actions | Local | If missing |
+|---|---|---|---|---|
+| `COMMUNITY_SYNC_CAACI_EVENTS` | optional, exact `1`, Production only | ❌ | ❌ | CAACI events are not synchronized. Enable only as RUNBOOK "CAACI events sync" says; a change needs a new deployment. |
+| `COMMUNITY_SYNC_CAMPUS_EVENTS` | optional, exact `1`, Production only | ❌ | ❌ | Campus events are not refreshed. Enable only as RUNBOOK "Campus events checks" says; a change needs a new deployment. |
+| `COMMUNITY_OFFICIAL_PROFILE_ID` | ✅ before official posts and event discussions | ❌ | ⚠️ optional | `set_post_official` and `create_event_discussion` return 409 `official_profile_not_configured` (`api/admin/index.js`). |
+
 ### Auto-injected by Vercel (do nothing)
 
 | Var | Source | Used for |
