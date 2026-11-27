@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-12",
+  "auth": "none",
+  "url": "https://illini-community-demo.vercel.app/",
+  "checks": [
+    {
+      "path": "/",
+      "local_match": true,
+      "headers": "HTTP/2 200 \naccept-ranges: bytes\naccess-control-allow-origin: *\nage: 37\ncache-control: public, max-age=0, must-revalidate\ncontent-disposition: inline\ncontent-security-policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'\ncontent-type: text/html; charset=utf-8\ndate: Thu, 12 Nov 2026 11:24:22 GMT\netag: \"9a5bc607ca04e6ea1cc9ec78ce94bfd2\"\nlast-modified: Thu, 12 Nov 2026 11:23:45 GMT\nreferrer-policy: no-referrer\nserver: Vercel\nstrict-transport-security: max-age=63072000; includeSubDomains; preload\nx-content-type-options: nosniff\nx-robots-tag: noindex, nofollow\nx-vercel-cache: HIT\nx-vercel-id: cle1::vw8zh-1794482662635-9e1dea47df33\ncontent-length: 3507\n\n"
+    },
+    {
+      "path": "app.js",
+      "local_match": true,
+      "headers": "HTTP/2 200 \naccept-ranges: bytes\naccess-control-allow-origin: *\nage: 37\ncache-control: public, max-age=0, must-revalidate\ncontent-disposition: inline; filename=\"app.js\"\ncontent-security-policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'\ncontent-type: application/javascript; charset=utf-8\ndate: Thu, 12 Nov 2026 11:24:22 GMT\netag: \"69d3b84941718b091b80a1b2e659bd86\"\nlast-modified: Thu, 12 Nov 2026 11:23:45 GMT\nreferrer-policy: no-referrer\nserver: Vercel\nstrict-transport-security: max-age=63072000; includeSubDomains; preload\nx-content-type-options: nosniff\nx-robots-tag: noindex, nofollow\nx-vercel-cache: HIT\nx-vercel-id: cle1::fgqp9-1794482662804-531ea7c695a2\ncontent-length: 38666\n\n"
+    },
+    {
+      "path": "style.css",
+      "local_match": true,
+      "headers": "HTTP/2 200 \naccept-ranges: bytes\naccess-control-allow-origin: *\nage: 37\ncache-control: public, max-age=0, must-revalidate\ncontent-disposition: inline; filename=\"style.css\"\ncontent-security-policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'\ncontent-type: text/css; charset=utf-8\ndate: Thu, 12 Nov 2026 11:24:22 GMT\netag: \"97f483294aa64b206d3e3108c06741b1\"\nlast-modified: Thu, 12 Nov 2026 11:23:45 GMT\nreferrer-policy: no-referrer\nserver: Vercel\nstrict-transport-security: max-age=63072000; includeSubDomains; preload\nx-content-type-options: nosniff\nx-robots-tag: noindex, nofollow\nx-vercel-cache: HIT\nx-vercel-id: cle1::j5bjv-1794482662982-41a17d97f5cd\ncontent-length: 31808\n\n"
+    },
+    {
+      "path": "assets/books.jpg",
+      "local_match": true,
+      "headers": "HTTP/2 200 \naccept-ranges: bytes\naccess-control-allow-origin: *\nage: 0\ncache-control: public, max-age=0, must-revalidate\ncontent-disposition: inline; filename=\"books.jpg\"\ncontent-security-policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'\ncontent-type: image/jpeg\ndate: Thu, 12 Nov 2026 11:24:23 GMT\netag: \"51884d10b8ef92c1f088db709e3c1b00\"\nlast-modified: Thu, 12 Nov 2026 11:24:23 GMT\nreferrer-policy: no-referrer\nserver: Vercel\nstrict-transport-security: max-age=63072000; includeSubDomains; preload\nx-content-type-options: nosniff\nx-robots-tag: noindex, nofollow\nx-vercel-cache: MISS\nx-vercel-id: cle1::zdlvj-1794482663515-b908c0dea86b\ncontent-length: 93847\n\n"
+    },
+    {
+      "path": "robots.txt",
+      "local_match": true,
+      "headers": "HTTP/2 200 \naccept-ranges: bytes\naccess-control-allow-origin: *\nage: 0\ncache-control: public, max-age=0, must-revalidate\ncontent-disposition: inline; filename=\"robots.txt\"\ncontent-security-policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'\ncontent-type: text/plain; charset=utf-8\ndate: Thu, 12 Nov 2026 11:24:23 GMT\netag: \"f71d20196d4caf35b6a670db8c70b03d\"\nlast-modified: Thu, 12 Nov 2026 11:24:23 GMT\nreferrer-policy: no-referrer\nserver: Vercel\nstrict-transport-security: max-age=63072000; includeSubDomains; preload\nx-content-type-options: nosniff\nx-robots-tag: noindex, nofollow\nx-vercel-cache: MISS\nx-vercel-id: cle1::c77wn-1794482663778-079990724615\ncontent-length: 26\n\n"
+    }
+  ]
+}

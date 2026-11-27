@@ -1,0 +1,22 @@
+# Illini test/dev runner for hosts the repo toolchain does not support (e.g. Ubuntu 26.04).
+# Mirrors CI: Playwright 1.65 browsers, Node 22 with its bundled npm 10.9.x, PostgreSQL 17 at /usr/lib/postgresql/17/bin.
+FROM mcr.microsoft.com/playwright:v1.65.0-noble
+ARG NODE_VERSION=v22.23.5
+RUN set -eux; \
+    apt-get update; apt-get install -y --no-install-recommends ca-certificates curl gnupg xz-utils locales; \
+    sed -i "s/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/" /etc/locale.gen; locale-gen en_US.UTF-8; \
+    curl -fsSLO "https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz"; \
+    curl -fsSLO "https://nodejs.org/dist/${NODE_VERSION}/SHASUMS256.txt"; \
+    grep " node-${NODE_VERSION}-linux-x64.tar.xz\$" SHASUMS256.txt | sha256sum -c -; \
+    rm -rf /usr/local/node22 && mkdir -p /usr/local/node22; \
+    tar -xJf "node-${NODE_VERSION}-linux-x64.tar.xz" -C /usr/local/node22 --strip-components=1; \
+    rm -f node-*.tar.xz SHASUMS256.txt; \
+    install -d /usr/share/postgresql-common/pgdg; \
+    curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc; \
+    . /etc/os-release; \
+    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
+    mkdir -p /etc/postgresql-common; echo "create_main_cluster = false" > /etc/postgresql-common/createcluster.conf; \
+    apt-get update; apt-get install -y --no-install-recommends postgresql-17; \
+    rm -rf /var/lib/apt/lists/*
+ENV PATH=/usr/local/node22/bin:$PATH
+RUN node -v && npm -v | grep -E '^10\.9\.' && /usr/lib/postgresql/17/bin/initdb --version

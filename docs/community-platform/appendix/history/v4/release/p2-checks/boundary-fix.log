@@ -1,0 +1,76 @@
+TAP version 13
+# Subtest: topic input keeps legacy updates nullable and rejects incomplete/invalid metadata
+ok 1 - topic input keeps legacy updates nullable and rejects incomplete/invalid metadata
+  ---
+  duration_ms: 1.363792
+  type: 'test'
+  ...
+# Subtest: publishing includes topic metadata and moderates title plus body
+ok 2 - publishing includes topic metadata and moderates title plus body
+  ---
+  duration_ms: 58.300833
+  type: 'test'
+  ...
+# Subtest: legacy publish still stores null metadata; validation fails before writing
+ok 3 - legacy publish still stores null metadata; validation fails before writing
+  ---
+  duration_ms: 111.143792
+  type: 'test'
+  ...
+# Subtest: attachment failure retains the committed topic and returns partial success
+ok 4 - attachment failure retains the committed topic and returns partial success
+  ---
+  duration_ms: 16.420709
+  type: 'test'
+  ...
+# Subtest: unknown write and stale-account success retain duplicate guard; definite rejection releases it
+ok 5 - unknown write and stale-account success retain duplicate guard; definite rejection releases it
+  ---
+  duration_ms: 50.511417
+  type: 'test'
+  ...
+# Subtest: category is applied on the server for ordinary and search pagination
+ok 6 - category is applied on the server for ordinary and search pagination
+  ---
+  duration_ms: 16.129416
+  type: 'test'
+  ...
+# Subtest: account change while topic WeChat moderation is pending prevents any post write
+ok 7 - account change while topic WeChat moderation is pending prevents any post write
+  ---
+  duration_ms: 16.97675
+  type: 'test'
+  ...
+# Subtest: mini-program moderation never reads, writes, or sends a cached openid
+ok 8 - mini-program moderation never reads, writes, or sends a cached openid
+  ---
+  duration_ms: 2.220625
+  type: 'test'
+  ...
+# Subtest: moderation request is generation-bound across session, wx.login, and network awaits
+ok 9 - moderation request is generation-bound across session, wx.login, and network awaits
+  ---
+  duration_ms: 0.603959
+  type: 'test'
+  ...
+# Subtest: text and media write chains revalidate the account after WeChat moderation
+ok 10 - text and media write chains revalidate the account after WeChat moderation
+  ---
+  duration_ms: 1.482084
+  type: 'test'
+  ...
+# Subtest: logout clears retired WeChat identity and all translation caches
+ok 11 - logout clears retired WeChat identity and all translation caches
+  ---
+  duration_ms: 1.429875
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 516.516166
