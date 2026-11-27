@@ -249,3 +249,11 @@ test('a quoted parameter containing a colon is rejected before source intake', a
     'LOCATION;ALTREP="cid:room1.example.invalid":Synthetic public hall')
   assert.deepEqual(await parseCampusIcs(source, clock), { error: 'bad_ics' })
 })
+
+test('recurrence rules are refused in any letter case, and an alarm inside an event is not one', async () => {
+  const insert = lines => sample.replace('END:VEVENT', `${lines}\nEND:VEVENT`)
+  assert.deepEqual(await parseCampusIcs(insert('rrule:FREQ=WEEKLY;COUNT=5'), clock), { error: 'bad_ics' })
+  assert.deepEqual(await parseCampusIcs(insert('EXRULE:FREQ=WEEKLY'), clock), { error: 'bad_ics' })
+  const alarm = await parseCampusIcs(insert('BEGIN:VALARM\nACTION:DISPLAY\nduration:PT15M\nTRIGGER:-PT15M\nEND:VALARM'), clock)
+  assert.equal(alarm.rows?.length, 1)
+})

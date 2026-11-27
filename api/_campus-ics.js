@@ -76,7 +76,7 @@ export async function parseCampusIcs(text, { now, event_id } = {}) {
       }
     } else {
       if (!stack.length) return { error: 'bad_ics' }
-      if (stack.at(-1) === 'VEVENT' && ['RRULE', 'RDATE', 'EXDATE', 'RECURRENCE-ID', 'DURATION'].includes(name)) {
+      if (stack.at(-1) === 'VEVENT' && ['RRULE', 'RDATE', 'EXDATE', 'EXRULE', 'RECURRENCE-ID', 'DURATION'].includes(name.toUpperCase())) {
         return { error: 'bad_ics' }
       }
       if (stack.at(-1) !== 'VEVENT' || !FIELDS.has(name)) continue
