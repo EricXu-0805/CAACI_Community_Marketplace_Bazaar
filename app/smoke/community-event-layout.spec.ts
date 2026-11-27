@@ -80,8 +80,8 @@ for (const width of [390, 1280]) {
   })
 }
 
-test.describe('event sidebar at 768px', () => {
-  test.use({ viewport: { width: 768, height: 900 }, screen: { width: 768, height: 900 },
+for (const width of [768, 900, 1023]) test.describe(`event sidebar at ${width}px`, () => {
+  test.use({ viewport: { width, height: 900 }, screen: { width, height: 900 },
     isMobile: false, hasTouch: false, deviceScaleFactor: 1 })
   test('the open creation switch leaves the full width to the list', async ({ page }) => {
     await layoutFixture(page)
@@ -92,9 +92,20 @@ test.describe('event sidebar at 768px', () => {
       if (!(content instanceof HTMLElement)) throw new TypeError('Expected secondary content')
       return { main: element.getBoundingClientRect().width, available: content.clientWidth }
     })
-    console.log('W5_MAIN_WIDTH ' + JSON.stringify(widths))
-    await page.screenshot({ path: 'test-results/d60-layout/sidebar-768.png', animations: 'disabled' })
+    console.log('W5_MAIN_WIDTH ' + width + ' ' + JSON.stringify(widths))
+    await page.screenshot({ path: `test-results/d60-layout/sidebar-${width}.png`, animations: 'disabled' })
     await expect(page.locator('.events-sidebar')).toHaveCSS('display', 'none')
     expect(widths.main).toBe(widths.available)
+  })
+})
+
+test.describe('event sidebar at 1024px', () => {
+  test.use({ viewport: { width: 1024, height: 900 }, screen: { width: 1024, height: 900 },
+    isMobile: false, hasTouch: false, deviceScaleFactor: 1 })
+  test('the sidebar returns at the desktop breakpoint', async ({ page }) => {
+    await layoutFixture(page)
+    await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+    await expect(page.locator('.ev-main')).toBeVisible()
+    await expect(page.locator('.events-sidebar')).toHaveCSS('display', 'flex')
   })
 })
