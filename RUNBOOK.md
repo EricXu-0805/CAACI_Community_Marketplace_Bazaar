@@ -764,6 +764,69 @@ in that script for why and for when the exemption should be removed.
 It compares existence, not shape: an object that exists but whose body, columns
 or grants have drifted still reads as present.
 
+### Community campus checks release
+
+Run this sequence once for each database, staging first, then production, after
+the Community P3+P4 release above is complete there. The release owner applies
+the reviewed file; this checklist does not authorize an agent to apply hosted
+migrations or merge the PR. The transport rules of Community P3+P4 release
+apply unchanged: remove only the lines listed below, apply through the
+ledger-aware migrations endpoint under the full filename stem, and send each
+PRECHECK and VERIFY as its own read-only request.
+
+#### Migration bytes
+
+| Migration file | File SHA-256 | BEGIN line | COMMIT line | Sent SQL SHA-256 |
+|---|---|---:|---:|---|
+| `20261127175345_community_campus_checks.sql` | `37ca561a5cc6cb3919e4c11927bd1bfbbfb5005b8fac29b972c0ede7ef7f1eaf` | 5 | 215 | `dbec0a07fad8488cb3a936167231ec1de6b47ac80b7199e5e4b9cf3f6faa210f` |
+
+#### SQL client directives
+
+| PRECHECK or VERIFY file | Remove line |
+|---|---:|
+| `PRECHECK_20261127175345_community_campus_checks.sql` | 2 |
+| `VERIFY_20261127175345_community_campus_checks.sql` | 3 |
+| `VERIFY_20261125004742_community_event_sync_cap.sql` | 3 |
+| `VERIFY_20261122035253_community_member_events.sql` | 5 |
+| `VERIFY_reply_notice_switch.sql` | 19 |
+
+#### Application steps
+
+| Step | Operation | File | Expected NOTICE |
+|---:|---|---|---|
+| 1 | PRECHECK | `PRECHECK_20261127175345_community_campus_checks.sql` | none |
+| 2 | APPLY | `20261127175345_community_campus_checks.sql` | none |
+| 3 | VERIFY | `VERIFY_20261127175345_community_campus_checks.sql` | `community_campus_checks_verified` |
+| 4 | VERIFY | `VERIFY_20261125004742_community_event_sync_cap.sql` | `community_event_sync_cap_verified` |
+| 5 | VERIFY | `VERIFY_20261122035253_community_member_events.sql` | `community_member_events_switch\|enabled=f` |
+| 6 | VERIFY | `VERIFY_reply_notice_switch.sql` | `community_reply_notice_switch\|enabled=f` |
+
+The order is `20261127175345` (C). Steps 4-6 show that C left the sync functions and
+both switches as they were; both switches must report `enabled=f`. C supersedes
+no VERIFY file. Start a run only at a PRECHECK step, end it only on a VERIFY
+step, and refuse an APPLY whose name the ledger already holds. If an APPLY
+does not return 200 or 201, read the ledger by name before anything else:
+committed, absent, or unknown. Do not set `COMMUNITY_SYNC_CAMPUS_EVENTS` during
+this sequence.
+
+If the hosted tool does not expose NOTICE, run
+`SELECT singleton, enabled FROM private.community_member_event_config;` after
+step 5 and `SELECT singleton, enabled FROM private.community_reply_notice_config;`
+after step 6; each must return exactly one row with singleton true and enabled
+false.
+
+Run this sequence on a database only while both switches are off there. If
+either switch has been turned on, do not start it: the release owner first
+revises this section and `scripts/community-release-checklist-boundary.test.mjs`.
+
+Until a client calls these three functions, merging the campus checks change
+does not require C on either database: with `COMMUNITY_SYNC_CAMPUS_EVENTS`
+unset no deployed code calls them, and the switch stays unset until this
+sequence has passed on production. Until this sequence has passed on a
+database, `scripts/schema-drift-probe.mjs` lists `claim_campus_event_checks`,
+`apply_campus_event_check` and `community_campus_event_checked_at` as missing
+there; that is expected, not drift.
+
 ## Reply notice switch
 
 > When: migration `20261120100354_community_watch_save_activity` has been
