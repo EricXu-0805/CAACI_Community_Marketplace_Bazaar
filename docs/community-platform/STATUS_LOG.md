@@ -7892,3 +7892,14 @@ Failed to load resource: the server responded with a status of 501 (Not Implemen
 - ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/46073761571
 - 未测项: —
 - 下一条: 第二次材料推送（FINAL 第十五批与 STATUS 同一提交）
+
+### L587 · 2026-11-27 16:31 CT · D-61 收尾：第二次材料推送回执、结束目标、取消提醒、移除 confirm-main
+- task_id: D-61.10f
+- code_sha: —
+- docs_sha: aa20491ca76b2064dcfb44adafdcfd38642c094b（第二次材料推送的 head；本条写入之前的材料 HEAD）
+- 环境: 主会话；~/work/illini-docs、~/work/illini
+- 命令: scan17d.py origin/codex/community-plan-v5 --log；git merge-base --is-ancestor origin/codex/community-plan-v5 HEAD；git push origin codex/community-plan-v5；git ls-remote；update_goal complete；schedule_prompt list、cancel；git -C ~/work/illini worktree remove ~/work/confirm-main-a60aa563（不带 --force）；git worktree list
+- 计数: 第二次材料推送：提交 aa20491c 只含 STATUS、STATUS_LOG 和 FINAL（FINAL 第十五批与 STATUS 同一提交）；预扫 exit 0，正式扫描 scan17d.log 第 112 行 HEAD aa20491、exit 0、没有 kind、② trailer 豁免 1，与 FINAL ⑤ 预写的行号相同；快进返回 0；推送 c6ea9cb..aa20491，ls-remote 为 aa20491ca76b2064dcfb44adafdcfd38642c094b，等于第 112 行的 HEAD。D-61 目标已于 2026-11-27T22:31:30Z 结束（update_goal complete，用时 20039 秒、545854 tokens）。续跑提醒 sch_a8f874f8b703 已取消，schedule_prompt list 为空。confirm-main worktree 已移除：rc=0，worktree list 里 0 条，目录不存在。回执 monitor 已停。本条随第三次材料推送（3/3）公开；之后停下，不从 BACKLOG 往下接。
+- ci_run_url: —
+- 未测项: —
+- 下一条: 无（等 supervisor 的 D-62）
