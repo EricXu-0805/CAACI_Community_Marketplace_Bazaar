@@ -1,10 +1,17 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import test, { after } from 'node:test'
+import { readFileSync } from 'node:fs'
 import { readMigration, readOps } from './fixtures/community-p3-database.mjs'
 import { BLOCKED_WORD, EVENT_CAACI } from './fixtures/community-events-database.mjs'
 import {
   id, SKIP, startCampusChecksDatabase, startEventSyncCapDatabase, startEventSyncDatabase,
 } from './fixtures/community-member-events-database.mjs'
+const originalFetch = globalThis.fetch
+let realFetchCalls = 0
+globalThis.fetch = () => { realFetchCalls++; throw new Error('Real network is forbidden') }
+const { syncCampusEvents } = await import('../api/_community-events-sync.js')
+after(() => { globalThis.fetch = originalFetch; assert.equal(realFetchCalls, 0) })
+
 
 const C = '20261127175345_community_campus_checks.sql'
 const SYNC = [
@@ -302,5 +309,59 @@ test('campus checks on stock PostgreSQL', { skip: SKIP }, async t => {
     })
   } finally {
     db.stop()
+  }
+})
+
+test('the real campus projection is accepted by the real service RPCs', { skip: SKIP }, async () => {
+  const previous = process.env.COMMUNITY_SYNC_CAMPUS_EVENTS
+  process.env.COMMUNITY_SYNC_CAMPUS_EVENTS = '1'
+  const db = startCampusChecksDatabase()
+  try {
+    reset(db)
+    seed(db, 1)
+    // The fixture's only event, moved three days ahead; nothing else in it changes.
+    const day = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10).replaceAll('-', '')
+    const ics = readFileSync(new URL('../api/__fixtures__/community-events/campus-sample.ics', import.meta.url), 'utf8')
+      .replaceAll('20261120T', day + 'T')
+    const literal = value => value === null ? 'NULL' : "'" + String(value).replaceAll("'", "''") + "'"
+    let requests = 0
+    const result = await syncCampusEvents({
+      deadline: Date.now() + 20_000,
+      calendars: [{ id: '3715', name_en: 'Synthetic calendar' }],
+      fetch: async () => { requests++; return new Response(ics, { headers: { 'content-type': 'text/calendar' } }) },
+      call: async (name, args) => {
+        let expression
+        switch (name) {
+          case 'claim_community_event_sync':
+            expression = `public.claim_community_event_sync(${literal(args.source_in)}, ${literal(args.interval_in)}::interval)`
+            break
+          case 'claim_campus_event_checks':
+            expression = `public.claim_campus_event_checks(${Number(args.limit_in)})`
+            break
+          case 'apply_campus_event_check':
+            expression = `public.apply_campus_event_check(${literal(args.event_id_in)}::uuid, ${literal(args.outcome_in)}, `
+              + (args.row_in === null ? 'NULL' : literal(JSON.stringify(args.row_in)) + '::jsonb') + ')'
+            break
+          case 'finish_community_event_sync':
+            expression = `public.finish_community_event_sync(${literal(args.source_in)}, ${literal(args.outcome_in)}, ${literal(args.error_code_in)})`
+            break
+          default: throw new Error('Unexpected local RPC')
+        }
+        try {
+          return JSON.parse(db.as('SELECT to_jsonb(' + expression + ')', 'service_role'))
+        } catch {
+          throw new Error('provider_status_400')
+        }
+      },
+    })
+    assert.deepEqual(result, { outcome: 'ok', code: null, rejected: 0 })
+    assert.equal(requests, 1)
+    assert.equal(state(db, 1, "title_en||'|'||location||'|'||missing_checks||'|'||(last_seen_at IS NOT NULL)::text||'|'||length(content_hash)"),
+      'Synthetic campus gathering|Synthetic public hall|0|true|64')
+    assert.equal(db.sql("SELECT last_outcome || ':' || (last_success_at IS NOT NULL)::text FROM public.community_event_sync_state WHERE source = 'campus'"), 'ok:true')
+  } finally {
+    db.stop()
+    if (previous === undefined) delete process.env.COMMUNITY_SYNC_CAMPUS_EVENTS
+    else process.env.COMMUNITY_SYNC_CAMPUS_EVENTS = previous
   }
 })

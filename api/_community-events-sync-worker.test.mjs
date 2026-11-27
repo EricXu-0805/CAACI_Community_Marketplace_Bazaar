@@ -6,7 +6,7 @@ import { inlineSharedApiImports } from './_test-module-loader.mjs'
 
 const keys = ['SUPABASE_URL', 'VITE_SUPABASE_URL', 'SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY',
   'CRON_SECRET', 'OPENAI_API_KEY', 'LISTING_ENGLISH_AUTOTRANSLATE', 'CHAT_VIDEO_MODERATION_ENABLED',
-  'SENTRY_DSN', 'VITE_SENTRY_DSN', 'COMMUNITY_SYNC_CAACI_EVENTS']
+  'SENTRY_DSN', 'VITE_SENTRY_DSN', 'COMMUNITY_SYNC_CAACI_EVENTS', 'COMMUNITY_SYNC_CAMPUS_EVENTS']
 const originalEnv = new Map(keys.map(key => [key, process.env[key]]))
 const originalFetch = globalThis.fetch
 const originalNow = Date.now
@@ -35,6 +35,7 @@ async function worker(flag, options = {}) {
     CRON_SECRET: 'background-jobs-cron-secret', SENTRY_DSN: 'https://public@sentry.test/1',
   })
   if (flag !== undefined) process.env.COMMUNITY_SYNC_CAACI_EVENTS = flag
+  if (options.campusFlag !== undefined) process.env.COMMUNITY_SYNC_CAMPUS_EVENTS = options.campusFlag
   const feed = JSON.parse(await readFile(new URL('caaci-v1-complete.json', fixtureUrl), 'utf8'))
   const calls = [], events = [], logs = []
   console.error = (...args) => logs.push(args)
@@ -51,13 +52,22 @@ async function worker(flag, options = {}) {
         headers: { 'content-type': options.sourceType ?? 'application/json' },
       })
     }
+    if (url.hostname === 'calendars.illinois.edu') return new Response('', { status: 404 })
     if (url.hostname !== 'supabase.test') throw new Error('Unexpected synthetic destination')
     const name = url.pathname.split('/').at(-1)
     switch (name) {
       case 'claim_moderation_media_job': return json(null)
       case 'process_listing_notification_job': return json({ worked: false, scanned: 0, inserted: 0 })
       case 'claim_chat_media_orphan': options.onOrphan?.(); return json(null)
-      case 'claim_community_event_sync': options.onClaim?.(); return json(options.claim ?? true)
+      case 'claim_community_event_sync':
+        if (body.source_in === 'campus') return json(options.campusClaim ?? true)
+        options.onClaim?.(); return json(options.claim ?? true)
+      case 'claim_campus_event_checks': return json(options.campusRows ?? [])
+      case 'apply_campus_event_check':
+        if (options.campusApplyStatus !== undefined) return new Response('{"message":"Synthetic database detail"}', {
+          status: options.campusApplyStatus, headers: { 'content-type': 'application/json' },
+        })
+        return json({ availability: 'visible', missing_checks: 0, rejected: false })
       case 'apply_caaci_event_snapshot':
         options.onApply?.()
         if (options.applyThrows) throw new Error('Synthetic internal sync failure')
@@ -82,7 +92,7 @@ async function worker(flag, options = {}) {
 
 const rpcNames = result => result.calls.filter(call => call.url.hostname === 'supabase.test')
   .map(call => call.url.pathname.split('/').at(-1))
-const syncCalls = result => rpcNames(result).filter(name => /community_event|caaci_event/.test(name))
+const syncCalls = result => rpcNames(result).filter(name => /community_event|caaci_event|campus_event/.test(name))
 const diagnosticStrings = value => {
   if (typeof value === 'string') return [value]
   if (value instanceof Error) return [value.message]
@@ -233,4 +243,70 @@ test('failed, partial and rejected snapshots report once after status without le
   const clean = await worker('1')
   assert.equal(clean.body.community_events_sync, 'ok')
   assert.deepEqual(clean.events, [])
+})
+
+const campusRows = [
+  { id: 'caac1127-2026-4000-8000-000000000001', source_key: '3715/90000001' },
+  { id: 'caac1127-2026-4000-8000-000000000002', source_key: '3715/90000003' },
+]
+const campusRequests = result => result.calls.filter(call => call.url.hostname === 'calendars.illinois.edu').length
+const campusFinishes = result => result.calls.filter(call => call.url.pathname.endsWith('/finish_community_event_sync')
+  && call.body?.source_in === 'campus').map(call => call.body)
+
+test('only the exact campus flag adds a response field or any campus request', async () => {
+  for (const campusFlag of [undefined, '', '0', 'true', '1 ']) {
+    const result = await worker(undefined, { campusFlag })
+    assert.equal(result.status, 200)
+    assert.deepEqual(Object.keys(result.body).sort(), baselineKeys)
+    assert.deepEqual(syncCalls(result), [])
+    assert.equal(campusRequests(result), 0)
+    assert.deepEqual(result.events, [])
+  }
+  const result = await worker(undefined, { campusFlag: '1', campusClaim: false })
+  assert.equal(result.body.community_campus_checks, 'not_due')
+  assert.deepEqual(syncCalls(result), ['claim_community_event_sync'])
+})
+
+test('campus checks run after CAACI and before cleanup, and only with more than twelve seconds left', async () => {
+  const both = await worker('1', { campusFlag: '1' })
+  assert.deepEqual(syncCalls(both), [
+    'claim_community_event_sync', 'apply_caaci_event_snapshot', 'finish_community_event_sync',
+    'claim_community_event_sync', 'claim_campus_event_checks', 'finish_community_event_sync',
+  ])
+  assert.deepEqual(rpcNames(both).slice(-2), ['purge_completed_background_jobs', 'background_job_status'])
+  assert.deepEqual(campusFinishes(both), [{ source_in: 'campus', outcome_in: 'ok', error_code_in: null }])
+  assert.deepEqual(both.events, [])
+  for (const remaining of [12_000, 11_999]) {
+    const start = 100_000
+    let now = start
+    Date.now = () => now
+    const result = await worker(undefined, { campusFlag: '1', onOrphan: () => { now = start + 25_000 - remaining } })
+    assert.equal(result.body.community_campus_checks, 'skipped_budget')
+    assert.deepEqual(syncCalls(result), [])
+    assert.deepEqual(rpcNames(result).slice(-2), ['purge_completed_background_jobs', 'background_job_status'])
+  }
+})
+
+test('the default allowlist requests nothing; partial and failed campus checks report once', async () => {
+  const partial = await worker(undefined, { campusFlag: '1', campusRows })
+  assert.equal(campusRequests(partial), 0)
+  assert.equal(partial.body.community_campus_checks, 'partial')
+  const applies = partial.calls.filter(call => call.url.pathname.endsWith('/apply_campus_event_check')).map(call => call.body)
+  assert.deepEqual(applies, campusRows.map(row => ({ event_id_in: row.id, outcome_in: 'error', row_in: null })))
+  assert.equal(partial.events.length, 1)
+  assert.equal(partial.events[0].message, 'community campus checks need attention')
+  assert.deepEqual(partial.events[0].extra, { outcome: 'partial', code: 'campus_calendar_not_allowed', rejected: 0 })
+  const failed = await worker(undefined, { campusFlag: '1', campusRows, campusApplyStatus: 503 })
+  assert.equal(failed.status, 200)
+  assert.equal(failed.body.community_campus_checks, 'failed')
+  assert.equal(failed.events.length, 1)
+  assert.deepEqual(failed.events[0].extra, { outcome: 'failed', code: 'apply_http_503', rejected: 0 })
+  assert.equal(diagnosticStrings([failed.logs, failed.events]).some(value => value.includes('Synthetic database detail')), false)
+  const statusIndex = failed.calls.findIndex(call => call.url.pathname.endsWith('/background_job_status'))
+  assert.ok(failed.calls.findIndex(call => call.url.hostname === 'sentry.test') > statusIndex)
+  const unrecorded = await worker(undefined, { campusFlag: '1', campusRows, emptyFinish: true })
+  assert.equal(unrecorded.status, 200)
+  assert.equal(unrecorded.body.community_campus_checks, 'partial')
+  assert.deepEqual(unrecorded.logs.map(entry => entry[0]), ['[community-events-sync] campus finish not recorded'])
+  assert.equal(unrecorded.events.length, 1)
 })
