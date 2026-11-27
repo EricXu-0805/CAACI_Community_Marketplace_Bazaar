@@ -170,6 +170,12 @@ test('upstream and RPC failure classes are stable codes without source content',
     ['apply 404', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_404') }, 'apply_http_404'],
     ['apply redirect', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_redirect') }, 'apply_failed'],
     ['apply size', { throwOn: 'apply_caaci_event_snapshot', error: new Error('response_too_large') }, 'apply_failed'],
+    ['non-Error status', { throwOn: 'apply_caaci_event_snapshot', error: { message: 'provider_status_503' } }, 'apply_failed'],
+    ['non-Error timeout', { throwOn: 'apply_caaci_event_snapshot', error: { message: 'provider_timeout' } }, 'apply_failed'],
+    ['hostile Error', { throwOn: 'apply_caaci_event_snapshot', error: Object.defineProperty(new Error('provider_timeout'), 'message', { get() { throw new Error('Synthetic private detail') } }) }, 'apply_failed'],
+    ['apply 302', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_302') }, 'apply_failed'],
+    ['apply 5030', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_5030') }, 'apply_failed'],
+    ['apply prefixed status', { throwOn: 'apply_caaci_event_snapshot', error: new Error('xprovider_status_503') }, 'apply_failed'],
   ]
   for (const [name, options, code] of cases) await t.test(name, async () => {
     const actual = await run(options)
