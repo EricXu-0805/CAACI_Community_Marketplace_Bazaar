@@ -80,8 +80,8 @@ DEF="community-post-topics.spec.ts plaza-attach-picker-is-modal.spec.ts"   # smo
 | `codex/community-topics-20261112` | 已有，PR #369 | P1.8、P2.1–P2.11、REGION.1–2、HOME.2 | #369，保持草稿 | Eric |
 | `codex/brand-cornfield-20261112` | origin/main | BRAND.1–3、BRAND.4 的替换、BRAND.6 的代码 | 草稿 PR，base main | Eric |
 | `codex/community-home-20261112` | `codex/community-topics-20261112` | HOME.3–5、P2.12 | 草稿 PR，base 先设 #369 的分支；#369 合并后 `gh pr edit <号> --base main` | Eric，在 #369 之后 |
-| `codex/community-p3-<YYYYMMDD>` | #369 合并后的 origin/main | P3.1–P3.8、LEGAL.2、LEGAL.4、LEGAL.5、P5.5 | 草稿 PR，base main | Eric |
-| `codex/community-events-<YYYYMMDD>` | #369 合并后的 origin/main | P4.1、P4.2、P4.4–P4.10 | 草稿 PR，base main | Eric |
+| `codex/community-p3-<YYYYMMDD>` | #369 合并后的 origin/main | P3.1–P3.8、LEGAL.2、LEGAL.4、LEGAL.5、P5.5 | #379，2026-11-26 已 squash 进 main e46606b1，不再推送；表里没做完的任务（如 P5.5）从 main 另开 codex/community-* 分支 | Eric |
+| `codex/community-events-<YYYYMMDD>` | #369 合并后的 origin/main | P4.1、P4.2、P4.4–P4.10 | #380，2026-11-26 已 squash 进 main a60aa563，不再推送；后续任务从 main 另开分支 | Eric |
 | `codex/community-plan-v5` | 4e459bd | STATUS、STATUS_LOG、DECISIONS 抄录、`appendix/env/`、`appendix/visual/`、`appendix/research/campus-events.md`、`appendix/prototype/`（BRAND.7） | 草稿 PR（E1） | 不合 main（D-14） |
 | fork EricXu-0805/caaciorg 的 `feat/public-events-feed` | a2751012962/caaciorg 的 preview | P4.3 | 向上游 preview 提 PR | 官网维护者 |
 
@@ -1282,7 +1282,7 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' 'https://caaciorg.com/a
 - ② 不输出报名问题、志愿者问题、`perk_*`、`image_url`，也不输出任何报名或会员数据（`test/public-events.test.js` 断言）。
 - ③ caaciorg 的 lint、typecheck、format:check、build、test 在 Node 20 和 24 上都通过（与它的 CI 矩阵一致）。
 - ④ PR 开向 preview，链接记进 STATUS。
-- ⑤ 上线后从工作站请求一次，返回 200 JSON。Vercel 生产出口能不能访问，由 P4.11 的同步结果证明。返回 403 时，经 Eric 请官网维护者放行；不伪造 UA，不换出口。
+- ⑤ 上线后从工作站请求一次，返回 200 JSON。Vercel 生产出口能不能访问，由 P4.11b 的同步结果证明。返回 403 时，经 Eric 请官网维护者放行；不伪造 UA，不换出口。
 
 **证据**：`$EV/<TS>-caaciorg-ci.txt`、PR 链接、curl 输出。标签 [本地测]（⑤ 为 [生产]）
 **回退**：没合并时由 Eric 决定是否关 PR；合并之后由官网维护者按 caaciorg 的流程回退。
@@ -1290,7 +1290,7 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' 'https://caaciorg.com/a
 ### P4.4 CAACI 活动同步
 
 **目标**：官网活动定时同步进社区；官网撤下的活动最迟 30 分钟内不再展示。合同见 ENGINEERING §9.2。
-依赖：P4.1、P4.2、P4.3｜负责：OMO｜Eric：无（生产上的开关和查看归 P4.11）
+依赖：P4.1、P4.2、P4.3｜负责：OMO｜Eric：无（生产上的开关和查看归 P4.11b）
 **改动**：
 - 新增 `api/_community-events-sync.js`，由现有的 `api/background-jobs.js` 调用。文件名带下划线，不成为独立的 Vercel 函数；不新增 cron，不改 vercel.json。
 - 新增 `scripts/sync-community-events.mjs`、`api/_community-events-sync.test.mjs`。
@@ -1357,13 +1357,17 @@ $RC ~/work/illini-events install test
 - 学校活动在「全部」视图里的数量上限按 SPEC §6.7.11；
 - 卡片只显示文字和「查看学校页面」，不显示图片。
 
+**第三步（D-61，方式 A 刷新；导入留 D-62）**：前向迁移 C 的三个函数（ENGINEERING §9.3）；api/_community-events-sync.js 的 syncCampusEvents，由 background-jobs 在 `COMMUNITY_SYNC_CAMPUS_EVENTS` 为 '1' 时调用，默认关；仓库根 RUNBOOK「Community campus checks release」「Campus events checks」。
+
 **DoD**：
 - ① `campus-events.md` 已提交，每个事实都有来源链接和请求日期。
 - ② 第二步的 fixture 测试全部通过，`_campus-time` 的对照测试三个期望值全部通过。
 - ③ 只有抓 HTML 才拿得到数据时，停这条，不写代码。
-- ④ campus 行的撤下判断和 unhide 用同一个条件：missing_checks ≥ 2 且 missing_since 早于 12 小时前（D-55 3f）。
+- ④ campus 行的撤下判断和 unhide 用同一个条件：missing_checks ≥ 2 且 missing_since 早于 12 小时前（D-55 3f）。D-61 起由迁移 C 的 not_found 规则加冻结的 unhide_event 满足（ENGINEERING §9.3）。
 - ⑤ 没有 DTEND 的全天活动，结束时间是开始日期的下一个香槟本地 00:00，不是 +24 小时；配一个 2027-03-14 的夹具（D-55 3f）。
-- ⑥ DTEND;VALUE=DATE 等于 DTSTART 的全天活动按没有 DTEND 处理，结束是下一个香槟本地 00:00；全天活动的结束必须落在香槟本地 00:00，由导入函数保证并有测试；接 UIUC 源之前先查源里有没有这种写法（D-56 4i）。
+- ⑥ DTEND;VALUE=DATE 等于 DTSTART 的全天活动按没有 DTEND 处理，结束是下一个香槟本地 00:00；全天活动的结束必须落在香槟本地 00:00，由导入函数保证并有测试；白名单打开之前，按 D-33 授权，对选定日历的若干条单条 ICS 各请求一次，核对 ALTREP 等写法，并查被撤下的活动返回什么（§13 缺口 8）。
+- ⑦ 第三步：迁移 C 的 node 测试、L-SQL（含 REGRESSION_C 11 例）和 VERIFY_C 负对照全部按期望；C 之后 VERIFY_20261125004742、VERIFY_20261122035253、VERIFY_reply_notice_switch 仍通过。
+- ⑧ 开关不是 '1' 时 worker 不请求、不调任何学校 RPC，background-jobs 响应的键不变；白名单为 [] 时即使开关打开也不发任何学校请求。
 
 **证据**：`campus-events.md`、test 日志。标签 [源码 SHA]（第二步为 [本地测]）
 **回退**：默认。
@@ -1419,22 +1423,35 @@ $RC ~/work/illini-events install test
 - ② tabBar 为 社区｜二手｜活动｜消息｜我的（Community｜Market｜Events｜Messages｜Profile）；`pages/publish` 路由保留，不删。
 - ③ 页头搜索占位改为「搜话题、二手、活动」，结果分三个 tab，各自用现有的搜索。
 - ④ smoke 断言 H5 上 SPEC §4.5 列的旧地址都还能打开，至少包括 `/#/pages/index/index`、`/#/pages/plaza/index`、`/#/pages/post/index?id=<uuid>`、`/share-post/<uuid>`。
-- ⑤ 随 P4.11 和小程序同一版发布（D-12）。
+- ⑤ 随 P4.11b 和小程序同一版发布（D-12）。
 
 **证据**：smoke 日志、390 和 1280 的 tab 截图。标签 [隔离环境 L-UI]
 **回退**：默认。pages.json revert 后回到第一步的导航。
 
-### P4.11 Eric：P4 迁移上 staging，生产发布
+### P4.11a Eric：P3/P4 迁移上两库，合并 #379/#380，一次 H5 受监督发布
 
-**目标**：活动功能在生产上线，同步结果正常。
-依赖：P4.2、P4.4、P4.8、P4.9、P4.10｜负责：Eric｜Eric：按 E4 流程把 P4 迁移应用到 staging；生产迁移和发布按 E13；在生产设置 `COMMUNITY_OFFICIAL_PROFILE_ID`（E6）和 ENGINEERING §9.2 的同步开关
+**目标**：P3、P4 的五条迁移在 staging 和生产应用并 VERIFY，#379、#380 合进 main，生产 H5 发布一次，导航沿用第一步。
+依赖：P3.7、P4.2、P4.4、P4.8、P4.9｜负责：Eric（应用、放行）/ supervisor（合并、发布）｜Eric：按仓库根 RUNBOOK「Community P3+P4 release」逐库放行
 **DoD**：
-- ① staging 的 VERIFY 输出留言。
-- ② 生产 `community_event_sync_state` 的 `last_outcome = 'ok'`。
-- ③ 生产活动页至少有 1 条非网友来源的可见活动。
+- ① 两库照「Community P3+P4 release」17 步全部通过，开关行都是 enabled=false。
+- ② 两个 PR 的 CI 里不被跳过的 job 全部 success；合并后 main 的 push CI 七个 job 全部 success。
+- ③ main 绿之后按 docs/SUPERVISED_RELEASE.md 发布一次 H5，并回读 deployment-identity。
 - ④ 结果写进 STATUS_LOG。
 
-**证据**：Eric 的留言。标签 [生产]
+**状态**：完成 2026-11-26（DECISIONS D-61 第 0 项）。
+**回退**：RUNBOOK §13「H5 生产」；迁移只能前向修正。
+
+### P4.11b Eric：活动来源上线、导航第二步和小程序
+
+**目标**：活动页在生产上有非网友来源的可见活动，导航第二步和小程序同一版发布。
+依赖：P4.11a、P4.10，以及 P4.3（E8）或学校导入（D-33、迁移 C 和 D-62 的导入）｜负责：Eric｜Eric：开同步开关或录入第一条学校活动；按 E13 发布
+**DoD**：
+- ① 生产 `community_event_sync_state` 里所开来源的 `last_outcome = 'ok'`。
+- ② 生产活动页至少有 1 条非网友来源的可见活动。
+- ③ P4.10 和小程序同一版发布（D-12）。
+- ④ 结果写进 STATUS_LOG。
+
+**证据**：STATUS_LOG。标签 [生产]
 **回退**：RUNBOOK §13「H5 生产」「生产库」。
 
 ---
@@ -1584,7 +1601,7 @@ $RC ~/work/illini-events install test
 
 ### P5.1 内测门槛核对
 
-依赖：P2.13、P3.7、P4.11、LEGAL.1–LEGAL.6、BRAND.5｜负责：OMO（整理清单）/ Eric（确认）｜Eric：答复 D-36（内测前提醒）；D-28、D-37 已定
+依赖：P2.13、P3.7、P4.11b、LEGAL.1–LEGAL.6、BRAND.5｜负责：OMO（整理清单）/ Eric（确认）｜Eric：答复 D-36（内测前提醒）；D-28、D-37 已定
 **开始条件**：上面的依赖都已通过。
 **DoD**：STATUS 门槛表的六行都是「通过」：P2、P3 已在生产（Eric 发布）；活动页至少有一个非网友来源可见；LEGAL.1–6 完成；小程序已改名、可以提审；D-36 已答复（已注册，或明确延后）；RUNBOOK §13 写了 H5 和小程序的回退办法，并补上 ENGINEERING §13 缺口 4 的结论。
 

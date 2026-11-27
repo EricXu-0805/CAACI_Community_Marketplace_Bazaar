@@ -7502,3 +7502,195 @@ Failed to load resource: the server responded with a status of 501 (Not Implemen
 - 未测项: FINAL④和⑥列出的托管应用、默认ACL、真人验收及延期项仍保留；精确SIGTERM来源未证实，没有继续追查或接BACKLOG
 - 下一条: STOP，第三次材料推送核对后等下一条指示
 - 附: 完成线远端6fa22a3cf5ce4a88fc6115c1cf8467c87eb7f438，与扫描91及复核92的HEAD解析结果一致；原扫exit2、公开文件名误报1，明确的复核exit0，原始记录保留。首推a3da055同理对应原86/复87、日志名误报7。代码与外写次数为P3一次（scan63）、P4一次（scan88）、新分支一次（scan67）、新草稿创建一次（scan68）、正文一次（scan89）；材料此前两次，本条仅作第三次，不需要第四次。目标关闭和取消提醒均发生在完成线推送之后；未建立新目标。第三次提交自身SHA与正式扫描回执在本机账本和最终回报核对，不再追加第二条关闭日志。
+
+### L552 · 2026-11-27 10:59 CT · 【supervisor 指示】D-61第十五批开工并保存全文
+- task_id: D-61.0、D-61.1b、D-61.10f
+- code_sha: a60aa563e7171a2a690b98710d62f6370662fd45（main）
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本次写回之前材料分支的HEAD，即D-61写入DECISIONS的提交）
+- 环境: 主会话已由supervisor重启到omo 5.1.84，续上同一会话
+- 命令: git pull --ff-only（9720953..ebdcdba）；D-61全文（DECISIONS第1599–2865行）逐字存为$EV/D-61.md；create_goal；schedule_prompt list后create 3600秒
+- 计数: D-61共1267行，sha256 66bf1050；目标active；续跑提醒list为0后新建1个sch_a8f874f8b703
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-61.1a–1d开工对账
+- 附: 控制通道要点：第十四批0 blocker、1 major（阻塞第31条，去向第9项d）；P3/P4已进main a60aa563并上生产，五条迁移两库已应用并VERIFY；用号照第0项（Claude在前，GPT里login-4、login-5最前、login-3最后），OMO不查用量、不切号或模型、不调account_order，子任务一律带category。本条是第一条D-61记录，第10项e的24小时检查点从本条时刻起算。
+
+### L553 · 2026-11-27 10:59 CT · 【supervisor 指示】P3/P4 已合并并上线（D-61 第 0 项）
+- task_id: D-61.9a
+- code_sha: a60aa563e7171a2a690b98710d62f6370662fd45
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本次写回之前材料分支的HEAD）
+- 环境: 第0项为supervisor 2026-11-27约09:00Z实查；OMO只读复核GitHub元数据，未连任何托管库
+- 命令: gh pr view 379/380/385/386 --json state,mergeCommit,baseRefName,isDraft,headRefOid；gh run list --branch main --limit 5
+- 计数: #386 MERGED→30d847e1（2026-11-26T04:44:02Z）；#379 MERGED→e46606b1（05:57:05Z，head 8e45b5d3）；#380 MERGED→a60aa563（06:31:59Z，head 8dd4c8c1）；#385 OPEN草稿，head 4fc14fff，base main；main push run 45768847900、45764889702、45757069295均success；与第0项逐条一致，无另写行
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/45768847900
+- 未测项: 生产H5、两库账本、开关行和生产行数照录第0项，OMO未复核（不连托管库）
+- 下一条: D-61.1a–1d
+- 附: 两库五条迁移账本按name核、version为应用时刻；staging另有两条对账；开关两库均关；E6未设。完整原文随第一次材料推送照录进STATUS新节「第十五批开工背景（D-61 第 0 项，逐字照录）」。
+
+### L554 · 2026-11-27 10:59 CT · [OMO自决] D-61第1项a–c：omo版本、category首选与12个过时monitor
+- task_id: D-61.1a、D-61.1c
+- code_sha: a60aa563e7171a2a690b98710d62f6370662fd45
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本次写回之前材料分支的HEAD）
+- 环境: 主会话；只读命令
+- 命令: omo --version；omo doctor --models；task_cancel ×12；kill_bash ×12；17c：pgrep run-checks/lsql、podman ps、flock -n、git ls-remote
+- 计数: omo 5.1.84（engine senpi 2026.11.23）；7个category首选均为anthropic-subscription（architect、ultrabrain、visual-engineering首选claude-fable-5-2，deep-high、deep-low、unspecified-high首选claude-opus-5-5，unspecified-low首选claude-sonnet-5-5）；挂着的terminal monitor恰好12个；task_cancel 12次均返回No task found；kill_bash 12次均Killed，登记归零；17c：进程0、容器0、锁rc0，main a60aa563、#385 4fc14fff、P3 8e45b5d3、P4 8dd4c8c1远端未变
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-61.1d四项核对
+- 附: [OMO自决] 规则：第1项c「全部task_cancel」。选择：先对12个逐一task_cancel并照实记结果，再用kill_bash停掉。理由：这12个是D-56、D-57、D-58时期挂在各批证据目录交付文件上的路径watcher，不是子任务，task_cancel只认子任务id；kill_bash是宿主停monitor的入口，接受这些id。没改~/.omo下任何文件。12个id：mon_MH6X54CZ1PN7RE65、mon_8G0SX74651BRNY84、mon_CYZ56PRJ0CQJW95A、mon_4DQW8J1B45B977G7、mon_P9SSX9SYYK2H6FQW、mon_F4XXBT1ZGDTCRM99、mon_A1WQC00XXEPCGDJ6、mon_958HXJ70E73EK24S、mon_QQTVHTBX74JR6HMR、mon_5FEZP85QWGD2Q4SH、mon_XBTGWXV8BNC7H6JM、mon_C5JKT4WAGEC0S503。撤回：不需要，watcher已过时，原定也在11-28至11-29自动到期。
+
+### L555 · 2026-11-27 10:59 CT · D-61第1项d四项核对通过
+- task_id: D-61.1d
+- code_sha: a60aa563e7171a2a690b98710d62f6370662fd45
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本次写回之前材料分支的HEAD）
+- 环境: 主会话；只读
+- 命令: git -C ~/work/illini fetch origin；rev-parse origin/main；#385目录rev-parse HEAD、ls-remote、status；illini-p3和illini-events-20261120的status；test -s与grep -cv号池表
+- 计数: ① origin/main a60aa563e717；② #385本地与远端均4fc14fff938742bc，工作区0行；③ P3、P4目录工作区各0行，自本条起退役只读；④ 号池表test -s通过，去空行8行；磁盘可用约325 GB
+- ci_run_url: —
+- 未测项: —
+- 下一条: D-61.1e建三个worktree，随后1f基线
+- 附: 只核个数，没读号池表内容。main未前进，抬头main前进那一款首次判定为「无前进」。
+
+### L556 · 2026-11-27 11:17 CT · 更正 L521
+- task_id: D-61.9i
+- code_sha: —
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本条写入之前材料分支的HEAD）
+- 环境: 主会话；只改材料
+- 命令: 只追加本条，不回改原条目
+- 计数: L521 说 390 详情截图顶栏的回退和标题没画出来，不对：event-detail-390-light-en.png、event-detail-390-dark-zh.png 都画出了返回箭头和「Events / 活动」标题，那句作废。
+- ci_run_url: —
+- 未测项: —
+- 下一条: L557 更正 L550、L551
+
+### L557 · 2026-11-27 11:17 CT · 更正 L550、L551（补 [OMO自决]）
+- task_id: D-61.9i
+- code_sha: —
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本条写入之前材料分支的HEAD）
+- 环境: 主会话；只改材料
+- 命令: 只追加本条，不回改原条目
+- 计数: 补记第十四批第二次 17d 命中的 [OMO自决]：材料第二次推送 6fa22a3，原扫是 scan17d.log 第 91 行、exit 2，⑤ 误报 1 条，类别是公开文件名（L550、L551 只记了内容、没有标签），不写命中原文。
+- ci_run_url: —
+- 未测项: —
+- 下一条: L558 更正 L470
+
+### L558 · 2026-11-27 11:17 CT · 更正 L470
+- task_id: D-61.9i
+- code_sha: —
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本条写入之前材料分支的HEAD）
+- 环境: 主会话；只改材料
+- 命令: 只追加本条，不回改原条目
+- 计数: L470 用的是【OMO自决】，计数时按 [OMO自决] 算（D-61 第 9 项 g）。
+- ci_run_url: —
+- 未测项: —
+- 下一条: 材料第一次推送
+
+### L559 · 2026-11-27 11:30 CT · [OMO自决] 17d 预扫命中 ② 号池 1 条，已改写
+- task_id: D-61.9h
+- code_sha: —
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本条写入之前材料分支的HEAD）
+- 环境: 主会话；只改材料
+- 命令: scan17d.py origin/codex/community-plan-v5 --worktree（预扫，不带 --log）
+- 计数: 第一次 exit 1：② 号池 1 条，位置是材料 RUNBOOK §11 E6 那一行（第 9 项 h 要改的行，原有的官方内容账号邮箱随改动成为新增行）；② 邮箱 0、其余各类 0。改写：该行「用 <账号邮箱>」改成「用 D-13 的官方内容账号」，邮箱只留在 DECISIONS D-13；重扫 exit 0、各类 0。
+- ci_run_url: —
+- 未测项: —
+- 下一条: 第 1 项 f 基线结果
+- 附: [OMO自决]（D-43）：17d ② 对号池邮箱只给合成值两条路，这里是第 9 项 h 指定要改的既有一行，按「改写后重扫」处理，没有用折行或拼接绕开正则；不写命中内容。
+
+### L560 · 2026-11-27 11:51 CT · D-61第2项 #385 c1五样、修前对照与c2
+- task_id: D-61.2
+- code_sha: 1a5dd986ca0071464e2ca11a19a16084b2b00a22（c2；c1 为 58c34fe9a64ec4d7f708db33904238e4378c7f00）
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本条写入之前材料分支的HEAD）
+- 环境: tony-ws；~/work/illini-smoke-fixture；容器锁内 run-checks.sh
+- 命令: c1 = git merge --no-ff -m "Merge main a60aa563 into codex/community-smoke-fixture-20261124" a60aa563（不加 -X）；修前对照 SMOKE_SPECS="pages.smoke.spec.ts -g 'T1 stub read inventory'" $RC ~/work/illini-smoke-fixture smoke（在 c1 上）；c2 只改 app/smoke/pages.smoke.spec.ts；17d 干跑 scan17d.py 4fc14fff --diff-base 58c34fe9 --log
+- 计数: c1 五样：① 树 a3c92f29；② git diff --stat origin/main HEAD 恰好 5 个文件、+137/−12；③ supabase、.github、vercel.json 的 diff 为空；④ git show --cc --format= HEAD 为空；⑤ merge-base --is-ancestor a60aa563 HEAD 返回 0；17d scan94 exit 0。修前对照 check-20261127T174948Z：1 failed（T1 stub read inventory covers exactly the sweep fixtures and routes），期望比实际多出且只多出 community_event_sync_state、rpc:community_member_events_open、rpc:list_community_events 三项（Expected −3、Received +0）。c2 = 1a5dd986：+9/−3，文件 sha256 ca7aa240…、树 e37a8461，与第 2 项给的值一致；17d scan95 exit 0。
+- ci_run_url: —（未推送）
+- 未测项: c2 的门禁、九个变异（已排队）
+- 下一条: #385 九个变异与门禁
+
+### L561 · 2026-11-27 11:51 CT · D-61第6项a campus k1提交
+- task_id: D-61.6a
+- code_sha: fd690d7c06bc5c2f36be84b1a4ec5eadf1a9578e
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本条写入之前材料分支的HEAD）
+- 环境: tony-ws；~/work/illini-campus-20261127；容器锁内
+- 命令: RUN_CMD='cd app && node --test ../scripts/community-release-checklist-boundary.test.mjs' $RC <目录> cmd（提交前单跑）；17d 干跑 scan17d.py a60aa563 --log
+- 计数: 提交前单跑 check-20261127T175008Z：tests 2、pass 2、fail 0；k1 只改这一个文件 +90/−20；17d scan96 exit 0。
+- ci_run_url: —（未推送）
+- 未测项: k1 的四个验证（已排队）
+- 下一条: k1 验证后写 C（k2）
+
+### L562 · 2026-11-27 11:51 CT · D-61第7项 followups f1提交
+- task_id: D-61.7
+- code_sha: 7aeba1c31dab9f7923d80019cae20fc53f22a91d
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本条写入之前材料分支的HEAD）
+- 环境: tony-ws；~/work/illini-b14-followups；容器锁内
+- 命令: $RC <目录> install cmd，RUN_CMD 只跑三个同步测试文件；17d 干跑 scan17d.py a60aa563 --log
+- 计数: 提交前单跑 check-20261127T175011Z：install rc=0；三个文件 tests 58、pass 58、fail 0（51 → 58）；f1 改 api/_community-events-sync.test.mjs +6、api/_community-events-sync-budget.test.mjs +18/−1；17d scan97 exit 0。
+- ci_run_url: —（未推送）
+- 未测项: M13–M18（已排队）
+- 下一条: f1 变异后做 f2
+
+### L563 · 2026-11-27 11:54 CT · D-61第6项a k1上的四个验证
+- task_id: D-61.6a
+- code_sha: fd690d7c06bc5c2f36be84b1a4ec5eadf1a9578e
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本条写入之前材料分支的HEAD）
+- 环境: tony-ws；~/work/illini-campus-20261127；$EV/mutate.py 一次持锁跑完四例，每例恢复后核 sha256 和 git status
+- 命令: RUN_CMD='cd app && node --test ../scripts/community-release-checklist-boundary.test.mjs' $RC <目录> cmd；计划 $EV/plans/k1.json
+- 计数: 原样 2/2 绿（L561）；对调 P3+P4 步骤表第 14、15 行（第 706、707 行）→ 第一条红（check-20261127T175311Z）；第 728 行首错 md5 末位改一位（第 574 行不动）→ 第一条红（…175313Z）；第 12 步 NOTICE 改 none → 第一条红（…175314Z）；R1 未跟踪的 supabase/migrations/20991231000000_probe_c.sql（B 的副本）→ 第二条红（…175316Z），删掉后 git status 为空。四例都只红一条、另一条绿，恢复全部核过。
+- ci_run_url: —（未推送）
+- 未测项: —
+- 下一条: k2 修前红、写 C 的同一提交
+
+### L564 · 2026-11-27 11:56 CT · D-61第1项f 基线（confirm-main a60aa563）
+- task_id: D-61.1f
+- code_sha: a60aa563e7171a2a690b98710d62f6370662fd45
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本条写入之前材料分支的HEAD）
+- 环境: tony-ws；~/work/confirm-main-a60aa563（detached）；容器锁内，umask 022，前后磁盘均 ≥ 50 GB
+- 命令: SMOKE_SPECS=<全部 spec，除 compiled-chunk-recovery、compiled-draft-persistence> $RC <目录> install typecheck h5 h5accept mp mpci migrations test smoke npmaudit；SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60" $RC <目录> smoke；$LSQL <目录> 20261120100354 20261120122054 20261122035253 20261123201501 20261125004742；cpuset 探针 flock … podman run --rm --cpuset-cpus=0-3 "$IMAGE" node -p availableParallelism
+- 计数: 全量 check-20261127T170110Z 各 STEP rc=0：B_TEST tests=3093 pass=3092 fail=0 skipped=1 pg_skips=0；B_SMOKE Running 802（801 passed、1 skipped、0 failed）；h5accept 52/52；巡检 68 条 0 失败；unstubbed 0；Failed to scan for dependencies 1 条（main.ts 入口，即 4fc14fff 修的那条）；主包 1469678、event 分包 37721。:699 六十轮 check-20261127T175024Z 60/60。B_LSQL lsql-20261127T175318Z files=187 replayed=187 errors=0 done=1 rc=0，P3_TOTAL 703/703、EV_TOTAL 855/855、MEV_TOTAL 38/38、SYNC_TOTAL 35/35、CAP_TOTAL 8/8。cpuset 探针 rc=127：rootless podman 写不了 cpuset.cpus（OCI runtime 报 no such file or directory），照第 10 项 b 去掉 --cpuset-cpus、在 node 命令里加 --test-concurrency=3，写进 FINAL ⑧；基线的 CI 边界命令按这个写法另跑（排队中，结果另记）。
+- ci_run_url: main push run 45768847900（supervisor 记录，第 0 项）
+- 未测项: 基线 CI 边界命令（排队中）
+- 下一条: CI 边界基线结果
+
+### L565 · 2026-11-27 11:56 CT · D-61第7项 f1 的 M13–M18
+- task_id: D-61.7
+- code_sha: 7aeba1c31dab9f7923d80019cae20fc53f22a91d
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本条写入之前材料分支的HEAD）
+- 环境: tony-ws；~/work/illini-b14-followups；$EV/mutate.py 一次持锁跑完六例，每例恢复后核 sha256 和 git status
+- 命令: 每例临时改 api/_community-events-sync.js，RUN_CMD 只跑三个同步测试文件；计划 $EV/plans/f1.json
+- 计数: 58 条里：M13 去掉 try/catch → hostile Error 红；M14 删 instanceof Error 那行 → non-Error status、non-Error timeout 红；M15 删 deadline 那行 → 两条预算日志断言（第 89 行那条和新加的 a budget exhausted before apply…）红；M16 [45]\d{2} 改 \d+ → apply 302、apply 5030 红；M17 去掉 $ → apply 5030 红；M18 去掉 ^ → apply prefixed status 红。各例另有所在的父用例一并红，其余全绿；六例恢复全部核过。
+- ci_run_url: —（未推送）
+- 未测项: —
+- 下一条: f2
+
+### L566 · 2026-11-27 11:56 CT · D-61第3项 写 C 与 k2 修前红
+- task_id: D-61.3
+- code_sha: fd690d7c06bc5c2f36be84b1a4ec5eadf1a9578e（k1；k2 未提交）
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本条写入之前材料分支的HEAD）
+- 环境: tony-ws；~/work/illini-campus-20261127
+- 命令: git fetch；git log --format=%h a60aa563..origin/main -- supabase/migrations；git ls-tree origin/main 最新迁移；date -u 取时间戳；只放 C 时单跑计数与发布清单两个测试
+- 计数: origin/main 仍是 a60aa563，范围内迁移提交 0 个，最新迁移是 20261125004742_community_event_sync_cap.sql。C 时间戳 20261127175345，文件 20261127175345_community_campus_checks.sql，sha256 37ca561a…（全值见 manifest 第 191 行），BEGIN 第 5 行、COMMIT 第 215 行，发送内容 sha256 dbec0a07…。修前红 check-20261127T175453Z：4 条里 2 红——every migration after the applied release is in the campus checks release（### Community campus checks release must exist and list 20261127175345_community_campus_checks.sql）、README migration inventory…（expected 187，actual 188）。机械核对：C 里禁用文字 grep 为 0；guard 的 7 个 md5 都能在 a60aa563 的 VERIFY_20261122035253、VERIFY_20261125004742 里 git grep -F 到；五条冻结迁移 diff 为空；manifest 只多第 191 行。
+- ci_run_url: —（未推送）
+- 未测项: k2 修后绿、十八个变异、R2–R6、L-SQL（排队中）
+- 下一条: k2 修后绿与提交
+
+### L567 · 2026-11-27 12:26 CT · D-61第2项 #385 c2 上的九个变异
+- task_id: D-61.2
+- code_sha: 1a5dd986ca0071464e2ca11a19a16084b2b00a22
+- docs_sha: 76af207d45fcd3e34726ff84f3ff9e0e11b62d20（材料本地提交，未推送）
+- 环境: tony-ws；~/work/illini-smoke-fixture；$EV/mutate.py 一次持锁跑完九例（17:54:56–18:26:34Z），每例恢复后核 sha256 和 git status
+- 命令: N1–N8 各自 SMOKE_SPECS="pages.smoke.spec.ts" $RC <目录> smoke；V4 RUN_CMD='cd app && node --test smoke/conditional-import-boundary.test.mjs' $RC <目录> cmd；计划 $EV/plans/p385.json
+- 计数: pages.smoke 每例 84 条。N1 plaza 删 rpc:list_community_events → plaza 浅深两条红，T1 绿（check-20261127T175456Z）；N2 events 删 community_event_sync_state → T1 红、events 浅深两条红（…175845Z）；N3 detail 改 ['community_event_sync_state'] → detail 浅深两条红，T1 绿（…180239Z）；N4 create 改 [] → create 浅深两条红，T1 绿（…180631Z）；N5 detail/index.vue 第 147 行去掉 caaci 条件 → detail 浅深两条红，报 stubbed reads（实际多 community_event_sync_state），errs 那条断言通过即 errs 为空（…181033Z）；N6 useCommunityHome.ts 第 110 行换成 Promise.resolve → plaza 浅深两条红（…181440Z）；N7 删 events/index.vue 第 181–183 行 → events 浅深两条红（…181844Z）；N8 create/index.vue 第 131 行改 const open = false → create 浅深两条红（…182242Z）；V4 registerToastHost 包回 #ifndef H5 → 第二条用例红，报 components/AppToast.vue imports registerToastHost（…182633Z）。九例都只红写明的那几条，恢复全部核过，工作区 0 行。
+- ci_run_url: —（未推送）
+- 未测项: c2 门禁（全量、:699 六十轮、CI 边界命令）
+- 下一条: CI 边界基线、材料第一次推送
+
+### L568 · 2026-11-27 12:32 CT · D-61第1项f CI边界基线，第1项完成
+- task_id: D-61.1f
+- code_sha: a60aa563e7171a2a690b98710d62f6370662fd45
+- docs_sha: ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（本批材料尚未推送）
+- 环境: tony-ws；~/work/confirm-main-a60aa563；测试镜像 pw1.65-node22-pg17，不挂 /dev-env，容器锁由命令自己取
+- 命令: 照 ci.yml 第 98–100、121–123 行原样，去掉 --cpuset-cpus、node 命令加 --test-concurrency=3（L564：rootless podman 不能设 cpuset）
+- 计数: B_CI：tests 3093、pass 3092、fail 0、cancelled 0、skipped 1，与全量 TEST 行相同；CI_BOUNDARY rc=0 secs=339；前后磁盘约 324 GB。第 1 项 a–f 全部完成（L554、L555、L564、本条）。
+- ci_run_url: —
+- 未测项: —
+- 下一条: 材料第一次推送
