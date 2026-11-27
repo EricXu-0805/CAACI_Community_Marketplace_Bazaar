@@ -5,6 +5,7 @@ import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deplo
 import { reportToSentry } from './_sentry-report.js'
 import { translatePublicContent } from './_public-content-translation.js'
 import { translateListing } from './_listing-translation.js'
+import { syncCaaciEvents } from './_community-events-sync.js'
 
 export const config = { runtime: 'edge' }
 
@@ -179,11 +180,12 @@ async function handleRequest(request) {
     return Math.min(CALL_TIMEOUT_MS, remaining)
   }
   let operation = 'start'
-  const call = (name, args = {}) => {
+  const call = (name, args = {}, timeoutMs) => {
     operation = name
-    return rpc(origin, name, args, timeLeft())
+    return rpc(origin, name, args, timeoutMs == null ? timeLeft() : Math.min(timeoutMs, timeLeft()))
   }
   const counts = { listing_batches: 0, notifications: 0, media_completed: 0, media_retried: 0, media_cancelled: 0 }
+  let communitySync = null
   try {
     if (process.env.CHAT_VIDEO_MODERATION_ENABLED === 'true') {
       const video = await moderateVideoJob({ call, request: serviceCall, origin: origin.href, serviceHeaders, timeoutMs: timeLeft() })
@@ -266,6 +268,12 @@ async function handleRequest(request) {
       if(!response.ok) throw new Error(`provider_status_${response.status}`)
       if(await call('finish_chat_media_orphan',{name_in:orphan.name})!==true) throw new Error('media_lease_lost')
     }
+    if (process.env.COMMUNITY_SYNC_CAACI_EVENTS === '1') {
+      if (deadline - Date.now() > 12_000) {
+        communitySync = await syncCaaciEvents({ deadline, call, fetch })
+        counts.community_events_sync = communitySync.outcome
+      } else counts.community_events_sync = 'skipped_budget'
+    }
     await call('purge_completed_background_jobs', { limit_in: 500 })
     const backlog = await call('background_job_status')
     if (!backlog || !['listing_pending','listing_oldest_seconds','media_pending','media_failed'].every(
@@ -277,6 +285,11 @@ async function handleRequest(request) {
       })
       await reportToSentry('api/background-jobs', 'moderation media needs retry', {
         retryCount: counts.media_retried, failedCount: backlog.media_failed,
+      })
+    }
+    if (communitySync && (communitySync.outcome === 'failed' || communitySync.outcome === 'partial' || communitySync.rejected > 0)) {
+      await reportToSentry('api/background-jobs', 'community events sync needs attention', {
+        outcome: communitySync.outcome, code: communitySync.code, rejected: communitySync.rejected,
       })
     }
     return json({ success: backlog.media_failed === 0, ...counts, backlog }, backlog.media_failed ? 503 : 200)

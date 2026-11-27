@@ -63,13 +63,29 @@
 				"navigationStyle": "custom"
 			}
 		},
+		{
+			"path": "pages/events/index",
+			"style": { "navigationStyle": "custom" }
+		},
 		// #ifndef MP-WEIXIN
+		{
+			"path": "pages/event/detail/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/event/create/index",
+			"style": { "navigationStyle": "custom" }
+		},
 		{
 			"path": "pages/history/index",
 			"style": { "navigationStyle": "custom" }
 		},
 		{
 			"path": "pages/my-items/index",
+			"style": { "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/my-topics/index",
 			"style": { "navigationStyle": "custom" }
 		},
 		{
@@ -195,6 +211,13 @@
 			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
 		},
 		{
+			"root": "pages/event",
+			"pages": [
+				{ "path": "detail/index", "style": { "navigationStyle": "custom" } },
+				{ "path": "create/index", "style": { "navigationStyle": "custom" } }
+			]
+		},
+		{
 			"root": "pages/following",
 			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
 		},
@@ -216,6 +239,10 @@
 		},
 		{
 			"root": "pages/my-items",
+			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
+		},
+		{
+			"root": "pages/my-topics",
 			"pages": [{ "path": "index", "style": { "navigationStyle": "custom" } }]
 		},
 		{

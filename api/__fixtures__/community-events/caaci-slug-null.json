@@ -1,0 +1,22 @@
+{
+  "schema": "caaci.public-events.v1",
+  "generated_at": "2026-11-13T18:00:00Z",
+  "complete": true,
+  "events": [{
+    "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "slug": null,
+    "title_en": "Synthetic information session",
+    "title_zh": null,
+    "summary_en": "Synthetic description.",
+    "summary_zh": null,
+    "starts_at": "2026-11-21T18:00:00Z",
+    "ends_at": null,
+    "time_zone": "America/Chicago",
+    "location": "Synthetic public hall",
+    "takes_registrations": false,
+    "registration_open": false,
+    "page_url": "https://caaciorg.com/events/#bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "register_url": null,
+    "content_hash": "sha256:synthetic-fixture"
+  }]
+}

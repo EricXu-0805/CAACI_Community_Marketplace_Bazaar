@@ -1,0 +1,16 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:90000001@illinois.edu
+SUMMARY:Synthetic campus gathering
+DTSTART:20261120T113000
+DTEND:20261120T133000
+TZID:America/Chicago
+LOCATION:Synthetic public hall
+LAST-MODIFIED:20261112T180000Z
+DESCRIPTION:Synthetic description.
+ORGANIZER:mailto:organizer@example.test
+CONTACT:organizer@example.test
+URL:http://calendars.illinois.edu/detail/3715/90000001?key=synthetic
+END:VEVENT
+END:VCALENDAR

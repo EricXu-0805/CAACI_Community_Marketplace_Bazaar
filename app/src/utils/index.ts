@@ -179,6 +179,7 @@ const CONTENT_MESSAGES: Record<string, { en: string; zh: string }> = {
   post_title_invalid: { en: 'Use a single-line title of up to 120 characters.', zh: '标题请使用单行，最多 120 字' },
   post_topic_required: { en: 'Add a title and choose a board for your topic.', zh: '话题请填写标题并选择板块' },
   post_topic_body_required: { en: 'A topic needs body text as well as a title.', zh: '话题除了标题，还要写正文' },
+  post_locked: { en: 'Replies are closed on this topic.', zh: '这条话题已关闭回复' },
   content_required: { en: 'Please write something first.',    zh: '请先输入内容' },
   content_too_long: { en: 'Content is too long (max 2000).',  zh: '内容太长（最多 2000 字）' },
   message_too_long: { en: 'Message is too long (max 2000).',  zh: '消息太长（最多 2000 字）' },

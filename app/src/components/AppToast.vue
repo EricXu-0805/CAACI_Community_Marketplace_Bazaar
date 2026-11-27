@@ -15,12 +15,12 @@
 -->
 <template>
   <!-- #ifdef H5 -->
+  <div v-if="restrictionNotice" class="at-notice" aria-live="polite" role="link" tabindex="0" @click="openRestrictionDetails" @keydown.enter.prevent="openRestrictionDetails" @keydown.space.prevent="openRestrictionDetails">
+    <UIcon name="shield" size="xs" color="currentColor" aria-hidden="true" />
+    <span class="at-notice-text">{{ restrictionNotice }}</span>
+    <UIcon name="chevron-right" size="xs" color="currentColor" aria-hidden="true" />
+  </div>
   <div class="at-wrap" aria-live="polite">
-    <div v-if="restrictionNotice" class="at-notice" role="link" tabindex="0" @click="openRestrictionDetails" @keydown.enter.prevent="openRestrictionDetails" @keydown.space.prevent="openRestrictionDetails">
-      <UIcon name="shield" size="xs" color="currentColor" aria-hidden="true" />
-      <span class="at-notice-text">{{ restrictionNotice }}</span>
-      <UIcon name="chevron-right" size="xs" color="currentColor" aria-hidden="true" />
-    </div>
     <transition-group name="at">
       <div
         v-for="t in toasts"
@@ -168,8 +168,8 @@ function onTap(t: ToastItem) {
 .at-wrap {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 10px);
-  /* Centred without a transform, so the fixed notice inside stays anchored
-     to the viewport rather than to this box. */
+  /* Centred without a transform, so the mini-program's fixed notice stays
+     anchored to the viewport rather than to this box. */
   left: 0;
   right: 0;
   margin: 0 auto;
@@ -211,6 +211,8 @@ function onTap(t: ToastItem) {
 .at-notice-text { min-width: 0; overflow-wrap: anywhere; }
 .at-notice:focus-visible { outline: 2px solid var(--accent-action, #C2410C); outline-offset: 2px; }
 /* #ifdef H5 */
+/* Account status stays below native sheets (999) and confirmation dialogs. */
+.at-notice { z-index: 500; }
 @media (min-width: 768px) {
   /* beside the desktop sidebar rail */
   .at-notice { left: calc(var(--sidebar-w, 240px) + 16px); max-width: calc(100vw - var(--sidebar-w, 240px) - 32px); }

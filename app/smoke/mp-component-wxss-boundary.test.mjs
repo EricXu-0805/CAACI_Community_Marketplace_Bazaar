@@ -124,3 +124,71 @@ test('WeChat tablet keeps primary navigation and page headers without an H5 side
     })
   }
 })
+
+test('WeChat event headers reserve the native capsule before compilation', () => {
+  for (const page of ['pages/events/index.vue', 'pages/event/detail/index.vue']) {
+    const source = fs.readFileSync(path.join(sourceRoot, page), 'utf8')
+    const css = scopedStyleBlocks(source).map(block => {
+      const mpSource = keepForMpWeixin(block.body)
+      return block.isScss ? sass.compileString(mpSource).css : mpSource
+    }).join('\n')
+    const insets = []
+    postcss.parse(css).walkRules('.header', rule => {
+      rule.walkDecls(/^(padding|padding-right)$/, declaration => {
+        insets.push([declaration.prop, declaration.value])
+      })
+    })
+    assert.deepEqual(
+      insets.at(-1), ['padding-right', 'var(--mp-navbar-right-pad, 0px)'],
+      `${page}: the last right-padding declaration must reserve the native capsule`,
+    )
+  }
+})
+
+test('WeChat event header cascade preserves the native capsule inset', () => {
+  function headerSubject(selector) {
+    const nodes = []
+    selector.each(node => nodes.push(node))
+    const last = nodes.slice(nodes.map(node => node.type).lastIndexOf('combinator') + 1)
+    if (!last.some(node => node.type === 'class' && node.value === 'header')) return null
+    const spec = [0, 0, 0]
+    selector.walk(node => {
+      if (node.type === 'id') spec[0]++
+      else if (node.type === 'class' || node.type === 'attribute' || (node.type === 'pseudo' && !node.value.startsWith('::'))) spec[1]++
+      else if (node.type === 'tag' || (node.type === 'pseudo' && node.value.startsWith('::'))) spec[2]++
+    })
+    return spec
+  }
+
+  for (const page of ['pages/events/index.vue', 'pages/event/detail/index.vue']) {
+    const css = scopedStyleBlocks(fs.readFileSync(path.join(sourceRoot, page), 'utf8')).map(block => {
+      const mpSource = keepForMpWeixin(block.body)
+      return block.isScss ? sass.compileString(mpSource).css : mpSource
+    }).join('\n')
+    const candidates = []
+    let order = 0
+    postcss.parse(css).walkRules(rule => {
+      for (let ancestor = rule.parent; ancestor; ancestor = ancestor.parent) {
+        if (ancestor.type === 'atrule' && ancestor.name !== 'media') return
+      }
+      const specificities = []
+      selectorParser(selectors => {
+        selectors.each(selector => {
+          const spec = headerSubject(selector)
+          if (spec) specificities.push(spec)
+        })
+      }).processSync(rule.selector)
+      const spec = specificities.sort((a, b) => b[0] - a[0] || b[1] - a[1] || b[2] - a[2])[0]
+      if (!spec) return
+      rule.walkDecls(/^(padding|padding-right|padding-inline|padding-inline-end)$/, declaration => {
+        candidates.push({ spec, important: Boolean(declaration.important), order: order++,
+          prop: declaration.prop, value: declaration.value })
+      })
+    })
+    const winner = candidates.sort((a, b) => Number(b.important) - Number(a.important)
+      || b.spec[0] - a.spec[0] || b.spec[1] - a.spec[1] || b.spec[2] - a.spec[2] || b.order - a.order)[0]
+    assert.ok(winner, `${page}: the header must have a padding declaration`)
+    assert.equal(`${winner.prop}: ${winner.value}`, 'padding-right: var(--mp-navbar-right-pad, 0px)',
+      `${page}: the winning header padding must reserve the native capsule`)
+  }
+})

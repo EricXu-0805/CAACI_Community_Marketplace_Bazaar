@@ -1,0 +1,13 @@
+{
+  "source_type": "caaci",
+  "source_key": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "title": "示例往期活动",
+  "title_en": "Synthetic ended event",
+  "starts_at": "2026-11-12T17:00:00Z",
+  "ends_at": "2026-11-12T19:00:00Z",
+  "availability": "visible",
+  "takes_registrations": true,
+  "registration_open": true,
+  "page_url": "https://caaciorg.com/events/#synthetic-ended",
+  "register_url": "https://caaciorg.com/events/synthetic-ended/register/"
+}

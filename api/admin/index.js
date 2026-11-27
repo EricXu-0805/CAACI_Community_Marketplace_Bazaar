@@ -482,8 +482,25 @@ function isExpectedAdminMutationResult(action, payload, result) {
     'set_post_pinned',
     'delete_banner',
     'revoke_token',
+    'set_post_official',
+    'set_post_featured',
+    'set_post_locked',
+    'set_post_category',
+    'hide_event',
+    'unhide_event',
   ]).has(action)) {
     return hasExactKeys(result, ['success']) && result.success === true
+  }
+
+  // P4.9: the one discussion topic of the event that was asked about, new or already there.
+  if (action === 'create_event_discussion') {
+    const data = result.data
+    return hasExactKeys(result, ['data'])
+      && hasExactKeys(data, ['event_id', 'post_id', 'created'])
+      && isUuid(data.event_id)
+      && data.event_id.toLowerCase() === payload.event_id?.toLowerCase()
+      && isUuid(data.post_id)
+      && typeof data.created === 'boolean'
   }
 
   if (action === 'decide_appeal') {
@@ -504,7 +521,7 @@ function isExpectedAdminMutationResult(action, payload, result) {
       && (payload.decision === 'accepted' || data.lifted_now === false)
   }
 
-  if (action === 'resolve_target_reports' || action === 'takedown_content') {
+  if (action === 'resolve_target_reports' || action === 'takedown_content' || action === 'restore_content') {
     return hasExactKeys(result, ['data'])
       && hasExactKeys(result.data, ['ok', 'affected'])
       && result.data.ok === true
@@ -589,6 +606,18 @@ const REPORT_STATUSES = new Set(['pending', 'reviewed', 'resolved', 'dismissed']
 const BULK_REPORT_STATUSES = new Set(['reviewed', 'resolved', 'dismissed'])
 const REPORT_TARGET_TYPES = new Set(['item', 'user', 'message', 'post', 'comment'])
 const TAKEDOWN_TARGET_TYPES = new Set(['item', 'post', 'comment'])
+// P3.5. Only a topic or a reply can be hidden and brought back; a listing is closed, not hidden.
+const RESTORE_TARGET_TYPES = new Set(['post', 'comment'])
+const COMMUNITY_POST_CATEGORIES = new Set([
+  'campus-life', 'settling-market', 'alumni-career', 'events-social', 'local-deals',
+])
+/*
+ * The official account (E6). set_post_official sends it to the database, which
+ * accepts the mark only on that account's topics. It comes from configuration
+ * and never from a request. Until it is configured the action is refused by
+ * name before anything is read or written.
+ */
+const COMMUNITY_OFFICIAL_PROFILE_ID = env('COMMUNITY_OFFICIAL_PROFILE_ID').toLowerCase()
 
 /*
  * A takedown hides the row and does nothing to the photo.
@@ -621,7 +650,7 @@ function takenDownObjectKeys(images, ownerId) {
  * Read before the mutation, not after: afterwards the row is status='deleted',
  * and depending on one fewer thing having gone right is worth the ordering.
  */
-async function readTakedownMedia(targetType, targetId) {
+async function readTakedownMedia(targetType, targetId, purpose = 'takedown') {
   const table = TAKEDOWN_MEDIA_TABLES[targetType]
   if (!table) return { keys: [], complete: true }
   try {
@@ -638,11 +667,47 @@ async function readTakedownMedia(targetType, targetId) {
     }
     return { keys: takenDownObjectKeys(row?.images, row?.user_id), complete: true }
   } catch {
-    await reportToSentry('takedown media inventory unavailable', {
+    await reportToSentry(`${purpose} media inventory unavailable`, {
       target_type: targetType, target_id: targetId,
     })
     return { keys: [], complete: false }
   }
+}
+
+/*
+ * The reverse of stashTakenDownMedia, for a restored topic: its photos go back
+ * to the public bucket under the same keys. A key that is not in the evidence
+ * bucket never left the public one, or is already back, so that counts as
+ * done. No CDN purge: nothing has to stop being served. Counts only, as above.
+ */
+async function restoreHiddenMedia(targetType, targetId, keys) {
+  let unmoved = 0
+  for (const key of keys) {
+    try {
+      const { response, text } = await adminFetch(
+        `${SUPABASE_URL}/storage/v1/object/move`,
+        {
+          method: 'POST',
+          headers: supabaseHeaders(SERVICE_KEY, '', { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            bucketId: TAKEDOWN_EVIDENCE_BUCKET,
+            sourceKey: key,
+            destinationBucket: 'item-images',
+            destinationKey: key,
+          }),
+        },
+      )
+      if (!mediaMoveSucceeded(response, text)) unmoved += 1
+    } catch {
+      unmoved += 1
+    }
+  }
+  if (unmoved) {
+    await reportToSentry('restore left media in the evidence bucket', {
+      target_type: targetType, target_id: targetId, unmoved, total: keys.length,
+    })
+  }
+  return unmoved
 }
 
 async function stashTakenDownMedia(targetType, targetId, keys) {
@@ -716,6 +781,19 @@ const OWNER_ACTIONS = new Set([
   'revoke_admin_tokens',
 ])
 const SECURITY_ACTIONS = new Set(['revoke_token', 'revoke_admin_tokens'])
+/*
+ * P3.5 community governance. Kept apart from the three sets above on purpose:
+ * hasExactRoleCapabilities compares those with the list
+ * admin_token_authorization_v2 reports, and the database keeps reporting the
+ * vocabulary from before P3. The wrapper checks the capability again inside
+ * the mutation.
+ */
+const COMMUNITY_MODERATION_ACTIONS = new Set(['restore_content', 'set_post_locked', 'set_post_category'])
+const COMMUNITY_OWNER_ACTIONS = new Set([...COMMUNITY_MODERATION_ACTIONS, 'set_post_official', 'set_post_featured'])
+// P4.9 events, apart from the three sets above for the same reason: takedown
+// for the moderation roles, the discussion topic for the owner.
+const EVENT_MODERATION_ACTIONS = new Set(['hide_event', 'unhide_event'])
+const EVENT_OWNER_ACTIONS = new Set([...EVENT_MODERATION_ACTIONS, 'create_event_discussion'])
 const MODERATION_RESOURCES = new Set([
   'stats',
   'suspensions',
@@ -729,6 +807,11 @@ const MODERATION_RESOURCES = new Set([
   'warnings',
   'profile_suspensions',
   'audit',
+  // P3.5, P3.6: the topic list and the pending report queue.
+  'community_posts',
+  'report_queue',
+  // P4.9: every event, hidden ones included.
+  'community_events',
 ])
 const OWNER_RESOURCES = new Set([
   ...MODERATION_RESOURCES,
@@ -744,8 +827,10 @@ const SECURITY_RESOURCES = new Set(['tokens'])
 const ADMIN_RESOURCES = new Set(['whoami', ...OWNER_RESOURCES])
 
 function roleCanMutate(role, action) {
-  if (role === 'owner') return OWNER_ACTIONS.has(action)
-  if (role === 'operator') return MODERATION_ACTIONS.has(action)
+  if (role === 'owner') return OWNER_ACTIONS.has(action) || COMMUNITY_OWNER_ACTIONS.has(action) || EVENT_OWNER_ACTIONS.has(action)
+  if (role === 'operator') {
+    return MODERATION_ACTIONS.has(action) || COMMUNITY_MODERATION_ACTIONS.has(action) || EVENT_MODERATION_ACTIONS.has(action)
+  }
   if (role === 'security_admin') return SECURITY_ACTIONS.has(action)
   return false
 }
@@ -971,6 +1056,7 @@ async function executeAdminMutation(request, auth, body) {
       'report_group_not_found',
       'content_not_found',
       'post_not_found',
+      'event_not_found',
       'banner_not_found',
       'admin_upload_not_found',
       'admin_profile_not_found',
@@ -998,6 +1084,14 @@ async function executeAdminMutation(request, auth, body) {
         || message === 'self_appeal_decision_forbidden') {
       throw codedError(message)
     }
+    // P3.5: refusals the migration names. Each is a definitive answer the console can word.
+    if (new Set([
+      'official_profile_not_configured',
+      'post_not_official_account',
+      'post_not_official',
+      'post_not_topic',
+      'event_discussion_closed',
+    ]).has(message)) throw codedError(message)
     if (message === 'appeal_already_decided') {
       throw codedError('appeal_already_decided')
     }
@@ -1527,6 +1621,34 @@ async function handleGet(request, auth) {
     return json({ data })
   }
 
+  if (resource === 'community_posts') {
+    const status = url.searchParams.get('status') || 'active'
+    if (status !== 'active' && status !== 'hidden') return json({ error: 'invalid_status' }, 400)
+    const data = await rpc('admin_list_community_posts', {
+      limit_in: limit, offset_in: offset, status_in: status,
+    })
+    return json({ data })
+  }
+
+  if (resource === 'report_queue') {
+    const data = await rpc('admin_list_report_queue', { limit_in: limit, offset_in: offset })
+    return json({ data })
+  }
+
+  if (resource === 'community_events') {
+    // Every row, hidden ones included, with what the console needs to name it.
+    // The service role may read these tables and nothing else.
+    const select = 'id,source_type,title,title_en,organizer_name,starts_at,ends_at,location,availability,hidden_reason,'
+      + 'cancelled_at,duplicate_of,discussion_post_id,partner:community_event_partners(name_zh,name_en,status),'
+      + 'topic:posts(title,status)'
+    const { response: r, text } = await adminFetch(
+      `${SUPABASE_URL}/rest/v1/community_events?select=${encodeURIComponent(select)}&order=starts_at.desc,id.desc&limit=${limit}&offset=${offset}`,
+      { headers: supabaseHeaders(SERVICE_KEY) },
+    )
+    if (!r.ok) return json({ error: 'community_events_read_failed' }, 500)
+    return json({ data: parseUpstreamArray(text) })
+  }
+
   if (resource === 'banners') {
     // Full table incl. inactive/scheduled rows — the public banners_live view
     // only shows what's currently displayable, which is useless for managing.
@@ -1761,6 +1883,82 @@ async function handleBannerUpload(request, auth) {
   return json({ data: { url: publicUrl } })
 }
 
+/*
+ * P3.5: restore_content, set_post_official, set_post_featured, set_post_locked
+ * and set_post_category. Each is validated here and reaches the atomic wrapper
+ * with exactly its own fields; the caller's role was checked before this.
+ */
+async function handleCommunityGovernance(request, auth, body) {
+  const { action } = body
+  if (action === 'restore_content') {
+    if (!body.target_type || !body.target_id) return json({ error: 'missing_args' }, 400)
+    if (!RESTORE_TARGET_TYPES.has(body.target_type)) return json({ error: 'invalid_target_type' }, 400)
+    if (!isUuid(body.target_id)) return json({ error: 'invalid_id' }, 400)
+  } else {
+    const field = { set_post_official: 'official', set_post_featured: 'featured', set_post_locked: 'locked' }[action]
+    if (!body.post_id) return json({ error: 'missing_args' }, 400)
+    if (field ? typeof body[field] !== 'boolean' : body.category == null) return json({ error: 'missing_args' }, 400)
+    if (!isUuid(body.post_id)) return json({ error: 'invalid_id' }, 400)
+    if (!field && !COMMUNITY_POST_CATEGORIES.has(body.category)) return json({ error: 'invalid_category' }, 400)
+  }
+  if (!body.reason) return json({ error: 'missing_args' }, 400)
+  if (!isModerationReason(body.reason)) return json({ error: 'invalid_reason' }, 400)
+  const reason = normalizedModerationReason(body.reason)
+
+  if (action === 'restore_content') {
+    // A reply has no photos; for a topic the list is read before the row changes.
+    const media = await readTakedownMedia(body.target_type, body.target_id, 'restore')
+    const restored = await executeAdminMutation(request, auth, {
+      action, target_type: body.target_type, target_id: body.target_id, reason,
+    })
+    const unmoved = await restoreHiddenMedia(body.target_type, body.target_id, media.keys)
+    // The topic is visible again either way. Its photos are only reported as
+    // back once the list was read and every one of them was moved.
+    return json({
+      ...restored,
+      ...(!media.complete || unmoved > 0 ? { media_restore_pending: true } : {}),
+    })
+  }
+  if (action === 'set_post_official') {
+    if (!isUuid(COMMUNITY_OFFICIAL_PROFILE_ID)) return json({ error: 'official_profile_not_configured' }, 409)
+    return json(await executeAdminMutation(request, auth, {
+      action, post_id: body.post_id, official: body.official, reason,
+      official_profile_id: COMMUNITY_OFFICIAL_PROFILE_ID,
+    }))
+  }
+  if (action === 'set_post_category') {
+    return json(await executeAdminMutation(request, auth, {
+      action, post_id: body.post_id, category: body.category, reason,
+    }))
+  }
+  const flag = action === 'set_post_featured' ? 'featured' : 'locked'
+  return json(await executeAdminMutation(request, auth, {
+    action, post_id: body.post_id, [flag]: body[flag], reason,
+  }))
+}
+
+/*
+ * P4.9: create_event_discussion, hide_event and unhide_event. Each carries a
+ * reason and reaches the atomic wrapper with exactly its own fields; the
+ * caller's role was checked before this.
+ */
+async function handleEventGovernance(request, auth, body) {
+  const { action } = body
+  if (!body.event_id || !body.reason) return json({ error: 'missing_args' }, 400)
+  if (!isUuid(body.event_id)) return json({ error: 'invalid_id' }, 400)
+  if (!isModerationReason(body.reason)) return json({ error: 'invalid_reason' }, 400)
+  const reason = normalizedModerationReason(body.reason)
+  if (action === 'create_event_discussion') {
+    // The topic is written as the official account (E6). Until that is
+    // configured the action is refused by name before anything is written.
+    if (!isUuid(COMMUNITY_OFFICIAL_PROFILE_ID)) return json({ error: 'official_profile_not_configured' }, 409)
+    return json(await executeAdminMutation(request, auth, {
+      action, event_id: body.event_id, reason, official_profile_id: COMMUNITY_OFFICIAL_PROFILE_ID,
+    }))
+  }
+  return json(await executeAdminMutation(request, auth, { action, event_id: body.event_id, reason }))
+}
+
 async function handlePost(request, auth) {
   let body = null
   try {
@@ -1776,9 +1974,12 @@ async function handlePost(request, auth) {
   }
   if (!body || !body.action) return json({ error: 'missing_action' }, 400)
   if (body.action === 'send_support_reply') return handleSupportEmailSend(request, auth, body)
-  if (OWNER_ACTIONS.has(body.action) && !roleCanMutate(auth?.role, body.action)) {
+  if ((OWNER_ACTIONS.has(body.action) || COMMUNITY_OWNER_ACTIONS.has(body.action) || EVENT_OWNER_ACTIONS.has(body.action))
+      && !roleCanMutate(auth?.role, body.action)) {
     throw codedError('admin_capability_denied')
   }
+  if (COMMUNITY_OWNER_ACTIONS.has(body.action)) return handleCommunityGovernance(request, auth, body)
+  if (EVENT_OWNER_ACTIONS.has(body.action)) return handleEventGovernance(request, auth, body)
 
   if (body.action === 'apply_ban') {
     if (!body.target_id || body.level == null || !body.reason) return json({ error: 'missing_args' }, 400)
@@ -2127,7 +2328,12 @@ export default async function handler(request) {
           || error === 'self_appeal_decision_forbidden' ? 403
           : error === 'idempotency_conflict'
             || error === 'admin_mutation_conflict'
-            || error === 'appeal_already_decided' ? 409
+            || error === 'appeal_already_decided'
+            || error === 'official_profile_not_configured'
+            || error === 'post_not_official_account'
+            || error === 'post_not_official'
+            || error === 'post_not_topic'
+            || error === 'event_discussion_closed' ? 409
           : error === 'admin_mutation_not_found' || error === 'support_email_not_found' ? 404
             : error === 'support_email_rate_limited' ? 429
               : error === 'admin_outcome_unknown' || error === 'support_email_outcome_unknown'

@@ -20,6 +20,8 @@ export async function verifyPublicReadSchema({ url, key, fetchImpl = fetch }) {
     ['plaza attached item details', 'posts', 'id,item:items(id,listing_details)'],
     ['public comment translations', 'post_comments', 'id,content_i18n'],
     ['community topic columns', 'posts', 'id,title,category,region'],
+    ['community topic activity columns', 'posts', 'id,last_activity_at,answered_at,is_featured,locked_at'],
+    ['community events', 'community_events', 'id,source_type,starts_at,availability'],
   ]
   const results = []
   for (const [name, table, select] of checks) {
@@ -37,18 +39,74 @@ export async function verifyPublicReadSchema({ url, key, fetchImpl = fetch }) {
     if (!Array.isArray(body) || body.length !== 0) throw new Error('public_schema_unexpected_response')
     results.push({ name, status: response.status })
   }
-  // The community search RPC ships in the same migration; a read-only call proves it exists.
-  const rpc = await fetchImpl(new URL('/rest/v1/rpc/search_community_posts', url), {
+  // The functions the client reads through ship with those columns; a read-only call proves each exists.
+  const functions = [
+    ['community search rpc', 'search_community_posts', { terms_in: ['x'], limit_in: 1 }],
+    ['community events rpc', 'list_community_events', { limit_in: 1 }],
+  ]
+  for (const [name, routine, args] of functions) {
+    const rpc = await fetchImpl(new URL(`/rest/v1/rpc/${routine}`, url), {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+      redirect: 'error', signal: AbortSignal.timeout(10_000),
+    })
+    await rpc.body?.cancel()
+    if (!rpc.ok) {
+      throw new Error(`public_schema_mismatch: ${name} returned HTTP ${rpc.status}; apply the reviewed migrations to this test target before testing the candidate`)
+    }
+    results.push({ name, status: rpc.status })
+  }
+  const memberEvents = await fetchImpl(new URL('/rest/v1/rpc/community_member_events_open', url), {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ terms_in: ['x'], limit_in: 1 }),
+    body: '{}',
     redirect: 'error', signal: AbortSignal.timeout(10_000),
   })
-  await rpc.body?.cancel()
-  if (!rpc.ok) {
-    throw new Error(`public_schema_mismatch: community search rpc returned HTTP ${rpc.status}; apply the reviewed migrations to this test target before testing the candidate`)
+  if (memberEvents.status !== 200) {
+    await memberEvents.body?.cancel()
+    throw new Error(`public_schema_mismatch: community member events switch rpc returned HTTP ${memberEvents.status}; apply the reviewed migrations to this test target before testing the candidate`)
   }
-  results.push({ name: 'community search rpc', status: rpc.status })
+  if (typeof await memberEvents.json() !== 'boolean') throw new Error('public_schema_unexpected_response')
+  results.push({ name: 'community member events switch rpc', status: memberEvents.status })
+  for (const [routine, args] of [
+    ['claim_community_event_sync', { source_in: null, interval_in: null }],
+    ['apply_caaci_event_snapshot', { complete_in: null, rows_in: null }],
+    ['finish_community_event_sync', { source_in: null, outcome_in: null, error_code_in: null }],
+  ]) {
+    const name = `community event sync rpc ${routine}`
+    const sync = await fetchImpl(new URL(`/rest/v1/rpc/${routine}`, url), {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+      redirect: 'error', signal: AbortSignal.timeout(10_000),
+    })
+    await sync.body?.cancel()
+    if (sync.status === 401) {
+      results.push({ name, status: sync.status })
+      continue
+    }
+    if (sync.status === 404) {
+      throw new Error(`public_schema_mismatch: ${name} returned HTTP 404; apply the reviewed migrations to this test target before testing the candidate`)
+    }
+    throw new Error('public_schema_unexpected_response')
+  }
+  // P3.6: the topic page asks this function why a topic cannot be read. It ships in one transaction
+  // with the watch and save tables and the author's hidden-topic list, which the publishable key
+  // cannot reach, so its answer stands for them too. Asking about a topic that does not exist
+  // reads no row.
+  const state = await fetchImpl(new URL('/rest/v1/rpc/community_post_state', url), {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ post_id_in: '00000000-0000-0000-0000-000000000000' }),
+    redirect: 'error', signal: AbortSignal.timeout(10_000),
+  })
+  if (!state.ok) {
+    await state.body?.cancel()
+    throw new Error(`public_schema_mismatch: community topic state rpc returned HTTP ${state.status}; apply the reviewed migrations to this test target before testing the candidate`)
+  }
+  if (await state.json() !== 'missing') throw new Error('public_schema_unexpected_response')
+  results.push({ name: 'community topic state rpc', status: state.status })
   return results
 }
 

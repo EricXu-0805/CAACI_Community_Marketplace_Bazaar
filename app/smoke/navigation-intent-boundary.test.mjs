@@ -314,3 +314,38 @@ test('publish login return carries public context across authentication without 
     assert.equal(intent.parseReturnRoute('/pages/publish/index?' + query, 'login'), null)
   }
 })
+
+test('event login returns accept only the three event routes and canonical detail identifiers', () => {
+  const upperId = 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA'
+  const lowerId = upperId.toLowerCase()
+  const detailPath = '/pages/event/detail/index'
+  const detailTarget = `${detailPath}?id=${upperId}`
+  const canonicalDetail = `${detailPath}?id=${lowerId}`
+  for (const [target, route] of [
+    ['/pages/events/index', { path: '/pages/events/index', params: {} }],
+    ['/pages/event/create/index', { path: '/pages/event/create/index', params: {} }],
+    [detailTarget, { path: detailPath, params: { id: lowerId } }],
+  ]) {
+    assert.deepEqual(intent.parseReturnRoute(target, 'login'), route)
+    assert.equal(intent.parseReturnRoute(target, 'welcome'), null)
+  }
+  for (const target of [
+    detailPath, `${detailPath}?id=bad`, `${detailTarget}&extra=1`,
+    `/pages/events/index?id=${upperId}`, '/pages/events/index?extra=1',
+    `/pages/event/create/index?id=${upperId}`, '/pages/event/create/index?extra=1',
+    `/pages/event/detail/extra/index?id=${upperId}`, '/pages/event/login/index',
+    `/pages/event/../detail/index?id=${upperId}`, '/pages/a/b/c',
+  ]) assert.equal(intent.parseReturnRoute(target, 'login'), null, target)
+  assert.equal(intent.loginReturnRouteFromPage({ $page: { fullPath: detailTarget } }), canonicalDetail)
+  assert.equal(intent.loginReturnRouteFromPage({
+    route: 'pages/event/detail/index', options: { id: upperId },
+  }), canonicalDetail)
+  intent.clearLoginReturnIntent()
+  try {
+    assert.equal(intent.stageLoginReturnIntent(detailTarget, anonymousOwner, {
+      nonce: 'nonce-events12345', now: 100,
+    }), 'nonce-events12345')
+  } finally {
+    intent.clearLoginReturnIntent()
+  }
+})

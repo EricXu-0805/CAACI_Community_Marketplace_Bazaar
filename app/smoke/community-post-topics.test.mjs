@@ -2,13 +2,39 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import ts from 'typescript'
+import { MINI_UNUSED_WEB_ASSETS } from '../mini-program-assets.mjs'
+import { MINI_SHARE_IMAGES } from '../../scripts/verify-miniprogram.mjs'
 
 const source = path => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8')
 const compile = input => `data:text/javascript;base64,${Buffer.from(ts.transpileModule(input, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
 }).outputText).toString('base64')}`
 const topicModule = compile(source('utils/communityPost.ts'))
-const { normalizePostTopic } = await import(topicModule)
+const { normalizePostTopic, hiddenTopicShare } = await import(topicModule)
+
+// SPEC 6.10: a hidden topic is shared as a notice about itself. The card names the topic's page, so
+// whoever opens it gets the same notice, and carries the app's icon: none of the topic's images, and
+// not a screenshot of the author's own view of the text.
+test('a hidden topic is shared without its title, its text or any of its images', () => {
+  const said = { 'plaza.hidden': 'HIDDEN', 'app.name': 'APP' }
+  const id = '33333333-3333-4333-8333-333333333333'
+  assert.deepEqual(hiddenTopicShare(id, key => said[key]), {
+    title: 'HIDDEN · APP', path: `/pages/post/index?id=${id}`, query: `id=${id}`, imageUrl: '/static/app-icon-192.png',
+  })
+})
+
+// The card is only ever sent from the Mini Program, so its image has to be a file that package
+// contains: a PNG (WeChat takes no SVG there) which the build does not delete as web-only, and
+// which the check of the built package looks for (scripts/verify-miniprogram.mjs).
+test('the image on a hidden topic\'s share card is a small PNG the Mini Program package keeps', () => {
+  const image = hiddenTopicShare('33333333-3333-4333-8333-333333333333', key => key).imageUrl.replace(/^\//, '')
+  assert.match(image, /^static\/[\w-]+\.png$/)
+  assert.ok(!MINI_UNUSED_WEB_ASSETS.includes(image), `${image} is deleted from the WeChat package`)
+  assert.ok(MINI_SHARE_IMAGES.includes(image), `${image} is not looked for in the built package`)
+  // The main package has a size budget; this file is in it.
+  const bytes = readFileSync(new URL(`../src/${image}`, import.meta.url)).length
+  assert.ok(bytes > 0 && bytes <= 30 * 1024, `${image} is ${bytes} bytes`)
+})
 
 test('topic input keeps legacy updates nullable and rejects incomplete/invalid metadata', () => {
   assert.deepEqual(normalizePostTopic(), { title: null, category: null })
@@ -40,6 +66,8 @@ async function loadPlaza({ postError = null, attachmentError = null, switchAccou
         const chain = {
           insert(value) { payload = value; writes.push({ table, value }); return chain },
           select() { return chain }, order() { return chain }, range() { return chain }, in() { return chain },
+          // P3.4: the list also filters by window and pages by a keyset.
+          limit() { return chain }, not() { return chain }, is() { return chain }, gte() { return chain }, or() { return chain },
           eq(key, value) { query.push([key, value]); return chain },
           async single() {
             if (switchAccountAfterInsert) scope.transitionAccount('user-b')
@@ -135,7 +163,8 @@ test('unknown write and stale-account success retain duplicate guard; definite r
 
 test('category is applied on the server for ordinary and search pagination', async () => {
   const h = await loadPlaza()
-  await h.plaza.fetchPosts({ category: 'campus-life', page: 1 })
+  // The ordinary list pages by a keyset from P3.4 on (community-feed-sorts.test.mjs), so this reads its first page.
+  await h.plaza.fetchPosts({ category: 'campus-life' })
   assert.ok(h.query.some(([key, value]) => key === 'category' && value === 'campus-life'))
   assert.ok(h.query.some(([key, value]) => key === 'region' && value === 'cu'))
   await h.plaza.fetchPosts({ category: 'alumni-career', search: 'Quantum', page: 2 })

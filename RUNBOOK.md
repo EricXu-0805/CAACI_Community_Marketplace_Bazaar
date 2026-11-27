@@ -22,6 +22,8 @@ explicit pre-conditions, an "if it goes wrong" exit.
 | Privileged Supabase key leaked | [Privileged key incident / rotation](#privileged-supabase-key-incident--rotation) |
 | New admin needs access | [Admin token mint](#admin-token-mint) |
 | Need to ship a hotfix to prod fast | [Hotfix deploy](#hotfix-deploy) |
+| Community P3 is released; reply notices are still off | [Reply notice switch](#reply-notice-switch) |
+| Community P4.6 is released; member events are still off | [Member events switch](#member-events-switch) |
 
 ## Common emergencies
 
@@ -493,6 +495,92 @@ the database refuses their writes, so the same order applies, on both projects:
    Removing the two new `storage.objects` policies later needs the Dashboard;
    there is no rollback file.
 
+**Community P3 (`20261120100354_community_watch_save_activity`).**
+The P3 frontend reads four topic columns this migration adds on every list
+(`last_activity_at`, `answered_at`, `is_featured`, `locked_at`) and its topic
+page calls `community_post_state`, so the same order applies, staging first
+and then production:
+
+0. Confirm `20261114015420_restricted_account_writes` is already applied on
+   this project and its VERIFY passes. The P3 PRECHECK stops when the
+   restricted-account guard is missing, or when a function it is about to
+   reissue is not the one this repository expects.
+1. On staging, run
+   `supabase/_ops/PRECHECK_20261120100354_community_watch_save_activity.sql`
+   (read-only), apply the migration, then run
+   `supabase/_ops/VERIFY_20261120100354_community_watch_save_activity.sql`
+   (read-only). Neither may raise anything; VERIFY ends with the notice
+   `community_reply_notice_switch|enabled=f`. Apply it in a low-traffic window
+   if you can: it takes ACCESS EXCLUSIVE locks on `post_comments` and `posts`
+   and holds them while it backfills the topics and builds its indexes. It
+   waits for a reply that is in flight. A topic or an account being deleted,
+   or an administrator takedown, at that moment can deadlock with it, and
+   PostgreSQL then rolls back either side. If the migration stops on a
+   deadlock (`40P01`) or on `lock_timeout` (`55P03`), the whole transaction
+   has rolled back, so simply run it again as it is. If it stops on `57014`
+   instead (`statement_timeout`, which line 47 of the migration sets to 60s),
+   the whole transaction has rolled back as well, but the same file would
+   time out at the same statement, so do not run it again. Note the statement
+   the error stopped at, run the read-only
+   `SELECT count(*) FROM public.posts;` and
+   `SELECT count(*) FROM public.post_comments;`, and give that statement and
+   the two counts to the release owner, who decides what happens next.
+2. Repeat step 1 on production.
+3. Only then merge the frontend and deploy `api/admin`, and release the P3
+   Mini Program. If the frontend went out first, the community lists and
+   topic pages fail to load until the migration is applied: apply it at once.
+4. The migration leaves the reply notice switch off. Turning it on is a
+   separate, later step with its own conditions: see "Reply notice switch"
+   below. `supabase/_ops/REGRESSION_20261120100354_community_watch_save_activity.sql`
+   is for the disposable local replay only and must never run against a
+   hosted project.
+5. Once `20261120122054_community_events` is applied to a database, this
+   VERIFY stops there at `admin_list_moderation_audit_log`, by design: the
+   lines in it and in the REGRESSION file that say VERIFY may be run again
+   later, or at any time, hold only until then.
+
+**Community P4 (`20261120122054_community_events`).**
+This is the application order for the five community migrations. The release
+owner follows it on staging and production, using the approved frozen files:
+
+1. Complete the Community P3 procedure above for
+   `20261120100354_community_watch_save_activity.sql`, including its PRECHECK
+   and VERIFY, before applying the event migrations.
+2. Run `supabase/_ops/PRECHECK_20261120122054_community_events.sql`, apply
+   `20261120122054_community_events.sql`, then pass
+   `supabase/_ops/VERIFY_20261120122054_community_events.sql`.
+3. Only after that VERIFY passes, run
+   `supabase/_ops/PRECHECK_20261122035253_community_member_events.sql`, apply
+   `20261122035253_community_member_events.sql`, then pass
+   `supabase/_ops/VERIFY_20261122035253_community_member_events.sql`. Its
+   NOTICE must read `community_member_events_switch|enabled=f`.
+4. Run `supabase/_ops/PRECHECK_20261123201501_community_event_sync.sql`, apply
+   `20261123201501_community_event_sync.sql`, then pass
+   `supabase/_ops/VERIFY_20261123201501_community_event_sync.sql`.
+5. Run `supabase/_ops/PRECHECK_20261125004742_community_event_sync_cap.sql`,
+   apply `20261125004742_community_event_sync_cap.sql`, then pass
+   `supabase/_ops/VERIFY_20261125004742_community_event_sync_cap.sql`.
+   Its NOTICE reads `community_event_sync_cap_verified`.
+   After B, run `VERIFY_20261122035253_community_member_events.sql` again,
+   followed by `VERIFY_reply_notice_switch.sql` (both under `supabase/_ops/`).
+   Both switch notices must still report `enabled=f`.
+
+After the member-events migration, `VERIFY_20261120122054_community_events.sql` stops
+by design with this first error:
+`community_events_function_body:private.community_events_member_guard():7eb7680e59995c1dc8e9d754603ed790:this migration`.
+
+After B, `VERIFY_20261123201501_community_event_sync.sql` stops by design
+with this first error:
+`community_event_sync_function_body:public.apply_caaci_event_snapshot(boolean,jsonb):55227c4b42b7ac90e9b1ba34f274b057`.
+
+Before pull request #380 is merged, its public smoke (`public-smoke` in
+`ci.yml`) must run green against a database that has `20261120100354`,
+`20261120122054`, `20261122035253`, `20261123201501`, and `20261125004742`
+applied and verified: neither the events page (`pages/events/index`)
+nor the plaza page as P4 has it (`pages/plaza/index`, which from P4 on also
+calls `rpc/list_community_events`) has had its page sweep run against a real
+backend.
+
 `scripts/consent-version-deploy-order-boundary.test.mjs` pins the half CI can
 see from the repo alone (the constant must already be accepted by the newest
 `record_consent` in the repo). It cannot see any database.
@@ -542,6 +630,111 @@ only compares the RPC surface — a migration that changes a trigger, a policy, 
 an accepted *value* (which is exactly what 2026-08-06 was) is invisible to it.
 For those, the ordering above and the operator are still the control.
 
+### Community P3+P4 release
+
+Run the complete sequence below in one release operation for each database:
+staging first, then production. Use the project definitions already in this
+runbook. The release owner applies the reviewed files; this checklist does
+not authorize an agent to apply hosted migrations or merge either PR.
+
+#### Migration bytes
+
+Files are under `supabase/migrations/`. Remove only the one top-level
+`BEGIN;` line and the one top-level `COMMIT;` line shown below before sending
+the SQL to the migrations endpoint. Preserve every other byte.
+
+| Migration file | File SHA-256 | BEGIN line | COMMIT line | Sent SQL SHA-256 |
+|---|---|---:|---:|---|
+| `20261120100354_community_watch_save_activity.sql` | `c2a18ee842128e7943293529ca182a5e714e7ca8f942d5d4d4d5bb9a2ed951bf` | 45 | 1701 | `5df0d6b108651eb97de0ce810a6c8ade675bdf72a216e7e9c6298f645327bcfa` |
+| `20261120122054_community_events.sql` | `a8c0e08340203988a04bec5e210a2a1c73a941544ffe272adf754b0e56053a79` | 63 | 1501 | `6c8d4560c57fcf8ea1b9703b3d2b61f0225a68a7d745be5017fbb7842856cb1f` |
+| `20261122035253_community_member_events.sql` | `b93ea1edce3ecc2f2a2d4a59fb5b9ed3bbb129f52ed65211ad02cd02e8781bdd` | 6 | 322 | `8e857842517e2f4a10f9bae1f2cb6bf41f667308c15e88305880f2c460381501` |
+| `20261123201501_community_event_sync.sql` | `bb2f91e6afcdd7a5be28bcbead4faa7e349bde22c3ca181365a2559b62ed9ce1` | 4 | 148 | `e1c7b92d1d81762ba8b327de62a20d6dfcf30fee530d62af47e3c6c0af9bfdfc` |
+| `20261125004742_community_event_sync_cap.sql` | `80395cc72112aa1ac9ff6899e2fe1d264057ae397f27cc5b54209f0e6f3d54d3` | 7 | 133 | `11c176f8ed4e53ae42a5b6ee52729d25bddc651fa73d796f3620f59c972062f9` |
+
+#### SQL client directives
+
+Files are under `supabase/_ops/`. Remove the indicated
+`\set ON_ERROR_STOP on` line before sending SQL through the hosted query
+endpoint. This is a psql directive, not server SQL.
+
+| PRECHECK or VERIFY file | Remove line |
+|---|---:|
+| `PRECHECK_20261120100354_community_watch_save_activity.sql` | 12 |
+| `VERIFY_20261120100354_community_watch_save_activity.sql` | 5 |
+| `PRECHECK_20261120122054_community_events.sql` | 11 |
+| `VERIFY_20261120122054_community_events.sql` | 3 |
+| `PRECHECK_20261122035253_community_member_events.sql` | 3 |
+| `VERIFY_20261122035253_community_member_events.sql` | 5 |
+| `PRECHECK_20261123201501_community_event_sync.sql` | 2 |
+| `VERIFY_20261123201501_community_event_sync.sql` | 3 |
+| `PRECHECK_20261125004742_community_event_sync_cap.sql` | 2 |
+| `VERIFY_20261125004742_community_event_sync_cap.sql` | 3 |
+| `VERIFY_reply_notice_switch.sql` | 19 |
+
+#### Application steps
+
+Apply each migration once through Supabase's official ledger-aware migrations
+endpoint. Its `apply_migration` name is the complete filename stem, for example
+`20261120100354_community_watch_save_activity`, not just the timestamp.
+The ledger's version records the application time; check the ledger by name
+or inspect the objects rather than comparing the version with the filename.
+Use a fresh read-only connection for each PRECHECK and each VERIFY, separate
+from the connection that applies the migration. The endpoint owns the
+migration transaction. Follow the same separation as steps 15-16 of
+[the candidate release sequence](#2026-07-candidate-release-sequence).
+
+Every step must succeed with the NOTICE below; `none` means no NOTICE.
+Do not interleave the two databases or turn either switch on during this
+sequence. PRECHECK/VERIFY filenames are under `supabase/_ops/`; APPLY
+filenames are under `supabase/migrations/`.
+
+| Step | Operation | File | Expected NOTICE |
+|---:|---|---|---|
+| 1 | PRECHECK | `PRECHECK_20261120100354_community_watch_save_activity.sql` | none |
+| 2 | APPLY | `20261120100354_community_watch_save_activity.sql` | none |
+| 3 | VERIFY | `VERIFY_20261120100354_community_watch_save_activity.sql` | `community_reply_notice_switch\|enabled=f` |
+| 4 | PRECHECK | `PRECHECK_20261120122054_community_events.sql` | none |
+| 5 | APPLY | `20261120122054_community_events.sql` | none |
+| 6 | VERIFY | `VERIFY_20261120122054_community_events.sql` | none |
+| 7 | PRECHECK | `PRECHECK_20261122035253_community_member_events.sql` | none |
+| 8 | APPLY | `20261122035253_community_member_events.sql` | none |
+| 9 | VERIFY | `VERIFY_20261122035253_community_member_events.sql` | `community_member_events_switch\|enabled=f` |
+| 10 | PRECHECK | `PRECHECK_20261123201501_community_event_sync.sql` | none |
+| 11 | APPLY | `20261123201501_community_event_sync.sql` | none |
+| 12 | VERIFY | `VERIFY_20261123201501_community_event_sync.sql` | `community_event_sync_verified` |
+| 13 | PRECHECK | `PRECHECK_20261125004742_community_event_sync_cap.sql` | none |
+| 14 | APPLY | `20261125004742_community_event_sync_cap.sql` | none |
+| 15 | VERIFY | `VERIFY_20261125004742_community_event_sync_cap.sql` | `community_event_sync_cap_verified` |
+| 16 | VERIFY | `VERIFY_20261122035253_community_member_events.sql` | `community_member_events_switch\|enabled=f` |
+| 17 | VERIFY | `VERIFY_reply_notice_switch.sql` | `community_reply_notice_switch\|enabled=f` |
+
+The order is `20261120100354` → `20261120122054` → `20261122035253` →
+`20261123201501` → `20261125004742` (B). The last two rows run only after B;
+both switches must report `enabled=f`. Do not run VERIFY_A after B as a
+success gate. If the hosted tool does not expose NOTICE, use the SELECTs
+that return the switch rows in [Reply notice switch](#reply-notice-switch)
+and [Member events switch](#member-events-switch) and require enabled=false.
+The public schema preflight can prove A's three functions exist and deny
+anonymous execution; it cannot prove B. B requires its own VERIFY.
+
+These are the exact first errors from deliberately running superseded
+VERIFY files. They are expected diagnostic results, not release success gates:
+
+- After `20261120122054`, VERIFY_20261120100354:
+  `community_watch_save_function_body:public.admin_list_moderation_audit_log(integer,integer,text):720fe81c9d72c7729ce2d184a8a8fd36:this migration`.
+- After `20261122035253`, VERIFY_20261120122054:
+  `community_events_function_body:private.community_events_member_guard():7eb7680e59995c1dc8e9d754603ed790:this migration`.
+- After B, VERIFY_20261123201501:
+  `community_event_sync_function_body:public.apply_caaci_event_snapshot(boolean,jsonb):55227c4b42b7ac90e9b1ba34f274b057`.
+
+On merge day, the supervisor changes the bases of #379 and #380 through REST
+PATCH. `gh pr edit` fails here on a retired Classic Projects field. Before
+any `git merge -s ours`, require `git rev-parse S^{tree}` to equal
+`git rev-parse H^{tree}`, and require `git merge-base --is-ancestor H HEAD`
+to succeed: H is the reviewed PR head and S its squash commit. Squash without
+`--delete-branch`; deleting a base branch closes dependent PRs and they cannot
+be reopened. Only the supervisor merges and releases these PRs.
+
 ### Checking whether production actually matches the repo
 
 **Do not answer this from `supabase_migrations.schema_migrations`.** That ledger
@@ -570,6 +763,284 @@ in that script for why and for when the exemption should be removed.
 
 It compares existence, not shape: an object that exists but whose body, columns
 or grants have drifted still reads as present.
+
+## Reply notice switch
+
+> When: migration `20261120100354_community_watch_save_activity` has been
+> applied and the community P3 release has reached users. Staging and
+> production are switched separately.
+
+The migration adds two in-app notices: `comment_reply:<post id>` (somebody
+answered your reply) and `followed_post_reply:<post id>` (a new reply in a topic
+you watch). A client from before P3 does not know either key and shows it as it
+is stored, and the digest job from before P3 would mail it. So the migration
+ships them **switched off**: `private.community_reply_notice_config` holds one
+row with `enabled = false`, and `private.notify_topic_reply()` writes nothing
+while it is off. The notice a topic's author has always had (`post_comment`) is
+not behind the switch.
+
+Turning the switch on is a write to a hosted database. The release owner does
+it, or somebody the release owner approves by name for this step. Nobody else,
+and no script.
+
+**Before turning it on, all of these hold for the database in question:**
+
+1. Which files this step runs depends on whether
+   `20261120122054_community_events` has been applied to that database.
+   - Not applied yet:
+     `supabase/_ops/VERIFY_20261120100354_community_watch_save_activity.sql`
+     passes. Its notice line reads `community_reply_notice_switch|enabled=f`.
+   - Already applied: the P3 file stops with an error there, by design (the
+     events migration replaces functions and vocabularies it pins, and its
+     pins are not changed for that). Before `20261122035253` is applied,
+     run `supabase/_ops/VERIFY_20261120122054_community_events.sql`, then
+     `supabase/_ops/VERIFY_reply_notice_switch.sql`; both must pass.
+     After `20261122035253`, run
+     `supabase/_ops/VERIFY_20261122035253_community_member_events.sql`, then
+     `supabase/_ops/VERIFY_reply_notice_switch.sql`. If A (`20261123201501`)
+     is applied and B is not, first pass
+     `supabase/_ops/VERIFY_20261123201501_community_event_sync.sql`, then run
+     those two checks in the same order. If A and B are both applied, first
+     pass `supabase/_ops/VERIFY_20261125004742_community_event_sync_cap.sql`
+     instead (`VERIFY_20261123201501_community_event_sync.sql` stops by design
+     after B), then run those two checks in the same order, as listed in
+     Community P4 above.
+     The member and reply switch notices must both read `enabled=f`; the
+     reply notice is `community_reply_notice_switch|enabled=f`.
+2. The H5 deployment that reads this database is the P3 release or later. The
+   same deployment carries `api/notification-digest.js`, which keeps both keys
+   out of the digest mail.
+3. The P3 Mini Program version is released, and the release owner has decided
+   what happens to Mini Program versions from before P3 that are still
+   installed. An older version shows the raw key for every notice written after
+   the switch is on.
+
+**Turn it on** (SQL editor of the target project, as `postgres`):
+
+```sql
+-- Before: one row, off.
+SELECT singleton, enabled FROM private.community_reply_notice_config;
+
+UPDATE private.community_reply_notice_config
+   SET enabled = true
+ WHERE singleton
+RETURNING enabled;          -- one row: true
+```
+
+**Check it:**
+
+```sql
+-- One row, on.
+SELECT count(*) AS switch_rows, bool_and(enabled) AS enabled
+  FROM private.community_reply_notice_config;
+
+-- Still closed to every API role (all three false).
+SELECT has_table_privilege('anon', 'private.community_reply_notice_config', 'SELECT') AS anon_reads,
+       has_table_privilege('authenticated', 'private.community_reply_notice_config', 'SELECT') AS member_reads,
+       has_table_privilege('service_role', 'private.community_reply_notice_config', 'UPDATE') AS service_writes;
+
+-- No column grants to anyone except the table owner (0).
+SELECT count(*) AS non_owner_column_grants
+  FROM pg_catalog.pg_attribute AS a
+  JOIN pg_catalog.pg_class AS c ON c.oid = a.attrelid
+  CROSS JOIN LATERAL pg_catalog.aclexplode(a.attacl) AS entry
+ WHERE a.attrelid = 'private.community_reply_notice_config'::pg_catalog.regclass
+   AND a.attnum > 0 AND NOT a.attisdropped AND entry.grantee <> c.relowner;
+
+-- No API role has any column privilege (all three false).
+SELECT role_name,
+       pg_catalog.has_any_column_privilege(role_name, 'private.community_reply_notice_config', 'SELECT,INSERT,UPDATE,REFERENCES') AS any_column_privilege
+  FROM pg_catalog.unnest(ARRAY['anon', 'authenticated', 'service_role']) AS api(role_name);
+
+-- After the next digest run: none of the new notices was mailed (0).
+SELECT count(*)
+  FROM public.notifications
+ WHERE (body LIKE 'comment_reply:%' OR body LIKE 'followed_post_reply:%')
+   AND emailed_at IS NOT NULL;
+```
+
+Then, in the app, with accounts made for testing: one posts a topic, a second
+watches it, a third replies. The second account's notification list shows one
+line that names the topic. A line that reads `followed_post_reply:` followed by
+an id means the client in front of you is from before P3: turn the switch off.
+
+Record the time for each database where the release is tracked.
+`supabase/_ops/VERIFY_20261120100354_community_watch_save_activity.sql` can be
+run again afterwards if 20261120122054 is not applied; otherwise use
+`supabase/_ops/VERIFY_reply_notice_switch.sql`. Both report the switch and do
+not judge it.
+
+**If it goes wrong**, turn it off. New replies stop producing the two notices at
+once; rows already written stay where they are.
+
+```sql
+UPDATE private.community_reply_notice_config
+   SET enabled = false
+ WHERE singleton
+RETURNING enabled;          -- one row: false
+```
+
+## CAACI events sync
+
+The sync switch is `COMMUNITY_SYNC_CAACI_EVENTS`. Only the exact value `1`
+enables it. Eric sets or removes it in Vercel's **Production** environment,
+never Preview or Development: non-production cron handling is not a switch.
+
+Before enabling it, all migrations in **Community P4** above have been
+applied and their required VERIFY checks have passed. P4.3 must be released,
+and the authorized workstation GET must return 200 JSON. The repository
+implements `node scripts/sync-community-events.mjs --dry-run --source caaci`
+and tests it only with an injected fetch; the first real dry-run is one
+authorized workstation GET after P4.3 is released.
+
+In the Vercel project environment variables, set the value to `1` for
+Production only, or remove it to disable synchronization. Either change needs
+one new production deployment before it affects the running worker. Deploy it
+through the supervised release procedure in `docs/SUPERVISED_RELEASE.md`;
+changing the environment variable
+alone does not update an existing deployment. Do not enable before the
+migration checks: a failed claim cannot record sync state and may report to
+Sentry on every cron tick.
+
+To stop new claims immediately without waiting for a deployment, the release
+owner runs this in the target database SQL editor as `postgres`:
+
+```sql
+INSERT INTO public.community_event_sync_state (source, last_attempt_at)
+VALUES ('caaci', 'infinity')
+ON CONFLICT (source) DO UPDATE SET last_attempt_at = 'infinity';
+```
+
+This also works before the first sync has created a state row. Claim uses a
+strict interval comparison and finish never updates `last_attempt_at`, so
+new claims remain false. To allow claims again:
+
+```sql
+UPDATE public.community_event_sync_state
+   SET last_attempt_at = NULL
+ WHERE source = 'caaci';
+```
+
+Inspect the state and the worker response after enabling:
+
+```sql
+SELECT source, last_attempt_at, last_success_at, last_outcome, last_error_code
+  FROM public.community_event_sync_state
+ WHERE source = 'caaci';
+```
+
+**Reading last_error_code**
+
+| code | first action |
+|---|---|
+| `http_*`, `timeout`, `too_large`, `upstream_redirect`, `bad_json`, `schema_mismatch`, `unexpected_private_fields` | Check the CAACI site, feed or edge response. |
+| `apply_*` | Check Supabase. `apply_http_400` usually means invalid RPC arguments or data; `apply_http_404` usually means the reviewed migration or RPC schema is missing. |
+| `claim_failed` | Check the reviewed migrations and their VERIFY results. |
+| `deadline` | Check Sentry; this code is not written to sync_state. |
+| `rows_rejected` | Individual rows were rejected by constraints or moderation. |
+| `empty_snapshot` | CAACI returned a complete but empty snapshot. Open caaciorg.com/events in a browser; if events are present there, the feed is wrong. Immediately use the infinity stop above to freeze the current state. |
+
+`apply_failed` also covers a projection error raised before the call and a
+request that never reached Supabase (a network, DNS or TLS failure). For an
+`apply_failed` with no matching apply request in the Supabase logs, a
+`[community-events-sync] finish not recorded` or
+`[background-jobs] worker incomplete` line in that run's Vercel function logs
+points to a connection problem. With neither line the logs cannot tell the two
+apart, because the apply failure itself is not logged and Sentry carries only
+outcome, code and rejected.
+
+The infinity stop prevents further absence counting; a row missed only once
+remains visible. After the feed recovers, restore last_attempt_at to NULL with
+the statement above; returning rows recover automatically.
+
+Before B is applied, the release owner can recover an overflowed absence
+counter by running this as `postgres` in the SQL editor. It is unnecessary
+after B:
+
+```sql
+UPDATE public.community_events SET missing_checks = 2 WHERE source_type = 'caaci' AND missing_checks > 2;
+```
+
+The response's `community_events_sync` is `not_due` when no claim was
+acquired, or `skipped_budget` when cleanup time took priority. Applied
+snapshots finish as `ok` or `partial`; errors use `failed`. A failed,
+partial or rejected-row outcome reports the fixed Sentry message
+`community events sync needs attention`, containing only outcome, code and
+rejected count. With the switch off, existing CAACI rows are neither refreshed
+nor counted absent: disabling does not remove stored events.
+
+## Member events switch
+
+> When: `20261122035253_community_member_events` is applied and the P4.6
+> clients are ready. Enable staging first, then production separately.
+
+The migration grants the member write channel, but new events are disabled
+by default. `private.community_member_event_config` has one row with
+`enabled = false`; `public.community_member_events_open()` reports the value
+to clients. Only the release owner, or a person that owner approves by name
+for this action, may turn it on.
+
+**Before turning it on, all four conditions hold for this database:**
+
+1. `supabase/_ops/VERIFY_20261122035253_community_member_events.sql` passes
+   and prints `community_member_events_switch|enabled=f`.
+2. Somebody is assigned to handle member event reports within 48 hours,
+   as required by DECISIONS D-28.
+3. The H5 deployment reading this database includes the P4.6 client.
+4. The P4.6 Mini Program version is released, or the release owner has
+   decided how versions from before P4.6 will be handled.
+
+**Turn it on**, as `postgres` in the database's SQL editor:
+
+```sql
+SELECT singleton, enabled FROM private.community_member_event_config;
+UPDATE private.community_member_event_config
+   SET enabled = true
+ WHERE singleton
+RETURNING enabled;          -- one row: true
+```
+
+**Check it:**
+
+```sql
+-- Exactly one row, on.
+SELECT count(*) AS switch_rows, bool_and(enabled) AS enabled
+  FROM private.community_member_event_config;
+
+-- All three false: the API reads only the public function.
+SELECT has_table_privilege('anon', 'private.community_member_event_config', 'SELECT') AS anon_reads,
+       has_table_privilege('authenticated', 'private.community_member_event_config', 'SELECT') AS member_reads,
+       has_table_privilege('service_role', 'private.community_member_event_config', 'SELECT') AS service_reads;
+
+-- No column grants to anyone except the table owner (0).
+SELECT count(*) AS non_owner_column_grants
+  FROM pg_catalog.pg_attribute AS a
+  JOIN pg_catalog.pg_class AS c ON c.oid = a.attrelid
+  CROSS JOIN LATERAL pg_catalog.aclexplode(a.attacl) AS entry
+ WHERE a.attrelid = 'private.community_member_event_config'::pg_catalog.regclass
+   AND a.attnum > 0 AND NOT a.attisdropped AND entry.grantee <> c.relowner;
+
+-- No API role has any column privilege (all three false).
+SELECT role_name,
+       pg_catalog.has_any_column_privilege(role_name, 'private.community_member_event_config', 'SELECT,INSERT,UPDATE,REFERENCES') AS any_column_privilege
+  FROM pg_catalog.unnest(ARRAY['anon', 'authenticated', 'service_role']) AS api(role_name);
+
+SELECT public.community_member_events_open(); -- true
+```
+
+**Turn it off** if needed. Closing stops only new event creation immediately;
+organizers can still cancel their existing events and edit their notes.
+Notes remain subject to the existing moderation checks.
+
+```sql
+UPDATE private.community_member_event_config
+   SET enabled = false
+ WHERE singleton
+RETURNING enabled;          -- one row: false
+```
+
+Record each database's switch time with its release. The new VERIFY can be
+run again with either value; it reports the switch without requiring it off.
 
 ## Hotfix deploy
 
@@ -655,6 +1126,7 @@ functions, where nobody is watching a screen — the `logger` tag says which.
 | `api/auth/delete-account` | job store unavailable | the deletion worker cannot read its queue at all | check `SUPABASE_SECRET_KEY` and the table |
 | `api/resend-webhook` | hard bounced / marked as spam | mail is failing after Resend accepted it | see below |
 | `api/notification-digest` | any | the nightly digest run had send or mark failures | check the digest run's Vercel log |
+| `api/background-jobs` | community events sync needs attention | CAACI sync failed or partial, or rows were rejected; `apply_*` codes point to Supabase | [CAACI events sync](#caaci-events-sync) |
 
 **The repeat count is the signal, not the single event.** Sentry groups these by
 message, so a cron that has failed every hour for a week is one issue with a

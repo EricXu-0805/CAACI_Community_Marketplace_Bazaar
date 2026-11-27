@@ -382,7 +382,8 @@ test('strict outcome recovery replaces stale pagination with authoritative first
   assert.match(strict, /limit: String\(REPORTS_PAGE \+ 1\)/)
   assert.match(strict, /limit: String\(ADMIN_LIST_PAGE \+ 1\)/)
   assert.match(strict, /limit: String\(PLAZA_PAGE \+ 1\)/)
-  assert.match(strict, /pending: pendingOnly \? '1' : '0'/)
+  // P3.6: the pending view reads the queue by longest wait; the grouped list serves "all".
+  assert.match(strict, /pendingOnly\s+\? \{ resource: 'report_queue', limit: String\(REPORTS_PAGE \+ 1\), offset: '0' \}/)
   assert.match(strict, /invalidateAdminRequest\(scope\)/)
   assert.match(strict, /reportLoadingMore\.value = false/)
   assert.match(strict, /resetListLoadingMore\(\)/)
