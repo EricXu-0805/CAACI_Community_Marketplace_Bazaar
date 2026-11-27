@@ -1,11 +1,11 @@
 # STATUS
 
-写于 2026-11-27 11:19 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
+写于 2026-11-27 16:00 CT · 作者：OMO（tony-ws）。OMO 每完成一个任务改写本文件，并在 [STATUS_LOG.md](STATUS_LOG.md) 末尾追加一条。证据标签定义见 [README.md](README.md#证据标签)。
 
-`next_task_id: D-61（第十五批进行中；完成线是 FINAL 第十五批与 STATUS 同一提交推送）`
+`next_task_id: D-62（待 supervisor 写入 DECISIONS；D-61 已完成，本批不接 BACKLOG）`
 `latest_batch: appendix/batch/FINAL.md`
 
-D-61第十五批进行中：P3/P4已由supervisor squash进main（e46606b1、a60aa563）并发布到生产H5，五条迁移两库已应用并VERIFY（见「第十五批开工背景」）。本批三个代码分支都从a60aa563起：#385跟上main并补四条活动路由的STUB_READS，campus分支做迁移C和默认关的学校刷新worker，followups分支只改第十四批的测试尾巴。本版是第一次材料推送；代码推送、C的冻结记录、阻塞第31、37、41条和FINAL第十五批随第二次材料推送。
+D-61第十五批已完成：P3/P4已由supervisor squash进main（e46606b1、a60aa563）并发布到生产H5，五条迁移两库已应用并VERIFY（见「第十五批开工背景」）。三个代码分支都从a60aa563起、保持草稿：#385（1a5dd986）跟上main并补四条活动路由的STUB_READS，PR run 46059363614 success；campus（fac3b935，草稿PR #388）带迁移C、三份运维文件和默认关的学校刷新worker，C按L584冻结、未应用到任何托管库；followups（8d0e308c，草稿PR #387）只改第十四批的测试尾巴。FINAL第十五批与本版同一提交；收尾的STATUS_LOG是第三次材料推送。
 
 D-60已完成：FINAL第十四批与STATUS同提交6fa22a3，L551收尾9720953；目标已结束、提醒已取消。FINAL第十四批不改，更正追加在STATUS_LOG L556–L558，并写进FINAL第十五批②。
 
@@ -65,9 +65,9 @@ D-58已完成：FINAL与STATUS同提交baa2695，L369收尾7ecac74；目标已�
 | 代码分支 / PR | 历史合并由supervisor完成：#369/#375/#374/#377/#372，以及#381(66e14a45)、#382(9171976e，已发布dpl_9KmHcW)、#383(d3bfc17e)、#384(321a916f，仅测试未发布)。#386(30d847e1)、#379(e46606b1，审过的head 8e45b5d3)、#380(a60aa563，审过的head 8dd4c8c1)已由supervisor squash；本批#385和两个新草稿PR保持草稿，OMO未合PR、未发布 |
 | code_sha | a60aa563e7171a2a690b98710d62f6370662fd45（main，#380于2026-11-26 06:31:59Z合并，树c199d177等于审过的head 8dd4c8c1） |
 | 基线 main | a60aa563e7171a2a690b98710d62f6370662fd45（D-61 起点；本批分支都从它开、不主动合 main） |
-| 材料分支 / PR | codex/community-plan-v5 / #370（草稿）；本批第一次材料推送含本版的开工背景、阻塞、17d、§3表、BACKLOG、ENGINEERING和三条更正；第二次是FINAL第十五批与STATUS同一提交；第三次是收尾的STATUS_LOG |
-| docs_sha | ebdcdbaecec4fc30fddfd9120108cbcb62b7a390（写本版之前的材料HEAD，即D-61落进DECISIONS的提交） |
-| 其余代码分支（远端 head） | #379 codex/community-p3-20261120已squash进main e46606b1（审过的head 8e45b5d3），#380 codex/community-events-20261120已squash进a60aa563（审过的head 8dd4c8c1）；codex/community-restricted-20261113、codex/community-p3-20261120、codex/community-events-20261120三个旧分支没删，开着的PR里没有以它们为head或base的（D-61第1项核）；#385 codex/community-smoke-fixture-20261124远端4fc14fff（OPEN草稿，base main）；codex/community-campus-checks-20261127、codex/community-b14-followups-20261127尚未推送 |
+| 材料分支 / PR | codex/community-plan-v5 / #370（草稿）；本批第一次材料推送c6ea9cbc含本版的开工背景、阻塞、17d、§3表、BACKLOG、ENGINEERING和三条更正；第二次即本版（FINAL第十五批与STATUS同一提交）；第三次是收尾的STATUS_LOG |
+| docs_sha | c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb（写本版之前的远端材料HEAD，即第一次材料推送） |
+| 其余代码分支（远端 head） | #379 codex/community-p3-20261120已squash进main e46606b1（审过的head 8e45b5d3），#380 codex/community-events-20261120已squash进a60aa563（审过的head 8dd4c8c1）；codex/community-restricted-20261113、codex/community-p3-20261120、codex/community-events-20261120三个旧分支没删，开着的PR里没有以它们为head或base的（D-61第1项核）；#385 codex/community-smoke-fixture-20261124远端1a5dd986（OPEN草稿，base main，PR run 46059363614 success）；codex/community-campus-checks-20261127远端fac3b935（草稿PR #388，base main，PR run 46073761571）；codex/community-b14-followups-20261127远端8d0e308c（草稿PR #387，base main，PR run 46066948947） |
 | tony-ws worktree | illini 8f5fc43（#369，已合）；illini-home 75a3447（#374）；illini-mpbudget dfa1aa0（#375，远端已是 supervisor 的 700c7be）；illini-restricted 9a31e75（#377）；illini-p3 80aae635、illini-events-20261120 962f785b（#379、#380已合并，D-61起退役只读，旧74保留不推）；illini-smoke-fixture（#385草稿，D-61第2项）；illini-campus-20261127、illini-b14-followups（D-61新建，从a60aa563起）；confirm-main-a60aa563（detached a60aa563，D-61基线，只跑不提交，收尾时worktree remove）；illini-viewport-consumers cca63d9（已随#383合main，本批不改）；illini-smoke-stub a9c271b（已随#384合main321a916f，本地完整门禁、60轮及CI通过）；illini-ci-runner f0ccd8f（#376，已合）；illini-vite645 80b3eb0（#378，已合）；illini-brand f5dd044（#372，已合进 main 3778952）；illini-config b259105（#371，已合）；illini-deps 55716ba（#373，已合）；confirm-369-8f5fc43 detached 8f5fc43（C-369）。本地不推送：illini-events wip/P4.1 5f62ddd（已 merge 进 #380）、illini-d46-integration、illini-d51-seal、illini-docs-brand7；illini-main 只读 7b18f20；caaciorg 本地 28d59b1；5 个第四批证明 worktree 留着（阻塞第 23 条）；confirm-final-3778952 3778952（detached，C-final 与D-55 main对照，只跑不提交）；illini-seal c1cacb6（#381） [本地测：D-61涉及的工作树为本次更新；其余为此前记录] |
 | 本批交付worktree | `~/work/illini-smoke-fixture`（#385）、`~/work/illini-campus-20261127`、`~/work/illini-b14-followups`；P4目录退役只读，两个wip永不推 |
 | 公开 demo | https://illini-community-demo.vercel.app/ 已由 supervisor promote BRAND.7（新生产部署 dpl_7p18WL7JTqxbK8VKqNVVnYepLj1b，`grep -c 玉米地` 为 6；回退 dpl_E3AmucjjeUZfCmPQ7NQRi2eiaAv6；D-53 第 0 项 d） |
@@ -258,7 +258,8 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
 | P4.2、P4.9 | 部分（P4.9另一半等E6） | 已合a60aa563并上生产H5（dpl_H8f7）；A、B两库已应用并VERIFY；P4.9另一半等E6；D60本地验收见L537–L545，D-61第0项 |
 | P4.8 | 部分（iPad、微信归Eric） | 已随a60aa563上生产H5（dpl_H8f7）；iPad、微信归Eric；D60本地验收见L537–L540 |
 | P4.4 | 部分（已合并，开关没设） | A、B两库已应用并VERIFY，apply md5两库55227c4b；已随a60aa563合并；开关没设；真实dry-run等P4.3和一次授权GET；D60本地验收见L537–L545，D-61第0项 |
-| P4.7 第二步 | 部分 | D60 c12 bdc26d32修正系列结束、码点截断、地点上限和重复规则，13个控制完成；纯解析进入962f785b，工程§9.3定稿。白名单仍[]，学校fetch/写库和撤下判断留D61，完整导出及使用条款待Eric；L524、L529 |
+| P4.7 第二步 | 部分 | D60 c12 bdc26d32修正系列结束、码点截断、地点上限和重复规则，13个控制完成；纯解析进入962f785b，工程§9.3定稿。白名单仍[]，学校fetch/写库和撤下判断留D61，完整导出及使用条款待Eric；L524、L529；DoD ④ 由 D-61 的迁移 C 在本地满足；DoD ⑥ 等 Eric 授权单条 ICS 的 GET |
+| P4.7 第三步 | 部分（D-61 本地完成） | campus 分支 fac3b935：迁移 C 与运维文件、worker（默认关）、L-SQL 和全部控制，门禁 check-20261127T205745Z（L583）、L-SQL lsql-20261127T193631Z（L573）；C 未应用到任何托管库，白名单仍 []，真实请求 0 次 |
 | P4.5 | 本批未验收 | 真实数据等 D-32 |
 | P4.11a | 通过 | 2026-11-26 两库 17 步、#379/#380 合并（PR run 45760456744、45765292898）、dpl_H8f7 发布（D-61 第 0 项） |
 | P4.11b | 未开始 | 依赖 P4.10，以及 P4.3 或学校导入 |
@@ -321,14 +322,16 @@ tony-ws 本地 · 005ca9d · localhost/illini-dev:pw1.60-node22-pg17：install/t
      - D-55 第 5 项「控制台错误只有一句」是 supervisor 写错了，main 自己的失败也是三句一组。L177 按三句判、L192 把 marketplace-responsive.spec.ts:699 记成「main 上同样失败」，supervisor 复现过（main 3778952 30 次失败 4 次，P4 30 次失败 6 次，报错都是期望 830、实得 480），两处判法都予以追认。第十批起按第 5 项的新写法判。
 29. E6：COMMUNITY_OFFICIAL_PROFILE_ID 没设之前，P3.5 的 set_post_official 和 P4.9 的 create_event_discussion 返回 409 official_profile_not_configured、不落库；set_post_featured、hide_event、unhide_event 不依赖它（D-54 第 1 项 b 更正）。设好后补这两项的另一半。
 30. P4.6 的产品问题：被隐藏或下架的成员活动仍占组织者两个名额之一，作者自己删掉讨论帖的不占，要不要改由 Eric 定（L140）。D-57 按现行规则实现，supervisor 代定，待 Eric 确认。
-31. 本批P3已推80aae635，P4已推962f785b：普通合入固定main321a916f，P4名单单独c2 e5097bea补齐，c15普通合P3′。两边巡检0失败，D56四条件豁免和D57的pages.smoke条款从这些head起退役；main一次性对照改321a916f。pages.smoke、community-events、viewport及699/767、本批新增改过spec必须0失败，不能套不稳定豁免；P4巡检68/68、699另60/60。L499、L537–L545。
+31. 已结：P3 80aae635 起（check-20261124T235148Z，L493）、P4 c2 e5097bea 起（check-20261124T233431Z，L487；P4 最终 check-20261125T072124Z，L537）巡检 0 失败，D-56 第 5 项四条件豁免和 D-57 第 11 项 pages.smoke 那一款退役。P3、P4 已于 2026-11-26 squash 进 main（e46606b1、a60aa563），不会再有 main 合进 P3、P4；这条规则改挂 #385：#385 合 main 时先普通 merge，再单独一个提交补 STUB_READS（广场加 rpc:list_community_events；活动列表读三项；不带 id 的详情页什么都不读，显式写 []；发起页只读成员开关），同一个提交把 pages.smoke.spec.ts 第 201 行那句注释改准；本批 c1 58c34fe9、c2 1a5dd986，门禁 check-20261127T183850Z（L571）。#385 squash 进 main 以后，任何改变巡检路由读法的提交，在同一个提交里改 STUB_READS。
 32. 【已完成：五条迁移已在两库依次应用并 VERIFY，#380 已合并（D-61 第 0 项）】原记录：#380合并前，public smoke须在依次应用20261120100354、20261120122054、20261122035253、20261123201501和20261125004742并分别VERIFY的库上跑绿。A原候选74caf746验收后按L446冻结，0785419先推；0e7fbc13的新门禁/SQL在冻结后，两者supabase树同c04dbb1d，A未重冻，字面顺序偏差见第十四批更正。B sha256前8位80395cc7，于L542首次冻结、记录79f80ea随材料a3da055先推，再推P4。B之后先VERIFY_B，再member→reply，不跑VERIFY_A。schema预检已有三个同步函数探测，A缺失会红；B只能靠VERIFY_B。本地托管方式演练过，真实库默认ACL和public smoke仍须核，L533、L539、L544–L545。
 33. 成员活动开关在staging、生产分别由Eric或具名授权人操作；前提就是根RUNBOOK“Member events switch”的四个条件（完整原文见第十四批②更正⑤），不再把其第2条D28重复计一次。当前默认关闭。开关前要不要先补可见文本边界归Eric；建议补齐前不开、不挡P4.11a。码位全表见ENGINEERING §13第13行；L403六条authenticated探针SQLSTATE00000、各1行，三阳性对照通过并全回滚；其余码位按属性推出，未做渲染/线上测试。两库第 9、16 步之后读开关行都是 enabled=false（D-61 第 0 项）。
 34. 已覆盖：cca63d95的wide messages用例在1280双栏下先红后绿，已随#383进main d3bfc17e（D-59.9b）。iPad真机检查仍归Eric。
 35. 【已结：#386 把两个 smoke job 的上限改为 70 分钟；加镜像步骤 Eric 未批，建议放弃（FINAL 第十五批 ④）】原记录：public和authenticated smoke的job上限45分钟；本批962f785b实际Running N=802。按三份既有样本及main321a916f的run45248909343两个job，共五份线性推算依次53.51、32.42、38.06、41.73、38.25分钟；样本44647478789超过8.51分钟，其余不超。新表见第十四批④；第十二、十三批原表不改。这是推算而非本批CI实测；建议Eric批准后由supervisor在#379 squash前开config PR，把两job改70分钟并加镜像步骤；本批未改ci.yml。
 36. 【P4.11a 已完成（D-61 第 0 项）；P4.11b 待做，拆法见 BACKLOG，待 Eric 确认】原记录：P4.10 DoD⑤随P4.11发布，而P4.11又依赖P4.10，形成环。建议Eric拆P4.11a（五条迁移、#379/#380、一次H5受监督发布，沿用第一步导航）和P4.11b（P4.10、小程序与原DoD②③）。CAACI路径先应用A和B、P4.3上线并开同步；学校路径等D61学校写库。本批不写P4.10、不改BACKLOG依赖，建议不是批准。
 
-37. 缺席计数溢出：B 20261125004742已写好并首次冻结（80395cc7、L542），随962f785b推送；P4.11按顺序应用五条，归Eric。建议A/B同窗，不接受溢出为已知问题；B推送后只能另起获批前向迁移。
+37. 【已完成：B 已在两库应用，apply md5 两库都是 55227c4b（D-61 第 0 项）；B 之前才用的那段恢复 SQL 由 campus 分支 0de9c76d 从根 RUNBOOK 删去，随 campus PR 合并生效（D-61 第 6 项 f）】原记录：缺席计数溢出：B 20261125004742已写好并首次冻结（80395cc7、L542），随962f785b推送；P4.11按顺序应用五条，归Eric。建议A/B同窗，不接受溢出为已知问题；B推送后只能另起获批前向迁移。
 38. 空的完整快照不加守卫，照常记缺席，empty_snapshot、outcome=ok、不报Sentry；supervisor按D43代定，Eric可推翻，见第十四批⑧。
 39. apply、finish失败已按调用位置改为apply_*、finish_*；上游码不变，finish_*仅进日志、不写sync_state，读法见根RUNBOOK“CAACI events sync”。
 40. 【已结：P4 已合并，~/work/illini-events-20261120 退役只读（D-61 第 1 项）】原记录：P4目录已在D60第1项对账，74caf746改名保留不推，D59 delivery-tree只读退役；本批按原名codex/community-events-20261120快进推962f785b，不改写旧分支。
+41. #385 由 supervisor 合并，合并前名单提交的 PR CI 必须全绿（规则见第 31 条）。迁移 C 只在 campus 分支（fac3b935），任何托管库都没有应用；应用照根 RUNBOOK『Community campus checks release』，由 supervisor 配执行脚本、Eric 逐库放行（FINAL 第十五批 ④）。
+42. community-report-views.spec.ts:51（1280px 那条）在 followups 门禁里失败 1 次，followups 上三连跑 6/6 通过，confirm-main（a60aa563）上三连跑失败 1 次、报错原文相同（strict mode：提示文字同时命中 sr-only 状态区和原生 toast），判为 main 上同样不稳定，不修、不挡推送（D-56 第 5 项，L579）；#385 带的 registerToastHost 修复合进 main 以后复查这条。

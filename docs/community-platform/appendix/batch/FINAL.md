@@ -1830,3 +1830,167 @@ c10–c13最初五组变异逐项持同一把锁，但中途释放，不满足�
 | 四条件豁免退役、main对照321a916f | main修复与显式名单已进入P3/P4；巡检须0失败 | 由新监督决定更改门禁政策，不能自行放宽 |
 | public schema探测加三个同步函数 | A缺失时能在发布前失败；不宣称能检出B | 后续提交更改探测合同及用例 |
 | main夹具WebSocket仅认realtime路径 | 不掩盖其他socket请求 | 后续提交调整边界并保留反例；#385尚未合并 |
+
+## 第十五批（D-61）
+
+### ① 起止与 SHA 范围
+
+2026-11-27 10:59 CT 开工，2026-11-27 16:30 CT 定稿；STATUS_LOG L552–L586。范围限 D-61.0–10，不接 BACKLOG。以下状态在第二次材料推送前以 gh pr view 和 git ls-remote 核对，回执见 L586。
+
+| 对象 | 起点 | 本批交付或最终状态 |
+|---|---|---|
+| main | a60aa563 | a60aa563e7171a2a690b98710d62f6370662fd45；#386（30d847e1）、#379（e46606b1，审过的 head 8e45b5d3）、#380（a60aa563，审过的 head 8dd4c8c1）已由 supervisor squash；本批 OMO 没有合 PR |
+| 材料 | ebdcdbae | 第一次推送 c6ea9cbc；本节与 STATUS 同一提交，前置 HEAD 为 c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb |
+| #385 | 4fc14fff | 1a5dd986ca0071464e2ca11a19a16084b2b00a22（c1 58c34fe9、c2 1a5dd986）；codex/community-smoke-fixture-20261124，草稿、base main；PR run 46059363614 success |
+| campus | a60aa563 | fac3b935dc6e7ca989674fa4e2de422815a59540（k1 fd690d7c、k2 6837794a、k3 0de9c76d、k4 7f9031e6、k5 fac3b935）；codex/community-campus-checks-20261127，草稿 PR #388、base main；PR run 46073761571 success |
+| followups | a60aa563 | 8d0e308c3f9957a6f3e6070d390b98696c529543（f1 7aeba1c3、f2 7cf6aab2、f3 8d0e308c）；codex/community-b14-followups-20261127，草稿 PR #387、base main；PR run 46066948947 success |
+
+### ② 完成的任务
+
+| 项 | 结论与提交 | 证据和范围 |
+|---|---|---|
+| D-61.0 | 完成 | P3/P4 已由 supervisor 合并并上线，五条迁移两库已应用并 VERIFY，照 supervisor 记录写进 STATUS「第十五批开工背景」（L552、L553）；没有查用量、切号、切模型或调号序 |
+| D-61.1 | 完成 | a–c 见 L554（12 个过时 monitor 的处理是 [OMO自决]，③ 第 1 条）；d 四项核对 L555；e 三个 worktree umask 022 建、目录 755；f 基线 B_TEST 3093/0/1、B_SMOKE 802（801/0/1）、:699 60/60、B_LSQL 187 链 0 错、B_CI 3093 条 339 秒（L564、L568） |
+| D-61.2 | 完成 | c1=58c34fe9（普通 merge，五样核对）、c1 上修前 T1 恰好红、多出且只多出三项；c2=1a5dd986 只改 pages.smoke.spec.ts，文件 sha256 和树与原文一致（L560）；九个变异全部按期望（L567）；门禁、推送 1 次、正文追加 1 次、PR run 46059363614 success（L571、L575、L577） |
+| D-61.3 | 完成 | 写 C 前核 a60aa563..origin/main 没有新迁移；C=20261127175345_community_campus_checks.sql，k2=6837794a，修前红按期望（L566、L572）；十八个变异全部按期望（K16 作废后在同一 head 重跑，L576、L578）；系列顺延五种反例与 revision 读方见 L576 和 ⑥；C 在冻结 head fac3b935 冻结（L584） |
+| D-61.4 | 完成 | PRECHECK_C、VERIFY_C、REGRESSION_C 随 k2 提交；L-SQL 188 链 CAMPUS 11/11，回放后第 1–7 步全部做完（第 7 步回放 rc 与原文预期不同，第 2 步本身按期望，见 ⑤、L578） |
+| D-61.5 | 完成 | k4=7f9031e6：worker 只认 COMMUNITY_SYNC_CAMPUS_EVENTS === '1'，本批没设；白名单 []；测试里真实 fetch 0 次；十六个变异全部按期望（L580） |
+| D-61.6 | 完成 | a k1=fd690d7c 拆段与四个验证（L561、L563）；b、c 根 RUNBOOK 新节、迁移计数随 k2，R2–R6 按期望（L576）；d–g k3=0de9c76d 与机械核对及反向（L580、L581） |
+| D-61.7 | 完成 | 只改测试：f1=7aeba1c3（M13–M18，L565）、f2=7cf6aab2（探针，L572）、f3=8d0e308c（M5、M5c、M5d，L582）；门禁通过，另有 1 条 main 上同样不稳定（L579）；推送 1 次、草稿 PR #387（L580） |
+| D-61.8 | 完成 | k5=fac3b935：修前只红新用例，修后 30/30；三个变异各红第 255、256、258 行（L581） |
+| D-61.9 | 完成 | a–i 随第一次材料推送 c6ea9cbc（L569）；阻塞第 31、37、41 条（另加第 42 条）、P4.7 第三步一行和本节随第二次；j 的机械核对与反向见 L586 |
+| D-61.10 | 完成 | 一次一个容器、同一把锁、umask 022、前后磁盘 ≥ 50 GB；提交顺序照 e；CI 边界命令照 ci.yml、不挂 /dev-env，cpuset 不可用改 --test-concurrency=3（L564，⑧）；推送次数见 ⑤ |
+
+| 最终检查 | 实际结果 |
+|---|---|
+| 基线（confirm-main a60aa563） | check-20261127T170110Z：Node 3093/3092/0/1、pg_skips 0；smoke 802（801/0/1）；巡检 68 条 0 失败；Failed to scan 1；:699 check-20261127T175024Z 60/60；L-SQL lsql-20261127T175318Z 187/187/0；CI 边界 3093 条 339 秒 |
+| #385（1a5dd986） | 全量 check-20261127T183850Z：Node 3094（+1）、smoke 806（+4）、巡检 68/0、Failed to scan 0、主包与 event 分包不变；:699 check-20261127T193347Z 60/60；CI 边界 3094 条 341 秒；PR run 46059363614 success（Boundary regressions 4 分 20 秒） |
+| followups（8d0e308c） | 全量 check-20261127T195338Z：Node 3100（+7）、smoke 805（+3），另 1 条 main 上同样不稳定（L579）；:699 check-20261127T204255Z 60/60；CI 边界 3100 条 338 秒；PR run 46066948947 success（Boundary regressions 4 分 20 秒） |
+| campus（fac3b935） | 全量 check-20261127T205745Z：Node 3118（+25）、smoke 802（801/0/1，+0）、巡检 68/0、Failed to scan 1（等于基线）、主包与 event 分包不变；:699 check-20261127T214639Z 60/60；CI 边界 3118 条 349 秒；L-SQL lsql-20261127T193631Z 188/188/0（k2，supabase 与 scripts/fixtures 到冻结 head 无差异）；PR run 46073761571 success（Boundary regressions 4 分 54 秒） |
+| 主包 / event 分包 | 三个分支都是 1,469,678 / 37,721，与基线相同（只取 mpci 段） |
+
+逐文件增量（相对基线 a60aa563；新增和删除分开列，标题按测试日志逐条对出，来源 $EV/testdiff.py 与逐文件 node --test 计数）：
+
+| 分支 | 文件 | 新增 | 删除 | 净 |
+|---|---|---|---|---|
+| #385 | app/smoke/conditional-import-boundary.test.mjs | +1（local named imports in Vue files remain exported after H5 conditional compilation，4fc14fff 带来） | 0 | +1 |
+| #385 | app/smoke/pages.smoke.spec.ts | +4（T1–T4） | 0 | +4 |
+| followups | api/_community-events-sync.test.mjs | +6（upstream and RPC failure classes… 下的 hostile Error、non-Error status、non-Error timeout、apply 302、apply 5030、apply prefixed status） | 0 | +6 |
+| followups | api/_community-events-sync-budget.test.mjs | +1（a budget exhausted before apply skips finish and logs the deadline） | 0 | +1 |
+| followups | app/smoke/community-event-layout.spec.ts | +3（event sidebar at 900px、1023px 的 full width 两条和 1024px 的 sidebar returns） | 0 | +3 |
+| campus | scripts/community-release-checklist-boundary.test.mjs | +2（the applied P3+P4 release keeps its five migrations and its hosted SQL bytes；every migration after the applied release is in the campus checks release） | −1（community release tables match every pending migration and its hosted SQL bytes，k1 拆成上面两条） | +1 |
+| campus | scripts/community-campus-checks.test.mjs | +13（k2 四条顶层与第四条下 8 条子用例；k4 加 the real campus projection is accepted by the real service RPCs） | 0 | +13 |
+| campus | api/_community-campus-checks.test.mjs（k4 新文件） | +7 | 0 | +7 |
+| campus | api/_community-events-sync-worker.test.mjs | +3（only the exact campus flag adds a response field or any campus request；campus checks run after CAACI and before cleanup…；the default allowlist requests nothing; partial and failed campus checks report once） | 0 | +3 |
+| campus | api/_campus-ics.test.mjs | +1（recurrence rules are refused in any letter case, and an alarm inside an event is not one） | 0 | +1 |
+
+合计：#385 TEST +1、smoke +4；followups TEST +7、smoke +3；campus TEST +25（+26 −1）、smoke 0。删除的只有 campus k1 拆开的那一条；#385 和 followups 没有删除。
+
+更正第十四批：
+
+① ③ 漏了 L470 的【OMO自决】：c1 用 interpret-trailers 生成说明后 `merge -F`，代替 D-60 第 2 项的 `merge --no-ff -m`；a324a5bd 的父提交是 0e7fbc13、321a916f，树 b2952fdd，--cc 为空。
+② ③ 漏了第二次 17d 命中：材料第二次推送 6fa22a3，原扫第 91 行 exit 2，⑤ 1 条，是公开 VERIFY 文件名的误报（L550、L551）。
+③ ⑤ 表里材料分支的「⑤复核87 exit0」应读作：第 87、92 行是 OMO 写的复核记录，不是扫描器记录；材料推送 3 次，对应的扫描器记录是第 86 行（exit 2）、第 91 行（exit 2）、第 93 行（exit 0），按 D-61 改过的 17d 对账。
+④ L521 说 390 详情截图顶栏的回退和标题没画出来，不对：两张图都画出了返回箭头和标题。
+⑤ STATUS 阻塞第 31 条没照 D-60 第 2 项 f 写，本批按 D-61 第 9 项 d 改写。
+⑥ #380 正文删掉了几项仍然成立的限制（同步开关的变量名和非生产 cron 不算开关、成员开关关闭只停新发起、P4.9 讨论帖用中文模板、consent_ref 和 180 天边界、撤稿时限的推算）；#380 已合并，正文不再改，这些限制分别在根 RUNBOOK（a60aa563 第 883–887、1031–1032 行）和 ENGINEERING 第 709、778 行、§9.4 里。
+⑦ 第十四批的门禁都在挂了 axe 的 tony-ws 上跑，CI 不挂；四处 visual audit 在 CI 上必红，由 supervisor 的 21ab889c 在合并前修掉。本批每个代码分支另跑一次不挂 /dev-env 的 boundary-tests 原命令，它只覆盖 node 测试；tony-ws 上的 smoke 一律挂 /dev-env，所以视觉断言要写成 `audit.axe ?? []` 或 `if (audit.axe)`（D-61 第 7 项、第 10 项 b），否则只有 PR CI，或手动不挂 /dev-env 跑一次 smoke，才看得到。
+
+本批更正只追加，没有回改第十四批或旧 STATUS_LOG。
+
+### ③ [OMO自决] 清单
+
+本批 STATUS_LOG 里 [OMO自决] 和【OMO自决】两种写法都已找全（第十四批漏记的那一条在 L557 补记，L470 的写法在 L558 说明，均属更正，不重复列入）：
+
+1. L554：第 1 项 c「全部 task_cancel」的 12 个过时 terminal monitor 是挂在各批证据文件上的路径 watcher，不是子任务；先逐一 task_cancel（都回 No task found）并照实记结果，再用 kill_bash 停掉。撤回：无需撤回，以后同类 watcher 照此处理。
+2. L559：17d 预扫在材料 RUNBOOK §11 E6 那一行命中 ② 号池 1 条（第 9 项 h 指定要改的既有一行，原有的官方内容账号邮箱随改动成为新增行）；改成「用 D-13 的官方内容账号」，邮箱只留在 DECISIONS D-13，重扫 exit 0。撤回：Eric 要恢复原写法的，由 supervisor 批 17d 例外后改回。
+3. 第 9 项 b、c 的措辞（原文写明措辞由 OMO 自决）：STATUS 抬头、版本表、CI 段和验收表在第一次材料推送时先写已定的事实，推送后才定的远端 head、run 号、campus head 和日志名在第二次材料推送时补齐。撤回：改措辞不改事实。
+
+### ④ 等 Eric 或 supervisor 的清单
+
+以下各条照抄 D-61 第 10 项 f；每条里的建议都是 supervisor 的建议，不是批准。
+
+1. 应用 C：staging 先、生产后，照根 RUNBOOK「Community campus checks release」PRECHECK_C → APPLY → VERIFY_C，再重跑 VERIFY_B、VERIFY_20261122035253、VERIFY_reply；应用之前核 C 和三个伴随文件的 sha256 等于 STATUS_LOG 的冻结记录（ENGINEERING §11）。新节要求两个开关都关着才开始，所以建议两库都应用完 C 以后，再开回复开关（第 5 条）和成员开关（第 6 条）。建议在 campus PR 合并之后做，由 supervisor 照新节配执行脚本（现有那份只覆盖 P3/P4 那次发布，不能拿来跑 C；托管端点不返回 NOTICE，新脚本要在第 5、6 步之后各读回一次开关行；OMO 不跑执行脚本，也不连任何托管库），Eric 逐库放行；staging 其余漂移不先对齐，C 的 guard 不依赖它们。
+2. D-33：读完使用条款，选定白名单（候选 3715、7）。建议这之前保持 []，之后用单独一个 PR 填白名单，排在导入（迁移 D）上线之后。
+3. 真实 GET（P4.7 DoD ⑥）：授权对选定日历的若干条单条 ICS 各请求一次，同时查被撤下的活动返回什么（ENGINEERING §13 缺口 8）。建议由 supervisor 在 Mac 上做，不交给 OMO。
+4. `COMMUNITY_SYNC_CAMPUS_EVENTS=1`：建议本批之后也先不开；前提是 C 已在生产 VERIFY、白名单已发布、导入路径已上线。
+5. 回复通知开关前提 3（根 RUNBOOK 第 813–816 行）：建议改成「P3 H5 已发布，且没有任何用户安装的小程序版本」；建议两库应用完 C 之后再开（第 1 条）。
+6. 成员活动开关：要定 D-28 的轮值人、前提 4 的书面决定和 STATUS 第 30 条。建议先做 Default_Ignorable 那条前向迁移（D-62），并在两库应用完 C 之后再开（第 1 条）；这个开关要早于导入的，迁移 D 必须另带一份成员开关 VERIFY。
+7. E6：建议现在就登录拿两个 profile id，设 Production 环境变量，随下一次受监督的 H5 发布生效（那次发布会带上 #385 的 useAppToast 改动和默认关着的 worker）。
+8. E8 / P4.3：外部维护者那段是整条路里最长的，照旧推进。
+9. CAACI 同步预挂：建议不预挂，等 P4.3 上线。
+10. P3.7 DoD ① 和 E4 的 PR 留言：建议接受 STATUS_LOG 的 [supervisor 记录] 作为替代，不再对外写入。
+11. P4.11a/b 的拆法：建议确认，DoD 照第 9 项 e。
+12. CI 镜像步骤：建议放弃；70 分钟上限下实测用时 30–40 分钟。
+13. OMO 账号：login-3 已由 Eric 定为「留着排最后」；两个失效的 SIWC 槽位（default、login-2）删不删仍等 Eric；login-4、login-5 的上限 supervisor 暂定 85%，Eric 可改。建议两个 SIWC 槽位等 CAACI 两个号连续用满一周、没有掉登录再删。
+14. iPad：在生产 dpl_H8f7 上看一遍。
+15. 删分支：codex/community-restricted-20261113、codex/community-p3-20261120、codex/community-events-20261120、codex/config-smoke-timeout-20261125 删不删由 supervisor 或 Eric 定，删了不能撤回。建议等本批三个 PR 合并、main 的 push CI 绿了再删；删之前用 `gh pr list --state open --json headRefName,baseRefName` 核没有开着的 PR 以它们为 head 或 base。
+16. C 合并进 main 与 C 应用到托管库的先后：建议先合并、后应用。campus 分支不加 app/src 的 RPC 调用和探针，PR 和合并后的 CI 都不依赖 staging 有没有 C；开关不是 '1' 时 worker 不调任何学校 RPC（worker 测试第一条证明）。这与根 RUNBOOK「Schema-coupled release order」（先应用、后合并）不同；新节末段只写条件（没有客户端调用这三个函数时，合并不要求两库先有 C；生产跑完那一节之前开关不设；这期间 schema-drift-probe 把三个函数列为缺失是预期内的），先后由 Eric 定；D-62 加了第 11 行客户端和探针以后，合并之前两库都要先有 C（第 9 项 f）。C 由 supervisor 照新节配执行脚本，Eric 逐库放行。
+17. npm audit 的放行到期：ci.yml@a60aa563 第 211 行给 vite 公告 GHSA-8g5g-mxqh-grgj 的放行到 2026-12-13。三个 PR 都不改依赖，PR CI 跳过审计；合并后 main 的 push run 一定跑审计（第 151–153 行），2026-12-13 以后合并的，Boundary regressions 会红、production-release-readiness 拦住发布，与 PR 内容无关；2026-12-14 起每周一的定时 run 也会红。建议三个 PR 的合并和下一次受监督的 H5 发布排在 2026-12-13 之前；来不及的，先由 Eric 定这条公告怎么处理（升级，或另开 PR 改放行日期），再合并。
+
+【supervisor 做】合并三个 PR（#385 必须等名单提交的 CI 全绿）。main 的分支保护要求合并前分支是最新的（strict），main 的 push run 又会被下一次 push 取消，所以串行合并：合一个，等 main 的 push run 七个 job 全部 success；下一个 PR 在 OMO 对它的推送都结束以后用 GitHub 的 Update branch 更新，选 merge、不选 rebase（各提交和 C 的 SHA 不变，FINAL 里记的 SHA 仍成立），等四个必需检查和 public smoke 通过再合；第三个照同样做。最后是下一次受监督的 H5 发布
+
+### ⑤ 【硬】与【暂停推送】事件
+
+| 对象 | 本报告发布时的累计次数 | 扫描/远端依据 |
+|---|---|---|
+| 材料分支 | 推送 2 次、有扫描记录 2 次；收尾的第三次在本节之后 | 第一次 c6ea9cbc：scan99 exit 0（L569）；第二次即本报告所在提交：scan112，远端回执在 L587（收尾那一条） |
+| #385 | 推送 1 次、有扫描记录 1 次（预算 2，第二次未用） | scan103 exit 0，1a5dd986，L575 |
+| #385 正文 | 写入 1 次、有扫描记录 1 次 | scan104 exit 0；REST 读回与发送文件逐字相同，L575 |
+| campus | 推送 1 次、有扫描记录 1 次（预算 2，第二次未用） | scan110 exit 0，fac3b935，L585 |
+| campus 草稿 PR | 创建 1 次、有扫描记录 1 次 | scan111 exit 0；#388，未转 ready、未改 base，L585 |
+| followups | 推送 1 次、有扫描记录 1 次（预算 2，第二次未用） | scan106 exit 0，8d0e308c，L580 |
+| followups 草稿 PR | 创建 1 次、有扫描记录 1 次 | scan108 exit 0；#387，未转 ready、未改 base，L580 |
+
+本批没有【硬】条事件，也没有【暂停推送】。所有 17d 扫描 exit 0，没有 exit 2；干扫（scan94–98、100–102、105、107、109 等）不算推送。预扫在材料 RUNBOOK E6 命中 ② 号池 1 条，按改写后重扫处理（L559，③ 第 2 条），那次没有推送。
+
+七条已冻结迁移和 manifest 原 190 行逐字不变，只追加 C 的第 191 行。C 在 L-SQL 188 链、回放后第 1–7 步、十八个变异和最终 head 的门禁都通过后，按 L584 冻结；冻结记录随本次（第二次）材料推送公开，晚于 campus 推送（⑧）。没有应用任何托管迁移、合 PR、转 ready、改 base、force push、rebase 已推送历史、reset、stash、clean 或生产发布；没有跑执行脚本，没有连托管库，worker 没有发过真实请求，白名单仍是 []，COMMUNITY_SYNC_CAMPUS_EVENTS 没有设。账号、模型与号池文件未改。
+
+照实记的偏差，都没有进提交：campus 第一次修后跑漏了 install，结果作废后重跑（L570）；K16 变异脚本照抄成 CREATE FUNCTION，那次作废，改成 CREATE OR REPLACE 在同一 head 重跑（L576、L578）；k4 变异第一次在 M02 停下，因为 find 文本在模块里出现两次，换成唯一上下文后整组重跑（L580）；cpuset 在 rootless podman 上不可用，CI 边界命令照第 10 项 b 改用 --test-concurrency=3（L564，⑧）；第 7 步的回放 rc 是 0，与原文预期的非 0 不同，第 2 步本身按期望报错（L578）。
+
+### ⑥ 未测项与风险
+
+- 撤下的活动返回什么仍未知，空 VCALENDAR 报 bad_ics，这类行永远撤不下来。
+- C 没有应用到任何托管库，worker 没有发过真实请求。
+- 第 3 项系列顺延的五种反例（只记录，L576）：同时改某一场的时间且场次数不变、旧第一场正在进行中时被改到当天晚些、全天系列，三种都判成顺延（不记 previous_starts_at、不打 review_flag，revision 由触发器 +1）；场次数变了、结束时间变了，两种判成真改期（记 previous_starts_at，开始前 48 小时内打 source_time_changed_near_start）。前两种是把真实改期当成顺延的风险，只能等导入接上学校源以后用真实数据看
+- revision 的读方（L576）：客户端只在详情查询的列清单和类型里读，没有比较或分支；服务端由列授权和 list_community_events 返回；唯一的写入是改期触发器 +1；C 不读不写
+- 三个分支 CI 边界命令的秒数和 PR run 里 Boundary regressions 的时长：CI 边界命令（--test-concurrency=3）基线 339 秒、#385 341 秒、followups 338 秒、campus 349 秒；Boundary regressions #385 4 分 20 秒、followups 4 分 20 秒、campus 4 分 54 秒
+- community-report-views.spec.ts:51（1280px）在 followups 门禁里失败 1 次，confirm-main 上同样失败、报错原文相同，判为 main 上同样不稳定（L579，STATUS 阻塞第 42 条）；#385 合进 main 以后复查。
+- 第十四批 ④ 第 3 条、⑥ 第一条的托管默认 ACL：两库的 VERIFY_A、VERIFY_B 已钉 proacl 并通过（D-61 第 0 项），不再是未测项。
+- 第十四批增量表的净数含删除：desktop spec +13−2（search、login 两档），sync 测试 +8−1（原「finish failures log once…」拆成三条）。
+- 第十四批 minor 的去向（修了的写修在哪一项）：rpcFailureCode 守卫和 deadline 日志 → 7-A；投影只读 A → 7-A2；根 RUNBOOK claim_failed → 6 f；§9.3 的 ALTREP 和 400 场、§9.2 第 692 行「A 和 B 仅提供三个函数」→ 9 f；发布清单不解析步骤表 → 6 a；W5b 只钉 768 → 7-W5b；FINAL 增量表不分新增删除 → 本批 ②；registerToastHost 的依赖扫描报错 → 第 2 项；17d 的 exit 2 和复核行 → 9 g；第二次 17d 命中没有标签、③ 漏 L470、L521 截图那句 → 9 i、9 j；STATUS 阻塞第 31 条 → 9 d；pages.smoke 第 201 行那句注释 → 第 2 项 c2；阻塞第 1 条缺 #382–#384 → 不成立（STATUS.md 第 256 行末尾本来就有那句补充）；#380 正文删掉的限制 → 不改正文，见更正第十四批 ⑥。
+- 第十四批 minor 没修的及理由：claim、finish 外层判断 SyncDeadlineError 的 Proxy 逃逸现实里走不到；PRECHECK_B 少 to_regclass，已在两库跑完；VERIFY_B 不查 proparallel、procost（已在两库跑完；VERIFY_C 已查，第 4 项）；desktop spec 第 124–141 行缩进（断言逐条等价，只为缩进再改一次已合并的 spec，没有行为收益）；requireAuth 在 initializing 期间点了没反应，D-60 W2 就要求与广场一致；P3+P4 节合并当天那段缺合并门槛句，那次发布已经做完。
+- 第十四批核查按 OMO 的记录接受、没有复跑的：c4 另外四个变异（SECURITY DEFINER、STRICT、search_path、178 天，L505）、W4a 和 W4b 规定的变异（L516、L517）、c3 早跑的 L-SQL（L498）；P3、P4 已在两库应用并 VERIFY 通过，本批不复跑。
+- 核查另记的三个 nit 只记录、不改：① ENGINEERING 第 809 行写「通常」、根 RUNBOOK 第 937 行写「usually」，说的是同一件事；② 第十四批 ⑥ 没点名 E13 悬空和 tony-ws 的 P4 目录，P4 已合并上线，那个目录本批退役只读（第 1 项 d）；③ FINAL 第十四批 ② 写了「现场差异另记」，其实没有差异，第十四批不回改。
+
+### ⑦ 下一批
+
+本批只按 D-61 第 10 项 f 收尾，不接 BACKLOG。候选（只供下一条指示，没有自行启动）：迁移 D 和管理端导入、第 11 行客户端和三条 public schema 探针（两库都有 C 之后再合并，第 9 项 f）、Default_Ignorable 那条迁移。
+
+SPEC 第 1376 行「最早可走通：P4.11（生产）」还是旧编号，SPEC 不在本批授权改的文件里，留下一批（第 594 行标题里的「P4.1–P4.11」是区间，不改）。
+
+### ⑧ 代 Eric 定的事
+
+以下选择来自 D-61 按 D-43 的 supervisor 决定，选择一列照抄 D-61 第 10 项 f；每条都可由 Eric 推翻。
+
+| 选择 | 理由 | 怎么撤回 |
+|---|---|---|
+| C 只做刷新、不含导入 | D-61 第 3 项开头 | Eric 推翻时由 supervisor 另下指示改回 |
+| 门复用 A 的 claim/finish('campus', 30 秒) | D-61 第 3 项（claim 的间隔是严格小于，cron 相邻两拍最少约 50 秒） | Eric 推翻时由 supervisor 另下指示改回 |
+| 领取写租约、排除 hidden | D-61 第 3 项（不论请求成败每行每 6 小时最多请求一次；谓词与冻结的部分索引一致） | Eric 推翻时由 supervisor 另下指示改回 |
+| 系列顺延的判据 | D-61 第 3 项（BEFORE UPDATE 触发器会覆盖 previous_starts_at；没开始的系列后移按真改期） | Eric 推翻时由 supervisor 另下指示改回 |
+| login-4、login-5 上限 85% | D-61 第 0 项（supervisor 暂定） | Eric 推翻时由 supervisor 另下指示改回 |
+| 17d 认 exit 2 加 [OMO自决]、排除带 kind 的行 | D-61 第 9 项 g | Eric 推翻时由 supervisor 另下指示改回 |
+| P4.7 DoD ⑥ 末句改成核单条 ICS | D-61 第 9 项 e | Eric 推翻时由 supervisor 另下指示改回 |
+| 新节名和 RELEASED_THROUGH | D-61 第 6 项 a、b | Eric 推翻时由 supervisor 另下指示改回 |
+| #385 详情显式写 [] | D-61 第 2 项（不带 id 的详情页不读任何表） | Eric 推翻时由 supervisor 另下指示改回 |
+| 第十四批的测试尾巴单开一个分支 | D-61 第 7 项 | Eric 推翻时由 supervisor 另下指示改回 |
+| 根 RUNBOOK 的 NOTICE 句改成托管端点的判定 | D-61 第 6 项 d（托管端点不返回 NOTICE） | Eric 推翻时由 supervisor 另下指示改回 |
+| 删去 B 之前才用的恢复 SQL | D-61 第 6 项 f（B 已在两库应用） | Eric 推翻时由 supervisor 另下指示改回 |
+| 学校的 26 小时灰字维持 D-59 | D-59 | Eric 推翻时由 supervisor 另下指示改回 |
+| C 的冻结记录随第二次材料推送公开、晚于 campus 推送 | D-61 第 10 项 c | 以后的迁移照旧先推冻结记录 |
+| BACKLOG 先按 P4.11a/b 拆写 | D-61 第 9 项 e | 并回一节，④ 第 11 条 |
+| E4 和 P3.7 DoD ① 的 PR 留言改由 STATUS_LOG 的记录代替 | D-61 第 9 项 b、c | Eric 要留言的由 supervisor 补发，④ 第 10 条 |
+| #385 第 201 行注释在 c2 里一起改 | D-61 第 2 项 | 另一个提交改回 |
+| ENV_CHECKLIST 不加「api/ 每个 COMMUNITY_* 读取点都有一行」的覆盖断言 | campus 分支上 api/ 只读这三个 COMMUNITY_* 变量，第 6 项完成线的 grep 已核三行都在，加测试会扩大本批范围 | D-62 加新变量时一起加 |
+| 第 10 项 b 用 `--test-concurrency=3` 代替 `--cpuset-cpus=0-3` | tony-ws 的 rootless podman 写不了 cpuset.cpus，探针 rc=127（L564） | 回到不加参数的原命令 |

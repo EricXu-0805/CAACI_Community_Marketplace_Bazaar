@@ -7694,3 +7694,201 @@ Failed to load resource: the server responded with a status of 501 (Not Implemen
 - ci_run_url: —
 - 未测项: —
 - 下一条: 材料第一次推送
+
+### L569 · 2026-11-27 12:33 CT · D-61 材料第一次推送
+- task_id: D-61.10d
+- code_sha: —
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb（本次推送的 head）
+- 环境: 主会话；~/work/illini-docs
+- 命令: git fetch；merge-base --is-ancestor origin/codex/community-plan-v5 HEAD 返回 0；git status --porcelain --untracked-files=all 为空；scan17d.py origin/codex/community-plan-v5 --log；git push origin codex/community-plan-v5；git ls-remote
+- 计数: scan17d.log 第 99 行：HEAD c6ea9cb、exit 0、没有 kind、② trailer 豁免 1；推送 ebdcdba..c6ea9cb；ls-remote 为 c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb，等于第 99 行的 HEAD。内容：第 9 项 a、d（第 31、37、41 条除外）、e、f、g、h、i，b、c 的已定部分，STATUS_LOG L552–L568。材料推送 1/3。
+- ci_run_url: —
+- 未测项: —
+- 下一条: k2 修后绿与提交
+
+### L570 · 2026-11-27 12:39 CT · D-61第3、7项 k2修后第一次跑作废；f2提交
+- task_id: D-61.3、D-61.7
+- code_sha: 7cf6aab23d57594dcae8113fbd6e2623b64eebf6（f2）；campus 仍在 fd690d7c（k2 未提交）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；容器锁内
+- 命令: campus：ALLOW_DIRTY=1 $RC <campus> migrations test（漏了 install）→ 重排 install migrations test；followups：RUN_CMD 只跑三个同步测试文件；17d 干跑 scan17d.py a60aa563 --log
+- 计数: campus 第一次修后跑 check-20261127T183232Z 作废：campus worktree 是第 1 项 e 新建的、没装过依赖（app/node_modules 不存在），日志里 ERR_MODULE_NOT_FOUND 298 处，TEST tests=1970 fail=124 都是缺依赖，不是 k2 的结果；migrations 那一步 rc=0。已带 install 重排。followups f2 提交前单跑 check-20261127T183848Z：58/58（f2 不加条数）；f2 = 7cf6aab2，+7/−3 只改 api/_community-events-sync.test.mjs；17d scan100 exit 0。
+- ci_run_url: —（未推送）
+- 未测项: k2 修后绿（重排中）、f2 探针变异（排队中）
+- 下一条: k2 修后绿、f2 变异
+
+### L571 · 2026-11-27 13:27 CT · D-61第2项 #385 c2 门禁全量
+- task_id: D-61.2
+- code_sha: 1a5dd986ca0071464e2ca11a19a16084b2b00a22
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-smoke-fixture；容器锁内，umask 022，前后磁盘约 324 GB
+- 命令: SMOKE_SPECS=<全部 spec，除 compiled-chunk-recovery、compiled-draft-persistence> $RC <目录> install typecheck h5 h5accept mp mpci migrations test smoke npmaudit
+- 计数: check-20261127T183850Z 各 STEP rc=0。TEST tests=3094 pass=3093 fail=0 skipped=1 pg_skips=0（B_TEST+1，即 4fc14fff 在 conditional-import-boundary.test.mjs 加的 1 条）；smoke Running 806（805 passed、1 skipped、0 failed；B_SMOKE+4，T1–T4），skipped 同基线；巡检 68 条 0 失败；unstubbed 0；Failed to scan for dependencies 0 条（基线 1 条，第 2 项预期 0）；主包 1469678、event 分包 37721，与基线相同。
+- ci_run_url: —（未推送）
+- 未测项: :699 六十轮、CI 边界命令（排队）、逐文件对账
+- 下一条: 门禁其余两步
+
+### L572 · 2026-11-27 13:34 CT · D-61第3、4、6项 k2 修后绿与提交；f2 探针
+- task_id: D-61.3、D-61.4、D-61.6、D-61.7
+- code_sha: 6837794af30210dd77e1bd6c7e738ad2866c1ec0（campus k2）；7cf6aab23d57594dcae8113fbd6e2623b64eebf6（followups f2）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；容器锁内
+- 命令: campus：ALLOW_DIRTY=1 $RC <campus> install migrations test（k2 未提交时），通过后提交 k2，17d 干跑；followups：$EV/mutate.py 放未跟踪的 supabase/migrations/20991231000000_probe_snapshot_keys.sql（B 的副本，time_zone 改 tz），只跑 api/_community-events-sync.test.mjs
+- 计数: k2 修后绿 check-20261127T192655Z：install、migrations rc=0；TEST tests=3106 pass=3105 fail=0 skipped=1 pg_skips=0（= B_TEST 3093 + k1 1 + k2 12）；campus 四条顶层用例全 ok（第四条 8 条子用例）。k2 = 6837794a：10 个文件 +985/−3（C、PRECHECK_C、VERIFY_C、REGRESSION_C、夹具、scripts/community-campus-checks.test.mjs、manifest 第 191 行、README、计数测试、根 RUNBOOK 新节）；17d scan101 exit 0。f2 探针 check-20261127T193345Z：43 条里只红 the upstream request is fixed, unauthenticated, bounded and projects only source columns，删掉探针后 git status 为空。
+- ci_run_url: —（未推送）
+- 未测项: k2 的 L-SQL 与七步、十八个变异、R2–R6、系列反例（排队）
+- 下一条: k2 上的 L-SQL 与变异；f3
+
+### L573 · 2026-11-27 13:40 CT · D-61第10项c k2 上的 L-SQL 188 链与回放后第 1–6 步
+- task_id: D-61.10c
+- code_sha: 6837794af30210dd77e1bd6c7e738ad2866c1ec0（L 头）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-campus-20261127，git status --porcelain -- supabase scripts/fixtures 为空；容器锁内一次持锁跑完两次回放
+- 命令: $LSQL <campus> 20261120100354 20261120122054 20261122035253 20261123201501 20261125004742 20261127175345；第十四批 controls 脚本副本（与原件逐字相同，sha256 ca6d34c834dba1c6be53e1cb8a3d0d367c17ffb022819d41df066381257582f1）带重写的回放后钩子（sha256 ad3a02474e93df0fab076e112a92581cbc49f292e71d2f04916107ac96a85d19，HOOK_STEPS=1–6）同参数再跑一次
+- 计数: 官方 lsql-20261127T193631Z：files=188 replayed=188 errors=0 done=1 rc=0；P3_TOTAL 703/703、EV_TOTAL 855/855、MEV_TOTAL 38/38、SYNC_TOTAL 35/35、CAP_TOTAL 8/8，等于 B_LSQL；CAMPUS_TOTAL cases=11 pass=11 fail=0，逐例：claim-order-lease、not-found-walk、hidden-not-found、error-only-checked、ok-revives、series-rolls、real-move-near-start、refused-place、invalid-input、detail-line、function-contract 均 pass；链内 PRECHECK_C、VERIFY_C 都通过。controls 副本回放同样 188/188/0/1/0。回放后：① VERIFY_20261125004742 通过，NOTICE community_event_sync_cap_verified；② VERIFY_20261122035253 通过，NOTICE community_member_events_switch|enabled=f；③ VERIFY_reply_notice_switch 通过，NOTICE community_reply_notice_switch|enabled=f；④ PRECHECK_C 首错 community_campus_checks_precheck_already_applied；⑤ 五个负对照依次报 …_function_body:public.claim_campus_event_checks(integer):fcbfeb95…、…_function_grants:…claim_campus_event_checks(integer):anon,service_role、…_function_attributes:…community_campus_event_checked_at(uuid)、…_function_attributes:…claim_campus_event_checks(integer)、…_function_missing:…apply_campus_event_check(uuid,text,jsonb)，每个恢复后 VERIFY_C 通过；⑥ 变异轮：去掉 IF rolled THEN 写回 → 恰好 series-rolls 红，12 小时边界 <= 改 < → 恰好 not-found-walk 红，EXCEPTION 只接 ZZ999 → 恰好 refused-place 红；恢复 C 的定义后 REGRESSION_C 11/11、VERIFY_C 通过。第 3 项完成线（node 测试与 L-SQL 同一 head 全绿）于此达到，早于 24 小时检查点。
+- ci_run_url: —（未推送）
+- 未测项: 第 7 步管理端变异回放（等 k2 上的变异跑完再做）
+- 下一条: 十八个变异、R2–R6、第 7 步、冻结 C
+
+### L574 · 2026-11-27 13:41 CT · D-61第7项 f3 单跑与提交；只改测试的核对
+- task_id: D-61.7
+- code_sha: 8d0e308c3f9957a6f3e6070d390b98696c529543（followups f3）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-b14-followups；容器锁内
+- 命令: SMOKE_SPECS="community-event-layout.spec.ts" $RC <目录> install smoke（f3 未提交时）；17d 干跑 scan17d.py a60aa563 --log；git diff --name-only a60aa563 HEAD | grep -vE '\.test\.mjs$|\.spec\.ts$'
+- 计数: check-20261127T194008Z（f3 单跑）：install、smoke rc=0，layout spec Running 9（基线 6，+3），9 passed：768、900、1023 三档 the open creation switch leaves the full width to the list，1024 the sidebar returns at the desktop breakpoint；W5_MAIN_WIDTH 768 main=available=480、900 为 612、1023 为 735。f3 = 8d0e308c，+15/−4 只改 app/smoke/community-event-layout.spec.ts；17d scan102 exit 0。完成线核对：a60aa563..HEAD 改过的文件只有两个同步测试和 layout spec，过滤后 0 行；反向：在副本里给 api/_community-events-sync.js 加一行并提交，过滤后 1 行。
+- ci_run_url: —（未推送）
+- 未测项: M5、M5c、M5d（排队）；followups 门禁
+- 下一条: f3 变异、followups 门禁
+
+### L575 · 2026-11-27 13:50 CT · D-61第2项 #385 门禁其余、推送与正文追加
+- task_id: D-61.2
+- code_sha: 1a5dd986ca0071464e2ca11a19a16084b2b00a22（远端 codex/community-smoke-fixture-20261124）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-smoke-fixture
+- 命令: :699 六十轮；CI 边界命令（不挂 /dev-env，--test-concurrency=3）；逐文件 node --test 计数（c2 与 a60aa563）；推送前 fetch、main 前进判定、工作区、冻结路径、快进；scan17d.py 4fc14fff --diff-base 58c34fe9 --log；git push；gh pr view 385 存旧正文，scan17d.py … --text 新正文 --log，gh api -X PATCH …/pulls/385 -F body=@<文件>，REST 读回
+- 计数: :699 六十轮 check-20261127T193347Z 60/60。CI 边界：tests 3094、fail 0、skipped 1，与全量 TEST 相同，341 秒（B_CI 339）。逐文件：conditional-import-boundary.test.mjs 1 → 2，合计 +1 等于 TEST 差；smoke 逐 spec 只有 pages.smoke.spec.ts 80 → 84，合计 +4。推送前：origin/main 仍 a60aa563（main 未前进）、工作区 0 行、七条冻结迁移与 .github、vercel.json 的 diff 为空、快进返回 0；scan17d.log 第 103 行 HEAD 1a5dd98、exit 0、无 kind；仓库 pre-push 钩子（boundary、typecheck、build-h5、build-mp）全过；推送 4fc14ff..1a5dd98，ls-remote 为 1a5dd986，等于第 103 行。#385 推送 1/2。正文：旧正文 1386 字符存档，追加一段英文后 2494 字符，scan17d.log 第 104 行 exit 0；REST PATCH 后读回的 body 与发送文件逐字相同；PR 仍 open、draft、base main。正文追加 1/1。PR CI run 46059363614（headSha 1a5dd986）进行中。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/46059363614
+- 未测项: PR CI 结论
+- 下一条: PR CI 结论
+
+### L576 · 2026-11-27 13:57 CT · D-61第3、6项 k2 上的十八个变异、R2–R6、系列反例和 revision 读方
+- task_id: D-61.3、D-61.6b
+- code_sha: 6837794af30210dd77e1bd6c7e738ad2866c1ec0（k2）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-campus-20261127；$EV/mutate.py 每组一次持锁，每例恢复后核 sha256 和 git status
+- 命令: 十八个变异各临时改 C，RUN_CMD 只跑 scripts/community-campus-checks.test.mjs（每例核 # skipped 0）；R2–R6 只跑 scripts/community-release-checklist-boundary.test.mjs；系列反例脚本临时放 scripts/ 下用 fixture 库跑一次后删除；git grep -n -w revision a60aa563 -- app/src api scripts supabase/migrations supabase/_ops
+- 计数: 十八个变异（19:46–19:51Z）：领取写租约、排除 hidden、6 小时边界、删第 71 行 → claim leases… 红；去掉 SKIP LOCKED → a second connection… 红；12 小时边界、封顶 THEN 2、第一次写 2 → not_found withdraws… 红；error 时清 missing_since → error writes only the check time 红；键精确比较改 ?& → ok refreshes… 红；IF rolled AND false、去掉 starts_at <= now() → a series moving… 红；EXCEPTION 只接 ZZ999 → a refused place… 红；checked_at 去掉 visible、去掉 source_type → the detail line… 红；claim 的 GRANT 加 anon、REVOKE 去掉 PUBLIC → 第一条红。以上各例另有第三条（preflight and verification）和所在父用例一并红，第 3 项写明是预期；skipped 均为 0；恢复全部核过。K16（末尾追加 finish 的替换定义）作废：我的变异脚本照抄 A 第 130–143 行时保留了 CREATE FUNCTION，没有按原文写 CREATE OR REPLACE，C 整份应用失败、四条全红；已更正为 CREATE OR REPLACE 在同一 head 重跑（排队中）。R2 把 C 那一行写进 P3+P4 第一张表 → 第一条红；R3 对调新节第 2、3 步、R4 发送内容 sha256 改一位、R5 删新节第 4 步、R6 未跟踪的 20991231000000_probe_later.sql → 都是第二条红；恢复全部核过。系列顺延五种反例（只记录）：同时改某一场的时间且场次数不变 → 判成顺延（previous_starts_at 为空、review_flag 为空、revision 2）；旧第一场正在进行中时被改到当天晚些 → 判成顺延（同上）；场次数变了 → 真改期（previous_starts_at 为原开始、review_flag source_time_changed_near_start、revision 2）；结束时间变了 → 真改期（同上）；全天系列 → 判成顺延。revision 读方：① 客户端读：app/src/composables/useCommunityEvents.ts 第 55 行（详情查询的列清单）、第 57 行（类型 Pick）；app/src/utils/communityEvents.ts 第 53 行（类型字段 revision: number）。客户端没有任何比较或分支用到它。 ② 服务端返回或授权：supabase/migrations/20261120122054_community_events.sql 第 276 行（GRANT SELECT 的列清单）、第 766 行（list_community_events 的返回列）、第 808 行（RPC 选出 event.revision）；VERIFY_20261120122054 第 93、240、243、246 行和 VERIFY_20261122035253 第 96、243、246、249 行钉住列定义和 anon、authenticated、service_role 的列授权。 ③ 比较或条件使用：没有。唯一的写入是 community_events_schedule_change 触发器（20261120122054 第 356、358 行）在开始时间或地点变化时 +1；api/ 没有命中；scripts/community-events.test.mjs 第 321–330 行、REGRESSION_20261120122054 第 760 行、REGRESSION_20261123201501 第 138–274 行只断言它的值。迁移 C 不读不写 revision，系列顺延时由触发器照样 +1（第 3 项第 6 条子用例断言 2）。
+- ci_run_url: —（未推送）
+- 未测项: K16 重跑、第 7 步（排在 followups 门禁之后）
+- 下一条: K16 重跑与第 7 步，然后 k3
+
+### L577 · 2026-11-27 14:20 CT · D-61第2项 #385 PR CI 通过
+- task_id: D-61.2
+- code_sha: 1a5dd986ca0071464e2ca11a19a16084b2b00a22
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: GitHub Actions（pull_request）
+- 命令: gh run list --branch codex/community-smoke-fixture-20261124 --event pull_request --limit 1；gh run view 46059363614 --json jobs
+- 计数: run 46059363614，headSha 1a5dd986（等于刚推的 head），completed/success：Build mp-weixin 23 秒、Build H5 6 分 35 秒、Smoke (public page sweep) 30 分 16 秒、Type-check 29 秒、Boundary regressions 4 分 20 秒，均 success 且有步骤；Smoke (protected staging account)、Production release readiness 按 pull_request 跳过、0 步骤，不算验收。#385 推送 1/2（第二次未用）、正文追加 1/1；第 2 项完成线已达。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/46059363614
+- 未测项: 合并 #385（supervisor；STATUS 阻塞第 41 条）
+- 下一条: campus K16 重跑与第 7 步、followups 门禁
+
+### L578 · 2026-11-27 14:47 CT · D-61第3、10项 K16 重跑与回放后第 7 步
+- task_id: D-61.3、D-61.10c
+- code_sha: 6837794af30210dd77e1bd6c7e738ad2866c1ec0（k2）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-campus-20261127；容器锁内
+- 命令: K16b：C 末尾 COMMIT; 之前追加 CREATE OR REPLACE FUNCTION public.finish_community_event_sync(...)（A 第 130–143 行、RETURN FOUND; 改 RETURN  FOUND;），只跑 scripts/community-campus-checks.test.mjs；第 7 步：工作区 C 的 COMMIT; 之前临时加 ALTER FUNCTION public.admin_execute_mutation(text,uuid,text,text,jsonb) SET statement_timeout = '5s';，controls 副本只跑钩子第 2 步，跑完恢复 C
+- 计数: K16b check-20261127T204156Z：12 条里红 3 条——第一条（合同含 md5）、第二条（拒绝第二次执行）和第三条（preflight and verification，第 3 项写明函数体变异时它也会红）；第四条及 8 条子用例全绿，skipped 0，恢复核过。至此十八个变异全部按期望。第 7 步：变异后 C 的 sha256 前 8 位 d7ce44b4；回放 lsql-20261127T204534Z 188/188/0/1；钩子第 2 步报错，首错 community_member_events_function_attributes:public.admin_execute_mutation(text,uuid,text,text,jsonb):t:v:search_path=pg_catalog|statement_timeout=5s，开头与原文一致；恢复后 C 的 sha256 回到 37ca561a5cc6cb3919e4c11927bd1bfbbfb5005b8fac29b972c0ede7ef7f1eaf，工作区 0 行。与原文不同的一处照实记：原文预期这次回放 rc≠0，实际回放 rc=0——我的钩子把输出写在钩子目录，不进回放日志，controls 脚本末尾按日志数 ERROR，所以不含第 2 步的报错；第 2 步本身按期望报错。按第 10 项 c，第 7 步不改任何文件、不挡冻结。第 10 项 c 第 1–7 步至此做完。
+- ci_run_url: —（未推送）
+- 未测项: 冻结 C（在最终 head 上 install test 与 CI 边界命令通过后）
+- 下一条: k3、k4、k5
+
+### L579 · 2026-11-27 14:47 CT · D-61第7、10项 followups 门禁全量与六十轮；report-views 一条判为 main 上同样不稳定
+- task_id: D-61.7、D-61.10b
+- code_sha: 8d0e308c3f9957a6f3e6070d390b98696c529543（followups f3）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-b14-followups 与 ~/work/confirm-main-a60aa563；容器锁内
+- 命令: 全量（同第 1 项 f）；SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60"；SMOKE_SPECS="community-report-views.spec.ts:51 --repeat-each=3" 在分支和 confirm-main 各跑一次（D-56 第 5 项、BACKLOG §14 第 5 行）
+- 计数: 全量 check-20261127T195338Z：install、typecheck、h5、h5accept（52/52）、mp、mpci、migrations、npmaudit rc=0；TEST tests=3100 pass=3099 fail=0 skipped=1 pg_skips=0（B_TEST+7）；smoke Running 805（B_SMOKE+3，W5b），803 passed、1 skipped、1 failed：community-report-views.spec.ts:51:3 the reporter is told when the report will be looked at, at 1280px，报 strict mode violation——getByText('Received. We\'ll review it within 48 hours.') 同时命中 sr-only 的 role=status 和 uni-simple-toast__text；巡检 68 条 0 失败；unstubbed 0；Failed to scan for dependencies 1 条（等于基线条数）；主包 1469678、event 分包 37721，与基线相同。followups 没改过这个 spec。分支上三连跑 check-20261127T204211Z：6 passed（:51 对应 390、1280 两条 × 3）；confirm-main 三连跑 check-20261127T204656Z：1 failed、5 passed，失败的是同一条、报错原文相同。判定：main 上同样不稳定，见本条；不修，不挡推送，写进 STATUS 阻塞项。旁证：这是 H5 上 registerToastHost 被条件编译掉时 pushToast 同时出原生 toast 的已知问题，#385（4fc14fff）修的就是它，#385 门禁里同一 spec 0 失败。:699 六十轮 check-20261127T204255Z 60/60。门禁判为「通过（另有 1 条 main 上同样不稳定，见 L579）」，CI 边界命令另记。
+- ci_run_url: —（未推送）
+- 未测项: CI 边界命令、逐文件计数
+- 下一条: followups CI 边界与推送
+
+### L580 · 2026-11-27 14:57 CT · D-61第5、6、7项 campus k3、k4 与十六个变异；followups 推送与草稿 PR
+- task_id: D-61.5、D-61.6、D-61.7、D-61.10d
+- code_sha: 7f9031e63bd079c1bbf81ef9c0d8c6c0f0612a66（campus k4）；8d0e308c3f9957a6f3e6070d390b98696c529543（远端 codex/community-b14-followups-20261127）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；容器锁内
+- 命令: campus：k3 单跑四个测试文件后提交；k4 单跑三组测试后提交；$EV/mutate.py 跑 k4 十六个变异；followups：推送前 fetch、main 前进判定、工作区、冻结路径，scan17d.py a60aa563 --log，git push -u；scan17d.py --text 正文 --log 后 gh pr create --draft --base main
+- 计数: k3 单跑 check-20261127T205320Z：16/16；k3 = 0de9c76d（根 RUNBOOK +63/−13、ENV_CHECKLIST +8），17d scan105 exit 0。k4 单跑 check-20261127T205340Z：32/32、skipped 0（测试一 7、worker 9+3、真模块用例 12+1）；k4 = 7f9031e6，git diff a60aa563 -- vercel.json 为空，api 目录非 M 的只有 A api/_community-campus-checks.test.mjs；17d scan107 exit 0。k4 变异第一次跑在 M02 停下（我的 find 在模块里出现两次，CAACI 同步也有同样两行），工作区未动；改用 syncCampusEvents 独有的上下文后整组重跑（20:55–20:56Z）：M01 → 1 红；M02、M03 → 2 红；M04 → 3 红；M05、M06 → 4 红；M07、M08、M09 → 5 红；M10 → 6 红；M11 → 7 红；M12 → worker 1 红；M13、M14 → worker 2 红；M15 → worker 3 红；M16 → 真模块那条红；M02、M04 另让走同一模块路径的 worker 用例一并红；skipped 均 0，恢复全部核过。followups：门禁见 L579，CI 边界命令 tests 3100、fail 0、skipped 1、338 秒；逐文件 sync 37→43、budget 5→6、worker 9→9，合计 +7；smoke 只有 layout spec 6→9。推送前 origin/main 仍 a60aa563，scan17d.log 第 106 行 HEAD 8d0e308、exit 0，pre-push 钩子通过，推送新分支，ls-remote 为 8d0e308c（推送 1/2）；正文 scan 第 108 行 exit 0；草稿 PR #387（base main，标题照原文），REST 读回正文逐字相同（开 PR 1/1）；PR CI run 46066948947 进行中。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/46066948947
+- 未测项: #387 CI 结论；campus k5 与门禁
+- 下一条: k5
+
+### L581 · 2026-11-27 14:58 CT · D-61第6、8项 k5 与三个变异；第 6 项机械核对
+- task_id: D-61.8、D-61.6
+- code_sha: fac3b935dc6e7ca989674fa4e2de422815a59540（campus k5）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-campus-20261127；容器锁内
+- 命令: 先只在 api/_campus-ics.test.mjs 末尾加新用例单跑（修前），再把 api/_campus-ics.js 第 79 行换成原文那行单跑（修后），提交；$EV/mutate.py 跑三个变异；第 6 项完成线的 grep 在 k5 head 与 a60aa563 上各核一次（反向）
+- 计数: 修前 check-20261127T205643Z：30 条里只红新加的 recurrence rules are refused in any letter case, and an alarm inside an event is not one（第一条断言：小写 rrule 在 a60aa563 的解析器上得到 1 行）；修后 check-20261127T205705Z：30/30。k5 = fac3b935，git diff --name-only k5^ k5 恰好 api/_campus-ics.js、api/_campus-ics.test.mjs 两行；17d scan109 exit 0。变异：去掉 toUpperCase → 新用例在第 255 行（小写）红；删 EXRULE → 第 256 行（EXRULE）红；stack.at(-1) 放宽成 stack.includes → 第 258 行（VALARM 对照）红，另有既有的 VALARM duration and trigger do not reject a valid event 一并红；恢复全部核过。第 6 项完成线（k5 head 上；括号里是 a60aa563 的值）：Every step must succeed with the NOTICE below 0（1）、The hosted query endpoint returns rows, not NOTICEs 1（0）、use the SELECTs 0（1）、after steps 3 and 17 and 1（0）、^This sequence was applied in full on staging 1（0）、^This condition was met on 2026-11-26 1（0）、^### Community campus checks release$ 1（0）、that is expected, not drift 1（0）、^## Campus events checks$ 1（0）、it is not written to sync_state, so the SELECT above still shows the previous run 1（0）、Before B is applied 0（1）、community campus checks need attention | campus refresh 1（0）；ENV_CHECKLIST ^### Community events (background-jobs worker and admin API)$ 1（0）、三个 COMMUNITY_* 行 3（0）；README 尚未应用 1（7）、2026-11-26 已在 staging、生产应用 5（0）。每一条在 a60aa563 上都不通过（反向）。
+- ci_run_url: —（未推送）
+- 未测项: campus 最终门禁（排队中）、冻结 C
+- 下一条: campus 门禁、冻结 C、推送与草稿 PR
+
+### L582 · 2026-11-27 15:31 CT · D-61第7项 f3 三个变异（补记）与 #387 PR CI 通过
+- task_id: D-61.7、D-61.10d
+- code_sha: 8d0e308c3f9957a6f3e6070d390b98696c529543（远端 codex/community-b14-followups-20261127）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-b14-followups；$EV/mutate.py 一次持锁跑完三例（19:51:00–19:53:26Z），每例恢复后核 sha256 和 git status；PR CI 在 GitHub Actions（pull_request）
+- 命令: 每例临时改 app/src/components/EventsSidebar.vue，SMOKE_SPECS="community-event-layout.spec.ts" $RC <目录> smoke；gh run view 46066948947 --json jobs
+- 计数: 这三例在 L574、L580 都漏记了，本条补上。M5 在 1024 断点前加一条 900px 起显示侧栏的规则 → 900、1023 两档 the open creation switch leaves the full width to the list 红，768 绿（check-20261127T195100Z）；M5c 断点 1024 改 1000 → 只有 1023 那档红（…195154Z）；M5d 断点改 1025 → 只有 1024 的 the sidebar returns at the desktop breakpoint 红（…195237Z）；三例恢复全部核过。#387 的 PR run 46066948947（headSha 8d0e308c）completed/success：Build H5 6 分 31 秒、Build mp-weixin 23 秒、Boundary regressions 4 分 20 秒、Type-check 28 秒、Smoke (public page sweep) 34 分 49 秒，均 success 且有步骤；Smoke (protected staging account)、Production release readiness 按 pull_request 跳过、0 步骤，不算验收。followups 推送 1/2（第二次未用）、开 PR 1/1；第 7 项完成线已达。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/46066948947
+- 未测项: 合并 #387（supervisor）
+- 下一条: campus 最终门禁、冻结 C、推送
+
+### L583 · 2026-11-27 15:55 CT · D-61第10项b campus 最终门禁（fac3b935）
+- task_id: D-61.10b
+- code_sha: fac3b935dc6e7ca989674fa4e2de422815a59540（campus k5）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-campus-20261127；容器锁内，umask 022，前后磁盘约 323 GB
+- 命令: 全量（同第 1 项 f）；SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60"；CI 边界命令（照 ci.yml，不挂 /dev-env，--test-concurrency=3）
+- 计数: 全量 check-20261127T205745Z 各 STEP rc=0：h5accept 52/52；TEST tests=3118 pass=3117 fail=0 skipped=1 pg_skips=0（B_TEST+25：k1 +2−1、k2 +12、k4 +11、k5 +1，标题逐条对过）；smoke Running 802（801 passed、1 skipped、0 failed，与基线相同）；巡检 68 条 0 失败；unstubbed 0；Failed to scan for dependencies 1 条（等于基线）；主包 1469678、event 分包 37721，与基线相同。:699 六十轮 check-20261127T214639Z 60/60。CI 边界命令 tests 3118、fail 0、cancelled 0、skipped 1，与全量 TEST 相同，349 秒。
+- ci_run_url: —（未推送）
+- 未测项: PR CI（推送后）
+- 下一条: 冻结 C、推送与草稿 PR
+
+### L584 · 2026-11-27 15:55 CT · D-61第10项c 20261127175345_community_campus_checks.sql 冻结
+- task_id: D-61.10c
+- code_sha: fac3b935dc6e7ca989674fa4e2de422815a59540（冻结 head）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-campus-20261127
+- 命令: git diff 6837794a fac3b935 -- supabase scripts/fixtures；git show fac3b935:<文件> | shasum -a 256；git show fac3b935:supabase/migrations/manifest.sha256 | sed -n 191p
+- 计数: 20261127175345_community_campus_checks.sql 冻结，冻结 head fac3b935dc6e7ca989674fa4e2de422815a59540。冻结条件：第 10 项 c 第 1–7 步做完（L573、L578；第 7 步回放 rc 与原文预期不同，照原文不挡冻结），十八个变异全部按期望（L576、L578）；同一 head 上 install test 和 CI 边界命令都通过（L583）；L-SQL 头 6837794a 到冻结 head 的 git diff -- supabase scripts/fixtures 为 0 行。四个文件的 sha256：C 37ca561a5cc6cb3919e4c11927bd1bfbbfb5005b8fac29b972c0ede7ef7f1eaf；PRECHECK_C e43023540f17560e8aac8631fcf9fd04c5fa937da61b8e64b62b1e07af088980；VERIFY_C d75d5626aa6e9e99b671eb27ad00563cd2c9a875ae1ffb6090189f5d0637b90a；REGRESSION_C 22976715e2e00d645dd038a6d612d418753c1f3f4af20ac32993b200ea262e2f。manifest 第 191 行即 C 的 sha256，manifest 共 191 行，原 190 行与七条已冻结迁移逐字未动。以后不再改 C、三份 _ops 文件和 manifest 第 191 行；C 有缺陷时不改 C，停下交 supervisor（只能另起迁移 D）。本记录随第二次材料推送公开，晚于 campus 推送（⑧）。
+- ci_run_url: —
+- 未测项: C 未应用到任何托管库
+- 下一条: campus 推送与草稿 PR
+
+### L585 · 2026-11-27 15:59 CT · D-61第10项d campus 推送与草稿 PR #388
+- task_id: D-61.10d
+- code_sha: fac3b935dc6e7ca989674fa4e2de422815a59540（远端 codex/community-campus-checks-20261127）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb
+- 环境: tony-ws；~/work/illini-campus-20261127
+- 命令: git fetch；main 前进判定；git status --porcelain --untracked-files=all；七条冻结迁移、.github、vercel.json 的 diff；git diff fac3b935 HEAD -- supabase scripts/fixtures；scan17d.py a60aa563 --log；git push -u；hexcheck.sh 用 fac3b935 的 manifest 核三个 PR 新正文；scan17d.py --text $EV/pr-campus.body.md --log；gh pr create --draft --base main，标题照原文
+- 计数: 推送前 origin/main 仍 a60aa563、a60aa563..origin/main 无新迁移，工作区 0 行，冻结路径 diff 0 行，冻结 head 到 HEAD 的 supabase、scripts/fixtures diff 0 行，材料 STATUS_LOG 已有 L584 冻结记录；逐文件计数 campus-ics 29→30、campus 模块测试 0→7、worker 9→12、campus-checks 0→13、发布清单 1→2、迁移计数 2→2，合计 +25。scan17d.log 第 110 行 HEAD fac3b93、exit 0、无 kind；仓库 pre-push 钩子全过；推送新分支，ls-remote 为 fac3b935（推送 1/2）。hexcheck 三个正文 full=0、unknown=0、partial=0；正文 scan 第 111 行 exit 0；草稿 PR #388（base main），REST 读回正文逐字相同、标题等于原文（开 PR 1/1）；PR CI run 46073761571 进行中。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/46073761571
+- 未测项: #388 CI 结论
+- 下一条: 第二次材料推送（FINAL 第十五批与 STATUS）
+
+### L586 · 2026-11-27 16:30 CT · D-61第9项j、第10项d campus PR CI 通过；第二次材料推送前复核
+- task_id: D-61.9j、D-61.10d
+- code_sha: fac3b935dc6e7ca989674fa4e2de422815a59540（campus）；1a5dd986ca0071464e2ca11a19a16084b2b00a22（#385）；8d0e308c3f9957a6f3e6070d390b98696c529543（followups）
+- docs_sha: c6ea9cbc0c2b71a147c94e017e5168f9a90e4abb（本次推送之前的远端材料 HEAD）
+- 环境: 主会话；~/work/illini-docs 工作区（第二次材料推送的内容，未提交时核）
+- 命令: gh run view 46073761571 --json jobs；gh pr view 385/387/388；git ls-remote origin（main、三个代码分支、材料分支）；$EV/check9j.py（第 9 项 j 全部机械核对，每条先在副本上做反向）；hexcheck.sh 用 fac3b935 的 manifest 核 FINAL 第十五批全节和三个 PR 新正文，并做插入全值、删两位、恢复三步对照
+- 计数: #388 的 PR run 46073761571（headSha fac3b935）completed/success：Type-check 24 秒、Boundary regressions 4 分 54 秒、Build H5 6 分 7 秒、Smoke (public page sweep) 30 分 16 秒、Build mp-weixin 22 秒，均 success 且有步骤；Smoke (protected staging account)、Production release readiness 按 pull_request 跳过、0 步骤。campus 推送 1/2（第二次未用）、开 PR 1/1；第 3–6、8 项完成线已达。推送前复核：#385、#387、#388 都是 OPEN、草稿、base main，head 依次 1a5dd986、8d0e308c、fac3b935，与 ls-remote 一致；main 仍 a60aa563；材料远端 c6ea9cbc。第 9 项 j 的 23 组机械核对在工作区全部通过，每组的反向（换回 97209532 的原文，或在副本里改 FINAL 第十四批一个字节、改 STATUS 原第 14–48 行一个字节、删 STATUS_LOG 一行、把第 31 条换成未填模板）全部不通过。hexcheck：FINAL 第十五批全节和三个 PR 新正文都是 full=0、unknown=0、partial=0；对照里插入 C 的完整值时 ① 通过（full=1、unknown=0），删两位后 ② 报红（partial=1），恢复后变绿。
+- ci_run_url: https://github.com/EricXu-0805/CAACI_Community_Marketplace_Bazaar/actions/runs/46073761571
+- 未测项: —
+- 下一条: 第二次材料推送（FINAL 第十五批与 STATUS 同一提交）
