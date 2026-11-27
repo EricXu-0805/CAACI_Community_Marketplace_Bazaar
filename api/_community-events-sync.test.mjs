@@ -1,7 +1,7 @@
 // Offline protocol coverage; every upstream call uses the injected fixture fetch.
 import assert from 'node:assert/strict'
 import { after, afterEach, test } from 'node:test'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 
 const originalFetch = globalThis.fetch
 const originalFlag = process.env.COMMUNITY_SYNC_CAACI_EVENTS
@@ -105,8 +105,12 @@ test('the upstream request is fixed, unauthenticated, bounded and projects only 
     'starts_at', 'summary', 'summary_en', 'takes_registrations', 'time_zone', 'title', 'title_en',
   ]
   for (const projected of applied.args.rows_in) assert.deepEqual(Object.keys(projected).sort(), expectedKeys)
-  const migration = readFileSync(new URL('../supabase/migrations/20261123201501_community_event_sync.sql', import.meta.url), 'utf8')
-  const databaseKeys = [...new Set([...migration.matchAll(/source_row ->> '([^']+)'/g)].map(match => match[1]))].sort()
+  const migrations = new URL('../supabase/migrations/', import.meta.url)
+  const definitions = readdirSync(migrations).filter(name => /^\d{14}_.+\.sql$/.test(name)).sort()
+    .map(name => readFileSync(new URL(name, migrations), 'utf8'))
+    .filter(sql => /^CREATE (?:OR REPLACE )?FUNCTION public\.apply_caaci_event_snapshot\(/m.test(sql))
+  assert.ok(definitions.length >= 2, 'A creates the snapshot function and B replaces it')
+  const databaseKeys = [...new Set([...definitions.at(-1).matchAll(/source_row ->> '([^']+)'/g)].map(match => match[1]))].sort()
   assert.deepEqual(databaseKeys, expectedKeys)
 })
 
