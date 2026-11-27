@@ -1596,6 +1596,1273 @@ Eric 答复待定项：在 PR #369 或 V5 草稿 PR 留言「D-xx：选 A（补�
      - j. 推送之后再结束目标、取消续跑提醒，然后追加一条 STATUS_LOG 记这两件事，照 17d 扫描后推送（材料第三次），scan17d.log 留一行，然后停下。不从 BACKLOG 往下接任务。
      - k. 仓库仍是公开的，安全补充照旧；核查清单原文、账号邮箱、口令、凭据和 /home 开头的绝对路径不进仓库、提交说明、PR 正文和评论。
      - 完成线：P3、P4、#380 正文、材料分支都按 f 推送并核过远端；FINAL 第十四批和 STATUS 同一个提交；g 的核对通过；目标结束、提醒取消。仍开着：④ 列的全部 Eric 事项；D-61 的学校写库（迁移 C）。
+- **D-61 第十五批：P3/P4 上线后的第一批——#385 跟上 main 并给四条活动路由补巡检名单；前向迁移 C（学校活动逐条刷新的两个服务函数和详情第 11 行的只读函数，不含导入）、它的运维文件和默认关着的刷新 worker；发布清单测试拆段；第十四批的测试尾巴；发布事实和第十四批更正写进材料**（2026-11-27 CT，Claude（Eric 自己账号上的 supervisor 会话）按 D-43 定并写入）：依据是 Eric 2026-11-20 03:17 CT 原话「可以，所有东西我都批准了，你继续弄吧，反正还有额度，直接猛攻」，和 2026-11-27 01:55 CT 原话「可以，你操作吧，然后后面就不用我的账号的chatgpt跑了，换成caaci的，我可以重新登录一下两个号，后面就正常用那边的Claude就可以」（第 0 项）。【硬】条照旧高于本条，本条不放开任何【硬】条。七条已冻结、并已应用到两个托管库的迁移 20261112120000（e2a85c3e…）、20261114015420（0dc2ceaf…）、20261120100354（c2a18ee8…）、20261120122054（a8c0e083…）、20261122035253（b93ea1ed…）、20261123201501（下称 A，bb2f91e6…）、20261125004742（下称 B，80395cc7…）一个字节都不改；manifest.sha256 里 a60aa563 上已有的 190 行一个字节都不改，只在 campus 分支末尾追加第 3 项新迁移 C 那一行（第 191 行）。这七条的任何修正只能另起前向迁移；RUNBOOK §12 第 9c 条的原地修改例外不重开。C 在第 10 项 c 写明的时点冻结一次，冻结以前改 C 不算改冻结迁移，冻结以后要改只能另起迁移 D。行号一律指 a60aa563（代码，main）、4fc14fff（#385）和 97209532（材料）上的实际行号；#385 合并 main 之后的行号写成「c1 后第 N 行」。本条只追加在 DECISIONS.md，其余材料文件的行号不变。本条的代码块按所在列表的层级整体多缩进了几个空格（围栏 ``` 那一行前面有几个空格，就是每行要去掉的量），照抄时去掉这层缩进；本条给的 sha256、md5 都按去掉缩进后的字节算，照抄得到的值和本条不同就是抄错了，先查差异，不改本条的期望去迁就。下文 `<C>` 指 C 的文件名 `<C 时间戳>_community_campus_checks.sql`，`<17b>` 指 RUNBOOK §12 第 17b 条那两个 `-c` 身份参数，`$EV` 是 ~/work/evidence/D61。本条写明的非【硬】例外只有：
+  - 分支：推送 BACKLOG §1 表外的三个分支，名字照写，不按 RUNBOOK §3 改日期：codex/community-smoke-fixture-20261124（#385，不开新 PR）、codex/community-campus-checks-20261127、codex/community-b14-followups-20261127（各开草稿 PR 一次，base main）。三个分支都 base main、互相独立：没有叠起来的 PR，不用 `-s ours`，任一分支出问题不挡另外两个推送。推送次数见第 10 项 d。codex/community-p3-20261120、codex/community-events-20261120 已合并，本批起不再推送（第 9 项 h 在 RUNBOOK §12 第 6b 条加注）。
+  - main 前进：supervisor squash 本批三个 PR 之一的，照 BACKLOG §14 第 2 行的前一种处理（更新 STATUS 的基线，继续），不论它改了哪些文件。其他前进逐个提交看 `git log --stat <起点>..origin/main`（起点起初是 a60aa563，每次照前一种处理之后换成当时的 origin/main）：只动了 app/smoke/、文件名含 `.test.` 的文件和 .md 的，照前一种；动了别的（supabase/、.github、vercel.json、package*.json、app/src/、api/）的照后一种：STATUS 阻塞写一条报 Eric（原文交 supervisor 转达），三个代码分支都不推送，等 supervisor 通知，本地工作照做。第 2 项开工时判一次，以后每次代码推送之前再判一次，结论写进 STATUS_LOG。本批分支不主动合 main；GitHub 在 PR 上报冲突时才照第 2 项 c1 的写法普通 merge，不 rebase。
+  - 17d 提前适用：从第 1 项起，第 9 项 g 的新 17d 原文落进材料之前，所有推送、开 PR、改 PR 正文也照那段原文对账。
+  - 第 3–5、8 项在依赖没有全部「通过」时开工（BACKLOG §0.1 第 2 条）：P4.7 第二步依赖的 P4.2 是「部分」，第三步和解析器加固只做本条写明的部分；D-33 的白名单仍等 Eric。
+  - 改已有断言或钉值的预期，只限下面这些，不算 STOP-14 的删断言：
+    - README.md 第 91 行的 187 → 188、第 92 行在 B 那一项后面加 C 一项，并把这一行 P3/P4 五项的「尚未应用」改成「2026-11-26 已在 staging、生产应用」、社区标题/板块和 20261114015420 两项的改成「已在 staging、生产应用」（没有测试钉这几处措辞）；scripts/release-migration-count-boundary.test.mjs 第 37 行 187 → 188（第 6 项 c）；
+    - scripts/community-release-checklist-boundary.test.mjs 照第 6 项 a 整个重写：第 24 行 `file.slice(0, 14) > '20261114015420'` 是唯一放宽的条件，换成钉死的五个文件名加 RELEASED_THROUGH，原有断言（含时间戳严格递增、指令行内容两条）全部保留并加严；
+    - api/_community-events-sync-budget.test.mjs 第 89 行 `assert.equal(logs.length, 1)` 收紧成整条日志；api/_community-events-sync.test.mjs 第 108–110 行改从最后一个定义 apply_caaci_event_snapshot 的迁移读键集（第 7 项 A、A2）；
+    - app/smoke/community-event-layout.spec.ts 第 83–100 行（到文件末尾）的 768 用例改成 768、900、1023 三档循环，断言不变（第 7 项 W5b）；
+    - #385 上 app/smoke/pages.smoke.spec.ts 只改 c1 后第 201 行那句注释和第 245–246 行的 STUB_READS（第 2 项）；
+    - 测试辅助（不是断言）：api/_community-events-sync-worker.test.mjs 第 9 行的 keys、第 37 行之后的开关设置、第 54 行之前的目的地分支、第 60 行的 claim 分支（另加两个学校 RPC 分支）和第 85 行 syncCalls 的正则（第 5 项）；scripts/fixtures/community-member-events-database.mjs 只在第 82 行之后追加一个导出，已有的三个导出不改（第 3 项）。
+  - 第 6 项改仓库根 RUNBOOK.md 的「Schema-coupled release order」（第 582 行之后加一段）、「Community P3+P4 release」「CAACI events sync」三节和「Server-side alerts and what they actually mean」表（加一行），新增「Community campus checks release」「Campus events checks」两节，ENV_CHECKLIST.md 新增一节三行。第 9 项照本条写明的内容改 STATUS、BACKLOG、ENGINEERING、FINAL 和材料分支 RUNBOOK（§3 表、§11 E4 和 E6、§12 第 6b 条、第 17 条引言、第 17d 条）；§12 第 17 条由 supervisor 维护，OMO 只按第 9 项 g 的原文改。
+  - 门禁判法沿用 D-60 抬头那一款：页面巡检必须 0 失败，RUNBOOK §3「全部 rc=0」和 BACKLOG §0.3「smoke 0 failed」适用，只保留 D-56 第 5 项「main 上同样不稳定」那一款；main 对照用第 1 项 e 建、f 起用的 ~/work/confirm-main-a60aa563。这一款对 pages.smoke.spec.ts、community-event-layout.spec.ts、marketplace-responsive.spec.ts:699 和 :767、本批新增和改过的 spec 都不适用。npmaudit 照 D-60 第 10 项 b 那一款判；CI 边界命令里已知的那一条偶发照第 10 项 b 重跑一次，以重跑为准。
+  - STOP-14：第 10 项 c 里 VERIFY_C 的负对照或 REGRESSION_C 的变异轮修两轮仍不符的，不走「再试 3 次、【跳过】」，照第 10 项 c 记录、交 supervisor，C 照常冻结（D-60 第 10 项 c 对 B 是同一写法）。C 本身的测试（第 3 项的 node 测试、第 10 项 c 的 L-SQL 链）不在这条例外里。
+  - 临时 worktree：第 10 项 b 复现 PR 合并引用用的 ~/work/confirm-mergeref-<分支简称> 不进 §3 表，用完照那一款删；它在的时候 `git worktree list` 多这一行不算违反 §3。
+
+  其余现有断言真因此翻转的，不改，记进 STATUS_LOG 交 supervisor。三个代码 PR 都不转 ready、不改 base、不合并（合并由 supervisor 做）；材料 #370 照旧。其余规则一条都不放开。用号照第 0 项。本条下发前过了独立审阅，按审阅意见改过。
+  0. **背景（照抄进 STATUS，新节标题写「第十五批开工背景（D-61 第 0 项，逐字照录）」，放在第 14 行「第十四批开工背景」之前，STATUS 第 14–48 行一字不动；照抄前用 `gh pr view <号> --json state,mergeCommit,baseRefName,isDraft,headRefOid` 把 379、380、385、386 各核一遍，对不上的照实另写一行，不改本项原文）。**
+     - 现场事实（supervisor 2026-11-27 约 09:00Z 实查，UTC）：合并链是 #386 → 30d847e1（2026-11-26T04:44:02Z，两个 smoke job 的上限 45 → 70 分钟）；#379 → e46606b1（05:57:05Z，审过的 head 8e45b5d3，树 e09ac890）；#380 → a60aa563（06:31:59Z，审过的 head 8dd4c8c1，树 c199d177；8dd4c8c1 是 962f785b 加 supervisor 的 axe 修正 21ab889c、普通合 P3 的 8e45b5d3，再用 `-s ours` 记下 e46606b1）。21ab889c 不是 main 的祖先，它的内容随 a60aa563 进了 main：app/smoke/community-event-desktop.spec.ts 和 community-event-freshness.spec.ts 里四处把整份 visual audit 跟 `axe: []` 比的断言改成 `{ ...audit, axe: audit.axe ?? [] }`。main 的 push run 45768847900（a60aa563，七个 job）、45764889702（e46606b1）、45757069295（30d847e1）都是 success。合并过的分支都没删。仍开着的草稿：#385（codex/community-smoke-fixture-20261124，4fc14fff，base main，从 321a916f 起 2 个提交）、#370（材料分支 codex/community-plan-v5，97209532）。
+     - 生产 H5：dpl_H8f7D4i8pzVfK3Gzcnoybfhp7FJw（a60aa563），www 从 2026-11-26 07:12:04Z 起服务；supervisor 按 docs/SUPERVISED_RELEASE.md 第 5 步只走观察路径核过 deployment-identity。回退办法是 promote dpl_9KmHcW（9171976e）。
+     - 托管迁移：五条 P3/P4 迁移由 Eric 跑 supervisor 的 17 步执行脚本应用到两个库，PRECHECK、VERIFY 全部通过；第 3、9、16、17 步之后读开关行，两库都是 enabled=false；最后读回 apply_caaci_event_snapshot 的 md5，两库都是 55227c4b42b7ac90e9b1ba34f274b057。账本一律按 name 核，version 是应用时刻，不是文件名时间戳：
+       - staging（hygkwxugskijadgfisji，2026-11-26 03:17:42–50Z）：20261120100354 → 20261126031743，20261120122054 → 20261126031744，20261122035253 → 20261126031745，20261123201501 → 20261126031747，20261125004742 → 20261126031748。此前 supervisor 经 Eric 批准补了两条对账：staging_reconcile_20260903070000_function_whitespace（20261126030631，函数空白差异）和 20261003175231_admin_support_email_ledger（20261126031116，生产早已有）。staging 仍缺 20260811140018、20260811143207，另有十几处函数体与生产不同，本批不碰。
+       - 生产（04:43:20–28Z）：20261126044321、20261126044323、20261126044324、20261126044325、20261126044326，顺序同上。生产没有那两条对账。
+     - 开关：回复通知、成员活动两库都是关；COMMUNITY_SYNC_CAACI_EVENTS 没设；E6 COMMUNITY_OFFICIAL_PROFILE_ID 没设，所以 set_post_official 和 create_event_discussion 返回 409（api/admin/index.js 第 1923、1954 行）。生产 community_events 0 行、community_event_sync_state 0 行（2026-11-25 22:43 CST 只读查）。
+     - 第十四批核查结论：0 blocker；1 major：STATUS.md 第 308 行阻塞第 31 条没照 D-60 第 2 项 f 写（没有「已结：」、门禁日志名和以后补名单的规则），STUB_READS 在 STATUS、FINAL、BACKLOG、RUNBOOK 里一次都没出现。minor 的去向见 FINAL 第十五批 ⑥（第 10 项 f）。另有一处只有 CI 看得见的缺陷：tony-ws 的门禁把 axe 挂在 /dev-env（app/smoke/visual-audit.ts 第 16 行读 `/dev-env/tools/…/axe.min.js`），CI 不挂；OMO 的门禁和 supervisor 的核查都绿，只有按 CI 原样、不挂 /dev-env 跑才看得到 16 条失败，supervisor 在合并前用 21ab889c 修掉。FINAL 第十四批 ④ 第 3 条「托管默认 ACL 未测」已过时：两库的 VERIFY_A、VERIFY_B 都钉了 proacl 并且通过。
+     - 用号（取代 D-60 第 0 项）：omo 二进制已升到 5.1.84（sha256 前 8 位 14b9dfee；旧二进制备份为 5.1.68），派发时 supervisor 把主会话重启到 5.1.84 续上同一会话，模型 anthropic-subscription/claude-opus-5-5（xhigh）。omo.json 的 7 个 category 都是 Claude 在前、GPT 在后，exclude_models openai/* 不变。Claude 顺序 default → account-2 → account-5 → account-4（11-27 重登）→ account-3（登录过期），各号 7 天上限 85%。ChatGPT 顺序 login-4 → login-5（CAACI 的两个号，11-27 新登）→ default、login-2（SIWC 槽位，登录过期，在 tony-ws 上不能重新授权）→ login-3（Eric 自己的号，Eric 11-27 定「留着排最后」，本批不靠它，只在前面的号都不可用时由 omo 自动轮到）。login-4、login-5 也按 85%（supervisor 按 11-21 的号池规则类推代定，Eric 可推翻，见第 10 项 f ⑧）。supervisor 的 watcher 在 82% 提醒，过线的号由 supervisor 临时排到后面。supervisor 09:00Z 的读数：default 7 天 0%，account-4 41%，account-2、account-5 的读数是 5 天前的；login-4 16%，login-5 0%。OMO 不查用量、不切号、不切模型、不调 account_order、不改 ~/.omo；子任务的类别只用 D-57 第 10 项那 7 个，派子任务一律带 category，不用 subagent_type 代替；失败后最多改派一次；出现 fallback 或换号时记一行。停下以 supervisor 的通知为准，停下时照 D-51 第 1 项把已完成的部分写进 STATUS 和 FINAL。公开材料里只写槽位名，不写人名和邮箱。
+     - 17d 的号池邮箱表由 supervisor 在 11-27 补到 8 行（权限 600）；OMO 只核 `test -s` 和去掉空行后的行数，不读内容。
+  1. **开工对账（不推送，所有其他项之前做）。**
+     - a. 只读核两项，写进 STATUS_LOG：`omo --version` 是 5.1.84；`omo doctor --models` 里 7 个 category 的首选都是 Claude。不符的停下交 supervisor，不自己修。
+     - b. 存本条：`git -C ~/work/illini-docs pull --ff-only` 拿到本条，把 DECISIONS.md 里 D-61 全文存成 $EV/D-61.md（`mkdir -p $EV`）。会话压缩或换号以后按项重读这份文件，不凭记忆执行。
+     - c. 本条下发之前就在跑的 terminal monitor 全部 task_cancel，一个都不等（预计 12 个，都是 D-56、D-58 时期挂的，已过时；个数不是 12 的照实写）。取消完照 §12 第 17c 条核一次那三件事；STATUS_LOG 记一条 [OMO自决]，写个数和 id。
+     - d. 四项核对，写进 STATUS_LOG：① `git -C ~/work/illini fetch origin` 后 `git -C ~/work/illini rev-parse origin/main` 以 a60aa563 开头（不是的照抬头 main 前进那一款判）；② ~/work/illini-smoke-fixture 的 `git rev-parse HEAD` 和 `git ls-remote origin codex/community-smoke-fixture-20261124` 都以 4fc14fff 开头，`git status --porcelain --untracked-files=all` 0 行；③ ~/work/illini-p3、~/work/illini-events-20261120 工作区 0 行，从本条起退役、只读，不 pull、不提交、不推送；④ `test -s ~/omo-ctl/pool-emails.txt` 通过，`grep -cv '^[[:space:]]*$' ~/omo-ctl/pool-emails.txt` 是 8。②–④ 不符时：② 停第 2 项交 supervisor，不 stash、不 reset、不 clean；③ 只照实记；④ 任何分支（含材料）都不推送，STATUS 阻塞写一条等 supervisor，本地工作照做。
+     - e. 三个新 worktree，`umask 022` 后建，目录 755：
+       - `git -C ~/work/illini worktree add -b codex/community-campus-checks-20261127 ~/work/illini-campus-20261127 a60aa563`
+       - `git -C ~/work/illini worktree add -b codex/community-b14-followups-20261127 ~/work/illini-b14-followups a60aa563`
+       - `git -C ~/work/illini worktree add --detach ~/work/confirm-main-a60aa563 a60aa563`（基线和「main 上同样不稳定」的对照，只跑不提交，收尾时 `git worktree remove`，不带 --force）。
+     - f. 基线（下面所有预期计数都以它为准）。在 ~/work/confirm-main-a60aa563 上依次跑：
+       - `SMOKE_SPECS="$(cd ~/work/confirm-main-a60aa563/app/smoke && ls *.spec.ts | grep -v -e compiled-chunk-recovery -e compiled-draft-persistence | tr '\n' ' ')" $RC ~/work/confirm-main-a60aa563 install typecheck h5 h5accept mp mpci migrations test smoke npmaudit`（同一行跑完，下称「全量」）；
+       - `SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60" $RC ~/work/confirm-main-a60aa563 smoke`；
+       - `$LSQL ~/work/confirm-main-a60aa563 20261120100354 20261120122054 20261122035253 20261123201501 20261125004742`；
+       - 第 10 项 b 的「CI 边界命令」（目录换成这个 worktree）。
+       STATUS_LOG 记：日志名；TEST 行的 tests、pass、fail、skipped、pg_skips（下称 B_TEST）；smoke 的 Running N 和 passed、failed、skipped（B_SMOKE）；smoke 日志里 `[WebServer]` 行含 `Failed to scan for dependencies` 的条数；L-SQL 的 files、replayed 和五个 TOTAL 行（B_LSQL）；mpci 主包和 event 分包字节；CI 边界命令的 `# tests`、`# fail`、`# skipped` 和耗时（B_CI）；每一条失败用例的原文（交 supervisor；supervisor 认定为 main 上同样不稳定的，才作为后续分支的对照名单）。预计值（推算，以实测为准）：TEST 3093/3092/0/1、pg_skips 0；smoke Running 802、801 passed、1 skipped；Failed to scan 1 条；L-SQL files=187 replayed=187，P3_TOTAL 703、EV_TOTAL 855、MEV_TOTAL 38、SYNC_TOTAL 35、CAP_TOTAL 8；主包 1,469,678，event 37,721（main 与第十四批最终 head 962f785b 只差 ci.yml 和两个 spec 的断言）。除 npmaudit（照抬头那一款）和 CI 边界命令的已知偶发（照第 10 项 b 那一款）以外，任何一步 rc≠0 的，失败原文交 supervisor；supervisor 判定之前任何代码分支都不推送，这次基线也不当「main 上同样不稳定」的对照名单，第 2–8 项的本地提交、变异和 L-SQL 照常做。CI 边界命令在基线上因为环境（cpuset、镜像、挂载）失败的，单独记一条，只影响 B_CI 这一组对照，不挡别的项。
+     - 第 1 项要写进材料的（RUNBOOK §3 表、§12 第 6b 条）见第 9 项 h，随第一次材料推送。
+     - 完成线：a–f 都写进 STATUS_LOG，B_TEST、B_SMOKE、B_LSQL、B_CI、主包、分包六组数都在。仍开着：无。
+  2. **#385 跟上 main，给四条活动路由补 STUB_READS（~/work/illini-smoke-fixture，分支 codex/community-smoke-fixture-20261124）。**
+     - 依据：P3、P4 先进了 main，#385 还停在 321a916f。合并本身没有冲突，但只合并的话 T1 会红：c1 后第 196–210 行的 STUB_TABLES、STUB_RPC 有 community_event_sync_state、list_community_events、community_member_events_open，第 242–247 行的 STUB_READS 只有首页和广场两项。ci.yml 里所有 checkout 都没写 `ref:`，PR 事件测的是分支 head 加 main 的合并引用，所以只推 c1 的话新的 PR run 会红，c1、c2 必须同一次推送一起推。#385 上已有的 run 不用重跑：重跑沿用当时的合并提交，测不到新的 main。
+     - c1，合并提交，提交里不夹任何手工改动：`git <17b> merge --no-ff -m "Merge main <origin/main 前 8 位> into codex/community-smoke-fixture-20261124" <当时 origin/main 的 SHA>`，不加 -X，不 rebase。核五样写进 STATUS_LOG：① `git rev-parse HEAD^{tree}` 是 a3c92f29（main 仍是 a60aa563 时）；② `git diff --stat origin/main HEAD` 恰好 5 个文件、+137/−12；③ `git diff origin/main HEAD -- supabase .github vercel.json` 为空；④ `git show --cc --format= HEAD` 为空；⑤ `git merge-base --is-ancestor <合并的 SHA> HEAD` 返回 0。main 已经不是 a60aa563 的：新提交碰到 app/smoke/pages.smoke.spec.ts、stub-backend.ts、viewport-inset-consumers.spec.ts、conditional-import-boundary.test.mjs、app/src/composables/useAppToast.ts 或 app/src/components/AppToast.vue 的，不合并，停这一项交 supervisor；没碰的照样合并，① 改用 patch-id 核：`git diff origin/main HEAD -- app/smoke/pages.smoke.spec.ts | git patch-id --stable` 第一列是 55e3ab82924d886ef6dc51c53dad80a34875f6bf，另外四个文件合起来是 76f9c1cc0ff26d330109607017c1aea927795291。
+     - 修前对照（只在 c1 上跑一次，这是名单提交必需的证据）：`SMOKE_SPECS="pages.smoke.spec.ts -g 'T1 stub read inventory'" $RC ~/work/illini-smoke-fixture smoke`，必须 1 failed，期望列表比实际多出且只多出 community_event_sync_state、rpc:community_member_events_open、rpc:list_community_events 三项，原文写进 STATUS_LOG。T1 绿了或多出的项不同，停这一项交 supervisor。
+     - c2，名单提交，只改 app/smoke/pages.smoke.spec.ts，+9/−3。c1 后第 201 行（a60aa563 第 201 行）原文 `  // The events list (onShow) and event detail (load) read CAACI's last successful sync; no row keeps the stale line hidden.` 改成：
+       ```ts
+         // The events list reads CAACI's last successful sync on show, event detail only once a CAACI row loads; no row keeps the stale line hidden.
+       ```
+       c1 后第 245–246 行（4fc14fff 第 236–237 行）原文 `  // Plaza reads its public listing rail, public feeds, topic summaries and count on mount.` 和 `  'pages/plaza/index': ['items', 'posts'],` 换成下面八行，第 247 行的 `}` 不动：
+       ```ts
+         // Plaza reads its public listing rail, public feeds, topic summaries, count and upcoming-events rail on mount.
+         'pages/plaza/index': ['items', 'posts', 'rpc:list_community_events'],
+         // The events list reads the upcoming list, CAACI's last successful sync and the members switch on show.
+         'pages/events/index': ['community_event_sync_state', 'rpc:community_member_events_open', 'rpc:list_community_events'],
+         // Opened without an id, event detail reads nothing; the sync state is read only once a CAACI row loads.
+         'pages/event/detail/index': [],
+         // The create page reads the members switch on show; it ships off, so the page stops there.
+         'pages/event/create/index': ['rpc:community_member_events_open'],
+       ```
+       c1 的树是 a3c92f29 时，改完文件的 sha256 是 ca7aa240c069d47665efff0a8c8049f60d4ab44367efc2a959f242f523168990，`git rev-parse HEAD^{tree}` 是 e37a8461。这些值是按代码推的：广场 useCommunityHome.ts 第 110 行；活动列表 events/index.vue 第 181–188 行经 useCommunityEvents.ts 第 73、86、103 行；不带 id 的详情页在 detail/index.vue 第 143 行得到 null，第 147 行只在 caaci 行读同步状态；发起页 create/index.vue 第 131 行读开关、第 134 行在开关为 false 时就返回。照 a60aa563 第 201 行旧注释给详情页加 sync_state，巡检会红。最终以本地 stub 巡检实测的 served 集合为准：某条路由报 `stubbed reads on <路由>` 的，照报出的实际集合改名单，STATUS_LOG 逐路由写推断值、实测值和读的代码位置，下面对应的变异按实测重算；实测给详情页多出任何一项的，停这一项交 supervisor（那与第 143、147 行矛盾）。STUB_TABLES、STUB_RPC 的值，T1–T4，巡检用例体，stub-backend.ts 一概不动。
+     - 门禁（在 c2 上；第 10 项 b 的写法）：全量 + :699 六十轮 + CI 边界命令。预期相对第 1 项 f 的基线：TEST tests = B_TEST + 1（4fc14fff 在 conditional-import-boundary.test.mjs 加的 1 条），fail 0、skipped 1、pg_skips 0；smoke Running = B_SMOKE + 4（T1–T4），0 failed，skipped 同基线；pages 巡检 68 条 0 失败；smoke 日志里 `unstubbed` 0 行，`Failed to scan for dependencies` 0 条（基线的那 1 条正是 4fc14fff 修掉的）；主包、event 分包与基线相同（useAppToast 这处改动只影响 H5）。可选：两边 h5 步骤之后各跑 `cat dist/build/h5/assets/*.js | grep -c bannerHosts`（在 app/ 下），两边都应是 0，不是 0 的记进 STATUS_LOG，不改代码。
+     - 变异（在 c2 上，每个单独跑 `SMOKE_SPECS="pages.smoke.spec.ts" $RC ~/work/illini-smoke-fixture smoke`，跑完恢复、核被改文件的 sha256 与变异前相同）：N1 从 plaza 删 'rpc:list_community_events' → plaza 浅深两条红，T1 仍绿；N2 从 events 删 'community_event_sync_state' → T1 红，events 浅深两条红；N3 把 detail 改成 `['community_event_sync_state']` → detail 浅深两条红，T1 绿；N4 把 create 改成 `[]` → create 浅深两条红，T1 绿；N5 把 detail/index.vue 第 147 行的 `if (row?.source_type === 'caaci') ` 去掉（无条件读）→ detail 浅深两条红、errs 为空；N6 把 useCommunityHome.ts 第 110 行的 `supabase.rpc('list_community_events', …)` 换成 `Promise.resolve({ data: [], error: null })` → plaza 浅深两条红；N7 删 events/index.vue 第 181–183 行 → events 浅深两条红；N8 把 create/index.vue 第 131 行改成 `const open = false` → create 浅深两条红；V4 把 useAppToast.ts 里 registerToastHost 重新包回 `// #ifndef H5` → `RUN_CMD='cd app && node --test smoke/conditional-import-boundary.test.mjs' $RC ~/work/illini-smoke-fixture cmd` 的第二条用例红、报 `components/AppToast.vue imports registerToastHost`。4fc14fff 上做过的 M1–M9 不重跑；当时 M9 指的 useCommunityHome.ts 第 95 行，在 main 上已经是第 107 行。CI 上 `stubBackendEnabled` 在 GITHUB_ACTIONS 下为 false（stub-backend.ts 第 13 行），逐路由断言在 CI 上被跳过，CI 只证明 T1–T4；逐路由的读法只能靠这里的本地门禁和变异证明。
+     - 推送：照第 10 项 d，一次快进推送带上 c1 和 c2，第二次只修 CI。PR 正文最多追加一次（第 10 项 d），英文一段，写本批做了什么：合并了 main a60aa563（合并提交不带改动，树 a3c92f29），STUB_READS 新增了广场的 rpc:list_community_events 和活动列表、详情（不带 id 时为空）、发起页三条路由，改正了第 201 行的注释；不写路径、账号或核查发现。不改 base，不标 ready。
+     - 完成线：c1 五样和修前对照、c2 的门禁、九个变异都按期望记进 STATUS_LOG；推送后 PR CI 所有不被跳过的 job success，run 号记下。仍开着：合并 #385（supervisor；STATUS 阻塞第 41 条）。
+  3. **前向迁移 C：学校活动逐条刷新（方式 A）的两个服务函数和详情第 11 行的只读函数（~/work/illini-campus-20261127；与第 4 项、第 6 项 b、c 同一个提交 k2，这样每个提交都是绿的）。** 范围只有 claim_campus_event_checks、apply_campus_event_check、community_campus_event_checked_at 三个新函数。C 不含 import，不碰任何 admin_* 对象和三张管理词表：VERIFY_20261122035253 第 37 行钉着 admin_execute_mutation 的 md5、第 412–414 行钉着三张管理词表，它是成员开关前提 1（根 RUNBOOK 第 985 行）和回复开关前提里正在用的那份 VERIFY（第 797–803 行），C 一碰管理端，这两个开关的前提就失效。导入（迁移 D）、管理端 preview/import、第 11 行的客户端和 public schema 探针都留给 D-62。
+     - 门复用 A 的 `claim_community_event_sync('campus', interval '30 seconds')` 和 `finish_community_event_sync('campus', …)`，这两个函数一字不改，也不加同名重载（VERIFY_B 第 56–63 行按名字数到 3）；急停照 CAACI 写 `('campus', 'infinity')`（第 6 项 e）。claim 的间隔是严格小于（A 第 21 行），cron 相邻两拍最少约 50 秒，30 秒每拍都能领到；写成 50 秒或更长会随机漏拍。第一次领取会插入 sync_state 的 campus 行，这一行 anon 可读（20261120122054 第 248 行只许 caaci、campus 两个 source）。
+     - 文件 `supabase/migrations/<C>`。时间戳取写文件时的 UTC（`date -u +%Y%m%d%H%M%S`），必须晚于 20261125004742 和 origin/main 上任何迁移，写进 STATUS_LOG；写之前核两样：`git log --format=%h a60aa563..origin/main -- supabase/migrations` 为空；`git ls-tree --name-only origin/main supabase/migrations/ | grep -E '/[0-9]{14}_' | sort | tail -1` 是 supabase/migrations/20261125004742_community_event_sync_cap.sql。有一样不符的不写，停这一项交 supervisor。内容逐字如下，文件以一个换行结尾（照抄后整份文件的 sha256 是 37ca561a5cc6cb3919e4c11927bd1bfbbfb5005b8fac29b972c0ede7ef7f1eaf，顶层 `BEGIN;` 在第 5 行、`COMMIT;` 在第 215 行；三个函数体的 md5(prosrc) 依次是 fcbfeb9588d7afb7bb322e69d9d70077、2364941fca7d19f0b17caad53d238671、35dfcb4e82b8b5bb0ebb44f27f6f6bb7）：
+       ```sql
+       -- P4.7 step 3: refresh campus events one by one (mode A) and read one row's
+       -- last confirmation for the detail page. Apply after 20261125004742 and its
+       -- VERIFY. Three new functions only: no row, table, constraint, index, trigger,
+       -- policy or table grant changes, and no existing function is replaced.
+       BEGIN;
+       SET LOCAL lock_timeout = '5s';
+       SET LOCAL statement_timeout = '60s';
+
+       DO $guard$
+       DECLARE
+         expected record;
+         stored text;
+       BEGIN
+         FOR expected IN
+           SELECT * FROM (VALUES
+             ('public.claim_community_event_sync(text,interval)', 'a730ca4867b03e5379ee497571c7cae8'),
+             ('public.apply_caaci_event_snapshot(boolean,jsonb)', '55227c4b42b7ac90e9b1ba34f274b057'),
+             ('public.finish_community_event_sync(text,text,text)', '1ea1588cb277079ab5911ba84924f450'),
+             ('private.community_events_schedule_change()', 'e4a2e33f688e3f6d4e192a3426b0ea36'),
+             ('private.community_events_member_guard()', '7eb7680e59995c1dc8e9d754603ed790'),
+             ('private.community_events_moderate_text()', 'c3da68f508cbcee6724a6926892300ed'),
+             ('public.update_updated_at()', 'da5ac28a58c8b4bb30209bf0d3d7082c')
+           ) AS known(signature, body_md5)
+         LOOP
+           SELECT pg_catalog.md5(routine.prosrc) INTO stored
+             FROM pg_catalog.pg_proc AS routine
+            WHERE routine.oid = pg_catalog.to_regprocedure(expected.signature);
+           IF stored IS DISTINCT FROM expected.body_md5 THEN
+             RAISE EXCEPTION 'community_campus_checks_precondition:function:%:%', expected.signature, coalesce(stored, 'missing');
+           END IF;
+         END LOOP;
+         FOR expected IN
+           SELECT * FROM (VALUES
+             ('public.community_events', 'community_events_campus_shape', $d$CHECK (((source_type <> 'campus'::text) OR ((source_key ~ '^[0-9]{1,6}/[0-9]{1,12}$'::text) AND (page_url = ('https://calendars.illinois.edu/detail/'::text || source_key)) AND (register_url IS NULL) AND (registration_mode = 'calendar_page'::text) AND (organizer_name IS NOT NULL) AND (COALESCE(title_en, ''::text) <> ''::text) AND (partner_id IS NULL) AND (organizer_user_id IS NULL))))$d$),
+             ('public.community_events', 'community_events_unavailable_check', $d$CHECK (((availability <> 'unavailable'::text) OR (missing_checks >= 2)))$d$),
+             ('public.community_event_sync_state', 'community_event_sync_state_source_check', $d$CHECK ((source = ANY (ARRAY['caaci'::text, 'campus'::text])))$d$)
+           ) AS known(relation, constraint_name, definition)
+         LOOP
+           SELECT pg_catalog.regexp_replace(pg_catalog.pg_get_constraintdef(c.oid), '\s+', ' ', 'g') INTO stored
+             FROM pg_catalog.pg_constraint AS c
+            WHERE c.conrelid = pg_catalog.to_regclass(expected.relation) AND c.conname = expected.constraint_name;
+           IF stored IS DISTINCT FROM expected.definition THEN
+             RAISE EXCEPTION 'community_campus_checks_precondition:constraint:%', expected.constraint_name;
+           END IF;
+         END LOOP;
+         IF pg_catalog.to_regprocedure('public.claim_campus_event_checks(integer)') IS NOT NULL
+            OR pg_catalog.to_regprocedure('public.apply_campus_event_check(uuid,text,jsonb)') IS NOT NULL
+            OR pg_catalog.to_regprocedure('public.community_campus_event_checked_at(uuid)') IS NOT NULL THEN
+           RAISE EXCEPTION 'community_campus_checks_precondition:already_applied';
+         END IF;
+       END
+       $guard$;
+
+       CREATE FUNCTION public.claim_campus_event_checks(limit_in integer)
+       RETURNS jsonb
+       LANGUAGE plpgsql SECURITY DEFINER
+       SET search_path = pg_catalog
+       AS $function$
+       DECLARE
+         claimed jsonb;
+       BEGIN
+         IF limit_in IS NULL OR limit_in < 1 OR limit_in > 2 THEN
+           RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'campus_check_limit_invalid';
+         END IF;
+         -- The claim is the lease: a row whose request fails, times out or is cut
+         -- off is not requested again for six hours.
+         WITH picked AS (
+           SELECT event.id, event.last_checked_at AS previous
+             FROM public.community_events AS event
+            WHERE event.source_type = 'campus' AND event.availability <> 'hidden'
+              AND coalesce(event.ends_at, event.starts_at) >= pg_catalog.now()
+              AND (event.last_checked_at IS NULL
+                   OR event.last_checked_at < pg_catalog.now() - interval '6 hours')
+            ORDER BY event.last_checked_at NULLS FIRST, event.id
+            LIMIT limit_in
+            FOR UPDATE SKIP LOCKED
+         ), leased AS (
+           UPDATE public.community_events AS event
+              SET last_checked_at = pg_catalog.now()
+             FROM picked
+            WHERE event.id = picked.id
+           RETURNING event.id, event.source_key, picked.previous
+         )
+         SELECT coalesce(pg_catalog.jsonb_agg(
+                  pg_catalog.jsonb_build_object('id', leased.id, 'source_key', leased.source_key)
+                  ORDER BY leased.previous NULLS FIRST, leased.id), '[]'::jsonb)
+           INTO claimed
+           FROM leased;
+         RETURN claimed;
+       END;
+       $function$;
+       ALTER FUNCTION public.claim_campus_event_checks(integer) OWNER TO postgres;
+       REVOKE ALL ON FUNCTION public.claim_campus_event_checks(integer) FROM PUBLIC, anon, authenticated;
+       GRANT EXECUTE ON FUNCTION public.claim_campus_event_checks(integer) TO service_role;
+
+       CREATE FUNCTION public.apply_campus_event_check(event_id_in uuid, outcome_in text, row_in jsonb)
+       RETURNS jsonb
+       LANGUAGE plpgsql SECURITY DEFINER
+       SET search_path = pg_catalog
+       AS $function$
+       DECLARE
+         before_row public.community_events%ROWTYPE;
+         after_row public.community_events%ROWTYPE;
+         new_starts timestamptz;
+         rolled boolean := false;
+         rejected boolean := false;
+       BEGIN
+         IF outcome_in IS NULL OR outcome_in NOT IN ('ok', 'not_found', 'error')
+            OR (outcome_in = 'ok') <> coalesce(pg_catalog.jsonb_typeof(row_in) = 'object', false)
+            OR (outcome_in = 'ok' AND (
+                 ARRAY(SELECT pg_catalog.jsonb_object_keys(row_in) ORDER BY 1)
+                   IS DISTINCT FROM ARRAY['all_day', 'content_hash', 'ends_at', 'location', 'occurrence_count',
+                                          'review_flag', 'source_updated_at', 'starts_at', 'title_en']
+                 OR coalesce(row_in ->> 'review_flag', 'title_says_cancelled') <> 'title_says_cancelled')) THEN
+           RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'campus_check_invalid';
+         END IF;
+         SELECT * INTO before_row FROM public.community_events
+          WHERE id = event_id_in AND source_type = 'campus'
+          FOR UPDATE;
+         IF NOT FOUND THEN
+           RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'campus_check_event_invalid';
+         END IF;
+
+         IF outcome_in = 'error' THEN
+           UPDATE public.community_events SET last_checked_at = pg_catalog.now() WHERE id = event_id_in;
+         ELSIF outcome_in = 'not_found' THEN
+           -- Two checks at least twelve hours apart must both miss the row before it
+           -- is withdrawn, so missing_checks >= 2 keeps unhide_event's meaning.
+           UPDATE public.community_events
+              SET last_checked_at = pg_catalog.now(),
+                  missing_since = coalesce(missing_since, pg_catalog.now()),
+                  missing_checks = CASE
+                    WHEN missing_since IS NULL THEN 1
+                    WHEN missing_since <= pg_catalog.now() - interval '12 hours' THEN 2
+                    ELSE missing_checks END,
+                  availability = CASE
+                    WHEN availability = 'hidden' THEN 'hidden'
+                    WHEN missing_since <= pg_catalog.now() - interval '12 hours' THEN 'unavailable'
+                    ELSE availability END
+            WHERE id = event_id_in;
+         ELSE
+           new_starts := (row_in ->> 'starts_at')::timestamptz;
+           -- A series whose first session ended moves on to the next one; that is
+           -- not a schedule change, so the trigger's notes are put back below.
+           rolled := before_row.occurrence_count > 1
+             AND (row_in ->> 'occurrence_count')::integer = before_row.occurrence_count
+             AND (row_in ->> 'ends_at')::timestamptz IS NOT DISTINCT FROM before_row.ends_at
+             AND new_starts > before_row.starts_at
+             AND before_row.starts_at <= pg_catalog.now();
+           BEGIN
+             UPDATE public.community_events AS event
+                SET title_en = row_in ->> 'title_en',
+                    starts_at = new_starts,
+                    ends_at = (row_in ->> 'ends_at')::timestamptz,
+                    all_day = (row_in ->> 'all_day')::boolean,
+                    occurrence_count = (row_in ->> 'occurrence_count')::integer,
+                    location = row_in ->> 'location',
+                    source_updated_at = (row_in ->> 'source_updated_at')::timestamptz,
+                    content_hash = row_in ->> 'content_hash',
+                    review_flag = CASE
+                      WHEN row_in ->> 'review_flag' = 'title_says_cancelled' THEN 'title_says_cancelled'
+                      WHEN NOT rolled AND new_starts IS DISTINCT FROM event.starts_at
+                       AND new_starts <= pg_catalog.now() + interval '48 hours'
+                      THEN 'source_time_changed_near_start'
+                      ELSE event.review_flag END,
+                    last_seen_at = pg_catalog.now(), last_checked_at = pg_catalog.now(),
+                    missing_checks = 0, missing_since = NULL,
+                    availability = CASE WHEN event.availability = 'hidden' THEN 'hidden' ELSE 'visible' END
+              WHERE event.id = event_id_in;
+             IF rolled THEN
+               -- community_events_schedule_change runs BEFORE UPDATE and overwrites
+               -- these two columns within the statement above.
+               UPDATE public.community_events
+                  SET previous_starts_at = before_row.previous_starts_at,
+                      schedule_changed_at = before_row.schedule_changed_at
+                WHERE id = event_id_in;
+             END IF;
+           EXCEPTION WHEN SQLSTATE '23514' OR SQLSTATE '23502' OR SQLSTATE '23505'
+                       OR SQLSTATE '22001' OR SQLSTATE '22023' THEN
+             rejected := true;
+             -- The source still has the row; a refused unavailable row keeps its
+             -- count, which community_events_unavailable_check requires.
+             UPDATE public.community_events
+                SET last_checked_at = pg_catalog.now(),
+                    missing_checks = CASE WHEN availability = 'unavailable' THEN missing_checks ELSE 0 END,
+                    missing_since = CASE WHEN availability = 'unavailable' THEN missing_since END
+              WHERE id = event_id_in;
+           END;
+         END IF;
+         SELECT * INTO after_row FROM public.community_events WHERE id = event_id_in;
+         RETURN pg_catalog.jsonb_build_object(
+           'availability', after_row.availability, 'missing_checks', after_row.missing_checks, 'rejected', rejected);
+       END;
+       $function$;
+       ALTER FUNCTION public.apply_campus_event_check(uuid, text, jsonb) OWNER TO postgres;
+       REVOKE ALL ON FUNCTION public.apply_campus_event_check(uuid, text, jsonb) FROM PUBLIC, anon, authenticated;
+       GRANT EXECUTE ON FUNCTION public.apply_campus_event_check(uuid, text, jsonb) TO service_role;
+
+       CREATE FUNCTION public.community_campus_event_checked_at(event_id_in uuid)
+       RETURNS timestamptz
+       LANGUAGE sql STABLE SECURITY DEFINER
+       SET search_path = pg_catalog
+       SET statement_timeout = '3s'
+       AS $function$
+         SELECT event.last_seen_at
+           FROM public.community_events AS event
+          WHERE event.id = event_id_in AND event.source_type = 'campus'
+            AND event.availability = 'visible'
+            AND coalesce(event.ends_at, event.starts_at) >= pg_catalog.now() - interval '180 days'
+       $function$;
+       ALTER FUNCTION public.community_campus_event_checked_at(uuid) OWNER TO postgres;
+       REVOKE ALL ON FUNCTION public.community_campus_event_checked_at(uuid) FROM PUBLIC, anon, authenticated, service_role;
+       GRANT EXECUTE ON FUNCTION public.community_campus_event_checked_at(uuid) TO anon, authenticated;
+
+       COMMIT;
+       ```
+     - 这几处是有意的，不要「改好」：guard 里的七个 md5 和三条约束文本都逐字取自已在两库通过的 VERIFY_20261122035253（第 28–30、44、151、184、188 行）和 VERIFY_B（第 16–18 行），不取 VERIFY_20261120122054 的（035253 改过 member_guard，VERIFY_122054 在 035253 之后本来就按设计失败，根 RUNBOOK 第 725–726 行）；staging 其余漂移的对象不在 guard 里，所以 PRECHECK_C 不会因为它们停下。领取时就写 `last_checked_at = now()` 当租约，所以不论请求成败，每行每 6 小时最多请求一次；领取排除 hidden，谓词与冻结的部分索引 community_events_campus_check_idx（20261120122054 第 244–245 行）一致，被下架的行缺席计数停在下架那一刻，unhide 之后按冻结的 missing_checks 回到 visible 或 unavailable，下一轮刷新再纠正。community_events_schedule_change 是 BEFORE UPDATE 触发器（20261120122054 第 344–369 行），starts_at 一变就覆盖同一条 UPDATE 里的 previous_starts_at 和 schedule_changed_at，所以系列顺延只能用第二条 UPDATE 写回；revision 照样 +1。moderate_text 对 campus 行的地点同样生效（scripts/community-events.test.mjs 第 130–133 行），被拒必须在子事务里接住，只捕获 A 第 100–101 行那五个 SQLSTATE；入参不合格的 22023 在子事务之外抛出，整次调用失败。not_found 的 12 小时用 `<=`，计数封顶 2：任何走得到的状态里 `missing_checks >= 2` 都表示第一次 404 在 12 小时以前，冻结的 unhide_event（20261120122054 第 1249 行，只判 `>= 2`）不用改就满足 P4.7 DoD ④。
+     - C 不做：任何 DML；新列、约束、索引、触发器、策略、表或列授权；CREATE OR REPLACE 任何已有函数；同名重载；碰三张管理词表。机械核对（写进 STATUS_LOG）：`grep -cE 'admin_|moderation_keywords|CREATE OR REPLACE|ALTER TABLE|CREATE (UNIQUE )?INDEX|CREATE TRIGGER|CREATE POLICY|INSERT INTO|DELETE FROM' supabase/migrations/<C>` 是 0；guard 里的每个 32 位 md5 都能在 a60aa563 的 VERIFY_20261122035253 或 VERIFY_20261125004742 里 `git grep -F` 到。
+     - 同一个提交里还有（ENGINEERING §5.0 第 1 条）：manifest.sha256 末尾追加第 191 行 `<C 的 sha256>  <C>`（`shasum -a 256` 生成，两个空格，前 190 行一个字节不改）；第 6 项 c 的 README 和计数；第 6 项 b 的根 RUNBOOK 新节（三张表和它的说明）；下面的夹具和 node 测试。改计数之前先单跑 `node --test scripts/release-migration-count-boundary.test.mjs scripts/community-release-checklist-boundary.test.mjs`，必须红（187 对 188；新节不存在），记进 STATUS_LOG，全部改完再跑必须绿。`npm run verify:migrations` 通过；`git diff a60aa563 -- <七条冻结迁移>` 为空；`git diff a60aa563 -- supabase/migrations/manifest.sha256` 只多末尾一行。
+     - 夹具：scripts/fixtures/community-member-events-database.mjs 第 82 行之后追加（readMigration 第 5 行已经导入）：
+       ```js
+       // The campus checks build on the capped sync functions they leave as they are.
+       export function startCampusChecksDatabase() {
+         const db = startEventSyncCapDatabase()
+         try {
+           db.sql(readMigration('<C>'))
+           return db
+         } catch (error) {
+           db.stop()
+           throw error
+         }
+       }
+       ```
+     - node 测试：新文件 scripts/community-campus-checks.test.mjs，普通 PostgreSQL，计入 TEST，连库的用例带 `{ skip: SKIP }`。文件头和助手照下面写（supervisor 在 a60aa563 上加 C 原样跑过，下面的期望值都是实测）：
+       ```js
+       import assert from 'node:assert/strict'
+       import test from 'node:test'
+       import { readMigration, readOps } from './fixtures/community-p3-database.mjs'
+       import { BLOCKED_WORD, EVENT_CAACI } from './fixtures/community-events-database.mjs'
+       import {
+         id, SKIP, startCampusChecksDatabase, startEventSyncCapDatabase, startEventSyncDatabase,
+       } from './fixtures/community-member-events-database.mjs'
+
+       const C = '<C>'
+       const SYNC = [
+         'public.claim_community_event_sync(text,interval)',
+         'public.apply_caaci_event_snapshot(boolean,jsonb)',
+         'public.finish_community_event_sync(text,text,text)',
+       ]
+       const NEW = [
+         'public.apply_campus_event_check(uuid,text,jsonb)',
+         'public.claim_campus_event_checks(integer)',
+         'public.community_campus_event_checked_at(uuid)',
+       ]
+       const event = n => id(9700 + n)
+       const key = n => `3715/${90000000 + n}`
+
+       // Signature, arguments, result, security, strictness, volatility, settings, owner, grants, body,
+       // parallel safety, cost, kind and language.
+       function contract(db, names) {
+         return db.sql(`SELECT string_agg(p.oid::regprocedure::text||'|'||pg_get_function_arguments(p.oid)||'|'||
+           pg_get_function_result(p.oid)||'|'||p.prosecdef::text||'|'||p.proisstrict::text||'|'||p.provolatile::text||'|'||
+           coalesce(p.proconfig::text,'')||'|'||p.proowner::regrole::text||'|'||coalesce(p.proacl::text,'')||'|'||md5(p.prosrc)||'|'||
+           p.proparallel::text||'|'||p.procost::text||'|'||p.prokind::text||'|'||l.lanname,
+           E'\\n' ORDER BY p.oid::regprocedure::text)
+           FROM pg_proc AS p JOIN pg_language AS l ON l.oid = p.prolang
+          WHERE p.oid = ANY (ARRAY[${names.map(name => `'${name}'::regprocedure`).join(',')}])`)
+       }
+
+       // Times are whole seconds, as ICS times are. Pass times here, not through `set`:
+       // changing starts_at later fires the schedule-change trigger.
+       function seed(db, n, set = '', times = {}) {
+         const starts = times.starts ?? "date_trunc('second', now()) + interval '3 days'"
+         const ends = times.ends ?? "date_trunc('second', now()) + interval '3 days 2 hours'"
+         db.sql(`INSERT INTO public.community_events (id, source_type, source_key, organizer_name, title_en, starts_at, ends_at,
+             occurrence_count, page_url, registration_mode, location)
+           VALUES ('${event(n)}', 'campus', '${key(n)}', 'Synthetic calendar', 'Synthetic campus gathering ${n}',
+             ${starts}, ${ends}, ${times.count ?? 1},
+             'https://calendars.illinois.edu/detail/${key(n)}', 'calendar_page', 'Synthetic public hall')`)
+         if (set) db.sql(`UPDATE public.community_events SET ${set} WHERE id = '${event(n)}'`)
+       }
+       const reset = db => db.sql(`DELETE FROM public.community_events WHERE source_type = 'campus';
+         DELETE FROM public.community_event_sync_state WHERE source = 'campus'`)
+       const state = (db, n, columns = "availability||':'||missing_checks") =>
+         db.sql(`SELECT ${columns} FROM public.community_events WHERE id = '${event(n)}'`)
+       const check = (n, outcome, row = null) =>
+         `public.apply_campus_event_check('${event(n)}', '${outcome}', ${row === null ? 'NULL' : `'${JSON.stringify(row)}'::jsonb`})`
+       const row = (overrides = {}) => ({
+         title_en: 'Synthetic campus gathering', starts_at: '2030-01-10T17:30:00.000Z', ends_at: '2030-01-10T19:30:00.000Z',
+         all_day: false, occurrence_count: 1, location: 'Synthetic public hall', source_updated_at: '2030-01-01T18:00:00.000Z',
+         content_hash: 'a'.repeat(64), review_flag: null, ...overrides,
+       })
+       // One service call in one transaction; setup runs as postgres first, so now() is shared.
+       const service = (db, statement, setup = '') =>
+         db.sql(`BEGIN; ${setup} SET LOCAL ROLE service_role; SELECT ${statement}; COMMIT;`)
+       // The client directive is psql's; the server sees the rest, as through the hosted endpoint.
+       const ops = name => readOps(name).split('\n').filter(line => line !== '\\set ON_ERROR_STOP on').join('\n')
+       const refusal = (db, sql) => {
+         try { db.sql(sql); return 'passed' } catch (error) { return /ERROR:\s+(.*)/.exec(String(error.stderr))?.[1] ?? String(error) }
+       }
+       ```
+       四条顶层用例，k2 时共 12 条（第四条含 8 条子用例；第 5 项再加 1 条）：
+       - 「campus checks leave the sync functions alone and grant exactly the intended roles」：`startEventSyncCapDatabase()` 和 `startCampusChecksDatabase()` 上 `contract(db, SYNC)` 逐字相同；C 之后 `db.grants(NEW)` 恰好是 `['public.apply_campus_event_check(uuid,text,jsonb):service_role', 'public.claim_campus_event_checks(integer):service_role', 'public.community_campus_event_checked_at(uuid):anon,authenticated']`；anon、authenticated 各用 `db.attempt('SELECT public.claim_campus_event_checks(1)', { role })` 得 `42501:permission denied for function claim_campus_event_checks`，对 `check(1, 'error')` 得 `…apply_campus_event_check`；`contract(db, NEW)` 匹配 `/claim_campus_event_checks\(integer\)\|limit_in integer\|jsonb\|true\|false\|v\|\{search_path=pg_catalog\}\|postgres\|/` 和 `/community_campus_event_checked_at\(uuid\)\|event_id_in uuid\|timestamp with time zone\|true\|false\|s\|\{search_path=pg_catalog,statement_timeout=3s\}\|postgres\|/`；`contract(db, NEW).split('\n').map(line => line.split('|').slice(-4).join('|'))` 是 `['u|100|f|plpgsql', 'u|100|f|plpgsql', 'u|100|f|sql']`（按签名排序：apply、claim、checked_at）。
+       - 「campus check migration refuses a second run and a database without B」：C 之后再执行一次 C，抛错含 `community_campus_checks_precondition:already_applied`；在 `startEventSyncDatabase()`（只有 A）上执行 C，抛错含 `community_campus_checks_precondition:function:public.apply_caaci_event_snapshot(boolean,jsonb):a7cb04d8c754da448cd570ca6768964f`。guard 让 C 不能重复执行，这是故意的，不要改成幂等。
+       - 「the campus preflight and verification hold on stock PostgreSQL」：见第 4 项。
+       - 「campus checks on stock PostgreSQL」：一个库，8 条子用例，每条先 `reset(db)`：
+         1. 「claim leases due rows in order and skips hidden, ended and recently checked rows」：seed 1（visible）、2（`availability = 'unavailable', missing_checks = 2, missing_since = now() - interval '1 day'`）、3（hidden、admin）、4（times `starts: "now() - interval '2 hours'", ends: "now() - interval '1 minute'"`）、5、6；同一个事务里先把 5 的 last_checked_at 设成 `now() - interval '6 hours 1 second'`、6 的设成 `now() - interval '6 hours'`，再以 service_role 连调三次 `claim_campus_event_checks(2)`：依次是 key(1)、key(2)（id 也依次是 event(1)、event(2)），然后 key(5)，然后 `[]`；之后 1 的 last_checked_at 非空、3 的为空；limit 为 0、3、NULL 都得 `22023:campus_check_limit_invalid`。
+         2. 「a second connection skips the row the first one holds」：seed 1、2；`db.together(['CREATE TEMP TABLE got AS SELECT public.claim_campus_event_checks(1) AS x; SELECT pg_sleep(2); SELECT x FROM got', "SELECT pg_sleep(0.5); SET LOCAL lock_timeout = '200ms'; SELECT public.claim_campus_event_checks(1)"], { role: 'service_role' })`：两个答案各一行，合起来恰好是 key(1)、key(2)（不断言谁拿到哪行）。
+         3. 「not_found withdraws only after twelve hours, caps the count and keeps hidden rows hidden」：seed 1，用 `service` 连做四次 not_found，第二次的 setup 把 missing_since 设成 `now() - interval '12 hours' + interval '1 second'`，第三次设成 `now() - interval '12 hours'`：四个返回值依次是 visible/1、visible/1、unavailable/2、unavailable/2（rejected 都是 false）；seed 2（hidden、admin、missing_checks 1、missing_since `now() - interval '13 hours'`）做 not_found 得 hidden/2；再 `db.mutate('operator', 'unhide_event', { event_id: event(2), reason: 'Source details rechecked for this synthetic regression.' })`，`state(db, 2)` 是 `unavailable:2`。
+         4. 「error writes only the check time」：seed 1（missing_checks 1、missing_since `now() - interval '1 hour'`），error 返回 visible/1/false，`(to_jsonb(e) - 'last_checked_at' - 'updated_at')::text` 前后相同，last_checked_at 非空。
+         5. 「ok refreshes nine source columns, revives an unavailable row and keeps a hidden one」：seed 1（unavailable/2）、2（hidden）；`row({ title_en: 'Synthetic refreshed gathering', location: 'Synthetic second hall' })` 让 1 得 visible/0/false、2 得 hidden/0/false；1 的 `title_en|location|organizer_name|page_url|missing_since 为空|last_seen_at 非空` 是 `Synthetic refreshed gathering|Synthetic second hall|Synthetic calendar|https://calendars.illinois.edu/detail/3715/90000001|true|true`；row 多一个 organizer_name、多一个 page_url、少 content_hash、review_flag 是 'source_time_changed_near_start'、error 带 row、ok 不带 row、outcome 'gone' 都得 `22023:campus_check_invalid`；不存在的 id 得 `22023:campus_check_event_invalid`。
+         6. 「a series moving to its next session is not a schedule change; a real move near the start is」：seed 1（count 3，starts `date_trunc('second', now()) - interval '1 day'`，ends `… + interval '2 days'`），ok 的 row 开始时间后移一天、结束和场次数不变 → `previous_starts_at 为空:schedule_changed_at 为空:review_flag:revision` 是 `true:true:none:2`；seed 2（starts +5 天），ok 改到一天后 → previous_starts_at、schedule_changed_at 非空，review_flag 是 source_time_changed_near_start；seed 3（count 3，starts +3 天，ends +10 天），ok 后移一天 → previous_starts_at 等于原开始时间，review_flag 为空（没开始的系列后移是真改期）。
+         7. 「a refused place returns rejected without failing and leaves an unavailable row as it was」：地点 `A ${BLOCKED_WORD} hall`；unavailable/2 的行得 unavailable/2/true，地点和 missing_since 不变；missing_checks 1 的 visible 行得 visible/0/true。
+         8. 「the detail line reads a visible campus row only」：以 anon 和 authenticated 读 `coalesce(public.community_campus_event_checked_at(id)::text, 'null')`：visible 且 last_seen_at 有值的行非 'null'；hidden、unavailable、181 天前结束的行、不存在的 id、夹具里那条 visible 的 caaci 行（EVENT_CAACI；它的 last_seen_at 本来为空，先以 postgres `UPDATE public.community_events SET last_seen_at = now() WHERE id = '${EVENT_CAACI}'`，否则这一项什么都没测）都是 'null'。
+       踩过的坑，改的时候别丢：每条子用例先 `reset`，因为夹具在 20261120122054 之后插了一条 campus 行（organizationRows 里的 7/123456），不删它会被领走；时间只经 `seed` 的第四个参数在 INSERT 里给，并且截到整秒——之后再 UPDATE starts_at 会触发改期记录，带微秒的时间经 JS 往返会丢精度，顺延判据的「结束时间不变」就不成立；需要相同 now() 的准备和调用放在同一个事务里（`service` 的第三个参数，和第 1 条子用例那一串）；两连接那条靠第一个连接持锁 2 秒、第二个连接 0.5 秒后带 200ms lock_timeout 去领，结果不依赖谁先起。
+     - 变异（每个临时改 C、照第 10 项 a 单跑 scripts/community-campus-checks.test.mjs、跑完恢复并核 C 的 sha256 回到 37ca561a…；改了函数体或授权的变异，第 4 项那条用例也会跟着红，这是预期。行号指照抄后的 C；目标文字在 C 里不止一处的只改写明的那一处，用脚本改时先断言被改的正是那一行）：去掉领取时写租约（只改第 79 行，即 `leased` 里 `UPDATE public.community_events AS event` 下面那一行，`SET last_checked_at = pg_catalog.now()` 改成 `SET last_checked_at = event.last_checked_at`；第 125、130、184 行同样的文字不动）→ 领取那条红；去掉 `AND event.availability <> 'hidden'` → 领取那条红；6 小时边界 `<` 改 `<=` → 领取那条红；删掉第 71 行整行 `AND coalesce(event.ends_at, event.starts_at) >= pg_catalog.now()`（第 209 行 checked_at 里同样的文字不动）→ 领取那条红；去掉 `SKIP LOCKED` → 两连接那条红；第 134 行（missing_checks 那个 CASE）的 12 小时边界 `<=` 改 `<` → not_found 那条红；封顶的 `THEN 2` 改成 `THEN missing_checks + 1` → not_found 那条红；第一次就写 2 → not_found 那条红；error 时也清 missing_since → error 那条红；键的精确比较改成 `NOT row_in ?& ARRAY[...]`（只要求九个键都在）→ ok 那条红；`IF rolled THEN` 改成 `IF rolled AND false THEN` → 系列那条红；顺延判据去掉 `AND before_row.starts_at <= pg_catalog.now()` → 系列那条红（未开始的系列后移被误判成顺延）；EXCEPTION 子句改成只接 `SQLSTATE 'ZZ999'` → 地点被拒那条红；checked_at 去掉 `AND event.availability = 'visible'` → 详情那条红；checked_at 去掉第 207 行的 ` AND event.source_type = 'campus'` → 详情那条红（靠第 8 条子用例里那条 caaci 行）；C 末尾、`COMMIT;` 之前追加一段 `CREATE OR REPLACE FUNCTION public.finish_community_event_sync(...)`，内容照抄 A 第 130–143 行、只把 `RETURN FOUND;` 改成 `RETURN  FOUND;` → 第一条（合同含 md5）和第二条都红；claim 的 GRANT 加上 `, anon` → 第一条红；claim 的 REVOKE 去掉 `PUBLIC, ` → 第一条红。每个变异之后 `git status --porcelain` 只剩本来要提交的文件。
+     - 系列顺延的反例枚举（不进门禁，只记录；脚本放 $EV，不进仓库）：用上面 `service` 的写法分别试「同时改某一场的时间且场次数不变」「旧第一场正在进行中时来源把它改到当天晚些」「场次数变了」「结束时间变了」「全天系列」五种，STATUS_LOG 逐种写判成顺延还是真改期、previous_starts_at 和 review_flag 的结果，写进 FINAL ⑥。另外 `git grep -n -w revision a60aa563 -- app/src api scripts supabase/migrations supabase/_ops` 找 revision 的读方，STATUS_LOG 按「客户端读、服务端返回或授权、比较或条件使用」三类分开报告（只报告，不改）。
+     - 完成线：k2 提交，上面的机械核对、修前红修后绿、node 测试和十八个变异都按期望记进 STATUS_LOG；第 10 项 c 的 L-SQL 通过、C 冻结；系列反例和 revision 读方已报告。仍开着：C 由 Eric 在 staging、生产应用（FINAL ④）；P4.7 DoD ⑥（单条 ICS 核对和撤下活动的返回，等 Eric 授权 GET）。
+  4. **C 的运维文件（同一分支，与第 3 项同一个提交 k2）。** 三个文件放 supabase/_ops/，时间戳与 C 相同（L-SQL 按 `<ts>_*` 匹配），都必须过 scripts/database-operations-boundary.test.mjs（第 44–87 行：PRECHECK_、VERIFY_ 恰好一行 `^BEGIN;$`、一行 `^SET TRANSACTION READ ONLY;$`、一行 `^ROLLBACK;$` 且它是最后一条可执行语句，没有 `^COMMIT;$`；第 90–106 行：REGRESSION_ 有 `^BEGIN;$`、没有 `^COMMIT;$`、以 ROLLBACK 收尾）。PRECHECK_C 和 VERIFY_C 的 `\set ON_ERROR_STOP on` 分别在第 2、3 行（第 6 项 b 的表照这个写）。
+     - `PRECHECK_<C>`：第 1 行注释 `-- Read-only preflight. Run as postgres after VERIFY_20261125004742 and before the campus checks migration.`，第 2–5 行逐行照抄 PRECHECK_20261125004742 第 2–5 行，最后一行 `ROLLBACK;`；`DO $precheck$` 块按顺序做四件事，第一个不符就报：① C 的 guard 那张七个函数的 VALUES 表原样，报 `community_campus_checks_precheck_function:<签名>:<实测 md5 或 missing>`；② 三条约束原样（同样先 `regexp_replace(…, '\s+', ' ', 'g')`），报 `community_campus_checks_precheck_constraint:<约束名>`；③ 三个新函数都不存在，否则报 `community_campus_checks_precheck_already_applied`；④ 对 public.community_events、public.community_event_sync_state 先核 `to_regclass` 不为空（报 `community_campus_checks_precheck_table_missing:<表>`，PRECHECK_B 少的就是这一条），再核 service_role 对它们没有任何列的 INSERT、UPDATE（报 `community_campus_checks_precheck_direct_write:<表>`）。在只有 A 的库上它报 apply 的 md5 不符（a7cb04d8… 对 55227c4b…），C 之后它按设计报 already_applied。
+     - `VERIFY_<C>`：文件头照 VERIFY_20261125004742 第 1–6 行（注释改成说明它验证三个学校函数、之后接 VERIFY_B 和两份开关 VERIFY），`DO $verify$` 里对下面三行逐个检查，每一步一种报错：
+       ```text
+       签名                                              返回                       参数                                              body md5                           volatility  proconfig（用 | 连接）                      EXECUTE 给
+       public.claim_campus_event_checks(integer)         jsonb                      limit_in integer                                  fcbfeb9588d7afb7bb322e69d9d70077   v           search_path=pg_catalog                       service_role
+       public.apply_campus_event_check(uuid,text,jsonb)  jsonb                      event_id_in uuid, outcome_in text, row_in jsonb   2364941fca7d19f0b17caad53d238671   v           search_path=pg_catalog                       service_role
+       public.community_campus_event_checked_at(uuid)    timestamp with time zone   event_id_in uuid                                  35dfcb4e82b8b5bb0ebb44f27f6f6bb7   s           search_path=pg_catalog|statement_timeout=3s  anon,authenticated
+       ```
+       ① `to_regprocedure` 为空 → `community_campus_checks_function_missing:<签名>`；② `pg_get_function_result` 不等 → `_result:<签名>`；③ `pg_get_function_arguments` 不等 → `_arguments:<签名>`；④ md5(prosrc) 不等 → `_body:<签名>:<实测>`；⑤ owner 不是 postgres、prosecdef 不是 true、provolatile 不等、proisstrict 不是 false、`coalesce(array_to_string(proconfig, '|'), '')` 不等、语言（`pg_language.lanname`：claim、apply 是 plpgsql，checked_at 是 sql）不等、proparallel 不是 'u'、procost 不是 100、prokind 不是 'f' → `_attributes:<签名>`；⑥ 把 aclexplode(proacl) 里 EXECUTE、grantee 不是 postgres 的按名字排序、逗号连接（grantee 0 写 PUBLIC），不等于上表最后一列，或有任何一项 is_grantable → `_grants:<签名>:<列出的角色或 none>`（前缀都是 `community_campus_checks_function`）。三个都过了以后：public 下 proname 是这三个名字的 pg_proc 恰好 3 行，否则 `community_campus_checks_function_overloads:<行数>`；community_events 恰好 37 个约束、4 条策略、5 个非内部触发器，community_event_sync_state 恰好 4 个约束、1 条策略，否则 `community_campus_checks_table_shape`；最后 `RAISE NOTICE 'community_campus_checks_verified'`。列级授权和其余对象不在这里重复，由发布第 4–6 步重跑的三份 VERIFY 证明。
+     - `REGRESSION_<C>`（只在 L-SQL 跑，supabase_admin；每个场景都回滚）：前半段逐字如下（第 10 行插一个合成屏蔽词，照 REGRESSION_A 第 66 行的做法）：
+       ```sql
+       -- Disposable L-SQL only. Never run this write regression on a hosted database.
+       -- Each scenario rolls back; denied EXECUTE is checked through the catalog here.
+       -- Actual denied calls run only on stock PostgreSQL in community-campus-checks.test.mjs.
+       \set ON_ERROR_STOP on
+       BEGIN;
+       SET LOCAL lock_timeout = '5s';
+       SET LOCAL statement_timeout = '900s';
+       SET LOCAL search_path = pg_catalog, public;
+
+       INSERT INTO public.moderation_keywords(keyword) VALUES ('campuscheckblockedmarker');
+       CREATE FUNCTION pg_temp.id(n integer) RETURNS uuid LANGUAGE sql IMMUTABLE AS
+       $$ SELECT ('caac1127-2026-4000-8000-' || lpad(n::text,12,'0'))::uuid $$;
+       CREATE FUNCTION pg_temp.seed(n integer, starts timestamptz DEFAULT date_trunc('second',now())+interval '3 days',
+         ends timestamptz DEFAULT date_trunc('second',now())+interval '3 days 2 hours', count integer DEFAULT 1)
+       RETURNS void LANGUAGE sql AS $$
+         INSERT INTO public.community_events (id,source_type,source_key,organizer_name,title_en,starts_at,ends_at,
+           occurrence_count,page_url,registration_mode,location)
+         VALUES (pg_temp.id(n),'campus','3715/'||(90000000+n),'Synthetic calendar','Synthetic campus gathering '||n,
+           starts,ends,count,'https://calendars.illinois.edu/detail/3715/'||(90000000+n),'calendar_page','Synthetic public hall')
+       $$;
+       CREATE FUNCTION pg_temp.row(starts timestamptz, ends timestamptz, extra jsonb DEFAULT '{}') RETURNS jsonb LANGUAGE sql AS $$
+         SELECT jsonb_build_object('title_en','Synthetic campus gathering','starts_at',starts,'ends_at',ends,'all_day',false,
+           'occurrence_count',1,'location','Synthetic public hall','source_updated_at',now(),'content_hash',repeat('a',64),
+           'review_flag',NULL) || extra
+       $$;
+       CREATE FUNCTION pg_temp.check(n integer, outcome text, payload jsonb DEFAULT NULL) RETURNS jsonb LANGUAGE plpgsql AS $$
+       DECLARE target uuid := pg_temp.id(n); answer jsonb;
+       BEGIN
+         SET LOCAL ROLE service_role;
+         answer := public.apply_campus_event_check(target, outcome, payload);
+         RESET ROLE;
+         RETURN answer;
+       END
+       $$;
+       CREATE FUNCTION pg_temp.claim(n integer) RETURNS text LANGUAGE plpgsql AS $$
+       DECLARE answer jsonb;
+       BEGIN
+         SET LOCAL ROLE service_role;
+         answer := public.claim_campus_event_checks(n);
+         RESET ROLE;
+         RETURN coalesce((SELECT string_agg(item.value->>'source_key', ',' ORDER BY item.ordinality)
+           FROM jsonb_array_elements(answer) WITH ORDINALITY AS item), '');
+       END
+       $$;
+       CREATE FUNCTION pg_temp.read(n integer) RETURNS text LANGUAGE plpgsql AS $$
+       DECLARE target uuid := pg_temp.id(n); answer text;
+       BEGIN
+         SET LOCAL ROLE anon;
+         answer := coalesce((public.community_campus_event_checked_at(target) = now())::text, 'null');
+         RESET ROLE;
+         RETURN answer;
+       END
+       $$;
+       CREATE FUNCTION pg_temp.state(n integer) RETURNS text LANGUAGE sql AS $$
+         SELECT availability||':'||missing_checks FROM public.community_events WHERE id = pg_temp.id(n)
+       $$;
+       CREATE FUNCTION pg_temp.expect(label text, actual text, wanted text) RETURNS void LANGUAGE plpgsql AS $$
+       BEGIN
+         IF actual IS DISTINCT FROM wanted THEN
+           RAISE EXCEPTION 'CAMPUS scenario %: got %, wanted %',label,coalesce(actual,'NULL'),wanted;
+         END IF;
+       END
+       $$;
+       CREATE FUNCTION pg_temp.error(statement text) RETURNS text LANGUAGE plpgsql AS $$
+       BEGIN
+         EXECUTE statement;
+         RETURN 'accepted';
+       EXCEPTION WHEN OTHERS THEN
+         RESET ROLE;
+         RETURN SQLSTATE;
+       END
+       $$;
+       ```
+       后半段：`CREATE TEMP TABLE campus_cases(ord integer, name text, statement text)`，用例和期望如下（每例开头的数据都用 `pg_temp.seed`；`walk`、`made`、`before_row` 是逐例 DO 块里的变量；时间都写 `date_trunc('second',now())+interval …`）；逐例执行、ZX001 回滚和汇总照抄 REGRESSION_B 第 151–182 行，表名改成 campus_results，每例之前删 campus 的 sync_state 行和 campus 行，逐例 NOTICE 写 `CAMPUS_CASE|%|pass=%|%`，汇总写 `CAMPUS_TOTAL|cases=%|pass=%|fail=%`，有失败就 RAISE：
+       1. claim-order-lease：seed 1；2 改 unavailable/2；3 改 hidden/admin；4 用 `now()-interval '2 hours'` 到 `now()-interval '1 minute'`；5 的 last_checked_at 改 `now()-interval '6 hours 1 second'`；6 改 `now()-interval '6 hours'`。`pg_temp.claim(2)||'|'||pg_temp.claim(2)||'|'||pg_temp.claim(2)` 是 `3715/90000001,3715/90000002|3715/90000005|`。
+       2. not-found-walk：同第 3 项子用例 3，`walk` 是 `visible:1,visible:1,unavailable:2,unavailable:2`，最后一次返回 `unavailable:2:false`。
+       3. hidden-not-found：hidden/admin、missing_checks 1、missing_since `now()-interval '13 hours'`，not_found 后是 `hidden:admin:2`。
+       4. error-only-checked：error 前后 `to_jsonb(e)-'last_checked_at'-'updated_at'` 相等，`last_checked_at=now()` 为 true。
+       5. ok-revives：unavailable/2 和 hidden 两行各做一次 ok（开始 +4 天），状态 `visible:0,hidden:0`；第一行 `title_en|location|organizer_name|missing_since 为空|last_seen_at=now()` 是 `Synthetic refreshed gathering|Synthetic second hall|Synthetic calendar|true|true`。
+       6. series-rolls：seed(1, -1 天, +2 天, 3)，ok 的开始是 `date_trunc('second',now())`、结束不变、`'{"occurrence_count":3}'`，结果 `true:true:none:2`（开始虽在 48 小时内，顺延不打 near_start 标记）。
+       7. real-move-near-start：seed 开始 +5 天，ok 改到 +1 天，`previous_starts_at = 原开始` 为 true、review_flag 是 source_time_changed_near_start。
+       8. refused-place：unavailable/2 的行，ok 的地点是 `campuscheckblockedmarker`，返回 `unavailable:2:true`，地点仍是 `Synthetic public hall`、missing_since 非空。
+       9. invalid-input：用 `pg_temp.error(format(...))` 以 supabase_admin 依次试 ok 带多一个 organizer_name、outcome 'gone'、error 带 row、不存在的 id（`pg_temp.id(99)`）、`claim_campus_event_checks(3)`，结果是 `22023,22023,22023,22023,22023`。
+       10. detail-line：四行分别是 visible、hidden、unavailable/2、181 天前结束，都设 `last_seen_at=now()`；`pg_temp.read(1..4)` 和 `pg_temp.read(99)` 是 `true,null,null,null,null`。
+       11. function-contract：三个函数 `prosecdef AND NOT proisstrict` 的个数是 3；`has_function_privilege` 为真的（角色:函数）恰好是 `anon:read,authenticated:read,service_role:apply,service_role:claim`（read 是 checked_at）。
+       pg_temp 助手在切到 service_role 或 anon 之前就算好 id，切换之后不再调任何 pg_temp 函数；被拒的调用不在 SET ROLE 下去调没有 EXECUTE 的函数（STATUS 阻塞第 19 条：本地镜像上这样调会让后端 SIGSEGV），拒绝只从目录核。supervisor 把整份 REGRESSION_C 换成 fixture 的替身屏蔽词，在普通 PostgreSQL 上跑过 11/11；supabase 镜像上的结论看第 10 项 c。
+     - 第 3 项 node 测试里的用例「the campus preflight and verification hold on stock PostgreSQL」测两份只读文件（用 `ops` 去掉 psql 指令行、`refusal` 取首错）：PRECHECK_C 在 `startEventSyncDatabase()` 上得 `community_campus_checks_precheck_function:public.apply_caaci_event_snapshot(boolean,jsonb):a7cb04d8c754da448cd570ca6768964f`，在 `startEventSyncCapDatabase()` 上得 'passed'，在 C 之后得 `community_campus_checks_precheck_already_applied`；VERIFY_C 在 C 之后得 'passed'；把 VERIFY_C 文本里 `'fcbfeb9588d7afb7bb322e69d9d70077'` 换成 `…078'` 得 `community_campus_checks_function_body:public.claim_campus_event_checks(integer):fcbfeb9588d7afb7bb322e69d9d70077`；四个库内负对照各做、各恢复、恢复后再得 'passed'：`GRANT EXECUTE ON FUNCTION public.claim_campus_event_checks(integer) TO anon` → `community_campus_checks_function_grants:public.claim_campus_event_checks(integer):anon,service_role`；`ALTER FUNCTION public.community_campus_event_checked_at(uuid) VOLATILE` → `community_campus_checks_function_attributes:public.community_campus_event_checked_at(uuid)`；`ALTER FUNCTION public.claim_campus_event_checks(integer) PARALLEL SAFE`（恢复用 `PARALLEL UNSAFE`）→ `community_campus_checks_function_attributes:public.claim_campus_event_checks(integer)`；`ALTER FUNCTION public.apply_campus_event_check(uuid,text,jsonb) RENAME TO apply_campus_event_check_moved` → `community_campus_checks_function_missing:public.apply_campus_event_check(uuid,text,jsonb)`。普通 PostgreSQL 上 VERIFY_20261122035253 本来就会报 update_updated_at 的授权（D-60 第 3 项 b），所以 node 测试只跑 C 自己的两份文件；那三份旧 VERIFY 的结论只看第 10 项 c 的 L-SQL。
+     - 变异：两份只读文件的负对照就是上面那条用例；REGRESSION_C 的变异轮见第 10 项 c。
+     - 完成线：随 k2 提交；node 测试 12 条全绿；第 10 项 c 的 L-SQL、回放后对照和负对照按期望；然后照第 10 项 c 冻结 C。仍开着：C 应用到托管库（FINAL ④）。
+  5. **学校刷新 worker，默认关（同一分支，提交 k4）。** 开关 `COMMUNITY_SYNC_CAMPUS_EVENTS` 只认 '1'，本批不设；没设时不请求、不调任何学校 RPC，background-jobs 响应的键不变。白名单 `CAMPUS_CALENDARS` 保持 []，api/_community-events.test.mjs 第 89 行的 `assert.deepEqual(CAMPUS_CALENDARS, [])` 不动；测试只经 `calendars` 参数注入白名单，不逐字断言源码。所有测试真实 fetch 0 次。不新建 api/_*.js：新代码放进 api/_community-events-sync.js，它和 _campus-ics.js、_campus-time.js 已在 api/_test-module-loader.mjs 第 7 行的 SHARED_MODULES 里；api/ 下 24 个函数入口和 vercel.json 不动，不加 cron。
+     - api/_community-events-sync.js 第 2 行 `import { normalizeCaaciEvents } from './_community-events.js'` 换成下面两行，第 1 行不动：
+       ```js
+       import { parseCampusIcs } from './_campus-ics.js'
+       import { CAMPUS_CALENDARS, normalizeCaaciEvents, normalizeCampusEvent } from './_community-events.js'
+       ```
+       文件末尾（第 136 行之后）追加下面这段。第 1–136 行的其余部分（syncCaaciEvents、stepTimeout、httpFailureCode、failureCode、rpcFailureCode）一个字节不改，`git diff a60aa563 -- api/_community-events-sync.js` 只有第 2 行那一处删除：
+       ```js
+       export const CAMPUS_CHECKS_PER_RUN = 2
+       // Strictly below the shortest gap between two cron ticks (about 50 seconds), so every tick may check.
+       export const CAMPUS_CHECK_CLAIM_INTERVAL_SECONDS = 30
+       const CAMPUS_KEY = /^([0-9]{1,6})\/([0-9]{1,12})$/
+       const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+       // The only columns a refresh may change (apply_campus_event_check refuses any other key).
+       const CAMPUS_ROW_KEYS = ['all_day', 'content_hash', 'ends_at', 'location', 'occurrence_count',
+         'review_flag', 'source_updated_at', 'starts_at', 'title_en']
+
+       // Mode A: one event's own ICS. Nothing is requested for a calendar outside the allowlist.
+       export async function fetchCampusEvent(fetch, sourceKey, timeoutMs, now, calendars = CAMPUS_CALENDARS) {
+         if (!calendars.length) return { error: 'campus_calendar_not_allowed' }
+         const key = CAMPUS_KEY.exec(typeof sourceKey === 'string' ? sourceKey : '')
+         if (!key) return { error: 'bad_ics' }
+         const [, calendarId, eventId] = key
+         if (!calendars.some(calendar => String(calendar.id) === calendarId)) return { error: 'campus_calendar_not_allowed' }
+         try {
+           const response = await fetchBounded(fetch,
+             `https://calendars.illinois.edu/icalGmail/${calendarId}/${eventId}.ics?hourOffset=0&timeZone=America%2FChicago`, {
+               method: 'GET',
+               headers: { accept: 'text/calendar', 'user-agent': 'CornfieldSync/1 (+https://www.illinimarket.com)' },
+               redirect: 'manual',
+             }, { timeoutMs, maxBytes: MAX_BYTES })
+           if (response.status === 404) return { not_found: true }
+           if (!response.ok) return { error: httpFailureCode(response.status, response.headers) }
+           const parsed = await parseCampusIcs(await response.text(), { now, event_id: eventId })
+           if (parsed.error) return parsed
+           if (parsed.rows.length !== 1) return { error: 'bad_ics' }
+           const card = normalizeCampusEvent({ ...parsed.rows[0], calendar_id: calendarId }, calendars)
+           if (card.error) return card
+           return { row: Object.fromEntries(CAMPUS_ROW_KEYS.map(name => [name, card[name]])) }
+         } catch (error) {
+           return { error: failureCode(error) }
+         }
+       }
+
+       function campusApplied(value) {
+         return Boolean(value) && typeof value === 'object'
+           && Object.keys(value).sort().join() === 'availability,missing_checks,rejected'
+           && ['visible', 'unavailable', 'hidden'].includes(value.availability)
+           && Number.isInteger(value.missing_checks) && value.missing_checks >= 0 && value.missing_checks <= 2
+           && typeof value.rejected === 'boolean'
+       }
+
+       export async function syncCampusEvents({ deadline, call, fetch, calendars = CAMPUS_CALENDARS }) {
+         if (process.env.COMMUNITY_SYNC_CAMPUS_EVENTS !== '1') return null
+         let claimed
+         try {
+           claimed = await call('claim_community_event_sync', {
+             source_in: 'campus', interval_in: CAMPUS_CHECK_CLAIM_INTERVAL_SECONDS + ' seconds',
+           }, stepTimeout(deadline))
+         } catch (error) {
+           return failed(error instanceof SyncDeadlineError ? 'deadline' : 'claim_failed')
+         }
+         if (claimed !== true) return claimed === false
+           ? { outcome: 'not_due', code: null, rejected: 0 } : failed('claim_failed')
+
+         let result
+         let step = 'checks'
+         try {
+           const rows = await call('claim_campus_event_checks', { limit_in: CAMPUS_CHECKS_PER_RUN }, stepTimeout(deadline))
+           if (!Array.isArray(rows) || rows.length > CAMPUS_CHECKS_PER_RUN
+               || !rows.every(row => row && UUID.test(row.id) && CAMPUS_KEY.test(row.source_key))) result = failed('checks_result_invalid')
+           else {
+             let code = null
+             let rejected = 0
+             step = 'apply'
+             for (const row of rows) {
+               const checked = await fetchCampusEvent(fetch, row.source_key, stepTimeout(deadline), new Date(Date.now()).toISOString(), calendars)
+               const outcome = checked.row ? 'ok' : checked.not_found ? 'not_found' : 'error'
+               const applied = await call('apply_campus_event_check', {
+                 event_id_in: row.id, outcome_in: outcome, row_in: checked.row ?? null,
+               }, stepTimeout(deadline))
+               if (!campusApplied(applied)) { result = failed('apply_result_invalid', rejected); break }
+               if (applied.rejected) { rejected++; code ??= 'rows_rejected' }
+               if (checked.error) code ??= checked.error
+               // A 503 asks us to stop; the rows not requested keep their six-hour lease.
+               if (checked.error === 'http_503') break
+             }
+             result ??= { outcome: code ? 'partial' : 'ok', code, rejected }
+           }
+         } catch (error) {
+           result = failed(rpcFailureCode(step, error))
+         }
+         if (result.code === 'deadline') {
+           console.error('[community-events-sync] campus finish skipped', { code: 'deadline' })
+           return result
+         }
+         try {
+           const finished = await call('finish_community_event_sync', {
+             source_in: 'campus', outcome_in: result.outcome, error_code_in: result.code,
+           }, stepTimeout(deadline))
+           if (finished !== true) console.error('[community-events-sync] campus finish not recorded', { code: 'unexpected_failure' })
+         } catch (error) {
+           const code = rpcFailureCode('finish', error)
+           if (error instanceof SyncDeadlineError) result = failed('deadline', result.rejected)
+           console.error('[community-events-sync] campus finish not recorded', { code })
+         }
+         return result
+       }
+       ```
+       要点：白名单在发任何请求之前检查（空白名单在读入参之前就拒，照 parseCampusEventLink 第 134–135 行）；请求固定为单条 ICS，请求头只有 accept 和 user-agent，不带 Authorization 或 Cookie，`redirect: 'manual'`，上限 256 KB，超时照 stepTimeout；normalizeCampusEvent 返回整张卡片（api/_community-events.js 第 154–160 行），只投影 CAMPUS_ROW_KEYS 那九列；404 是 not_found，其余非 2xx 用 httpFailureCode 分类，503 写完这一行就停，没请求的行靠领取时写的 6 小时租约；空 VCALENDAR 得 bad_ics，按 error 只写 last_checked_at（ENGINEERING §13 缺口 8，第 9 项 f 写明这类行撤不下来）；claim_campus_event_checks 失败记 `checks_*`，apply 失败记 `apply_*`；deadline 不调 finish，规则照 CAACI 第 121–124 行；函数永不向外抛。
+     - api/background-jobs.js 四处，其余不动：
+       - 第 8 行改成 `import { syncCaaciEvents, syncCampusEvents } from './_community-events-sync.js'`；
+       - 第 188 行 `  let communitySync = null` 之后加一行 `  let campusSync = null`；
+       - 第 276 行（CAACI 块的 `}`）之后、第 277 行 purge 之前加：
+         ```js
+             if (process.env.COMMUNITY_SYNC_CAMPUS_EVENTS === '1') {
+               if (deadline - Date.now() > 12_000) {
+                 campusSync = await syncCampusEvents({ deadline, call, fetch })
+                 counts.community_campus_checks = campusSync.outcome
+               } else counts.community_campus_checks = 'skipped_budget'
+             }
+         ```
+       - 第 294 行（CAACI 的 Sentry 块的 `}`）之后加：
+         ```js
+             if (campusSync && (campusSync.outcome === 'failed' || campusSync.outcome === 'partial' || campusSync.rejected > 0)) {
+               await reportToSentry('api/background-jobs', 'community campus checks need attention', {
+                 outcome: campusSync.outcome, code: campusSync.code, rejected: campusSync.rejected,
+               })
+             }
+         ```
+       预算：整次运行 25 秒（第 22 行），学校块排在 CAACI 之后、purge 之前，自己再判一次剩余 >12 秒；每一步照 stepTimeout 给 purge 和 status 留 5 秒。
+     - 测试一：新文件 api/_community-campus-checks.test.mjs（只测模块，7 条，计入 TEST）。文件头照 api/_community-events-sync.test.mjs 第 1–20 行：先把 globalThis.fetch 换成数次数、抛错的替身再 `await import('./_community-events-sync.js')`，after 里断言真实 fetch 0 次；afterEach 恢复 COMMUNITY_SYNC_CAMPUS_EVENTS、Date.now、console.error。助手 `run(options)`：开关默认 '1'（`Object.hasOwn(options, 'flag')` 时照给的值，undefined 就删掉）；没给 `clock` 时 `Date.now = () => Date.parse('2026-11-13T18:00:00Z')`；`call(name, args, timeoutMs)` 记下每次调用，`options.onCall?.(name)`，`throwOn` 等于 name 时抛 `options.error`，否则按名字返回：claim_community_event_sync → `options.claim ?? true`，claim_campus_event_checks → `Object.hasOwn(options, 'rows') ? options.rows : [ROWS[0]]`，apply_campus_event_check → `Object.hasOwn(options, 'applied') ? options.applied : { availability: 'visible', missing_checks: 0, rejected: false }`，finish → `options.finish ?? true`，其他名字抛错（null 必须能原样传进去，所以不用 `??`）；注入的 fetch 记下 `{ url: String(url), init }`，`options.respond?.(url, 次数)` 不给时回 200、text/calendar、campus-sample.ics 原文；calendars 默认 `[{ id: '3715', name_en: 'Synthetic calendar' }]`，`Object.hasOwn(options, 'calendars')` 时照给的值；deadline 默认 `Date.now() + 25_000`。`ROWS` 是 `{ id: 'caac1127-2026-4000-8000-000000000001', source_key: '3715/90000001' }` 和 `…-000000000002`、`'3715/90000003'`。七条：
+       1. 「only the exact campus flag starts a campus check」：开关 undefined、''、'0'、'true'、'1 ' 时结果都是 null，调用和请求都是 0 次。
+       2. 「the campus gate reuses the source claim and its interval constant」：`CAMPUS_CHECKS_PER_RUN` 是 2，`CAMPUS_CHECK_CLAIM_INTERVAL_SECONDS` 是 30；claim 回 false 得 `{ outcome: 'not_due', code: null, rejected: 0 }`，调用只有 `['claim_community_event_sync', { source_in: 'campus', interval_in: '30 seconds' }]`，请求 0；claim 抛 `provider_status_404` 得 `failed/claim_failed`，只调了 claim；rows 为 [] 得 `ok/null/0`，claim_campus_event_checks 的参数是 `{ limit_in: 2 }`，finish 是 `{ source_in: 'campus', outcome_in: 'ok', error_code_in: null }`；rows 为 [] 且 finish 回 false 时结果仍是 ok/null/0，日志恰好是 `[['[community-events-sync] campus finish not recorded', { code: 'unexpected_failure' }]]`。
+       3. 「the production allowlist requests nothing and records every claimed row as an error」：calendars `[]`、rows 两行 → 请求 0，两次 apply 都是 `{ event_id_in, outcome_in: 'error', row_in: null }`，结果和 finish 都是 partial/campus_calendar_not_allowed；calendars 只有日历 7 时同样请求 0、apply 是 error。
+       4. 「one fixed, unauthenticated, bounded request per row and only nine columns cross」：请求 1 次，URL 逐字是 `https://calendars.illinois.edu/icalGmail/3715/90000001.ics?hourOffset=0&timeZone=America%2FChicago`，method GET，redirect manual，`Object.keys(init.headers).sort()` 是 `['accept', 'user-agent']`，accept 是 text/calendar，user-agent 逐字同 CAACI；apply 的 outcome_in 是 ok，`Object.keys(row_in).sort()` 是那九个键，title_en 是 'Synthetic campus gathering'，starts_at 是 '2026-11-20T17:30:00.000Z'，content_hash 是 64 位十六进制；`JSON.stringify(apply 参数)` 里没有 'organizer@example.test'、'Synthetic description.'、'key=synthetic'、'allowed_link_hosts'、'comment_count'、'organizer_name'；结果 ok/null/0。
+       5. 「a 404 is not_found, a 503 stops the run and a mismatched UID is an error」：404 text/html（campus-404.html）→ apply 是 not_found、row_in null，结果 ok/null/0；两行、首个请求 503 → 请求 1 次、apply 1 次（error），结果 partial/http_503；只领到 `3715/90000003` 而回的是 sample（UID 90000001）→ apply 是 error，结果 partial/campus_uid_mismatch。
+       6. 「rejected rows, bad results and failed calls finish with stable codes」：apply 回 rejected:true → partial/rows_rejected/1；rows 是 null、{}、id 不是 uuid、source_key 是 '3715/x'、三行 → 都是 failed/checks_result_invalid 且请求 0；apply 回 null、{}、availability 'gone'、missing_checks 3、多一个键 → 都是 failed/apply_result_invalid；claim_campus_event_checks 抛 `provider_status_404` → checks_http_404，抛 `provider_timeout` → checks_timeout，抛非 Error 的 `{ message: 'provider_status_503' }` → checks_failed，apply 抛 `provider_status_400` → apply_http_400，抛 `provider_malformed` → apply_failed；这五种 finish 都是 failed 加同一个码，日志为空。
+       7. 「every campus step gets its own budget and a late run skips finish」：`t.mock.method(globalThis, 'setTimeout', …)` 记下每次的时长；clock 自己控制，每次 call 让 now += 2000、每次请求让 now += 1000，rows 两行。deadline = now + 14_000：调用和超时依次是 claim 5000、claim_campus_event_checks 5000、apply 4000、apply 1000，请求的超时依次是 5000、2000，finish 因预算不足没调，结果 failed/deadline/0，日志恰好是 `[['[community-events-sync] campus finish not recorded', { code: 'deadline' }]]`。deadline = now + 11_000：只调了 claim、claim_campus_event_checks、apply，结果 failed/deadline/0，日志恰好是 `[['[community-events-sync] campus finish skipped', { code: 'deadline' }]]`。
+       逐条的变异（每个临时改模块、照第 10 项 a 单跑这个文件和 worker 测试、跑完恢复并核 sha256）：模块的开关判断改成 `!process.env.COMMUNITY_SYNC_CAMPUS_EVENTS` → 1 红；删掉 `if (claimed !== true) return …` 那两行 → 2 红；删掉 `if (finished !== true) console.error(…)` 那一行 → 2 红；把两处白名单检查挪到 fetchBounded 之后 → 3 红；请求头加 `cookie: 'x'` → 4 红；`return { row: card }` 代替投影 → 4 红；删掉 404 分支 → 5 红；删掉 503 的 break → 5 红；调 parseCampusIcs 时不传 event_id → 5 红；去掉 `rows.length > CAMPUS_CHECKS_PER_RUN` → 6 红；fetchCampusEvent 的超时写死 5000 → 7 红。
+     - 测试二：api/_community-events-sync-worker.test.mjs 改测试辅助、加 3 条（计入 TEST）。辅助的五处改动（不改任何断言）：第 9 行 keys 末尾加 `'COMMUNITY_SYNC_CAMPUS_EVENTS'`（不加的话环境里残留的值会改结果）；第 37 行之后加 `  if (options.campusFlag !== undefined) process.env.COMMUNITY_SYNC_CAMPUS_EVENTS = options.campusFlag`；第 54 行之前加 `    if (url.hostname === 'calendars.illinois.edu') return new Response('', { status: 404 })`（没有这一行，学校请求会被第 54 行的抛错盖住）；第 60 行换成下面这几行（CAACI 的行为不变，另加两个学校 RPC 分支）；第 85 行的正则 `/community_event|caaci_event/` 换成 `/community_event|caaci_event|campus_event/`（不换的话 claim_campus_event_checks、apply_campus_event_check 都看不见，「学校 RPC 0 次」会假绿）：
+       ```js
+             case 'claim_community_event_sync':
+               if (body.source_in === 'campus') return json(options.campusClaim ?? true)
+               options.onClaim?.(); return json(options.claim ?? true)
+             case 'claim_campus_event_checks': return json(options.campusRows ?? [])
+             case 'apply_campus_event_check':
+               if (options.campusApplyStatus !== undefined) return new Response('{"message":"Synthetic database detail"}', {
+                 status: options.campusApplyStatus, headers: { 'content-type': 'application/json' },
+               })
+               return json({ availability: 'visible', missing_checks: 0, rejected: false })
+       ```
+       三条新用例（campusRows 用上面 ROWS 那两行）：
+       1. 「only the exact campus flag adds a response field or any campus request」：CAACI 开关不设、campusFlag 是 undefined、''、'0'、'true'、'1 ' 时，状态 200，`Object.keys(body).sort()` 等于 baselineKeys，syncCalls 为 []，对 calendars.illinois.edu 的请求 0 次，Sentry 0 条；campusFlag '1'、campusClaim false 时 `body.community_campus_checks` 是 not_due，syncCalls 只有 claim_community_event_sync。
+       2. 「campus checks run after CAACI and before cleanup, and only with more than twelve seconds left」：两个开关都是 '1' 时 syncCalls 依次是 claim_community_event_sync、apply_caaci_event_snapshot、finish_community_event_sync、claim_community_event_sync、claim_campus_event_checks、finish_community_event_sync，最后两个 RPC 是 purge 和 status，最后一次 finish 的 body 是 `{ source_in: 'campus', outcome_in: 'ok', error_code_in: null }`，Sentry 0 条；只开学校开关、照 :165–177 的写法让剩余时间是 12_000 和 11_999 时，`community_campus_checks` 都是 skipped_budget、syncCalls 为 []、最后两个 RPC 仍是 purge 和 status。
+       3. 「the default allowlist requests nothing; partial and failed campus checks report once」：campusFlag '1'、campusRows 两行：学校请求 0 次，`community_campus_checks` 是 partial，两次 apply 的 body 都是 error、row_in null，Sentry 恰好 1 条，message 是 `community campus checks need attention`，extra 是 `{ outcome: 'partial', code: 'campus_calendar_not_allowed', rejected: 0 }`；再加 `campusApplyStatus: 503`：状态 200，`failed`，Sentry 1 条、extra 是 `{ outcome: 'failed', code: 'apply_http_503', rejected: 0 }`，日志和 Sentry 里都没有 'Synthetic database detail'，Sentry 在 background_job_status 之后；再换成 `emptyFinish: true`（第 69 行已有的选项，学校的 finish 回空正文）：状态 200，`community_campus_checks` 仍是 partial，日志里恰好一条 `[community-events-sync] campus finish not recorded`，Sentry 恰好 1 条。
+       变异：background-jobs 的判断改成 `Boolean(process.env.COMMUNITY_SYNC_CAMPUS_EVENTS)` → 1 红（'true' 那档模块返回 null，读 campusSync.outcome 抛错，worker 返回 503）；学校块的阈值 12_000 改 10_000 → 2 红；学校块挪到 purge 之后 → 2 红；删掉学校的 Sentry 块 → 3 红。原有 9 条照旧全绿。
+     - 测试三：scripts/community-campus-checks.test.mjs 第 2 行改成 `import test, { after } from 'node:test'`、加 `import { readFileSync } from 'node:fs'`，再把下面前五行（fetch 守卫和 `syncCampusEvents` 的导入）放在 import 之后、其余那条用例放在文件末尾（真模块、真迁移，fixture 的单条 ICS 只把日期挪到三天后；结果 ok、请求 1 次、行被刷新、sync_state 的 campus 行 `ok:true`）：
+       ```js
+       const originalFetch = globalThis.fetch
+       let realFetchCalls = 0
+       globalThis.fetch = () => { realFetchCalls++; throw new Error('Real network is forbidden') }
+       const { syncCampusEvents } = await import('../api/_community-events-sync.js')
+       after(() => { globalThis.fetch = originalFetch; assert.equal(realFetchCalls, 0) })
+
+       test('the real campus projection is accepted by the real service RPCs', { skip: SKIP }, async () => {
+         const previous = process.env.COMMUNITY_SYNC_CAMPUS_EVENTS
+         process.env.COMMUNITY_SYNC_CAMPUS_EVENTS = '1'
+         const db = startCampusChecksDatabase()
+         try {
+           reset(db)
+           seed(db, 1)
+           // The fixture's only event, moved three days ahead; nothing else in it changes.
+           const day = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10).replaceAll('-', '')
+           const ics = readFileSync(new URL('../api/__fixtures__/community-events/campus-sample.ics', import.meta.url), 'utf8')
+             .replaceAll('20261120T', day + 'T')
+           const literal = value => value === null ? 'NULL' : "'" + String(value).replaceAll("'", "''") + "'"
+           let requests = 0
+           const result = await syncCampusEvents({
+             deadline: Date.now() + 20_000,
+             calendars: [{ id: '3715', name_en: 'Synthetic calendar' }],
+             fetch: async () => { requests++; return new Response(ics, { headers: { 'content-type': 'text/calendar' } }) },
+             call: async (name, args) => {
+               let expression
+               switch (name) {
+                 case 'claim_community_event_sync':
+                   expression = `public.claim_community_event_sync(${literal(args.source_in)}, ${literal(args.interval_in)}::interval)`
+                   break
+                 case 'claim_campus_event_checks':
+                   expression = `public.claim_campus_event_checks(${Number(args.limit_in)})`
+                   break
+                 case 'apply_campus_event_check':
+                   expression = `public.apply_campus_event_check(${literal(args.event_id_in)}::uuid, ${literal(args.outcome_in)}, `
+                     + (args.row_in === null ? 'NULL' : literal(JSON.stringify(args.row_in)) + '::jsonb') + ')'
+                   break
+                 case 'finish_community_event_sync':
+                   expression = `public.finish_community_event_sync(${literal(args.source_in)}, ${literal(args.outcome_in)}, ${literal(args.error_code_in)})`
+                   break
+                 default: throw new Error('Unexpected local RPC')
+               }
+               try {
+                 return JSON.parse(db.as('SELECT to_jsonb(' + expression + ')', 'service_role'))
+               } catch {
+                 throw new Error('provider_status_400')
+               }
+             },
+           })
+           assert.deepEqual(result, { outcome: 'ok', code: null, rejected: 0 })
+           assert.equal(requests, 1)
+           assert.equal(state(db, 1, "title_en||'|'||location||'|'||missing_checks||'|'||(last_seen_at IS NOT NULL)::text||'|'||length(content_hash)"),
+             'Synthetic campus gathering|Synthetic public hall|0|true|64')
+           assert.equal(db.sql("SELECT last_outcome || ':' || (last_success_at IS NOT NULL)::text FROM public.community_event_sync_state WHERE source = 'campus'"), 'ok:true')
+         } finally {
+           db.stop()
+           if (previous === undefined) delete process.env.COMMUNITY_SYNC_CAMPUS_EVENTS
+           else process.env.COMMUNITY_SYNC_CAMPUS_EVENTS = previous
+         }
+       })
+       ```
+       变异：CAMPUS_ROW_KEYS 加一个 `'organizer_name'` → 这条红（apply 报 22023，call 抛 provider_status_400，结果 apply_http_400）。这是投影九列和 C 的入参校验对得上的唯一证明。
+     - 加了 import 以后，经 inlineSharedApiImports 加载 handler 的 31 个套件都要在全量 TEST 里跑过（第 10 项 b）。
+     - 完成线：k4 提交，三组测试和十六个变异按期望；`git diff a60aa563 -- vercel.json` 为空，`git diff --name-status a60aa563 -- api | grep -v '^M'` 只有 `A	api/_community-campus-checks.test.mjs`。仍开着：开关和白名单（D-33）归 Eric；真实请求本批 0 次。
+  6. **发布清单测试拆段、C 的发布节、迁移计数、根 RUNBOOK 和 ENV_CHECKLIST（同一分支；a 是 k1，b、c 随 k2，d–g 是 k3）。**
+     - a. k1（在 C 之前，所以本身是绿的）：scripts/community-release-checklist-boundary.test.mjs 整个换成下面这份。原来第 24 行把所有晚于 20261114015420 的迁移都当成「Community P3+P4 release」的待发布项，C 一落盘它就红；顺手把 C 塞进那张表能让它变绿，但会把已经做完的发布记错。新写法：P3+P4 节钉死为五个已应用的文件；比 `RELEASED_THROUGH = '20261125004742'` 新的迁移必须出现在新节 `### Community campus checks release`，新节也有三张表；两节都解析第三张步骤表（每条迁移 PRECHECK → APPLY → VERIFY，再接各自的重跑）、每步的 NOTICE、正文的顺序句和被取代 VERIFY 的首错（写成显式的 (after, verified) 对子，C 没有取代任何 VERIFY，所以是 []）；cells() 只按没转义的 `|` 切分，NOTICE 单元格里的 `\|` 才不会被切坏；取节时遇到下一个 `##` 或 `###` 就停（新节排在一个 `##` 之前）。原测试第 13 行那个标题字符串不改。
+       ```js
+       import assert from 'node:assert/strict'
+       import { createHash } from 'node:crypto'
+       import { readFile, readdir } from 'node:fs/promises'
+       import test from 'node:test'
+
+       const root = new URL('../', import.meta.url)
+       const sha256 = value => createHash('sha256').update(value).digest('hex')
+       // A NOTICE cell escapes its pipe; split only on unescaped pipes.
+       const cells = line => line.trim().split(/(?<!\\)\|/).slice(1, -1)
+         .map(cell => cell.trim().replace(/^`(.*)`$/, '$1').replaceAll('\\|', '|'))
+       // Applied to staging and production on 2026-11-26 (D-61 item 0). A later
+       // release section takes every migration after this one.
+       const RELEASED_THROUGH = '20261125004742'
+       const RELEASED = [
+         '20261120100354_community_watch_save_activity.sql',
+         '20261120122054_community_events.sql',
+         '20261122035253_community_member_events.sql',
+         '20261123201501_community_event_sync.sql',
+         '20261125004742_community_event_sync_cap.sql',
+       ]
+       const MEMBER = 'VERIFY_20261122035253_community_member_events.sql'
+       const REPLY = 'VERIFY_reply_notice_switch.sql'
+
+       function sectionOf(source, heading) {
+         const start = source.indexOf(heading + '\n')
+         return start < 0 ? null : source.slice(start + heading.length + 1).split(/\n#{2,3} /)[0]
+       }
+
+       async function migrationFiles() {
+         return (await readdir(new URL('supabase/migrations/', root))).filter(file => /^\d{14}_.+\.sql$/.test(file)).sort()
+       }
+
+       // One release section: its bytes, directive and step tables, the stated order
+       // and the first errors of the VERIFY files it supersedes.
+       async function checkRelease(source, { heading, files, rechecks, suffix, firstErrors, deep = true }) {
+         const section = sectionOf(source, heading)
+         assert.ok(section !== null, heading + ' must exist and list ' + files.join(', '))
+         const tables = section.split(/\n\s*\n/).filter(block => block.startsWith('|'))
+         assert.ok(tables.length >= (deep ? 3 : 2), heading + ': bytes, directives and steps must be tabulated')
+         const migrationLines = tables[0].split('\n')
+         assert.deepEqual(cells(migrationLines[0]),
+           ['Migration file', 'File SHA-256', 'BEGIN line', 'COMMIT line', 'Sent SQL SHA-256'])
+         const migrations = migrationLines.slice(2).map(cells)
+         assert.deepEqual(migrations.map(row => row[0]), files, heading + ': every migration, once, in timestamp order')
+         for (let index = 1; index < files.length; index++) {
+           assert.ok(files[index - 1].slice(0, 14) < files[index].slice(0, 14), heading + ': migration timestamps must increase strictly')
+         }
+         for (const row of migrations) {
+           assert.equal(row.length, 5)
+           const [file, expectedHash, expectedBegin, expectedCommit, expectedPayloadHash] = row
+           const bytes = await readFile(new URL('supabase/migrations/' + file, root))
+           assert.equal(sha256(bytes), expectedHash, file + ': file hash')
+           const lines = bytes.toString('utf8').split('\n')
+           const begin = lines.flatMap((line, index) => line === 'BEGIN;' ? [index + 1] : [])
+           const commit = lines.flatMap((line, index) => line === 'COMMIT;' ? [index + 1] : [])
+           assert.equal(begin.length, 1, file + ': exactly one top-level BEGIN')
+           assert.equal(commit.length, 1, file + ': exactly one top-level COMMIT')
+           assert.equal(String(begin[0]), expectedBegin, file + ': BEGIN line')
+           assert.equal(String(commit[0]), expectedCommit, file + ': COMMIT line')
+           const payload = lines.filter((_, index) => index + 1 !== begin[0] && index + 1 !== commit[0]).join('\n')
+           assert.equal(sha256(payload), expectedPayloadHash, file + ': sent SQL hash')
+         }
+
+         const operationLines = tables[1].split('\n')
+         assert.deepEqual(cells(operationLines[0]), ['PRECHECK or VERIFY file', 'Remove line'])
+         const operations = operationLines.slice(2).map(cells)
+         const own = files.flatMap(file => ['PRECHECK_' + file, 'VERIFY_' + file])
+         assert.deepEqual(operations.map(row => row[0]), own.concat(rechecks.filter(file => !own.includes(file))),
+           heading + ': every migration needs its own PRECHECK and VERIFY, followed by the rechecks')
+         for (const row of operations) {
+           assert.equal(row.length, 2)
+           const [file, position] = row
+           const lines = (await readFile(new URL('supabase/_ops/' + file, root), 'utf8')).split('\n')
+           const directives = lines.flatMap((line, index) => line === '\\set ON_ERROR_STOP on' ? [index + 1] : [])
+           assert.equal(directives.length, 1, file + ': exactly one client directive')
+           assert.equal(String(directives[0]), position, file + ': directive line')
+           assert.equal(lines[Number(position) - 1], '\\set ON_ERROR_STOP on', file)
+         }
+         if (!deep) return
+
+         const stepLines = tables[2].split('\n')
+         assert.deepEqual(cells(stepLines[0]), ['Step', 'Operation', 'File', 'Expected NOTICE'])
+         const steps = stepLines.slice(2).map(cells)
+         assert.deepEqual(steps.map(row => row[0]), steps.map((_, index) => String(index + 1)), heading + ': steps are numbered 1..N')
+         assert.deepEqual(steps.map(row => [row[1], row[2]]), files
+           .flatMap(file => [['PRECHECK', 'PRECHECK_' + file], ['APPLY', file], ['VERIFY', 'VERIFY_' + file]])
+           .concat(rechecks.map(file => ['VERIFY', file])),
+         heading + ': each migration is prechecked, applied and verified in timestamp order, then the rechecks run')
+         for (const [, operation, file, notice] of steps) {
+           if (operation === 'APPLY') { assert.equal(notice, 'none', file); continue }
+           const sql = await readFile(new URL('supabase/_ops/' + file, root), 'utf8')
+           const raised = [...sql.matchAll(/RAISE NOTICE '([^']+)'/g)].map(match => match[1].replace('%', 'f'))
+           assert.deepEqual(raised, notice === 'none' ? [] : [notice], file + ': expected NOTICE')
+         }
+         assert.ok(section.replace(/\s+/g, ' ').includes('The order is ' + files.map(file => '`' + file.slice(0, 14) + '`').join(' → ') + suffix),
+           heading + ': the prose order names every migration in timestamp order')
+
+         const found = [...section.matchAll(/^- After `?(\d{14}|B)`?, VERIFY_(\d{14}):\n {2}`([^`]+)`\.$/gm)]
+         assert.deepEqual(found.map(match => [match[1], match[2]]), firstErrors, heading + ': superseded VERIFY first errors')
+         for (const [, after, verified, error] of found) {
+           const replacing = after === 'B' ? files.at(-1) : files.find(file => file.startsWith(after))
+           const run = files.find(file => file.startsWith(verified))
+           const [prefix, signature, md5] = error.split(':')
+           const runSql = await readFile(new URL('supabase/_ops/VERIFY_' + run, root), 'utf8')
+           const replacingSql = await readFile(new URL('supabase/_ops/VERIFY_' + replacing, root), 'utf8')
+           assert.ok(runSql.includes(`RAISE EXCEPTION '${prefix}:`), error + ': prefix raised by the superseded VERIFY')
+           assert.ok(runSql.includes(`'${signature}'`), error + ': signature checked by the superseded VERIFY')
+           assert.match(md5, /^[0-9a-f]{32}$/)
+           assert.ok(replacingSql.includes(`'${md5}'`), error + ': md5 is what the replacing VERIFY pins')
+         }
+       }
+
+       test('the applied P3+P4 release keeps its five migrations and its hosted SQL bytes', async () => {
+         const files = await migrationFiles()
+         assert.deepEqual(files.filter(file => file.slice(0, 14) > '20261114015420' && file.slice(0, 14) <= RELEASED_THROUGH), RELEASED,
+           'the applied release section is closed; a new migration belongs to a later section')
+         await checkRelease(await readFile(new URL('RUNBOOK.md', root), 'utf8'), {
+           heading: '### Community P3+P4 release', files: RELEASED, rechecks: [MEMBER, REPLY], suffix: ' (B).',
+           firstErrors: [['20261120122054', '20261120100354'], ['20261122035253', '20261120122054'], ['B', '20261123201501']],
+         })
+       })
+
+       test('every migration after the applied release is in the campus checks release', async () => {
+         const pending = (await migrationFiles()).filter(file => file.slice(0, 14) > RELEASED_THROUGH)
+         const source = await readFile(new URL('RUNBOOK.md', root), 'utf8')
+         if (!pending.length) {
+           assert.equal(sectionOf(source, '### Community campus checks release'), null, 'no pending migration, no release section')
+           return
+         }
+         await checkRelease(source, {
+           heading: '### Community campus checks release', files: pending,
+           rechecks: ['VERIFY_20261125004742_community_event_sync_cap.sql', MEMBER, REPLY], suffix: ' (C).', firstErrors: [],
+         })
+       })
+       ```
+       k1 上的验证（各自单独做、跑完恢复、核 RUNBOOK.md 和测试文件的 sha256）：原样跑 2 条全绿；对调 P3+P4 步骤表的第 14、15 行 → 第一条红；把 P3+P4 第 728 行首错里的 md5 改一位（只改这一处，第 574 行同样的值不动）→ 第一条红；把第 12 步的 NOTICE 改成 none → 第一条红；R1：放一个未跟踪的 C 副本 `supabase/migrations/20991231000000_probe_c.sql`（内容任意一条现成迁移的副本），只跑这一个测试文件 → 第二条红，报新节必须存在并列出它，跑完删掉、`git status --porcelain` 为空。
+     - b. 随 k2：仓库根 RUNBOOK.md 第 766 行（「Checking whether production actually matches the repo」最后一段之后的空行）之后、第 767 行 `## Reply notice switch` 之前，插入新节再加一个空行，`## Reply notice switch` 前面仍是一个空行。这个位置离第 730–736 行、第 938 行和第 956–962 行都远，k3 的改动不会和它相邻。四个占位从文件字节现算（脚本放 $EV，不手抄）：`<C 的 sha256>`、BEGIN、COMMIT 行号和删掉这两行之后发送内容的 sha256；照抄第 3 项的 C 时依次是 37ca561a5cc6cb3919e4c11927bd1bfbbfb5005b8fac29b972c0ede7ef7f1eaf、5、215、dbec0a07fad8488cb3a936167231ec1de6b47ac80b7199e5e4b9cf3f6faa210f。第二、三张表要读 PRECHECK_C、VERIFY_C 的字节，所以它们和 C 在同一个提交里，k2 上整份测试就是绿的。
+       ```markdown
+       ### Community campus checks release
+
+       Run this sequence once for each database, staging first, then production, after
+       the Community P3+P4 release above is complete there. The release owner applies
+       the reviewed file; this checklist does not authorize an agent to apply hosted
+       migrations or merge the PR. The transport rules of Community P3+P4 release
+       apply unchanged: remove only the lines listed below, apply through the
+       ledger-aware migrations endpoint under the full filename stem, and send each
+       PRECHECK and VERIFY as its own read-only request.
+
+       #### Migration bytes
+
+       | Migration file | File SHA-256 | BEGIN line | COMMIT line | Sent SQL SHA-256 |
+       |---|---|---:|---:|---|
+       | `<C>` | `<C 的 sha256>` | <BEGIN 行号> | <COMMIT 行号> | `<发送内容 sha256>` |
+
+       #### SQL client directives
+
+       | PRECHECK or VERIFY file | Remove line |
+       |---|---:|
+       | `PRECHECK_<C>` | 2 |
+       | `VERIFY_<C>` | 3 |
+       | `VERIFY_20261125004742_community_event_sync_cap.sql` | 3 |
+       | `VERIFY_20261122035253_community_member_events.sql` | 5 |
+       | `VERIFY_reply_notice_switch.sql` | 19 |
+
+       #### Application steps
+
+       | Step | Operation | File | Expected NOTICE |
+       |---:|---|---|---|
+       | 1 | PRECHECK | `PRECHECK_<C>` | none |
+       | 2 | APPLY | `<C>` | none |
+       | 3 | VERIFY | `VERIFY_<C>` | `community_campus_checks_verified` |
+       | 4 | VERIFY | `VERIFY_20261125004742_community_event_sync_cap.sql` | `community_event_sync_cap_verified` |
+       | 5 | VERIFY | `VERIFY_20261122035253_community_member_events.sql` | `community_member_events_switch\|enabled=f` |
+       | 6 | VERIFY | `VERIFY_reply_notice_switch.sql` | `community_reply_notice_switch\|enabled=f` |
+
+       The order is `<C 时间戳>` (C). Steps 4-6 show that C left the sync functions and
+       both switches as they were; both switches must report `enabled=f`. C supersedes
+       no VERIFY file. Start a run only at a PRECHECK step, end it only on a VERIFY
+       step, and refuse an APPLY whose name the ledger already holds. If an APPLY
+       does not return 200 or 201, read the ledger by name before anything else:
+       committed, absent, or unknown. Do not set `COMMUNITY_SYNC_CAMPUS_EVENTS` during
+       this sequence.
+
+       If the hosted tool does not expose NOTICE, run
+       `SELECT singleton, enabled FROM private.community_member_event_config;` after
+       step 5 and `SELECT singleton, enabled FROM private.community_reply_notice_config;`
+       after step 6; each must return exactly one row with singleton true and enabled
+       false.
+
+       Run this sequence on a database only while both switches are off there. If
+       either switch has been turned on, do not start it: the release owner first
+       revises this section and `scripts/community-release-checklist-boundary.test.mjs`.
+
+       Until a client calls these three functions, merging the campus checks change
+       does not require C on either database: with `COMMUNITY_SYNC_CAMPUS_EVENTS`
+       unset no deployed code calls them, and the switch stays unset until this
+       sequence has passed on production. Until this sequence has passed on a
+       database, `scripts/schema-drift-probe.mjs` lists `claim_campus_event_checks`,
+       `apply_campus_event_check` and `community_campus_event_checked_at` as missing
+       there; that is expected, not drift.
+       ```
+       新加的 APPLY 那句和后三段是散文：不以 `- After` 开头、不进表；k1 的测试只读表、顺序句和首错，加上它们照旧绿。
+       k2 上的变异（各自单独做、恢复、核 sha256）：R2 把 C 那一行也写进 P3+P4 第一张表 → 第一条红；R3 对调新节第 2、3 步 → 第二条红；R4 把新节 Sent SQL SHA-256 改一位 → 第二条红；R5 删新节第 4 步 → 第二条红；R6 放一个未跟踪的、晚于 C 的副本 `20991231000000_probe_later.sql`，只跑这个测试文件 → 第二条红，删掉后恢复绿。
+     - c. 随 k2：README.md 第 91 行「仓库当前共有 187 个 migration SQL 文件」的 187 改 188；第 92 行三处改动，其余分项不动：① `20261120100354`、`20261120122054`、`20261122035253`、`20261123201501`、`20261125004742` 这五项括号里的「，尚未应用」都换成「，2026-11-26 已在 staging、生产应用」（第 0 项）；② 「社区标题/板块候选（尚未应用）」换成「社区标题/板块候选（已在 staging、生产应用）」，「（`20261114015420`，尚未应用）」换成「（`20261114015420`，已在 staging、生产应用）」（两条都已在两库应用，材料 STATUS 第 19、256 行；两库的应用日期不同，不写日期）；③ 「1 条 2026-11 CAACI 缺席计数封顶候选（`20261125004742`，2026-11-26 已在 staging、生产应用），以及」改成「1 条 2026-11 CAACI 缺席计数封顶候选（`20261125004742`，2026-11-26 已在 staging、生产应用）、1 条 2026-11 学校活动逐条刷新与详情核对时间候选（`<C 时间戳>`，尚未应用），以及」。没有测试钉这几处措辞（release-migration-count-boundary 只钉总数、「38 条候选」和几个文件名）；scripts/release-migration-count-boundary.test.mjs 第 37 行 `assert.equal(sqlCount, 187)` 的 187 改 188。
+     - d. k3，仓库根 RUNBOOK.md 四处（前三处在「Community P3+P4 release」，第四处在「Schema-coupled release order」），原文和新文都照下面逐字。k3 的 d–g 一律按本条引用的原文定位，不按行号：k2 在第 766 行之后插入了新节，第 767 行以后的内容（e、f 引的第 938、956–962、970、972 行）都后移了。改写用一个脚本做（放 $EV），脚本先断言每段原文在文件里恰好出现一次，再替换。
+       - 第 638 行之后（第一段之后）空一行加一段：
+         ```text
+         This sequence was applied in full on staging (2026-11-26 03:17:42-03:17:50Z) and production (04:43:20-04:43:28Z). Do not run it again on either database.
+         ```
+       - 第 686 行这一句：
+         ```text
+         Every step must succeed with the NOTICE below; `none` means no NOTICE.
+         ```
+         换成（同一段第 687–689 行不动）：
+         ```text
+         Each PRECHECK and VERIFY raises an exception at its first failed check, so a run that ends without an error has passed. VERIFY_20261120100354 and VERIFY_20261122035253 print their switch NOTICE before their last checks, so a NOTICE alone is not success. The hosted query endpoint returns rows, not NOTICEs: through it, a step passes when the response is HTTP 200 or 201 with an empty JSON array, and fails on any other response. Before sending a PRECHECK or VERIFY, check that it contains `SET TRANSACTION READ ONLY`, ends in `ROLLBACK;` and contains no `COMMIT;`. `none` below means the file emits no NOTICE.
+         ```
+       - 第 714–716 行里这一句（从第 714 行的 `If` 起，到第 716 行行尾的 `enabled=false.` 止，含中间两个换行；第 714 行开头的 `success gate. ` 和第 716 行末的换行保留）：
+         ```text
+         If the hosted tool does not expose NOTICE, use the SELECTs
+         that return the switch rows in [Reply notice switch](#reply-notice-switch)
+         and [Member events switch](#member-events-switch) and require enabled=false.
+         ```
+         换成下面一行。k2 的新节里也有 `If the hosted tool does not expose NOTICE, run`，所以脚本按这三行整段断言恰好一次，不按开头半句定位：
+         ```text
+         If the hosted tool does not expose NOTICE, run `SELECT singleton, enabled FROM private.community_reply_notice_config;` after steps 3 and 17 and `SELECT singleton, enabled FROM private.community_member_event_config;` after steps 9 and 16; each must return exactly one row with singleton true and enabled false. After step 17, `SELECT pg_catalog.md5(prosrc) FROM pg_catalog.pg_proc WHERE oid = 'public.apply_caaci_event_snapshot(boolean,jsonb)'::regprocedure;` must return `55227c4b42b7ac90e9b1ba34f274b057`.
+         ```
+       - 第 582 行（「Before pull request #380 is merged」那段的最后一行 `backend.`）之后空一行加一段（run 45765292898 是 #380 审过的 head 8dd4c8c1 上的 PR CI，public smoke 06:01–06:30Z 通过，supervisor 读回）：
+         ```text
+         This condition was met on 2026-11-26: CI run 45765292898 on the reviewed head 8dd4c8c1 passed `public-smoke` against staging after all five migrations had been applied there, and #380 was merged at 06:31:59Z.
+         ```
+       四处都不碰三张表、顺序句和首错（第 646–672、691–712、720–728 行），k1 的测试照旧绿。不写执行脚本的路径和内容。
+     - e. k3：第 970 行（「CAACI events sync」最后一段）之后、第 972 行 `## Member events switch` 之前加一节：
+       ````markdown
+       ## Campus events checks
+
+       The switch is `COMMUNITY_SYNC_CAMPUS_EVENTS`. Only the exact value `1` enables
+       it. Eric sets or removes it in Vercel's **Production** environment only; either
+       change needs one new supervised production deployment before it affects the
+       running worker. With the switch off the worker requests nothing and calls no
+       campus RPC.
+
+       Before enabling it, all of these hold for the production database: the
+       Community campus checks release above has passed there; DECISIONS D-33 has
+       selected calendars and a released change has filled `CAMPUS_CALENDARS`; and
+       the campus import path is released. While the allowlist is empty, every
+       claimed row is recorded as `campus_calendar_not_allowed` and nothing is
+       requested.
+
+       Each run claims at most two campus rows that are visible or unavailable, have
+       not ended, and were not checked in the last six hours. The claim itself sets
+       `last_checked_at`, so a row is requested at most once in six hours whatever
+       the outcome. A 404 starts the absence clock; a second 404 at least twelve
+       hours after the first withdraws the row (in the worst case about 18 hours
+       after the source removes it: up to six hours until the first 404, then
+       twelve).
+       A 503 stops the run. A file that parses to no event (`bad_ics`) never
+       withdraws a row.
+
+       To stop new claims at once, the release owner runs this as `postgres`:
+
+       ```sql
+       INSERT INTO public.community_event_sync_state (source, last_attempt_at)
+       VALUES ('campus', 'infinity')
+       ON CONFLICT (source) DO UPDATE SET last_attempt_at = 'infinity';
+       ```
+
+       To allow claims again:
+
+       ```sql
+       UPDATE public.community_event_sync_state
+          SET last_attempt_at = NULL
+        WHERE source = 'campus';
+       ```
+
+       | code | first action |
+       |---|---|
+       | `campus_calendar_not_allowed` | Expected until D-33; otherwise check `CAMPUS_CALENDARS`. |
+       | `http_*`, `timeout`, `too_large`, `upstream_redirect`, `bad_ics`, `campus_uid_mismatch`, `campus_unexpected_tz`, `campus_too_many_occurrences` | Check the event page on calendars.illinois.edu. |
+       | `unexpected_failure`, `bad_json` | The request got no usable response (a network, DNS or TLS failure, or a body that could not be read). If it repeats, check that calendars.illinois.edu is reachable. |
+       | `checks_*`, `apply_*`, `checks_result_invalid`, `apply_result_invalid` | Check Supabase and the Community campus checks release. |
+       | `claim_failed`, `deadline` | Seen only in Sentry and the worker response; not written to sync_state. |
+       | `rows_rejected` | A refreshed row was refused by a constraint or the keyword filter. |
+
+       A failed, partial or rejected-row outcome reports the fixed Sentry message
+       `community campus checks need attention` with only outcome, code and
+       rejected count. The worker response's `community_campus_checks` is the
+       outcome, `not_due`, or `skipped_budget`.
+       ````
+       同在 k3：「Server-side alerts and what they actually mean」表里 logger 为 `api/background-jobs`、message 为 `community events sync needs attention` 的那一行（a60aa563 第 1129 行，按原文定位）之后加一行，锚点落在上面的 `## Campus events checks`：
+       ```text
+       | `api/background-jobs` | community campus checks need attention | campus refresh failed or partial, or a refreshed row was rejected; `checks_*` and `apply_*` codes point to Supabase | [Campus events checks](#campus-events-checks) |
+       ```
+     - f. k3：第 938 行
+       ```text
+       | `claim_failed` | Check the reviewed migrations and their VERIFY results. |
+       ```
+       换成（claim 失败时 api/_community-events-sync.js 第 83–87 行直接返回、不调 finish）：
+       ```text
+       | `claim_failed` | Seen only in Sentry and the worker response; like `deadline`, it is not written to sync_state, so the SELECT above still shows the previous run. Check the reviewed migrations and their VERIFY results. |
+       ```
+       再删掉第 956–962 行「Before B is applied …」那一段和它的 SQL 块，连同其后那一个空行（B 已在两库应用）。没有测试读这几行。
+     - g. k3：ENV_CHECKLIST.md 第 241 行之后、第 242 行 `### Auto-injected by Vercel (do nothing)` 之前加：
+       ```markdown
+       ### Community events (background-jobs worker and admin API)
+
+       | Var | Vercel | GH Actions | Local | If missing |
+       |---|---|---|---|---|
+       | `COMMUNITY_SYNC_CAACI_EVENTS` | optional, exact `1`, Production only | ❌ | ❌ | CAACI events are not synchronized. Enable only as RUNBOOK "CAACI events sync" says; a change needs a new deployment. |
+       | `COMMUNITY_SYNC_CAMPUS_EVENTS` | optional, exact `1`, Production only | ❌ | ❌ | Campus events are not refreshed. Enable only as RUNBOOK "Campus events checks" says; a change needs a new deployment. |
+       | `COMMUNITY_OFFICIAL_PROFILE_ID` | ✅ before official posts and event discussions | ❌ | ⚠️ optional | `set_post_official` and `create_event_discussion` return 409 `official_profile_not_configured` (`api/admin/index.js`). |
+       ```
+     - 测试：d–g 改完，`node --test scripts/community-release-checklist-boundary.test.mjs scripts/runbook-safety-boundary.test.mjs scripts/database-operations-boundary.test.mjs scripts/consent-version-deploy-order-boundary.test.mjs` 全绿（runbook-safety 会核所有 `](#…)` 链接能落到标题上，本条新加的文字只有告警表那一行带链接，落到 `## Campus events checks`；consent-version-deploy-order 钉着「Schema-coupled release order」的三句原文，第四处改动不碰它们）。散文不加逐字断言。
+     - 完成线：a 的验证、k2 上 R2–R6、c 的修前红修后绿都记进 STATUS_LOG；d–g 随 k3 提交。机械核对（campus 最终 head 上，写进 STATUS_LOG；括号里是 a60aa563 上的值；每条先在副本上把对应改动恢复成 a60aa563 的原文，核对必须不通过）：RUNBOOK.md 里 `grep -cF 'Every step must succeed with the NOTICE below'` 为 0（1），`grep -cF 'The hosted query endpoint returns rows, not NOTICEs'` 为 1（0），`grep -cF 'use the SELECTs'` 为 0（1），`grep -cF 'after steps 3 and 17 and'` 为 1（0），`grep -c '^This sequence was applied in full on staging'` 为 1（0），`grep -c '^This condition was met on 2026-11-26'` 为 1（0），`grep -c '^### Community campus checks release$'` 为 1（0），`grep -cF 'that is expected, not drift'` 为 1（0），`grep -c '^## Campus events checks$'` 为 1（0），`grep -cF 'it is not written to sync_state, so the SELECT above still shows the previous run'` 为 1（0），`grep -cF 'Before B is applied'` 为 0（1），`grep -cF 'community campus checks need attention | campus refresh'` 为 1（0）；ENV_CHECKLIST.md 里 `grep -c '^### Community events (background-jobs worker and admin API)$'` 为 1（0），`grep -cE '^\| .COMMUNITY_(SYNC_CAACI_EVENTS|SYNC_CAMPUS_EVENTS|OFFICIAL_PROFILE_ID). \|'` 为 3（0）；README.md 里 `grep -o '尚未应用' README.md | wc -l` 为 1（7），`grep -o '2026-11-26 已在 staging、生产应用' README.md | wc -l` 为 5（0）。第 5 项记了【跳过】的，Campus events checks 那条和告警表那条为 0、ENV 三行那条为 2；g 或 f 的删段记了【跳过】的，对应几条照 a60aa563 的值核。仍开着：根 RUNBOOK 新节由 supervisor 照着重新配执行脚本（托管端点不返回 NOTICE，脚本要在第 5、6 步之后各读回一次开关行；FINAL ④）。
+  7. **第十四批的测试尾巴（~/work/illini-b14-followups，分支 codex/community-b14-followups-20261127；只改测试，不改任何源码；提交 f1 = A，f2 = A2，f3 = W5b）。**
+     - A（f1）：rpcFailureCode 的四道守卫（api/_community-events-sync.js 第 48–55 行的 try/catch、第 50 行的 `instanceof Error`、第 52 行状态码正则的 `[45]\d{2}`、`^`、`$`）和第 49 行的 deadline 分支现在都钉不住：D-60 第 4 项 a 说测试里那个一读 message 就抛错的对象（现在第 168 行）钉着前两道守卫，这不成立——它不是 Error 实例，第 50 行先返回了，try/catch 根本走不到。
+       - api/_community-events-sync.test.mjs 第 172 行（`['apply size', …]`）之后加六行：
+         ```js
+             ['non-Error status', { throwOn: 'apply_caaci_event_snapshot', error: { message: 'provider_status_503' } }, 'apply_failed'],
+             ['non-Error timeout', { throwOn: 'apply_caaci_event_snapshot', error: { message: 'provider_timeout' } }, 'apply_failed'],
+             ['hostile Error', { throwOn: 'apply_caaci_event_snapshot', error: Object.defineProperty(new Error('provider_timeout'), 'message', { get() { throw new Error('Synthetic private detail') } }) }, 'apply_failed'],
+             ['apply 302', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_302') }, 'apply_failed'],
+             ['apply 5030', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_5030') }, 'apply_failed'],
+             ['apply prefixed status', { throwOn: 'apply_caaci_event_snapshot', error: new Error('xprovider_status_503') }, 'apply_failed'],
+         ```
+       - api/_community-events-sync-budget.test.mjs 第 89 行 `  assert.equal(logs.length, 1)` 换成 `  assert.deepEqual(logs, [['[community-events-sync] finish not recorded', { code: 'deadline' }]])`，并在第 90 行 `})` 之后加一条：
+         ```js
+
+         test('a budget exhausted before apply skips finish and logs the deadline', async () => {
+           process.env.COMMUNITY_SYNC_CAACI_EVENTS = '1'
+           const start = 100_000
+           let now = start
+           Date.now = () => now
+           const calls = [], logs = []
+           console.error = (...args) => logs.push(args)
+           const result = await syncCaaciEvents({
+             deadline: start + 20_000,
+             call: async name => { calls.push(name); now = start + 14_500; return true },
+             fetch: async () => new Response(feed),
+           })
+           assert.deepEqual(result, { outcome: 'failed', code: 'deadline', rejected: 0 })
+           assert.deepEqual(calls, ['claim_community_event_sync'])
+           assert.deepEqual(logs, [['[community-events-sync] finish skipped', { code: 'deadline' }]])
+         })
+         ```
+       - api/_community-events-sync.test.mjs、api/_community-events-sync-budget.test.mjs、api/_community-events-sync-worker.test.mjs 三个文件从 51 条变成 58 条，全绿。变异（每个临时改 api/_community-events-sync.js、照第 10 项 a 只跑这三个文件、恢复后核 sha256）：M13 去掉 rpcFailureCode 的 try/catch → 'hostile Error' 红；M14 删第 50 行 → 'non-Error status'、'non-Error timeout' 红；M15 删第 49 行 → 预算的两条日志断言红；M16 `[45]\d{2}` 改 `\d+` → 'apply 302'、'apply 5030' 红；M17 去掉 `$` → 'apply 5030' 红；M18 去掉 `^` → 'apply prefixed status' 红。
+     - A2（f2，nice）：api/_community-events-sync.test.mjs 第 108–110 行只读迁移 A，B 是用 `CREATE OR REPLACE` 生效的那一份。第 4 行改成 `import { readdirSync, readFileSync } from 'node:fs'`；第 108–109 行换成下面六行，第 110 行的 `assert.deepEqual(databaseKeys, expectedKeys)` 保留：
+         ```js
+           const migrations = new URL('../supabase/migrations/', import.meta.url)
+           const definitions = readdirSync(migrations).filter(name => /^\d{14}_.+\.sql$/.test(name)).sort()
+             .map(name => readFileSync(new URL(name, migrations), 'utf8'))
+             .filter(sql => /^CREATE (?:OR REPLACE )?FUNCTION public\.apply_caaci_event_snapshot\(/m.test(sql))
+           assert.ok(definitions.length >= 2, 'A creates the snapshot function and B replaces it')
+           const databaseKeys = [...new Set([...definitions.at(-1).matchAll(/source_row ->> '([^']+)'/g)].map(match => match[1]))].sort()
+         ```
+       变异不许改 B：放一个未跟踪的 `supabase/migrations/20991231000000_probe_snapshot_keys.sql`，内容是 B 的副本、把 `'time_zone'` 换成 `'tz'`，只跑 `node --test api/_community-events-sync.test.mjs`（在 app/ 下用 `../api/…`）→ 这条红；删掉文件，`git status --porcelain` 为空。不在这个状态下跑全量（manifest 和发布清单测试也会红）。
+     - W5b（f3）：app/smoke/community-event-layout.spec.ts 第 83–100 行只测 768，侧栏在 769–1023 之间重新出现时门禁拦不住（EventsSidebar.vue 第 30 行默认 `display: none`，第 39 行 `@media (min-width: 1024px)`）。第 83–100 行（从 `test.describe('event sidebar at 768px'` 到文件末尾那个收 describe 的 `})`；文件共 100 行）换成：
+         ```ts
+         for (const width of [768, 900, 1023]) test.describe(`event sidebar at ${width}px`, () => {
+           test.use({ viewport: { width, height: 900 }, screen: { width, height: 900 },
+             isMobile: false, hasTouch: false, deviceScaleFactor: 1 })
+           test('the open creation switch leaves the full width to the list', async ({ page }) => {
+             await layoutFixture(page)
+             await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+             await expect(page.locator('.header .me-entry')).toBeVisible()
+             const widths = await page.locator('.ev-main').evaluate(element => {
+               const content = element.closest('.secondary-content')
+               if (!(content instanceof HTMLElement)) throw new TypeError('Expected secondary content')
+               return { main: element.getBoundingClientRect().width, available: content.clientWidth }
+             })
+             console.log('W5_MAIN_WIDTH ' + width + ' ' + JSON.stringify(widths))
+             await page.screenshot({ path: `test-results/d60-layout/sidebar-${width}.png`, animations: 'disabled' })
+             await expect(page.locator('.events-sidebar')).toHaveCSS('display', 'none')
+             expect(widths.main).toBe(widths.available)
+           })
+         })
+
+         test.describe('event sidebar at 1024px', () => {
+           test.use({ viewport: { width: 1024, height: 900 }, screen: { width: 1024, height: 900 },
+             isMobile: false, hasTouch: false, deviceScaleFactor: 1 })
+           test('the sidebar returns at the desktop breakpoint', async ({ page }) => {
+             await layoutFixture(page)
+             await page.goto('/#/pages/events/index', { waitUntil: 'networkidle' })
+             await expect(page.locator('.ev-main')).toBeVisible()
+             await expect(page.locator('.events-sidebar')).toHaveCSS('display', 'flex')
+           })
+         })
+         ```
+       768 那条的标题不变；smoke 多 3 条。1024 是正对照，只断言 display，不量宽度（≥1024 时 .secondary-content 不一定是容器）。这几条不调 visual audit；本批任何新加的视觉断言都要写 `audit.axe ?? []` 或 `if (audit.axe)`，因为 CI 没有 axe。只在 tony-ws 的 smoke 容器里跑：`SMOKE_SPECS="community-event-layout.spec.ts" $RC ~/work/illini-b14-followups install smoke`（这个 worktree 是第 1 项 e 新建的，第一次跑必须带 install；之后的 M5、M5c、M5d 只跑 smoke），4 档全绿。变异（临时改 EventsSidebar.vue，恢复后核 sha256，不提交）：M5 在第 39 行之前插 `@media (min-width: 900px) { .events-sidebar.with-create { display: flex; } }` → 900、1023 两条红，768 仍绿；M5c 第 39 行改 `(min-width: 1000px)` → 1023 红；M5d 第 39 行改 `(min-width: 1025px)` → 1024 红。
+     - 门禁和推送照第 10 项 b、d。预期相对基线：TEST tests = B_TEST + 7（f1；f2 不加条数）；smoke Running = B_SMOKE + 3（f3）。
+     - 完成线：f1–f3 各自的测试和变异按期望，门禁通过，草稿 PR 的 CI 全绿；`git diff --name-only a60aa563 HEAD | grep -vE '\.test\.mjs$|\.spec\.ts$'` 输出 0 行（反向：在副本里改一个源文件，必须有输出）。仍开着：无。
+  8. **解析器加固（nice，campus 分支最后一个提交 k5）。** api/_campus-ics.js 第 79 行现在是 `      if (stack.at(-1) === 'VEVENT' && ['RRULE', 'RDATE', 'EXDATE', 'RECURRENCE-ID', 'DURATION'].includes(name)) {`：按名字逐字比较，小写的 `rrule:` 和 `EXRULE:` 都照常得到一行。改成：
+       ```js
+             if (stack.at(-1) === 'VEVENT' && ['RRULE', 'RDATE', 'EXDATE', 'EXRULE', 'RECURRENCE-ID', 'DURATION'].includes(name.toUpperCase())) {
+       ```
+       第 82 行 FIELDS 的匹配仍然逐字：小写的 summary 读不到标题、报 bad_ics，这是失败即关闭，可以接受。api/_campus-ics.test.mjs 末尾加一条（只新增，原有用例和 fixture 不动）：用 campus-sample.ics 做字符串替换，在 `END:VEVENT` 之前插 `rrule:FREQ=WEEKLY;COUNT=5` 得 `{ error: 'bad_ics' }`；插 `EXRULE:FREQ=WEEKLY` 得 bad_ics；插一段 `BEGIN:VALARM`、`ACTION:DISPLAY`、`duration:PT15M`、`TRIGGER:-PT15M`、`END:VALARM` 仍得到 1 行（对照）；`now` 用 '2026-11-13T18:00:00Z'。变异：去掉 toUpperCase → 小写那条红；删 EXRULE → EXRULE 那条红；把 `stack.at(-1) === 'VEVENT'` 放宽成 `stack.includes('VEVENT')` → VALARM 对照红。a60aa563 上这三种输入依次是 1 行、1 行、1 行（supervisor 无网络实测），所以前两条在改之前是红的，记进 STATUS_LOG。
+     - 完成线：k5 提交，三条断言和三个变异按期望，`git diff --name-only <k5>^ <k5>` 恰好是 api/_campus-ics.js、api/_campus-ics.test.mjs 两行；ENGINEERING §9.3 第 726 行照第 9 项 f 写「不分大小写，含 EXRULE」。没做的，第 9 项 f 照写「按属性名逐字比较（大写），不含 EXRULE」。仍开着：无。
+  9. **材料（~/work/illini-docs，codex/community-plan-v5；STATUS_LOG 只追加；FINAL 第十四批（第 1577–1832 行）不改，更正写进第十五批 ②）。** sha256 一律用 shasum 或 manifest 生成，FINAL 里只写前 8 位。仓库是公开的：不写人名、邮箱、本机路径、执行脚本的路径和内容、凭据相关事项，也不写生产库的项目标识（STOP-2 按字符串判，第 0 项只写「生产」）。
+     - a. STATUS 新节：照录第 0 项（见第 0 项标题）。STATUS_LOG 追加一条【supervisor 指示】「P3/P4 已合并并上线（D-61 第 0 项）」，code_sha 写 a60aa563，docs_sha 写第 1 项 b 之后的 `git -C ~/work/illini-docs rev-parse HEAD`（D-61 落进 DECISIONS 的那个提交，RUNBOOK §8 第 2 步）；97209532 只是本条材料行号的基准。
+     - b. STATUS 版本表和 CI 段（措辞【OMO自决】，事实照下面）：第 53 行把「本批#379、#380、#385保持草稿，OMO未合PR、未发布」换成「#386(30d847e1)、#379(e46606b1，审过的head 8e45b5d3)、#380(a60aa563，审过的head 8dd4c8c1)已由supervisor squash；本批#385和两个新草稿PR保持草稿，OMO未合PR、未发布」；第 54 行 code_sha 换成 `a60aa563e7171a2a690b98710d62f6370662fd45（main，#380于2026-11-26 06:31:59Z合并，树c199d177等于审过的head 8dd4c8c1）`；第 55 行基线 main 换成 a60aa563（D-61 起点；本批分支都从它开、不主动合 main）；第 56–57 行照实写本批的材料推送；第 58 行写 #379、#380 已合并、三个旧分支没删、没有开着的 PR 依赖它们，#385 和两个新分支的远端 head；版本表末尾加两行「生产 H5 | dpl_H8f7D4i8pzVfK3Gzcnoybfhp7FJw（a60aa563，2026-11-26 07:12:04Z 起服务）；回退 promote dpl_9KmHcW（9171976e）」「托管账本 | 两库各五条，按 name 核，version 是应用时刻；对照见『第十五批开工背景』」。第 66 行整段换成：main a60aa563 的 push run 45768847900 七个 job 全部 success（public smoke 35 分 26 秒、protected staging smoke 34 分 56 秒、Boundary regressions 3 分 41 秒），此前 e46606b1 的 45764889702、30d847e1 的 45757069295 都是 success；合并前的 PR run：#379 45760456744（8e45b5d3）和 #380 45765292898（8dd4c8c1）各 5 个 job success，protected staging 和 Production release readiness 两个 job 按 pull_request 跳过，public smoke 依次 40 分 32 秒、29 分 53 秒；#386 45617000639 第 2 次尝试（连已迁移的 staging）success（supervisor 记录）；本批三个代码 PR 的 run 号和结论见 FINAL 第十五批 ①、⑤。第 59 行 tony-ws worktree 写 illini-p3、illini-events-20261120 退役只读，新加 illini-campus-20261127、illini-b14-followups 和 confirm-main-a60aa563（写明收尾时 remove）；第 60 行本批交付 worktree 改成本批三个代码 worktree。抬头第 3 行（写于、作者）、第 5 行 next_task_id 和第 8、10 行的第十四批摘要照本批实际改写。
+     - c. STATUS 验收表（措辞【OMO自决】，事实照下面）：第 240 行 P3.1–P3.8 写 P3.7 两库已应用并 VERIFY（staging 20261126031743、生产 20261126044321，name 20261120100354_community_watch_save_activity），#379 已合 e46606b1（合并前 PR run 45760456744）并随 a60aa563 发布，回复开关两库 false，P3.7 DoD ① 的 PR 留言待 Eric 定替代，其余既有部分项保留；第 244 行 P4.2、P4.9 写已合 a60aa563 并上生产 H5，P4.9 另一半等 E6；第 245 行 P4.8 写已上生产 H5，iPad、微信归 Eric；第 246 行 P4.4 写 A、B 两库已应用、apply md5 两库 55227c4b，开关没设，真实 dry-run 等 P4.3 和一次授权 GET；第 247 行 P4.7 第二步保留「部分」，末尾加「DoD ④ 由 D-61 的迁移 C 在本地满足；DoD ⑥ 等 Eric 授权单条 ICS 的 GET」，其后加一行「P4.7 第三步 | 部分（D-61 本地完成） | campus 分支 <head>：迁移 C 与运维文件、worker（默认关）、L-SQL 和全部控制，日志名；C 未应用到任何托管库，白名单仍 []，真实请求 0 次」（第 5 项记了【跳过】的，worker 那半写未做）；第 248 行拆成三行：「P4.5 | 本批未验收 | 真实数据等 D-32」「P4.11a | 通过 | 2026-11-26 两库 17 步、#379/#380 合并（PR run 45760456744、45765292898）、dpl_H8f7 发布（D-61 第 0 项）」「P4.11b | 未开始 | 依赖 P4.10，以及 P4.3 或学校导入」；第 249 行 P4.10 写前提 ① 仍不满足：生产 community_events 0 行，CAACI 路径等 P4.3 上线并开同步，学校路径等 C 应用、D-33 白名单和导入（D-62）；第 250 行 P4.6 写成员迁移两库已应用、开关 false，DoD ⑥ 等 Eric。
+     - d. STATUS 阻塞。第 31、37、41 条在第二次材料推送时写（c1、c2、门禁日志、campus 远端 head、6 f 是否提交这时才确定），第一次材料推送不碰这三条；其余各条随第一次：
+       - 第 31 条（第 308 行）整条换成下面这句，尖括号照实填（P3/P4 那几个日志名和 L 号已核过 97209532 的 STATUS_LOG）：「31. 已结：P3 80aae635 起（check-20261124T235148Z，L493）、P4 c2 e5097bea 起（check-20261124T233431Z，L487；P4 最终 check-20261125T072124Z，L537）巡检 0 失败，D-56 第 5 项四条件豁免和 D-57 第 11 项 pages.smoke 那一款退役。P3、P4 已于 2026-11-26 squash 进 main（e46606b1、a60aa563），不会再有 main 合进 P3、P4；这条规则改挂 #385：#385 合 main 时先普通 merge，再单独一个提交补 STUB_READS（广场加 rpc:list_community_events；活动列表读三项；不带 id 的详情页什么都不读，显式写 []；发起页只读成员开关），同一个提交把 pages.smoke.spec.ts 第 201 行那句注释改准；本批 c1 <c1 前 8 位>、c2 <c2 前 8 位>，门禁 <c2 的全量日志名>（L<号>）。#385 squash 进 main 以后，任何改变巡检路由读法的提交，在同一个提交里改 STUB_READS。」第二次材料推送时第 2 项还没做完（记了【跳过】或停下交 supervisor）的，开头「已结：」照写（豁免早已退役），把「本批 c1…（L<号>）。」换成「#385 本批未完成（原因见 STATUS_LOG L<号>）。」。
+       - 第 1 条（第 256 行）开头加「【P3/P4 已上线：D-61 第 0 项】」；把「P3、P4 的五条迁移（…）由 Eric 在 staging、生产应用（P3.7、P4.11），不在这一轮上线范围；P3 迁移应用后通知开关保持关闭，P3 的 H5 和小程序都发布后，由 Eric 打开（D-54 第 2 项 c）。」换成「P3、P4 的五条迁移已于 2026-11-26 由 Eric 在 staging（03:17Z）、生产（04:43Z）应用并 VERIFY，#379、#380 已 squash 进 main（e46606b1、a60aa563），a60aa563 已作为 dpl_H8f7D4i8pzVfK3Gzcnoybfhp7FJw 发布到生产 H5；两个开关仍关，小程序未发布；成员开关的前提见第 33 条，回复开关的前提见根 RUNBOOK『Reply notice switch』和 FINAL 第十五批 ④ 第 5 条。」；末句「D60未应用这五条托管迁移，也未合并或发布。」删掉。
+       - 第 12 条（第 278 行）开头加「【已完成：#379、#380 已于 2026-11-26 改 base 并 squash 进 main（D-61 第 0 项）；三个旧分支和 codex/config-smoke-timeout-20261125 删不删归 supervisor 或 Eric】原记录：」。
+       - 第 22 条（第 293 行）整条换成「22. staging 账本另有两条对账（2026-11-25 经 Eric 批准，supervisor 做）：staging_reconcile_20260903070000_function_whitespace（20261126030631）和 20261003175231_admin_support_email_ledger（20261126031116）。staging 仍缺 20260811140018、20260811143207，另有十几处函数体与生产不同，本批不补；迁移 C 的 guard 不依赖它们（D-61 第 3 项）。」
+       - 第 32 条（第 309 行）开头加「【已完成：五条迁移已在两库依次应用并 VERIFY，#380 已合并（D-61 第 0 项）】原记录：」；第 35 条（第 312 行）开头加「【已结：#386 把两个 smoke job 的上限改为 70 分钟；加镜像步骤 Eric 未批，建议放弃（FINAL 第十五批 ④）】原记录：」；第 36 条（第 313 行）开头加「【P4.11a 已完成（D-61 第 0 项）；P4.11b 待做，拆法见 BACKLOG，待 Eric 确认】原记录：」；第 37 条（第 315 行）开头加「【已完成：B 已在两库应用，apply md5 两库都是 55227c4b（D-61 第 0 项）；B 之前才用的那段恢复 SQL 由 campus 分支 <k3 前 8 位> 从根 RUNBOOK 删去，随 campus PR 合并生效（D-61 第 6 项 f）】原记录：」（6 f 的删段记了【跳过】的，分号后那半句不写）；第 40 条（第 318 行）开头加「【已结：P4 已合并，~/work/illini-events-20261120 退役只读（D-61 第 1 项）】原记录：」。
+       - 第 33 条（第 310 行）末尾加「两库第 9、16 步之后读开关行都是 enabled=false（D-61 第 0 项）。」
+       - 新增第 41 条：「41. #385 由 supervisor 合并，合并前名单提交的 PR CI 必须全绿（规则见第 31 条）。迁移 C 只在 campus 分支（<campus 远端 head 前 8 位>），任何托管库都没有应用；应用照根 RUNBOOK『Community campus checks release』，由 supervisor 配执行脚本、Eric 逐库放行（FINAL 第十五批 ④）。」
+     - e. BACKLOG（行号@97209532）：
+       - §1 分支表第 83、84 行的第四列「草稿 PR，base main」分别换成「#379，2026-11-26 已 squash 进 main e46606b1，不再推送；表里没做完的任务（如 P5.5）从 main 另开 codex/community-* 分支」「#380，2026-11-26 已 squash 进 main a60aa563，不再推送；后续任务从 main 另开分支」。
+       - 第 1427–1438 行（从 `### P4.11 Eric：P4 迁移上 staging，生产发布` 到它的 **回退** 那一行）换成下面两节，解开 P4.10 ⑤ 和 P4.11 互相依赖的环：
+         ```markdown
+         ### P4.11a Eric：P3/P4 迁移上两库，合并 #379/#380，一次 H5 受监督发布
+
+         **目标**：P3、P4 的五条迁移在 staging 和生产应用并 VERIFY，#379、#380 合进 main，生产 H5 发布一次，导航沿用第一步。
+         依赖：P3.7、P4.2、P4.4、P4.8、P4.9｜负责：Eric（应用、放行）/ supervisor（合并、发布）｜Eric：按仓库根 RUNBOOK「Community P3+P4 release」逐库放行
+         **DoD**：
+         - ① 两库照「Community P3+P4 release」17 步全部通过，开关行都是 enabled=false。
+         - ② 两个 PR 的 CI 里不被跳过的 job 全部 success；合并后 main 的 push CI 七个 job 全部 success。
+         - ③ main 绿之后按 docs/SUPERVISED_RELEASE.md 发布一次 H5，并回读 deployment-identity。
+         - ④ 结果写进 STATUS_LOG。
+
+         **状态**：完成 2026-11-26（DECISIONS D-61 第 0 项）。
+         **回退**：RUNBOOK §13「H5 生产」；迁移只能前向修正。
+
+         ### P4.11b Eric：活动来源上线、导航第二步和小程序
+
+         **目标**：活动页在生产上有非网友来源的可见活动，导航第二步和小程序同一版发布。
+         依赖：P4.11a、P4.10，以及 P4.3（E8）或学校导入（D-33、迁移 C 和 D-62 的导入）｜负责：Eric｜Eric：开同步开关或录入第一条学校活动；按 E13 发布
+         **DoD**：
+         - ① 生产 `community_event_sync_state` 里所开来源的 `last_outcome = 'ok'`。
+         - ② 生产活动页至少有 1 条非网友来源的可见活动。
+         - ③ P4.10 和小程序同一版发布（D-12）。
+         - ④ 结果写进 STATUS_LOG。
+
+         **证据**：STATUS_LOG。标签 [生产]
+         **回退**：RUNBOOK §13「H5 生产」「生产库」。
+         ```
+       - 连带改：第 1422 行「随 P4.11 和小程序同一版发布」改成「随 P4.11b 和小程序同一版发布」；第 1285 行「由 P4.11 的同步结果证明」改成「由 P4.11b 的同步结果证明」；第 1293 行「生产上的开关和查看归 P4.11」改成「…归 P4.11b」；第 1587 行 P5.1 的依赖「P4.11」改成「P4.11b」。P3.7（第 1169 行起）不改。
+       - P4.7：第 1358 行（第二步最后一条）之后加一段「**第三步（D-61，方式 A 刷新；导入留 D-62）**：前向迁移 C 的三个函数（ENGINEERING §9.3）；api/_community-events-sync.js 的 syncCampusEvents，由 background-jobs 在 `COMMUNITY_SYNC_CAMPUS_EVENTS` 为 '1' 时调用，默认关；仓库根 RUNBOOK「Community campus checks release」「Campus events checks」。」DoD ④（第 1364 行）末尾加「D-61 起由迁移 C 的 not_found 规则加冻结的 unhide_event 满足（ENGINEERING §9.3）。」DoD ⑥（第 1366 行）的末句「接 UIUC 源之前先查源里有没有这种写法（D-56 4i）。」换成「白名单打开之前，按 D-33 授权，对选定日历的若干条单条 ICS 各请求一次，核对 ALTREP 等写法，并查被撤下的活动返回什么（§13 缺口 8）。」，⑥ 保持开着。DoD 末尾加：「- ⑦ 第三步：迁移 C 的 node 测试、L-SQL（含 REGRESSION_C 11 例）和 VERIFY_C 负对照全部按期望；C 之后 VERIFY_20261125004742、VERIFY_20261122035253、VERIFY_reply_notice_switch 仍通过。」「- ⑧ 开关不是 '1' 时 worker 不请求、不调任何学校 RPC，background-jobs 响应的键不变；白名单为 [] 时即使开关打开也不发任何学校请求。」
+     - f. ENGINEERING（行号@97209532）：
+       - §9.2 第 690 行末句「学校开关 `COMMUNITY_SYNC_CAMPUS_EVENTS` 的接线、fetch 和写库留 D-60，本批不实现。」换成「学校开关 `COMMUNITY_SYNC_CAMPUS_EVENTS` 由 D-61 接线：同样只认 '1'，只设在 Production，由 Eric 操作；没设时不请求、不调任何学校 RPC，background-jobs 响应的键不变。D-61 只做刷新，导入留 D-62，所以开关打开以后、有学校行之前，worker 只领取和收尾。」
+       - §9.2 第 692 行「和 B（`20261125004742_community_event_sync_cap.sql`，只把缺席计数封顶为 2） 仅提供三个函数：」换成「仅提供三个函数（B `20261125004742_community_event_sync_cap.sql` 只用 CREATE OR REPLACE 换掉其中的 apply_caaci_event_snapshot，把缺席计数封顶为 2）：」。
+       - §9.3 第 726 行：「场次超过 400 → `campus_too_many_occurrences`」换成「一份文件里 VEVENT 累计超过 400 个（整份累计，不按 UID 分组，api/_campus-ics.js 第 74 行）→ `campus_too_many_occurrences`；normalizeCampusEvent 另外检查单行的 occurrence_count」；「VEVENT 层出现 RRULE、RDATE、EXDATE、RECURRENCE-ID、DURATION 整份报 bad_ics」换成「VEVENT 层出现 RRULE、RDATE、EXDATE、EXRULE、RECURRENCE-ID、DURATION（不分大小写，D-61 第 8 项）整份报 bad_ics」（第 8 项没做的照它的完成线写）；末两句「带引号且含冒号的参数值（如 `ALTREP="cid:…"`）整份报 bad_ics。接源之前要用选定日历的整本导出核对过这几种写法。」换成「只读的七个属性（UID、SUMMARY、DTSTART、DTEND、LOCATION、LAST-MODIFIED、TZID）带引号且含冒号的参数值（如 `LOCATION;ALTREP="cid:…"`）整份报 bad_ics：解析器在第一个冒号处切行，切出的半截引号过不了参数正则（第 57、86 行）。其余属性在解析参数之前就整行丢弃（第 82 行），所以 `ORGANIZER;CN="Office: …"`、`DESCRIPTION;ALTREP="cid:…"` 不报错。方式 A 没有整本导出可核（campus-events.md §1）：白名单打开之前，按 D-33 授权，对选定日历的若干条单条 ICS 各请求一次，核对这几种写法。」
+       - 第 728 行「最后一场没有 DTEND 时取它的开始时间」换成「定时系列最后一场没有 DTEND 时取它的开始时间；全天场次没有 DTEND 时 parseOccurrence 已补成下一个香槟本地 00:00（api/_campus-ics.js 第 32–36 行），系列结束随之取这个值」。
+       - 第 730 行整条换成：「- 系列自然顺延（旧场次数 >1、场次数和结束时间都不变、开始时间后移、旧开始时间 ≤ now()，判据同下面的刷新一条）不算改期：apply 用第二条 UPDATE 把冻结的 community_events_schedule_change 触发器（20261120122054 第 344–369 行）写的 previous_starts_at 和 schedule_changed_at 写回原值，revision 仍 +1，不改触发器。」
+       - 第 731 行末尾加「D-61 的迁移 C 提供 `community_campus_event_checked_at(event_id_in uuid) returns timestamptz`：STABLE，statement_timeout 3s，只对 visible、有效结束时间在 180 天内的 campus 行返回 last_seen_at，只授 anon、authenticated；客户端调用和 public schema 探针留 D-62：PR 开 CI 之前 staging 要有 C（PR 的 public smoke 连 staging），合并之前生产也要有 C（main 的 public smoke 连生产，verify-public-read-schema 在浏览器之前跑；ci.yml@a60aa563 第 388–392、427–429 行）。学校的 26 小时灰字维持 D-59（只做 CAACI）。」
+       - 第 732 行整句移到方式 A 一节（第 734 行那一节）末尾，开头改成「方式 A 的单条 ICS 上限 256 KB：」；方式 B 一节第 741 行之后加「1 MB 按同一比例（约 1,636 字节/VEVENT）推算约 641 个 VEVENT（推算，没实测），先触发的是整份 400 个 VEVENT 的上限，不是 too_large；方式 B 选的日历，导出要同时满足 ≤1 MB 和 VEVENT ≤400。方式 A、B 共用 sync_state 的 campus 行（source 只许 caaci、campus，20261120122054 第 248 行）：方式 A 的刷新已经用了这一行的门和 last_outcome，D-33 只能二选一；两种都要的，另起前向迁移改这条约束。」
+       - 第 734 行标题里的「（管理端 `preview_campus_event` 只读预览 → `import_campus_event` 写入）」后加「（导入留 D-62）」。
+       - 第 738 行整条换成：「- 刷新（D-61 迁移 C 和 worker，默认关）：门复用 A 的 `claim_community_event_sync('campus', interval '30 seconds')` 和 `finish_community_event_sync('campus', …)`，两者一字不改，急停照 CAACI 写 `('campus', 'infinity')`；30 秒严格小于 cron 相邻两拍的最小间隔（约 50 秒），每拍都能领到。过了门以后 `claim_campus_event_checks(limit_in)`（limit_in 只许 1–2，worker 每次 2）领取：campus 行、`availability <> 'hidden'`、有效结束时间 ≥ now()、`last_checked_at` 为空或早于 6 小时前，按 `last_checked_at nulls first, id`，FOR UPDATE SKIP LOCKED，谓词与冻结的 community_events_campus_check_idx 一致；领取时就写 `last_checked_at = now()` 当租约，不论请求成败，每行每 6 小时最多请求一次。hidden 行不领取，缺席计数停在下架那一刻，unhide 后按冻结的 missing_checks 回到 visible 或 unavailable，下一轮再纠正。逐条请求单条 ICS（白名单在请求之前检查），结果交给 `apply_campus_event_check(event_id_in, outcome_in, row_in)`：`ok` 只更新 title_en、starts_at、ends_at、all_day、occurrence_count、location、source_updated_at、content_hash、review_flag 九列（row_in 的键必须恰好是这九个，review_flag 只许空或 title_says_cancelled，否则 22023），写 last_seen_at、last_checked_at，清零缺席计数，unavailable 回 visible，hidden 保持；行级子事务只捕获 23514、23502、23505、22001、22023，被拒时只写 last_checked_at（原 visible、hidden 的清缺席计数，unavailable 的不动），返回 rejected=true；系列自然顺延（旧场次数 >1、场次数和结束时间都不变、开始时间后移、旧开始时间 ≤ now()）用第二条 UPDATE 把 previous_starts_at、schedule_changed_at 写回原值，revision 仍 +1；不是顺延、而新开始时间在 48 小时内的写 source_time_changed_near_start，row_in 带 title_says_cancelled 的写它，其余保留原值。`not_found`（404）：写 last_checked_at；第一次写 missing_since、missing_checks = 1；只有 missing_since ≤ now() − interval '12 hours' 时才写 missing_checks = 2 并改 `unavailable`（hidden 保持 hidden），计数封顶 2，任何能走到的状态里 `missing_checks >= 2` 都意味着第一次 404 在 12 小时以前，冻结的 unhide_event（20261120122054 第 1249 行）不用改就满足 DoD ④。`error` 只写 last_checked_at；收到 503 时本次剩余请求全部停止。返回值恰好是 `{availability, missing_checks, rejected}`。worker 的 outcome：全部 ok、not_found 或零行为 ok；有行级错误或被拒为 partial，code 取第一个码（被拒记 rows_rejected）；claim_campus_event_checks 失败或返回形状不对为 failed（`checks_*`、`checks_result_invalid`），apply 失败或返回形状不对为 failed（`apply_*`、`apply_result_invalid`）；deadline 不调 finish。failed、partial 或 rejected>0 时报一次 Sentry，message 固定 `community campus checks need attention`，extra 只有 {outcome, code, rejected}。来源撤下之后最坏约 18 小时转 unavailable（最多 6 小时才轮到第一次 404，再加 12 小时窗口，推算）；从第一次 404 算起约 12 小时。sync_state 的 campus 行由第一次领取插入，anon 可读，只给 finish 记 last_outcome；学校的 26 小时灰字维持 D-59。空 VCALENDAR 报 bad_ics、按 error 处理，如果 UIUC 对撤下的活动返回 200 加空日历或 410，这一行永远撤不下来（§13 缺口 8）。」
+       - §9.9 表里 `http_404` 那一行的「学校方式A照§9.3记缺席」换成「学校方式 A 刷新记 not_found，本次 outcome 仍可为 ok」；campus_* 那一行的「刷新时不动」换成「刷新时不请求（白名单外）或按 error 只写 last_checked_at」；表末加一行「| `checks_http_<状态码>`、`checks_timeout`、`checks_failed`、`checks_result_invalid` | 学校刷新的 claim_campus_event_checks 调用失败或返回形状不对 | 已入库行不动，已领取的行等满 6 小时租约；last_outcome=failed |」；`apply_*` 那一行的含义列末尾加「学校刷新的 apply_campus_event_check 失败同样记 `apply_*`」。
+       - §9.10 末尾加一条：「D-61：scripts/community-campus-checks.test.mjs（普通 PostgreSQL：三个同步函数合同不变、新函数授权、guard 拒绝重复和缺 B、PRECHECK_C/VERIFY_C 和五个负对照、领取顺序与租约、两连接 SKIP LOCKED、not_found 四步与封顶、error、ok、系列顺延与真改期、地点被拒、详情第 11 行、真实投影进真实 RPC）；api/_community-campus-checks.test.mjs（开关、门、白名单、请求形状、九列投影、404/503/UID、结果与码、预算）；api/_community-events-sync-worker.test.mjs 的三条学校用例；REGRESSION_<C> 11 例（L-SQL）；发布清单测试的两节。所有测试真实 fetch 0 次，白名单只经参数注入。」
+       - 第 5 项记了【跳过】的，这三处改写：第 690 行末句换成「学校开关 `COMMUNITY_SYNC_CAMPUS_EVENTS` 的接线、fetch 和写库留 D-62；D-61 只有迁移 C 的三个函数（§9.3），没有代码读这个开关。」；第 738 行开头的「- 刷新（D-61 迁移 C 和 worker，默认关）：」换成「- 刷新（D-61 迁移 C；worker 留 D-62，下面写 worker 的句子是它要照做的合同）：」，其余照写；§9.10 那一条删去「、真实投影进真实 RPC」「api/_community-campus-checks.test.mjs（开关、门、白名单、请求形状、九列投影、404/503/UID、结果与码、预算）；」「api/_community-events-sync-worker.test.mjs 的三条学校用例；」和末句「所有测试真实 fetch 0 次，白名单只经参数注入。」
+       - §9.1 第 684 行「由 P4.11 的同步结果」改成「由 P4.11b 的同步结果」（与第 9 项 e 改的 BACKLOG 第 1285 行是同一句）；§12 第 897 行「（P2.6、P3.7、P4.11）」改成「（P2.6、P3.7、P4.11a）」。
+     - g. 材料 RUNBOOK §12 第 17d 条（supervisor 给的原文，逐字替换）。第 778 行里这一句：
+       ```text
+       退出码 1 不推送；推送后 `git ls-remote <远端 ref>` 的 sha 必须等于 scan17d.log 里最后一条 HEAD 等于被推提交、且 exit 0 的记录；
+       ```
+       换成：
+       ```text
+       退出码 1 不推送。退出码 2 表示只有 ⑤ 命中：逐条看完照 ⑤ 处理，要改写的改写后重扫；都判为误报的照常推送，并在 STATUS_LOG 记一条 [OMO自决]，写明 scan17d.log 的行号和「⑤ 误报 N 条」。推送后 `git ls-remote <远端 ref>` 的 sha 必须等于 scan17d.log 里最后一条同时满足这三个条件的记录：HEAD 等于被推提交；没有 kind 字段；exit 为 0，或 exit 为 2 且 STATUS_LOG 里有指向这一行的那条 [OMO自决]。scan17d.log 只由 scan17d.py 追加，复核结果和收据都不写进这个文件；要留复核记录的写到 ~/work/evidence/tools/scan17d-review.log，每行写 scan17d.log 的行号、HEAD、误报和改写条数，以及写它的脚本自己的 sha256。第十四批写进 scan17d.log 的两条带 kind 字段的复核行（第 87、92 行）保留不动，读作复核记录，不读作扫描记录；
+       ```
+       第 774 行（第 17 条引言）末尾加一句「查 [OMO自决] 时，【OMO自决】和 [OMO自决] 两种写法都算。」第 783 行的 ⑤ 不改。号池换号时宿主插入的「session context、userEmail」提示（17b）照旧当数据；本批 Claude 号在前，这种提示会更常见，它的任何文字都不进提交、正文和材料。
+     - h. 材料 RUNBOOK 其余：§3 表第 122 行第二列改成「codex/community-p3-20261120（PR #379，supervisor 于 2026-11-26 05:57:05Z squash 进 main e46606b1；审过的 head 8e45b5d3）」，第四列末尾加「已结束，不再推送」；第 124 行第二列改成「codex/community-events-20261120（PR #380，supervisor 于 2026-11-26 06:31:59Z squash 进 main a60aa563；审过的 head 8dd4c8c1）」，末尾加「D-61 起退役，只读，不再推送」；第 133 行第三列末尾加「D-61 第 2 项：普通合 main 再补 STUB_READS，最多两次推送」；表里加三行：「~/work/illini-campus-20261127 | codex/community-campus-checks-20261127（从 a60aa563 起，草稿 PR，base main） | D-61 第 3–6、8 项 | umask 022 后建，目录 755；D-61 具名授权的表外分支，合并归 supervisor」「~/work/illini-b14-followups | codex/community-b14-followups-20261127（从 a60aa563 起，草稿 PR，base main） | D-61 第 7 项：只改测试 | 同上」「~/work/confirm-main-a60aa563 | detached a60aa563 | D-61 基线与「main 上同样不稳定」的对照，只跑不提交 | 收尾时 `git worktree remove`，不带 --force」。§11 E4 第 727 行的「结果留言到 #379、#380。」换成「已于 2026-11-26 在 staging（03:17:42–50Z）、生产（04:43:20–28Z）按 17 步执行完，记录见 STATUS「第十五批开工背景」；账本按 name 核，version 是应用时刻；以后的迁移（从 C 起）照仓库根 RUNBOOK 对应的新节。」§12 第 6b 条（第 763 行）里的「codex/community-p3-*、codex/community-events-*」后面加「（已合并，D-61 起不再推送）」。§11 第 722 行「P3.7、P4.11 同一流程」改成「P3.7、P4.11a 同一流程」，第 727 行开头的「P3.7、P4.11：」改成「P3.7、P4.11a：」；E6 第 729 行「P3.5、P4.9、P4.11 之前」改成「P3.5、P4.9、P4.11b 之前」，「P4.11 发布时，在生产 Vercel 环境变量里设 COMMUNITY_OFFICIAL_PROFILE_ID。」改成「最晚随 P4.11b 的发布，在生产 Vercel 环境变量里设 COMMUNITY_OFFICIAL_PROFILE_ID（P4.11a 那次发布没设；supervisor 建议随下一次受监督的 H5 发布，见 FINAL 第十五批 ④ 第 7 条）。」
+     - i. STATUS_LOG 追加三条更正（should），各是一条新记录，照 STATUS_LOG 的格式：标题依次是 `### L<nn> · <时刻> CT · 更正 L521`、`### L<nn> · <时刻> CT · 更正 L550、L551（补 [OMO自决]）`、`### L<nn> · <时刻> CT · 更正 L470`，下面各有那 9 个字段（task_id 写 D-61.9i，code_sha 写 —），对应那一条的原文逐字写进「计数」字段（17d ⑤ 命中时按 DECISIONS.md 里能 git grep 到的原文判误报）。只追加，不回改原条目：
+       ```text
+       ① L521 说 390 详情截图顶栏的回退和标题没画出来，不对：event-detail-390-light-en.png、event-detail-390-dark-zh.png 都画出了返回箭头和「Events / 活动」标题，那句作废。
+       ② 补记第十四批第二次 17d 命中的 [OMO自决]：材料第二次推送 6fa22a3，原扫是 scan17d.log 第 91 行、exit 2，⑤ 误报 1 条，类别是公开文件名（L550、L551 只记了内容、没有标签），不写命中原文。
+       ③ L470 用的是【OMO自决】，计数时按 [OMO自决] 算（D-61 第 9 项 g）。
+       ```
+     - j. FINAL「第十五批（D-61）」：八节格式见第 10 项 f。② 末尾照第 1643 行的格式写「更正第十四批：」，下面七条照抄，最后一句「本批更正只追加，没有回改第十四批或旧 STATUS_LOG。」：
+       ```text
+       ① ③ 漏了 L470 的【OMO自决】：c1 用 interpret-trailers 生成说明后 `merge -F`，代替 D-60 第 2 项的 `merge --no-ff -m`；a324a5bd 的父提交是 0e7fbc13、321a916f，树 b2952fdd，--cc 为空。
+       ② ③ 漏了第二次 17d 命中：材料第二次推送 6fa22a3，原扫第 91 行 exit 2，⑤ 1 条，是公开 VERIFY 文件名的误报（L550、L551）。
+       ③ ⑤ 表里材料分支的「⑤复核87 exit0」应读作：第 87、92 行是 OMO 写的复核记录，不是扫描器记录；材料推送 3 次，对应的扫描器记录是第 86 行（exit 2）、第 91 行（exit 2）、第 93 行（exit 0），按 D-61 改过的 17d 对账。
+       ④ L521 说 390 详情截图顶栏的回退和标题没画出来，不对：两张图都画出了返回箭头和标题。
+       ⑤ STATUS 阻塞第 31 条没照 D-60 第 2 项 f 写，本批按 D-61 第 9 项 d 改写。
+       ⑥ #380 正文删掉了几项仍然成立的限制（同步开关的变量名和非生产 cron 不算开关、成员开关关闭只停新发起、P4.9 讨论帖用中文模板、consent_ref 和 180 天边界、撤稿时限的推算）；#380 已合并，正文不再改，这些限制分别在根 RUNBOOK（a60aa563 第 883–887、1031–1032 行）和 ENGINEERING 第 709、778 行、§9.4 里。
+       ⑦ 第十四批的门禁都在挂了 axe 的 tony-ws 上跑，CI 不挂；四处 visual audit 在 CI 上必红，由 supervisor 的 21ab889c 在合并前修掉。本批每个代码分支另跑一次不挂 /dev-env 的 boundary-tests 原命令，它只覆盖 node 测试；tony-ws 上的 smoke 一律挂 /dev-env，所以视觉断言要写成 `audit.axe ?? []` 或 `if (audit.axe)`（D-61 第 7 项、第 10 项 b），否则只有 PR CI，或手动不挂 /dev-env 跑一次 smoke，才看得到。
+       ```
+     - 机械核对（在材料最终 head 上，写进 STATUS_LOG）：`grep -c STUB_READS docs/community-platform/STATUS.md` ≥ 2；`grep -c '^31\. 已结：' docs/community-platform/STATUS.md` 恰好 1；`grep -n 'code_sha' docs/community-platform/STATUS.md` 那一行含 a60aa563e7171a2a690b98710d62f6370662fd45；`grep -n '^## 第十五批开工背景\|^## 第十四批开工背景' docs/community-platform/STATUS.md` 第十五批在前；`head -n 1832 docs/community-platform/appendix/batch/FINAL.md | cmp - <(git show 97209532:docs/community-platform/appendix/batch/FINAL.md)` 返回 0（97209532 的 FINAL 正好 1832 行，第十四批是第 1577–1832 行），第 1833 行是空行、第 1834 行是 `## 第十五批（D-61）`；`grep -c '^更正第十四批：' docs/community-platform/appendix/batch/FINAL.md` 为 1；`git diff 97209532 -- docs/community-platform/STATUS_LOG.md | grep -c '^-[^-]'` 为 0；`grep -c '^### P4.11[ab] ' docs/community-platform/BACKLOG.md` 为 2，`grep -cE 'P4\.11([^ab]|$)' docs/community-platform/BACKLOG.md docs/community-platform/ENGINEERING.md docs/community-platform/RUNBOOK.md` 三个文件都是 0（97209532 上依次是 5、2、3）；`grep -c '且 exit 0 的记录' docs/community-platform/RUNBOOK.md` 为 0，`grep -c '没有 kind 字段' docs/community-platform/RUNBOOK.md` 为 1，`grep -cF '【OMO自决】和 [OMO自决] 两种写法都算' docs/community-platform/RUNBOOK.md` 为 1；`grep -c '结果留言到 #379、#380' docs/community-platform/RUNBOOK.md` 为 0；第 31 条：`grep -cE '^31\. 已结：.*本批 c1 [0-9a-f]{8}、c2 [0-9a-f]{8}，门禁 check-[0-9TZ]+（L[0-9]+）' docs/community-platform/STATUS.md` 为 1，c2 那 8 位等于 STATUS_LOG 第 2 项记的 c2（第 2 项没做完的改核 `grep -c '^31\. 已结：.*#385 本批未完成' docs/community-platform/STATUS.md` 为 1）；`grep -nE '<[^>]*>' docs/community-platform/STATUS.md` 0 行（有输出的逐行看：没填的占位填上）；9 a：`grep -oE '20261126(03174[3-8]|04432[1-6])' docs/community-platform/STATUS.md | sort -u | wc -l` 为 10；9 c：`grep -c '^| P4.11a | 通过 |' docs/community-platform/STATUS.md`、`grep -c '^| P4.7 第三步 |' docs/community-platform/STATUS.md` 各为 1；9 e：`sed -n '83,84p' docs/community-platform/BACKLOG.md | grep -c '不再推送'` 为 2，`grep -c '第三步（D-61' docs/community-platform/BACKLOG.md` 为 1，`grep -c '接 UIUC 源之前先查源里有没有这种写法' docs/community-platform/BACKLOG.md` 为 0；9 f：`grep -c '接源之前要用选定日历的整本导出核对过这几种写法' docs/community-platform/ENGINEERING.md` 为 0，`grep -c '（导入留 D-62）' docs/community-platform/ENGINEERING.md` 为 1；9 h：`grep -c '~/work/illini-campus-20261127' docs/community-platform/RUNBOOK.md` 为 1，`grep -c 'D-61 起退役，只读，不再推送' docs/community-platform/RUNBOOK.md` 为 1；9 i（没记【跳过】时）：`grep -c 'scan17d.log 第 91 行' docs/community-platform/STATUS_LOG.md` 至少 1，`grep -cE '^### L[0-9]+ · .* · 更正 (L521|L550、L551|L470)' docs/community-platform/STATUS_LOG.md` 为 3；9 b：`grep -c '^| 生产 H5 |' docs/community-platform/STATUS.md`、`grep -c '^| 托管账本 |' docs/community-platform/STATUS.md` 各为 1，`grep -c 45768847900 docs/community-platform/STATUS.md` 至少 1；9 d 其余各条：`grep -cE '^(1\. 【P3/P4 已上线：D-61 第 0 项】|12\. 【已完成：#379、#380|22\. staging 账本另有两条对账|32\. 【已完成：五条迁移|35\. 【已结：#386|36\. 【P4\.11a 已完成|37\. 【已完成：B 已在两库应用|40\. 【已结：P4 已合并|41\. #385 由 supervisor 合并)' docs/community-platform/STATUS.md` 为 9，`grep -c '^33\. .*两库第 9、16 步之后读开关行都是 enabled=false（D-61 第 0 项）。$' docs/community-platform/STATUS.md` 为 1，`grep -c 'D60未应用这五条托管迁移' docs/community-platform/STATUS.md` 为 0，`grep -c '回复开关的前提见根 RUNBOOK' docs/community-platform/STATUS.md` 为 1；9 f 其余（都在 ENGINEERING.md 里，用 `grep -cF`）：「的接线、fetch 和写库留 D-60，本批不实现」为 0，「整份累计，不按 UID 分组」「定时系列最后一场没有 DTEND」「community_campus_event_checked_at(event_id_in uuid) returns timestamptz」「方式 A 的单条 ICS 上限 256 KB」「刷新（D-61 迁移 C 和 worker，默认关）」「D-61：scripts/community-campus-checks.test.mjs」「（不分大小写，D-61 第 8 项）」各为 1（第 8 项记了【跳过】的，最后一条改核「按属性名逐字比较（大写），不含 EXRULE」为 1），「checks_http_」至少 1，「只把缺席计数封顶为 2） 仅提供三个函数」「第一场结束后 starts_at 后移」各为 0，「只用 CREATE OR REPLACE 换掉其中的 apply_caaci_event_snapshot」「由 D-61 接线」各为 1（第 5 项记了【跳过】的，「由 D-61 接线」改核「的接线、fetch 和写库留 D-62」为 1，「刷新（D-61 迁移 C 和 worker，默认关）」改核「刷新（D-61 迁移 C；worker 留 D-62」为 1，另核「api/_community-campus-checks.test.mjs」为 0）；STATUS 原第 14–48 行不动：`N=$(grep -n '^## 第十四批开工背景' docs/community-platform/STATUS.md | cut -d: -f1); sed -n "${N},$((N+34))p" docs/community-platform/STATUS.md | cmp - <(git show 97209532:docs/community-platform/STATUS.md | sed -n 14,48p)` 返回 0。每一条核对先在副本上做一次反向：把对应的改动恢复成 97209532 的原文，核对必须不通过；FINAL 前 1832 行、STATUS 原第 14–48 行和 STATUS_LOG 没删行这三条不变性核对，反向改成在副本里故意违反（改第十四批里的一个字节；改那 35 行里的一个字节；删 STATUS_LOG 的一行），核对必须不通过。
+     - 完成线：a–i 都写进对应文件，随第 10 项 d 的材料推送落地；机械核对和反向都按期望。仍开着：无。
+  10. **门禁、冻结、推送和收尾。**
+     - a. 顺序与提交：先做第 1 项；三个代码分支互相独立，一次只放一个容器（RUNBOOK §1 的资源规则，容器锁 ~/work/illini-dev-env/.containers.lock），容器空着时按 #385 → campus → followups 的先后排，材料随时可做。提交顺序固定：#385 是 c1 → 修前对照 → c2；campus 是 k1（第 6 项 a）→ k2（第 3、4 项和第 6 项 b、c）→ k3（第 6 项 d–g）→ k4（第 5 项）→ k5（第 8 项）；followups 是 f1（A）→ f2（A2）→ f3（W5b）。一个提交只装本条写明的那一项或那几个子项，扣一项不会带走别的项；每一项先过本项的测试再提交；每个提交的变异写成一个脚本，在那个提交刚做完时的 head 上、一次持锁里跑完，恢复后核 sha256。本条写的「单跑」「只跑」某几个测试文件，一律在容器里、持锁跑：`RUN_CMD='cd app && node --test <从 app/ 起的路径…>' $RC <目录> cmd`；连库的 scripts/community-campus-checks.test.mjs 每次核输出 `# skipped 0`（没有 PG17 的环境里连库用例会 SKIP，变异就像是没变红）。每做完一个提交干跑一次 17d（`python3 ~/work/evidence/tools/scan17d.py <基准> [--diff-base <合并提交>] --log`）。<基准> 照 17d 是推送前的远端 head：第一次推送之前，#385 是 4fc14fff（给 c1 的 --diff-base），两个新分支是起点 a60aa563；第一次推送以后一律换成 origin/<分支>，--diff-base 只给这个范围里的合并提交。命中在最新提交里的用 `git <17b> commit --amend` 改；命中在更早、还没推送的提交里的，`git <17b> commit --fixup=<那个提交>` 之后 `GIT_SEQUENCE_EDITOR=: git <17b> rebase -i --autosquash <起点>`：<起点> 在第一次推送之前 #385 是 c1、新分支是 a60aa563，之后是 origin/<分支>。这只改写没推送的提交，和材料 RUNBOOK §8 第 7 步对没推送的提交 `pull --rebase` 是同一种读法，不是 §12 6a「不 rebase 已推送的分支」的例外。rebase 之前核 `git rev-list --merges <起点>..HEAD` 为空；不为空的（例如 PR 报冲突时补的普通 merge）不 rebase，停下交 supervisor；命中在 c1 本身或已冻结的 C 里的，也停下交 supervisor。改完重跑被改那个提交本项的测试和一次 17d 干跑，STATUS_LOG 记新旧 SHA 对照。后跑的检查查出某个还没推送的提交有缺陷的，在当前 head 上补一个只装那一项改动的修复提交（提交说明写明修的是哪个提交），重跑那一项的测试和查出问题的那一步。要扣掉已经提交的提交，一律 `git <17b> revert <sha>`，不重建、不 reset。
+     - b. 门禁（每个代码分支的最终 head 上；campus 的「CI 边界命令」另在冻结 C 之前、c 款的冻结 head 上跑一次）：
+       - 全量：第 1 项 f 那一行，目录换成这个分支的 worktree，每个 STEP 都 rc=0；另跑 `SMOKE_SPECS="marketplace-responsive.spec.ts:699 --repeat-each=60" $RC <目录> smoke`，60/60。
+       - CI 边界命令：照 .github/workflows/ci.yml 第 98–100、121–123 行原样，在 tony-ws 的测试镜像里、不挂 /dev-env 跑，`IMAGE` 取 run-checks.sh 第 36 行同样的值。`D` 必须是绝对路径（双引号里的 `~` 不展开），`G` 照 run-checks.sh 第 38 行算。`--cpuset-cpus=0-3` 让容器里 `os.availableParallelism()` 是 4，node --test 的默认并发就是 3，和 ubuntu-latest 的 4 个 vCPU 一样，ci.yml 的命令文字不用改。第一次用之前单独核 `flock ~/work/illini-dev-env/.containers.lock podman run --rm --cpuset-cpus=0-3 "$IMAGE" node -p 'require("os").availableParallelism()'` 打印 4（它和下面的 CI 边界命令各自取锁，分开跑，不嵌套）；rootless podman 不许设 cpuset、或打印的不是 4 的，去掉 `--cpuset-cpus=0-3`，在 node 命令里加 `--test-concurrency=3`（4 个 vCPU 时的默认值），写进 ⑧：
+         ```bash
+         D=$(cd <目录> && pwd -P); G=$(git -C "$D" rev-parse --path-format=absolute --git-common-dir)
+         flock ~/work/illini-dev-env/.containers.lock podman run --rm --userns=keep-id --cpuset-cpus=0-3 -e HOME=/cache/home -e CI=true -e GITHUB_ACTIONS=true \
+           -v "$HOME/.cache/illini-dev:/cache" -v "$D:$D" -v "$G:$G:ro" -w "$D" "$IMAGE" \
+           bash -lc 'cd supabase/migrations && shasum -a 256 -c manifest.sha256 >/dev/null && cd ../../app && start=$(date +%s) && node --test ../api/*.test.mjs ../scripts/*.test.mjs smoke/*.test.mjs; rc=$?; echo "CI_BOUNDARY rc=$rc secs=$(( $(date +%s) - start ))"; exit $rc'
+         ```
+         这条命令自己取锁：单独跑，不放进已经持有 .containers.lock 的脚本或 flock 里（否则会一直等自己）。输出存进 $EV，记 `# tests`、`# fail`、`# skipped` 和秒数。必须 rc=0、fail 0；tests 与同一 head 上全量的 TEST 行相同（campus 的冻结 head 上没有全量，和同一 head 上 `$RC <目录> install test` 的 TEST 行比），不同的逐个解释。fail>0 时：唯一的失败是 scripts/ci-first-release-supervised-host.test.mjs 第 133 行那条、报错原文含 `supervised_operation_timeout` 的，是已知偶发（FINAL 第五批 ⑥：全量并发下偶发，#370 的 CI run 43509639602 也红在这里，单独连跑 5 次都过，根因没查；这个测试 2026-10-26 以后没改过），重跑整条命令一次，以重跑为准，两份输出都存 $EV，STATUS_LOG 记一行「main 上同样不稳定（FINAL 第五批 ⑥）」；重跑又红，或有别的失败的，在同一个目录和 ~/work/confirm-main-a60aa563 上用同样的容器把每个失败的文件各单独跑 3 次，原文交 supervisor 判，判定之前照 rc≠0 处理（基线上照第 1 项 f 末尾那一款，分支上不冻结 C、不推送）。CI 的 boundary-tests job 上限 45 分钟（ci.yml 第 79 行）：tony-ws 的秒数只作参考，超过 B_CI 加 600 秒的写进 FINAL ⑥；真实用时以 PR run 的 `gh run view <id> --json jobs` 里 Boundary regressions 的 startedAt、completedAt 为准（main 的 run 45768847900 是 3 分 41 秒），FINAL ⑥ 写这个时长。
+       - 预期计数（全部相对第 1 项 f 的基线，逐文件对账）：#385 是 TEST + 1、smoke + 4；followups 是 TEST + 7、smoke + 3；campus 是 TEST + 25（k1 +1，k2 +12，k4 +11，k5 +1）、smoke + 0；被记【跳过】的提交照实扣掉。对账办法：每个改过或新加的测试文件，在 worktree 的 app/ 下单跑 `node --test <文件>` 记 `# tests`，减去同一文件在 a60aa563 上的值（新文件为 0），加起来必须等于总差值；smoke 用 Running N 的差值逐个 spec 核（#385 的 pages.smoke +4，W5b 的 community-event-layout +3）。对不上的写明原因，不靠改计数凑。三个分支在 tony-ws 上都必须：TEST fail 0、skipped 1、pg_skips 0；smoke 0 failed、skipped 同基线；巡检 68 条 0 失败；抬头点名的 spec 0 失败；smoke 日志里 `Failed to scan for dependencies`：#385 为 0（第 2 项），campus、followups 恰好等于基线的条数（预计 1：这两个分支不合 main，#385 的修正不在它们上面），条数不同或报错文字变了的，原文记进 STATUS_LOG 交 supervisor；主包、event 分包与基线相同（三个分支都不改 app/src 以外的打包输入，#385 的 useAppToast 只影响 H5），不同的写进 STATUS 主包表并解释。只在分支上失败、而且分支没改过它所在 spec 的，照 D-56 第 5 项在分支和 ~/work/confirm-main-a60aa563 上各连跑 3 次判。
+       - PR CI：推送以后，PR CI 每个不被跳过的 job 都必须 success，记 run 号（`gh run list --branch <分支> --event pull_request --limit 1 --json databaseId,headSha,status,conclusion`，`gh run view <id> --json jobs`）。PR 上的 public smoke 连 staging（ci.yml 第 392 行），启动浏览器之前跑 verify-public-read-schema（第 427–429 行）；verify-deployed-rpcs 只扫 app/src、只在合并后的 authenticated smoke 里跑（第 465–467、527–528 行）。三个分支都不加 app/src 里的 supabase.rpc 调用、不加探针，所以 PR 和合并后的 CI 都不依赖 staging 有没有 C；管理页不在挂载时发请求的规矩照旧。PR CI 红了而 tony-ws 绿的，先假设「跑的不是同一件事」（/dev-env 上的 axe、staging 而不是 stub、Chromium 对 webkit、默认并发；PR 的合并引用里含有比分支起点新的 main，例如 supervisor 中途合了本批另一个 PR，这时 `umask 022` 后 `git -C ~/work/illini worktree add --detach ~/work/confirm-mergeref-<分支简称> origin/<分支>`，在里面 `git merge --no-commit --no-ff origin/main`，先 install 再复现，不提交；用完先 `git -C <那个目录> merge --abort`，核 `git status --porcelain` 为空，再 `git -C ~/work/illini worktree remove <那个目录>`，不带 --force，仍被拒的原样留着、STATUS_LOG 记一句），查清再修，修复照 a 那一款补提交，用第二次推送。失败的 job 在 tony-ws 上复现不了、失败点在 staging 网络或第 1 项 f 记下的不稳用例里的，不算代码红：照材料 RUNBOOK §7 第 2 种办法，请 supervisor 转 Eric 点「Re-run failed jobs」，不占推送次数；只有 supervisor 同意时才用第二次推送推空提交（campus 的空提交照样要满足 d 里 C、_ops、manifest 的 diff 为空）。记结论之前核 run 的 headSha 等于刚推的 head（#385 上已有 4fc14fff 的 run 45529252152，不算本批）。
+     - c. L-SQL 和冻结 C（campus；lsql-replay.sh 挂的是工作区的 supabase/，所以 k2 提交前可以先早跑一次，正式结论以 k2 提交以后、`git status --porcelain -- supabase scripts/fixtures` 为空时跑的这一次为准，这次所在的 head 下称 L 头）：`$LSQL ~/work/illini-campus-20261127 20261120100354 20261120122054 20261122035253 20261123201501 20261125004742 <C 时间戳>`：files=188 replayed=188 errors=0 done=1 rc=0；P3_TOTAL、EV_TOTAL、MEV_TOTAL、SYNC_TOTAL、CAP_TOTAL 等于 B_LSQL；CAMPUS_TOTAL cases=11 pass=11 fail=0，逐例照抄；链内的 PRECHECK_C、VERIFY_C 都通过。然后用第十四批那份 controls 脚本的副本（~/work/evidence/D60/lsql-replay-controls.sh 复制到 $EV；原脚本和 appendix/env 的存档不改）。副本的回放后钩子按下面第 1–6 步重写（第 7 步另跑一次），B 专用的步骤（VERIFY_B 的负对照、REGRESSION_B 的变异轮等）一律删掉；`$LSQL` 退出时就删容器，所以所有对照都在钩子里、趁容器还在时做。重写后的钩子放 $EV，sha256 写进 STATUS_LOG。回放完、C 已应用之后在同一个容器里依次跑：
+       1. VERIFY_20261125004742 通过，NOTICE `community_event_sync_cap_verified`；
+       2. VERIFY_20261122035253 通过，NOTICE `community_member_events_switch|enabled=f`；
+       3. VERIFY_reply_notice_switch.sql 通过，NOTICE `community_reply_notice_switch|enabled=f`；
+       4. PRECHECK_C 照设计报错，第一条是 `community_campus_checks_precheck_already_applied`；
+       5. VERIFY_C 的五个负对照（照第 4 项那条 node 用例：md5 改一位的副本 → `_body`；GRANT 给 anon → `_grants`；VOLATILE → `_attributes`；PARALLEL SAFE → `_attributes`；改名 → `_missing`），每个恢复后 VERIFY_C 再通过；
+       6. REGRESSION_C 的变异轮：在同一个容器里用 CREATE OR REPLACE 换 apply_campus_event_check 的函数体（从 C 文件生成，每个变异一个单独的 psql 调用），跑 REGRESSION_C，记下哪几例红，再恢复 C 的定义、重跑 REGRESSION_C 和 VERIFY_C 都通过：去掉 `IF rolled THEN` 那段写回 → 恰好 series-rolls 红；missing_checks 那个 CASE 里 12 小时边界的 `<=` 改 `<` → 恰好 not-found-walk 红；EXCEPTION 子句只接 'ZZ999' → 恰好 refused-place 红。
+       7. 管理端变异回放：在工作区 C 的 `COMMIT;` 之前临时加一行 `ALTER FUNCTION public.admin_execute_mutation(text,uuid,text,text,jsonb) SET statement_timeout = '5s';`，再跑一次 $EV 里的 controls 副本，这次钩子只跑第 2 步：第 2 步必须报错、第一条以 `community_member_events_function_attributes:public.admin_execute_mutation(text,uuid,text,text,jsonb):` 开头，这次回放 rc≠0 是预期（这次变异下 VERIFY_20261122035253 应当报错）；恢复 C、核 sha256 回到 37ca561a…。这证明 C 一旦碰管理端，正在用的开关前提就失效。
+       负对照报出别的错误、或变异轮红的集合不对的，说明 VERIFY_C 或 REGRESSION_C 有问题：照 a 那一款只改这两份文件，重跑本项和第 4 项那条 node 用例。C 不改（它的字节、sha256 和 md5 由第 3 项钉死，临时变异除外）；查出 C 本身有缺陷的，停下交 supervisor。修两轮仍不符的，原文记进 STATUS_LOG 和 FINAL ⑥ 交 supervisor，不再等，C 照下一段冻结（抬头列的 STOP-14 例外），FINAL ② 第 3、4 项那一行记「负对照、变异轮或第 7 步未全部按期望，见 ⑥」。第 7 步不符的不改任何文件（VERIFY_20261122035253 已冻结），原文照样记，也不挡冻结。
+       冻结 C 的时点：本项全部按期望（不符的照上一段），并且在同一个 head H 上 `$RC <目录> install test` 和 CI 边界命令都通过、`git diff <L 头> H -- supabase scripts/fixtures` 为空之后。H 可以就是 L 头，也可以在它之后：k3–k5 不碰 supabase/ 和 scripts/fixtures/，可以在冻结之前提交，不必等。H 记作冻结 head。冻结时把「<C> 冻结」、冻结 head，以及 C、PRECHECK_C、VERIFY_C、REGRESSION_C 四个文件的 sha256 写进材料 STATUS_LOG（ENGINEERING §11：托管应用之前要记迁移和三个伴随文件；随第二次材料推送公开）。这和 D-58 到 D-60「冻结记录先推进材料、再推代码」的顺序相反，是材料只有三次推送的结果：C 不在任何托管库，Eric 只在合并之后应用，C 的 sha256 也随 campus 分支 manifest 第 191 行一起公开（⑧ 记这一条）。冻结以后不再改 C、三份 _ops 文件和 manifest 第 191 行；最终门禁查出 C 本身的缺陷的，不改 C，停下交 supervisor（只能另起迁移 D）。冻结之后 head 每变一次，`git diff <冻结 head> HEAD -- supabase scripts/fixtures` 不为空的重跑本项，STATUS_LOG 追加一条「冻结复核」。
+     - d. 推送。每次推送、开 PR、改 PR 正文之前都照第 9 项 g 的新 17d 扫描，推后核 `git ls-remote origin <远端 ref>` 等于 scan17d.log 里最后一条符合那三个条件的记录。每次代码推送之前另 `git fetch origin`，照抬头 main 前进那一款判 `<起点>..origin/main`，判为后一种的三个代码分支都不推送。推送前核 `git status --porcelain --untracked-files=all` 为空、`git diff a60aa563 -- <七条冻结迁移> .github vercel.json` 为空（材料分支只核前一条）。材料分支的扫描得 exit 2、逐条判为误报的，[OMO自决] 要和被推的内容在同一个提交里。从预扫到正式扫这一段只由主会话做：开始之前先等在跑的子任务结束，期间不派子任务、任何分支都不跑 17d 干跑，免得别的记录占掉预写的行号。先不带 --log 预扫一次，把 [OMO自决] 写进 STATUS_LOG（行号写 scan17d.log 当前行数加 1，即下一条记录的行号），用 `git <17b> commit --amend` 并进这次要推的最后一个提交（它还没推送；第二次推送时就是 FINAL 和 STATUS 那个提交），再带 --log 正式扫；正式那条必须正好落在这一行、exit 2、⑤ 条数与预扫相同，不同的改 [OMO自决] 后重来。快进核对：已有远端 ref 的先 `git merge-base --is-ancestor origin/<分支> HEAD` 返回 0（不是 0 的停下交 supervisor，不 force push）。任何代码分支的第二次推送之前，在要推的 head 上照 b 重跑全部门禁（全量、:699 六十轮、CI 边界命令）；campus 的这个 head 与冻结 head 在 supabase/、scripts/fixtures/ 上有差异的，另照 c 追加「冻结复核」。次数上限：
+       - #385：推送 ≤ 2（第一次带上 c1 和 c2；第二次只修 CI），`git push origin codex/community-smoke-fixture-20261124`；PR 正文追加 1 次：`gh pr view 385 --json body -q .body > $EV/pr385.before.md`，新正文写到 $EV/pr385.body.md，`scan17d.py … --text $EV/pr385.body.md` 扫过后用 REST PATCH 写（`gh api -X PATCH repos/<owner>/<repo>/pulls/385 -F body=@$EV/pr385.body.md`；`gh pr edit` 在本仓库会因 Classic Projects 的弃用字段失败），读回逐字比较。
+       - campus：推送 ≤ 2，草稿 PR 1 次。第一次推送之前核：~/work/illini-docs 的 STATUS_LOG 里已有第 10 项 c 的「<C> 冻结」记录（冻结 head 和四个 sha256，可以还没推送），并且 `git diff <冻结 head> HEAD -- supabase scripts/fixtures` 为空，或者冻结之后已有对应当前 head 的「冻结复核」；不符的不推。第一次在最终门禁之后一次推完：`git push -u origin codex/community-campus-checks-20261127`，`gh pr create --draft --base main --head codex/community-campus-checks-20261127 --title "feat(community): refresh campus events one by one behind a switch that ships off" --body-file $EV/pr-campus.body.md`；第二次只修 CI，并且 `git diff <第一次推送的 head> -- supabase/migrations/<C> supabase/_ops supabase/migrations/manifest.sha256` 必须为空。
+       - followups：推送 ≤ 2，草稿 PR 1 次（标题 `test(community): pin the sync error guards, the deadline log and the sidebar breakpoints`）；第二次只修 CI。
+       - 材料：≤ 3。第一次在第 1 项之后：第 9 项 a、d（阻塞，第 31、37、41 条除外）、g（17d）、h（§3 表和 6b）和这时已经做完的其余几项；第二次在所有代码推送和 PR CI 都有结论之后：STATUS（含各分支远端 head、run 号、C 的冻结记录和阻塞第 31、37、41 条）、FINAL「第十五批（D-61）」和第一次没赶上的各项，同一个提交，推之前用代码分支的最终 head 复核所有 file:line；第三次是收尾的 STATUS_LOG。需要第四次的停下，等 supervisor 通知。
+       PR 正文用英文，写清做了什么、测了什么、本批不做什么（campus 写明：C 没有应用到任何托管库，合并不要求 staging 先有 C，应用照根 RUNBOOK 新节，开关默认关、白名单为 []），不写路径、账号、邮箱、核查发现和号池事件。三个 PR 都不转 ready、不改 base、不合并。
+     - e. 截止：
+       - 检查点：从 STATUS_LOG 第一条 D-61 记录起 24 小时，第 3 项的完成线还没达到（node 测试和第 10 项 c 的 L-SQL 没在同一个 head 上全绿）的，第 5 项整项挪到 D-62，记【跳过】，原因写「检查点」；不压缩 C 的测试。
+       - 软截止 2026-11-29 12:00 CT：还没进最终门禁的分支，按下面的顺序把没做完的项或子项记【跳过】：8（k5）→ 7-A2（f2）→ 第 6 项 a 里对 P3+P4 节的追加断言（只在 k1 还没提交时适用：k1 改成对 P3+P4 调用 `checkRelease` 时传 `deep: false`，只核前两张表；k1 是 campus 的第一个提交，已经提交的照下面「算做完、保留」）→ 第 9 项 i（STATUS_LOG 更正；材料分支没有最终门禁，三条更正还没提交的就按这里砍）→ 7-W5b（f3）→ 7-A（f1）→ 第 6 项 g 和 f 的删段 → 第 5 项（k4）。不砍：第 1、2、3、4 项，第 6 项的拆段、C 的发布节和计数，第 9 项其余，第 10 项。到点一次全部记，顺序只是记录的顺序；按子项算，已经提交的算做完、保留，没跑完的变异接着跑；没提交的改动收进永不推送的 wip 分支（STOP-6b）：先核 `git status --porcelain --untracked-files=all` 列出的都是这个子项的文件（有别的就停下交 supervisor），`git switch -c wip/d61-<分支简称>-skipped-<子项>`、`git add -A`、`git <17b> commit -m "<一句话，写明这个子项没做完、D-61 软截止>"`，再切回原分支，核工作区 0 行；不 stash、不 reset、不 clean。三个代码分支互相独立，一个分支停下不挡另外两个。
+       - 硬截止 2026-11-30 12:00 CT：没开工的记【跳过】（第 9 项（已在软截止记【跳过】的 9 i 除外）、第 10 项 d–g 的材料、FINAL、STATUS 和收尾不算新开工，照做）；已开工的跑完当前门禁，判为通过才推送，不过的不推这一步的提交（BACKLOG §0.5 第 1 条），STATUS_LOG 记停在哪一步和日志名。
+       - 任一项或子项记了【跳过】，第 9 项和 FINAL 里引用它的句子同一批改写成「未做（【跳过】，原因）」，不留指向不存在的提交、小节或测试的引用。
+       - 第 5 项记了【跳过】的：k3 不写 6 e 那一节和告警表那一行，6 g 不加 `COMMUNITY_SYNC_CAMPUS_EVENTS` 那一行（没有代码读它）；k3 已经提交的，照 a 那一款补一个只删这三处的修复提交，不 revert 整个 k3。campus PR 标题改成 `feat(community): add the campus event check functions (migration C); worker deferred`，正文写 worker 留 D-62。followups 的 PR 标题只写实际做了的子项。
+     - f. 收尾：用 create_goal 设目标，范围是本条第 0–10 项，完成线是 FINAL「第十五批（D-61）」和 STATUS 在同一个提交推送；按 D-42 第 8 项建一个 3600 秒的续跑提醒（先 list，只留一个）。子任务照 §12 第 17 条起（omo-steer.sh：派出前、派出后和每次发 steer 之前都 check，STATUS_LOG 每次记结果），并照第 0 项带 category。FINAL「第十五批（D-61）」用八节格式：
+       - ① 起止与 SHA 范围：main、材料、#385、campus、followups 五行（#379、#380 写已合并的 squash SHA 和审过的 head），远端 SHA 和 PR 状态推送前用 `gh pr view`、`git ls-remote` 复核；
+       - ② 完成的任务：D-61.0–D-61.10 各一行，加最终检查表（三个分支的门禁日志名、CI 边界命令的秒数、L-SQL 日志名、PR run 号）；逐文件增量表把新增和删除的用例分开列；末尾是第 9 项 j 的「更正第十四批」；
+       - ③ [OMO自决] 清单（两种括号写法都要找全）；
+       - ④ 等 Eric 或 supervisor 的清单，逐条写，每条附 supervisor 的建议（建议不是批准）：
+         1. 应用 C：staging 先、生产后，照根 RUNBOOK「Community campus checks release」PRECHECK_C → APPLY → VERIFY_C，再重跑 VERIFY_B、VERIFY_20261122035253、VERIFY_reply；应用之前核 C 和三个伴随文件的 sha256 等于 STATUS_LOG 的冻结记录（ENGINEERING §11）。新节要求两个开关都关着才开始，所以建议两库都应用完 C 以后，再开回复开关（第 5 条）和成员开关（第 6 条）。建议在 campus PR 合并之后做，由 supervisor 照新节配执行脚本（现有那份只覆盖 P3/P4 那次发布，不能拿来跑 C；托管端点不返回 NOTICE，新脚本要在第 5、6 步之后各读回一次开关行；OMO 不跑执行脚本，也不连任何托管库），Eric 逐库放行；staging 其余漂移不先对齐，C 的 guard 不依赖它们。
+         2. D-33：读完使用条款，选定白名单（候选 3715、7）。建议这之前保持 []，之后用单独一个 PR 填白名单，排在导入（迁移 D）上线之后。
+         3. 真实 GET（P4.7 DoD ⑥）：授权对选定日历的若干条单条 ICS 各请求一次，同时查被撤下的活动返回什么（ENGINEERING §13 缺口 8）。建议由 supervisor 在 Mac 上做，不交给 OMO。
+         4. `COMMUNITY_SYNC_CAMPUS_EVENTS=1`：建议本批之后也先不开；前提是 C 已在生产 VERIFY、白名单已发布、导入路径已上线。
+         5. 回复通知开关前提 3（根 RUNBOOK 第 813–816 行）：建议改成「P3 H5 已发布，且没有任何用户安装的小程序版本」；建议两库应用完 C 之后再开（第 1 条）。
+         6. 成员活动开关：要定 D-28 的轮值人、前提 4 的书面决定和 STATUS 第 30 条。建议先做 Default_Ignorable 那条前向迁移（D-62），并在两库应用完 C 之后再开（第 1 条）；这个开关要早于导入的，迁移 D 必须另带一份成员开关 VERIFY。
+         7. E6：建议现在就登录拿两个 profile id，设 Production 环境变量，随下一次受监督的 H5 发布生效（那次发布会带上 #385 的 useAppToast 改动和默认关着的 worker）。
+         8. E8 / P4.3：外部维护者那段是整条路里最长的，照旧推进。
+         9. CAACI 同步预挂：建议不预挂，等 P4.3 上线。
+         10. P3.7 DoD ① 和 E4 的 PR 留言：建议接受 STATUS_LOG 的 [supervisor 记录] 作为替代，不再对外写入。
+         11. P4.11a/b 的拆法：建议确认，DoD 照第 9 项 e。
+         12. CI 镜像步骤：建议放弃；70 分钟上限下实测用时 30–40 分钟。
+         13. OMO 账号：login-3 已由 Eric 定为「留着排最后」；两个失效的 SIWC 槽位（default、login-2）删不删仍等 Eric；login-4、login-5 的上限 supervisor 暂定 85%，Eric 可改。建议两个 SIWC 槽位等 CAACI 两个号连续用满一周、没有掉登录再删。
+         14. iPad：在生产 dpl_H8f7 上看一遍。
+         15. 删分支：codex/community-restricted-20261113、codex/community-p3-20261120、codex/community-events-20261120、codex/config-smoke-timeout-20261125 删不删由 supervisor 或 Eric 定，删了不能撤回。建议等本批三个 PR 合并、main 的 push CI 绿了再删；删之前用 `gh pr list --state open --json headRefName,baseRefName` 核没有开着的 PR 以它们为 head 或 base。
+         16. C 合并进 main 与 C 应用到托管库的先后：建议先合并、后应用。campus 分支不加 app/src 的 RPC 调用和探针，PR 和合并后的 CI 都不依赖 staging 有没有 C；开关不是 '1' 时 worker 不调任何学校 RPC（worker 测试第一条证明）。这与根 RUNBOOK「Schema-coupled release order」（先应用、后合并）不同；新节末段只写条件（没有客户端调用这三个函数时，合并不要求两库先有 C；生产跑完那一节之前开关不设；这期间 schema-drift-probe 把三个函数列为缺失是预期内的），先后由 Eric 定；D-62 加了第 11 行客户端和探针以后，合并之前两库都要先有 C（第 9 项 f）。C 由 supervisor 照新节配执行脚本，Eric 逐库放行。
+         17. npm audit 的放行到期：ci.yml@a60aa563 第 211 行给 vite 公告 GHSA-8g5g-mxqh-grgj 的放行到 2026-12-13。三个 PR 都不改依赖，PR CI 跳过审计；合并后 main 的 push run 一定跑审计（第 151–153 行），2026-12-13 以后合并的，Boundary regressions 会红、production-release-readiness 拦住发布，与 PR 内容无关；2026-12-14 起每周一的定时 run 也会红。建议三个 PR 的合并和下一次受监督的 H5 发布排在 2026-12-13 之前；来不及的，先由 Eric 定这条公告怎么处理（升级，或另开 PR 改放行日期），再合并。
+         另起一行「【supervisor 做】合并三个 PR（#385 必须等名单提交的 CI 全绿）。main 的分支保护要求合并前分支是最新的（strict），main 的 push run 又会被下一次 push 取消，所以串行合并：合一个，等 main 的 push run 七个 job 全部 success；下一个 PR 在 OMO 对它的推送都结束以后用 GitHub 的 Update branch 更新，选 merge、不选 rebase（各提交和 C 的 SHA 不变，FINAL 里记的 SHA 仍成立），等四个必需检查和 public smoke 通过再合；第三个照同样做。最后是下一次受监督的 H5 发布」。
+       - ⑤【硬】与【暂停推送】事件：照 D-57 第 2 项对材料、#385、campus、followups 四个分支各写「推送 N 次、有扫描记录 N 次」，PR 正文写入和开 PR 各另写；材料那一行把收尾的第三次也算进去，写明它在本节之后；
+       - ⑥ 未测项与风险，其中必写：撤下的活动返回什么仍未知，空 VCALENDAR 报 bad_ics，这类行永远撤不下来；C 没有应用到任何托管库，worker 没有发过真实请求；第 3 项系列顺延五种反例的结果；revision 的读方；三个分支 CI 边界命令的秒数和 PR run 里 Boundary regressions 的时长；第十四批 ④ 第 3 条、⑥ 第一条的托管默认 ACL：两库的 VERIFY_A、VERIFY_B 已钉 proacl 并通过（D-61 第 0 项），不再是未测项；第十四批增量表的净数含删除：desktop spec +13−2（search、login 两档），sync 测试 +8−1（原「finish failures log once…」拆成三条）；第十四批 minor 的去向表（修了的写修在哪一项：rpcFailureCode 守卫和 deadline 日志 → 7-A；投影只读 A → 7-A2；根 RUNBOOK claim_failed → 6 f；§9.3 的 ALTREP 和 400 场、§9.2 第 692 行「A 和 B 仅提供三个函数」→ 9 f；发布清单不解析步骤表 → 6 a；W5b 只钉 768 → 7-W5b；FINAL 增量表不分新增删除 → 本批 ②；registerToastHost 的依赖扫描报错 → 第 2 项；17d 的 exit 2 和复核行 → 9 g；第二次 17d 命中没有标签、③ 漏 L470、L521 截图那句 → 9 i、9 j；STATUS 阻塞第 31 条 → 9 d；pages.smoke 第 201 行那句注释 → 第 2 项 c2；阻塞第 1 条缺 #382–#384 → 不成立（STATUS.md 第 256 行末尾本来就有那句补充）；#380 正文删掉的限制 → 不改正文，见更正第十四批 ⑥。没修的写理由：claim、finish 外层判断 SyncDeadlineError 的 Proxy 逃逸现实里走不到；PRECHECK_B 少 to_regclass，已在两库跑完；VERIFY_B 不查 proparallel、procost（已在两库跑完；VERIFY_C 已查，第 4 项）；desktop spec 第 124–141 行缩进（断言逐条等价，只为缩进再改一次已合并的 spec，没有行为收益）；requireAuth 在 initializing 期间点了没反应，D-60 W2 就要求与广场一致；P3+P4 节合并当天那段缺合并门槛句，那次发布已经做完）。第十四批核查按 OMO 的记录接受、没有复跑的：c4 另外四个变异（SECURITY DEFINER、STRICT、search_path、178 天，L505）、W4a 和 W4b 规定的变异（L516、L517）、c3 早跑的 L-SQL（L498）；P3、P4 已在两库应用并 VERIFY 通过，本批不复跑。核查另记的三个 nit 只记录、不改：ENGINEERING 第 809 行写「通常」、根 RUNBOOK 第 937 行写「usually」，说的是同一件事；第十四批 ⑥ 没点名 E13 悬空和 tony-ws 的 P4 目录，P4 已合并上线，那个目录本批退役只读（第 1 项 d）；FINAL 第十四批 ② 写了「现场差异另记」，其实没有差异，第十四批不回改。⑥ 的去向表、没修的理由和 ⑧ 各条都照抄本条原文，17d ⑤ 命中时按 DECISIONS.md 里能 git grep 到的原文判误报；
+       - ⑦ 下一批（不接 BACKLOG；候选是迁移 D 和管理端导入、第 11 行客户端和三条 public schema 探针（两库都有 C 之后再合并，第 9 项 f）、Default_Ignorable 那条迁移）；另写一句：SPEC 第 1376 行「最早可走通：P4.11（生产）」还是旧编号，SPEC 不在本批授权改的文件里，留下一批（第 594 行标题里的「P4.1–P4.11」是区间，不改）；
+       - ⑧ 代 Eric 定的事，每条写选了什么、理由、怎么撤回：C 只做刷新、不含导入（理由见第 3 项开头）；门复用 A 的 claim/finish('campus', 30 秒)；领取写租约、排除 hidden；系列顺延的判据；login-4、login-5 上限 85%；17d 认 exit 2 加 [OMO自决]、排除带 kind 的行；P4.7 DoD ⑥ 末句改成核单条 ICS；新节名和 RELEASED_THROUGH；#385 详情显式写 []；第十四批的测试尾巴单开一个分支；根 RUNBOOK 的 NOTICE 句改成托管端点的判定；删去 B 之前才用的恢复 SQL；学校的 26 小时灰字维持 D-59；C 的冻结记录随第二次材料推送公开、晚于 campus 推送（撤回：以后的迁移照旧先推冻结记录）；BACKLOG 先按 P4.11a/b 拆写（撤回：并回一节，④ 第 11 条）；E4 和 P3.7 DoD ① 的 PR 留言改由 STATUS_LOG 的记录代替（撤回：Eric 要留言的由 supervisor 补发，④ 第 10 条）；#385 第 201 行注释在 c2 里一起改（撤回：另一个提交改回）；ENV_CHECKLIST 不加「api/ 每个 COMMUNITY_* 读取点都有一行」的覆盖断言（理由：campus 分支上 api/ 只读这三个 COMMUNITY_* 变量，第 6 项完成线的 grep 已核三行都在，加测试会扩大本批范围；撤回：D-62 加新变量时一起加）；第 10 项 b 用了 `--test-concurrency=3` 代替 `--cpuset-cpus` 的，写明原因（撤回：回到不加参数的原命令）。
+       推送之后再结束目标、取消续跑提醒、`git -C ~/work/illini worktree remove ~/work/confirm-main-a60aa563`（不带 --force；被拒就留着），追加一条 STATUS_LOG 记这三件事和 remove 的结果，照 17d 扫描后推送（材料第三次），停下。不从 BACKLOG 往下接任务。
+     - g. 十六进制核对（机械，写成 $EV/hexcheck.sh，不进仓库，第一行 `export LC_ALL=C`）：取 campus 最终 head 的 `supabase/migrations/manifest.sha256` 第一列作名单；对 FINAL 第十五批全节、三个 PR 的新正文各核两件事：① `grep -oE '\b[0-9a-f]{64}\b'` 找出的每一个都在名单里；② `grep -oE '\b[0-9a-f]{50,63}\b'` 的个数为 0。对照（FINAL 只写前 8 位，正文里本来没有完整值）：先往副本里插入 manifest 名单里的一个完整值，① 必须通过；再删掉它的两位，② 必须报红；恢复后变绿。_ops 文件和 RUNBOOK 表里的发送内容 sha256 不在 manifest 里，所以只写进根 RUNBOOK 和 STATUS_LOG，FINAL 只写前 8 位。
+     - 仓库仍是公开的，安全补充照旧：核查清单原文、账号邮箱、口令、凭据、以家目录开头的绝对路径（17d ③）和执行脚本的路径不进仓库、提交说明、PR 正文和评论。
+     - 完成线：三个代码分支和材料分支都按 d 推送并核过远端；FINAL 第十五批和 STATUS 同一个提交；g 的核对通过；目标结束、提醒取消。仍开着：④ 列的全部事项；迁移 D 和第 11 行客户端（D-62）。
 
 ## 待定
 
