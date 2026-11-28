@@ -80,3 +80,15 @@ export function startEventSyncCapDatabase() {
     throw error
   }
 }
+
+// The campus checks build on the capped sync functions they leave as they are.
+export function startCampusChecksDatabase() {
+  const db = startEventSyncCapDatabase()
+  try {
+    db.sql(readMigration('20261127175345_community_campus_checks.sql'))
+    return db
+  } catch (error) {
+    db.stop()
+    throw error
+  }
+}

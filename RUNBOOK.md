@@ -581,6 +581,8 @@ nor the plaza page as P4 has it (`pages/plaza/index`, which from P4 on also
 calls `rpc/list_community_events`) has had its page sweep run against a real
 backend.
 
+This condition was met on 2026-11-26: CI run 45765292898 on the reviewed head 8dd4c8c1 passed `public-smoke` against staging after all five migrations had been applied there, and #380 was merged at 06:31:59Z.
+
 `scripts/consent-version-deploy-order-boundary.test.mjs` pins the half CI can
 see from the repo alone (the constant must already be accepted by the newest
 `record_consent` in the repo). It cannot see any database.
@@ -637,6 +639,8 @@ staging first, then production. Use the project definitions already in this
 runbook. The release owner applies the reviewed files; this checklist does
 not authorize an agent to apply hosted migrations or merge either PR.
 
+This sequence was applied in full on staging (2026-11-26 03:17:42-03:17:50Z) and production (04:43:20-04:43:28Z). Do not run it again on either database.
+
 #### Migration bytes
 
 Files are under `supabase/migrations/`. Remove only the one top-level
@@ -683,7 +687,7 @@ from the connection that applies the migration. The endpoint owns the
 migration transaction. Follow the same separation as steps 15-16 of
 [the candidate release sequence](#2026-07-candidate-release-sequence).
 
-Every step must succeed with the NOTICE below; `none` means no NOTICE.
+Each PRECHECK and VERIFY raises an exception at its first failed check, so a run that ends without an error has passed. VERIFY_20261120100354 and VERIFY_20261122035253 print their switch NOTICE before their last checks, so a NOTICE alone is not success. The hosted query endpoint returns rows, not NOTICEs: through it, a step passes when the response is HTTP 200 or 201 with an empty JSON array, and fails on any other response. Before sending a PRECHECK or VERIFY, check that it contains `SET TRANSACTION READ ONLY`, ends in `ROLLBACK;` and contains no `COMMIT;`. `none` below means the file emits no NOTICE.
 Do not interleave the two databases or turn either switch on during this
 sequence. PRECHECK/VERIFY filenames are under `supabase/_ops/`; APPLY
 filenames are under `supabase/migrations/`.
@@ -711,9 +715,7 @@ filenames are under `supabase/migrations/`.
 The order is `20261120100354` → `20261120122054` → `20261122035253` →
 `20261123201501` → `20261125004742` (B). The last two rows run only after B;
 both switches must report `enabled=f`. Do not run VERIFY_A after B as a
-success gate. If the hosted tool does not expose NOTICE, use the SELECTs
-that return the switch rows in [Reply notice switch](#reply-notice-switch)
-and [Member events switch](#member-events-switch) and require enabled=false.
+success gate. If the hosted tool does not expose NOTICE, run `SELECT singleton, enabled FROM private.community_reply_notice_config;` after steps 3 and 17 and `SELECT singleton, enabled FROM private.community_member_event_config;` after steps 9 and 16; each must return exactly one row with singleton true and enabled false. After step 17, `SELECT pg_catalog.md5(prosrc) FROM pg_catalog.pg_proc WHERE oid = 'public.apply_caaci_event_snapshot(boolean,jsonb)'::regprocedure;` must return `55227c4b42b7ac90e9b1ba34f274b057`.
 The public schema preflight can prove A's three functions exist and deny
 anonymous execution; it cannot prove B. B requires its own VERIFY.
 
@@ -763,6 +765,69 @@ in that script for why and for when the exemption should be removed.
 
 It compares existence, not shape: an object that exists but whose body, columns
 or grants have drifted still reads as present.
+
+### Community campus checks release
+
+Run this sequence once for each database, staging first, then production, after
+the Community P3+P4 release above is complete there. The release owner applies
+the reviewed file; this checklist does not authorize an agent to apply hosted
+migrations or merge the PR. The transport rules of Community P3+P4 release
+apply unchanged: remove only the lines listed below, apply through the
+ledger-aware migrations endpoint under the full filename stem, and send each
+PRECHECK and VERIFY as its own read-only request.
+
+#### Migration bytes
+
+| Migration file | File SHA-256 | BEGIN line | COMMIT line | Sent SQL SHA-256 |
+|---|---|---:|---:|---|
+| `20261127175345_community_campus_checks.sql` | `37ca561a5cc6cb3919e4c11927bd1bfbbfb5005b8fac29b972c0ede7ef7f1eaf` | 5 | 215 | `dbec0a07fad8488cb3a936167231ec1de6b47ac80b7199e5e4b9cf3f6faa210f` |
+
+#### SQL client directives
+
+| PRECHECK or VERIFY file | Remove line |
+|---|---:|
+| `PRECHECK_20261127175345_community_campus_checks.sql` | 2 |
+| `VERIFY_20261127175345_community_campus_checks.sql` | 3 |
+| `VERIFY_20261125004742_community_event_sync_cap.sql` | 3 |
+| `VERIFY_20261122035253_community_member_events.sql` | 5 |
+| `VERIFY_reply_notice_switch.sql` | 19 |
+
+#### Application steps
+
+| Step | Operation | File | Expected NOTICE |
+|---:|---|---|---|
+| 1 | PRECHECK | `PRECHECK_20261127175345_community_campus_checks.sql` | none |
+| 2 | APPLY | `20261127175345_community_campus_checks.sql` | none |
+| 3 | VERIFY | `VERIFY_20261127175345_community_campus_checks.sql` | `community_campus_checks_verified` |
+| 4 | VERIFY | `VERIFY_20261125004742_community_event_sync_cap.sql` | `community_event_sync_cap_verified` |
+| 5 | VERIFY | `VERIFY_20261122035253_community_member_events.sql` | `community_member_events_switch\|enabled=f` |
+| 6 | VERIFY | `VERIFY_reply_notice_switch.sql` | `community_reply_notice_switch\|enabled=f` |
+
+The order is `20261127175345` (C). Steps 4-6 show that C left the sync functions and
+both switches as they were; both switches must report `enabled=f`. C supersedes
+no VERIFY file. Start a run only at a PRECHECK step, end it only on a VERIFY
+step, and refuse an APPLY whose name the ledger already holds. If an APPLY
+does not return 200 or 201, read the ledger by name before anything else:
+committed, absent, or unknown. Do not set `COMMUNITY_SYNC_CAMPUS_EVENTS` during
+this sequence.
+
+If the hosted tool does not expose NOTICE, run
+`SELECT singleton, enabled FROM private.community_member_event_config;` after
+step 5 and `SELECT singleton, enabled FROM private.community_reply_notice_config;`
+after step 6; each must return exactly one row with singleton true and enabled
+false.
+
+Run this sequence on a database only while both switches are off there. If
+either switch has been turned on, do not start it: the release owner first
+revises this section and `scripts/community-release-checklist-boundary.test.mjs`.
+
+Until a client calls these three functions, merging the campus checks change
+does not require C on either database: with `COMMUNITY_SYNC_CAMPUS_EVENTS`
+unset no deployed code calls them, and the switch stays unset until this
+sequence has passed on production. Until this sequence has passed on a
+database, `scripts/schema-drift-probe.mjs` lists `claim_campus_event_checks`,
+`apply_campus_event_check` and `community_campus_event_checked_at` as missing
+there; that is expected, not drift.
 
 ## Reply notice switch
 
@@ -935,7 +1000,7 @@ SELECT source, last_attempt_at, last_success_at, last_outcome, last_error_code
 |---|---|
 | `http_*`, `timeout`, `too_large`, `upstream_redirect`, `bad_json`, `schema_mismatch`, `unexpected_private_fields` | Check the CAACI site, feed or edge response. |
 | `apply_*` | Check Supabase. `apply_http_400` usually means invalid RPC arguments or data; `apply_http_404` usually means the reviewed migration or RPC schema is missing. |
-| `claim_failed` | Check the reviewed migrations and their VERIFY results. |
+| `claim_failed` | Seen only in Sentry and the worker response; like `deadline`, it is not written to sync_state, so the SELECT above still shows the previous run. Check the reviewed migrations and their VERIFY results. |
 | `deadline` | Check Sentry; this code is not written to sync_state. |
 | `rows_rejected` | Individual rows were rejected by constraints or moderation. |
 | `empty_snapshot` | CAACI returned a complete but empty snapshot. Open caaciorg.com/events in a browser; if events are present there, the feed is wrong. Immediately use the infinity stop above to freeze the current state. |
@@ -953,14 +1018,6 @@ The infinity stop prevents further absence counting; a row missed only once
 remains visible. After the feed recovers, restore last_attempt_at to NULL with
 the statement above; returning rows recover automatically.
 
-Before B is applied, the release owner can recover an overflowed absence
-counter by running this as `postgres` in the SQL editor. It is unnecessary
-after B:
-
-```sql
-UPDATE public.community_events SET missing_checks = 2 WHERE source_type = 'caaci' AND missing_checks > 2;
-```
-
 The response's `community_events_sync` is `not_due` when no claim was
 acquired, or `skipped_budget` when cleanup time took priority. Applied
 snapshots finish as `ok` or `partial`; errors use `failed`. A failed,
@@ -968,6 +1025,61 @@ partial or rejected-row outcome reports the fixed Sentry message
 `community events sync needs attention`, containing only outcome, code and
 rejected count. With the switch off, existing CAACI rows are neither refreshed
 nor counted absent: disabling does not remove stored events.
+
+## Campus events checks
+
+The switch is `COMMUNITY_SYNC_CAMPUS_EVENTS`. Only the exact value `1` enables
+it. Eric sets or removes it in Vercel's **Production** environment only; either
+change needs one new supervised production deployment before it affects the
+running worker. With the switch off the worker requests nothing and calls no
+campus RPC.
+
+Before enabling it, all of these hold for the production database: the
+Community campus checks release above has passed there; DECISIONS D-33 has
+selected calendars and a released change has filled `CAMPUS_CALENDARS`; and
+the campus import path is released. While the allowlist is empty, every
+claimed row is recorded as `campus_calendar_not_allowed` and nothing is
+requested.
+
+Each run claims at most two campus rows that are visible or unavailable, have
+not ended, and were not checked in the last six hours. The claim itself sets
+`last_checked_at`, so a row is requested at most once in six hours whatever
+the outcome. A 404 starts the absence clock; a second 404 at least twelve
+hours after the first withdraws the row (in the worst case about 18 hours
+after the source removes it: up to six hours until the first 404, then
+twelve).
+A 503 stops the run. A file that parses to no event (`bad_ics`) never
+withdraws a row.
+
+To stop new claims at once, the release owner runs this as `postgres`:
+
+```sql
+INSERT INTO public.community_event_sync_state (source, last_attempt_at)
+VALUES ('campus', 'infinity')
+ON CONFLICT (source) DO UPDATE SET last_attempt_at = 'infinity';
+```
+
+To allow claims again:
+
+```sql
+UPDATE public.community_event_sync_state
+   SET last_attempt_at = NULL
+ WHERE source = 'campus';
+```
+
+| code | first action |
+|---|---|
+| `campus_calendar_not_allowed` | Expected until D-33; otherwise check `CAMPUS_CALENDARS`. |
+| `http_*`, `timeout`, `too_large`, `upstream_redirect`, `bad_ics`, `campus_uid_mismatch`, `campus_unexpected_tz`, `campus_too_many_occurrences` | Check the event page on calendars.illinois.edu. |
+| `unexpected_failure`, `bad_json` | The request got no usable response (a network, DNS or TLS failure, or a body that could not be read). If it repeats, check that calendars.illinois.edu is reachable. |
+| `checks_*`, `apply_*`, `checks_result_invalid`, `apply_result_invalid` | Check Supabase and the Community campus checks release. |
+| `claim_failed`, `deadline` | Seen only in Sentry and the worker response; not written to sync_state. |
+| `rows_rejected` | A refreshed row was refused by a constraint or the keyword filter. |
+
+A failed, partial or rejected-row outcome reports the fixed Sentry message
+`community campus checks need attention` with only outcome, code and
+rejected count. The worker response's `community_campus_checks` is the
+outcome, `not_due`, or `skipped_budget`.
 
 ## Member events switch
 
@@ -1127,6 +1239,7 @@ functions, where nobody is watching a screen — the `logger` tag says which.
 | `api/resend-webhook` | hard bounced / marked as spam | mail is failing after Resend accepted it | see below |
 | `api/notification-digest` | any | the nightly digest run had send or mark failures | check the digest run's Vercel log |
 | `api/background-jobs` | community events sync needs attention | CAACI sync failed or partial, or rows were rejected; `apply_*` codes point to Supabase | [CAACI events sync](#caaci-events-sync) |
+| `api/background-jobs` | community campus checks need attention | campus refresh failed or partial, or a refreshed row was rejected; `checks_*` and `apply_*` codes point to Supabase | [Campus events checks](#campus-events-checks) |
 
 **The repeat count is the signal, not the single event.** Sentry groups these by
 message, so a cron that has failed every hour for a week is one issue with a

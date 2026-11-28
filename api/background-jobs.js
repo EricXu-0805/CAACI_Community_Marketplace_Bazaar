@@ -5,7 +5,7 @@ import { deploymentBoundaryResponse, evaluateDeploymentBoundary } from './_deplo
 import { reportToSentry } from './_sentry-report.js'
 import { translatePublicContent } from './_public-content-translation.js'
 import { translateListing } from './_listing-translation.js'
-import { syncCaaciEvents } from './_community-events-sync.js'
+import { syncCaaciEvents, syncCampusEvents } from './_community-events-sync.js'
 
 export const config = { runtime: 'edge' }
 
@@ -186,6 +186,7 @@ async function handleRequest(request) {
   }
   const counts = { listing_batches: 0, notifications: 0, media_completed: 0, media_retried: 0, media_cancelled: 0 }
   let communitySync = null
+  let campusSync = null
   try {
     if (process.env.CHAT_VIDEO_MODERATION_ENABLED === 'true') {
       const video = await moderateVideoJob({ call, request: serviceCall, origin: origin.href, serviceHeaders, timeoutMs: timeLeft() })
@@ -274,6 +275,12 @@ async function handleRequest(request) {
         counts.community_events_sync = communitySync.outcome
       } else counts.community_events_sync = 'skipped_budget'
     }
+    if (process.env.COMMUNITY_SYNC_CAMPUS_EVENTS === '1') {
+      if (deadline - Date.now() > 12_000) {
+        campusSync = await syncCampusEvents({ deadline, call, fetch })
+        counts.community_campus_checks = campusSync.outcome
+      } else counts.community_campus_checks = 'skipped_budget'
+    }
     await call('purge_completed_background_jobs', { limit_in: 500 })
     const backlog = await call('background_job_status')
     if (!backlog || !['listing_pending','listing_oldest_seconds','media_pending','media_failed'].every(
@@ -290,6 +297,11 @@ async function handleRequest(request) {
     if (communitySync && (communitySync.outcome === 'failed' || communitySync.outcome === 'partial' || communitySync.rejected > 0)) {
       await reportToSentry('api/background-jobs', 'community events sync needs attention', {
         outcome: communitySync.outcome, code: communitySync.code, rejected: communitySync.rejected,
+      })
+    }
+    if (campusSync && (campusSync.outcome === 'failed' || campusSync.outcome === 'partial' || campusSync.rejected > 0)) {
+      await reportToSentry('api/background-jobs', 'community campus checks need attention', {
+        outcome: campusSync.outcome, code: campusSync.code, rejected: campusSync.rejected,
       })
     }
     return json({ success: backlog.media_failed === 0, ...counts, backlog }, backlog.media_failed ? 503 : 200)
