@@ -59,7 +59,6 @@ export function ensureToastHost() {
 }
 // #endif
 
-// #ifndef H5
 /* Host bookkeeping: the banner only renders on pages that include
    <AppToast />. Track how many are mounted so pushToast can fall back to the
    native toast when none is (rare pages like legal/settings). */
@@ -73,7 +72,6 @@ export function registerToastHost(): () => void {
     bannerHosts--
   }
 }
-// #endif
 
 export function pushToast(item: ToastInput): void {
   // #ifndef H5

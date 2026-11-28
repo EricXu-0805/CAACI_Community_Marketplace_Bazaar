@@ -20,7 +20,12 @@ export interface StubBackend {
   readonly rpc: ReadonlyMap<string, string>
 }
 
-export async function installStubBackend(page: Page, errs: string[], backend: StubBackend): Promise<void> {
+export function stubSocketMatches(url: URL, origin: string): boolean {
+  return url.origin === origin.replace(/^https:/, 'wss:')
+}
+
+export async function installStubBackend(page: Page, errs: string[], backend: StubBackend): Promise<ReadonlySet<string>> {
+  const served = new Set<string>()
   await page.route(url => url.origin === backend.origin, async route => {
     const request = route.request()
     const method = request.method()
@@ -28,6 +33,7 @@ export async function installStubBackend(page: Page, errs: string[], backend: St
     const table = /^\/rest\/v1\/([^/]+)$/.exec(path)?.[1]
     if (table && backend.tables.has(table)) {
       if (method === 'HEAD') {
+        served.add(table)
         await route.fulfill({
           status: 200,
           headers: { 'content-range': '*/0', 'access-control-expose-headers': 'content-range' },
@@ -36,6 +42,7 @@ export async function installStubBackend(page: Page, errs: string[], backend: St
         return
       }
       if (method === 'GET') {
+        served.add(table)
         if (request.headers().accept?.includes('application/vnd.pgrst.object+json')) {
           await route.fulfill({
             status: 406,
@@ -55,14 +62,18 @@ export async function installStubBackend(page: Page, errs: string[], backend: St
     const rpc = /^\/rest\/v1\/rpc\/([^/]+)$/.exec(path)?.[1]
     const body = rpc && method === 'POST' ? backend.rpc.get(rpc) : undefined
     if (body !== undefined) {
+      served.add(`rpc:${rpc}`)
       await route.fulfill({ status: 200, contentType: 'application/json', body })
       return
     }
     errs.push(`unstubbed ${method} ${path}`)
     await route.fulfill({ status: 501, json: { message: 'No smoke fixture for this request' } })
   })
-  await page.routeWebSocket(url => url.origin === backend.origin.replace(/^https:/, 'wss:'), async socket => {
-    console.log(`stub websocket closed ${new URL(socket.url()).pathname}`)
-    await socket.close()
+  await page.routeWebSocket(url => stubSocketMatches(url, backend.origin), async socket => {
+    const path = new URL(socket.url()).pathname
+    if (path === '/realtime/v1/websocket') served.add('ws:realtime')
+    else errs.push(`unstubbed WS ${path}`)
+    await socket.close({ code: 1000, reason: 'smoke stub' })
   })
+  return served
 }

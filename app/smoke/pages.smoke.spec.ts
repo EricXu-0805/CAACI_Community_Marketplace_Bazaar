@@ -2,7 +2,7 @@ import { test, expect, type Page, type ConsoleMessage } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { supabaseUrlForBuild } from './supabase-ref'
-import { installStubBackend, stubBackendEnabled } from './stub-backend'
+import { installStubBackend, stubBackendEnabled, stubSocketMatches } from './stub-backend'
 
 /**
  * Page-load smoke: every route renders with no unexpected console errors,
@@ -198,7 +198,7 @@ const STUB_TABLES = new Set([
   'items',
   // Plaza reads public feeds, topic summaries and the post count on mount.
   'posts',
-  // The events list (onShow) and event detail (load) read CAACI's last successful sync; no row keeps the stale line hidden.
+  // The events list reads CAACI's last successful sync on show, event detail only once a CAACI row loads; no row keeps the stale line hidden.
   'community_event_sync_state',
 ])
 // Logged-out RPC reads in the sweep; values are serialized JSON bodies.
@@ -239,6 +239,95 @@ test('stub backend reports an unlisted RPC without opening the application', asy
   expect(status).toBe(501)
 })
 
+const STUB_READS: Readonly<Record<string, readonly string[]>> = {
+  // Home reads its listing feed on mount.
+  'pages/index/index': ['items'],
+  // Plaza reads its public listing rail, public feeds, topic summaries, count and upcoming-events rail on mount.
+  'pages/plaza/index': ['items', 'posts', 'rpc:list_community_events'],
+  // The events list reads the upcoming list, CAACI's last successful sync and the members switch on show.
+  'pages/events/index': ['community_event_sync_state', 'rpc:community_member_events_open', 'rpc:list_community_events'],
+  // Opened without an id, event detail reads nothing; the sync state is read only once a CAACI row loads.
+  'pages/event/detail/index': [],
+  // The create page reads the members switch on show; it ships off, so the page stops there.
+  'pages/event/create/index': ['rpc:community_member_events_open'],
+}
+
+test('T1 stub read inventory covers exactly the sweep fixtures and routes', () => {
+  expect([...new Set(Object.values(STUB_READS).flat())].sort())
+    .toEqual([...STUB_TABLES, ...[...STUB_RPC.keys()].map(name => `rpc:${name}`)].sort())
+  for (const route of Object.keys(STUB_READS)) expect(PAGES).toContain(route)
+})
+
+test('T2 stub reads preserve empty, singular and count responses and reject writes', async ({ page }) => {
+  const errs: string[] = []
+  const origin = 'https://00000000000000000000.supabase.co'
+  expect(page.url()).toBe('about:blank')
+  const served = await installStubBackend(page, errs, { origin, tables: STUB_TABLES, rpc: STUB_RPC })
+  const responses = await page.evaluate(async url => {
+    const results = []
+    for (const [path, method, accept] of [
+      ['/rest/v1/items?select=id', 'GET', 'application/json'],
+      ['/rest/v1/items?select=id', 'GET', 'application/vnd.pgrst.object+json'],
+      ['/rest/v1/items?select=id', 'GET', 'application/vnd.pgrst.object+json;nulls=stripped'],
+      ['/rest/v1/posts', 'HEAD', 'application/json'],
+      ['/rest/v1/profiles', 'GET', 'application/json'],
+      ['/rest/v1/items', 'POST', 'application/json'],
+    ] as const) {
+      const response = await fetch(`${url}${path}`, { method, headers: { accept } })
+      results.push({ status: response.status, body: await response.text(), range: response.headers.get('content-range') })
+    }
+    return results
+  }, origin)
+  expect(responses[0]).toEqual({ status: 200, body: '[]', range: null })
+  for (const response of responses.slice(1, 3)) {
+    expect(response.status).toBe(406)
+    expect(JSON.parse(response.body).code).toBe('PGRST116')
+  }
+  expect(responses[3]).toEqual({ status: 200, body: '', range: '*/0' })
+  expect(responses.slice(4).map(response => response.status)).toEqual([501, 501])
+  expect(errs).toEqual(['unstubbed GET /rest/v1/profiles', 'unstubbed POST /rest/v1/items'])
+  expect([...served].sort()).toEqual(['items', 'posts'])
+})
+
+test('T3 stub sockets close realtime deterministically and report other paths', async ({ page }) => {
+  const errs: string[] = []
+  const origin = 'https://00000000000000000000.supabase.co'
+  const served = await installStubBackend(page, errs, { origin, tables: STUB_TABLES, rpc: STUB_RPC })
+  await page.route('https://socket-probe.invalid/', route => route.fulfill({
+    contentType: 'text/html', body: '<!doctype html><html><body></body></html>',
+  }))
+  await page.goto('https://socket-probe.invalid/')
+  const closed = await page.evaluate(async url => {
+    const results = []
+    for (const path of ['/realtime/v1/websocket?vsn=1.0.0', '/functions/v1/socket']) {
+      results.push(await new Promise<{ code: number; reason: string; errors: number }>(resolve => {
+        const socket = new WebSocket(`${url.replace(/^https:/, 'wss:')}${path}`)
+        let errors = 0
+        socket.addEventListener('error', () => { errors++ })
+        socket.addEventListener('close', event => resolve({ code: event.code, reason: event.reason, errors }))
+      }))
+    }
+    return results
+  }, origin)
+  expect(closed).toEqual([
+    { code: 1000, reason: 'smoke stub', errors: 0 },
+    { code: 1000, reason: 'smoke stub', errors: 0 },
+  ])
+  expect(errs).toEqual(['unstubbed WS /functions/v1/socket'])
+  expect([...served]).toEqual(['ws:realtime'])
+})
+
+test('T4 stub socket matching requires the exact secure WebSocket origin', () => {
+  const origin = 'https://00000000000000000000.supabase.co'
+  for (const [url, matches] of [
+    ['wss://00000000000000000000.supabase.co/realtime/v1/websocket', true],
+    ['https://00000000000000000000.supabase.co', false],
+    ['ws://00000000000000000000.supabase.co', false],
+    ['wss://abcdefghijklmnopqrst.supabase.co', false],
+    ['wss://00000000000000000000.supabase.co.example.invalid', false],
+  ] as const) expect(stubSocketMatches(new URL(url), origin), url).toBe(matches)
+})
+
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`page sweep [${theme}]`, () => {
     test.use({ colorScheme: theme })
@@ -246,10 +335,13 @@ for (const theme of ['light', 'dark'] as const) {
       test(`${route} loads clean`, async ({ page }) => {
         await page.addInitScript(() => localStorage.setItem('welcomed', '1'))
         const errs = attachConsoleCollector(page)
-        if (stubBackendEnabled(supabaseUrlForBuild(), process.env)) await installStubBackend(page, errs, { origin: new URL(supabaseUrlForBuild()).origin, tables: STUB_TABLES, rpc: STUB_RPC })
+        const served = stubBackendEnabled(supabaseUrlForBuild(), process.env)
+          ? await installStubBackend(page, errs, { origin: new URL(supabaseUrlForBuild()).origin, tables: STUB_TABLES, rpc: STUB_RPC })
+          : undefined
         await page.goto(`/#/${route}`, { waitUntil: 'networkidle' })
         await page.waitForTimeout(1200)
         expect(errs, `console errors on ${route}`).toEqual([])
+        if (served) expect([...served].sort(), `stubbed reads on ${route}`).toEqual([...(STUB_READS[route] ?? [])].sort())
       })
     }
   })

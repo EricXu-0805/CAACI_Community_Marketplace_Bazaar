@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 
 /*
  * A conditional-compile block deletes source. An identifier imported inside
@@ -116,4 +116,32 @@ test('an identifier imported under a conditional-compile block is only used wher
   }
 
   assert.deepEqual(violations, [], `conditionally imported bindings used where they do not exist:\n${violations.join('\n')}`)
+})
+
+test('local named imports in Vue files remain exported after H5 conditional compilation', () => {
+  const violations = []
+  for (const file of vueFiles(SRC).filter(path => path.endsWith('.vue'))) {
+    const raw = readFileSync(file, 'utf8')
+    // Vite scans Vue imports before uni-app removes their platform guards.
+    for (const match of raw.matchAll(/import\s+(?:type\s+)?\{([^}]+)\}\s+from\s+['"]([^'"]+)['"]/g)) {
+      const [, bindings, specifier] = match
+      if (!specifier.startsWith('.') && !specifier.startsWith('@/')) continue
+      const base = specifier.startsWith('@/') ? resolve(SRC, specifier.slice(2)) : resolve(dirname(file), specifier)
+      const module = [base, `${base}.ts`, join(base, 'index.ts')].find(path => existsSync(path) && statSync(path).isFile())
+      assert.ok(module, `unresolved local module ${specifier} in ${file.slice(SRC.length)}`)
+      const source = readFileSync(module, 'utf8')
+      const moduleTargets = targetsByLine(source)
+      const compiled = source.split('\n').filter((_, index) => moduleTargets[index]?.includes('H5')).join('\n')
+      const exported = new Set([...compiled.matchAll(/\bexport\s+(?:declare\s+)?(?:async\s+)?(?:function|const|let|class|interface|type|enum)\s+(\w+)/g)]
+        .map(exportMatch => exportMatch[1]))
+      for (const exportMatch of compiled.matchAll(/\bexport\s+(?:type\s+)?\{([^}]+)\}/g)) {
+        for (const binding of exportMatch[1].split(',')) exported.add(binding.trim().split(/\s+as\s+/).pop().replace(/^type\s+/, ''))
+      }
+      for (const binding of bindings.split(',')) {
+        const name = binding.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]
+        if (name && !exported.has(name)) violations.push(`${file.slice(SRC.length)} imports ${name}`)
+      }
+    }
+  }
+  assert.deepEqual(violations, [], `H5 imports without surviving exports:\n${violations.join('\n')}`)
 })
