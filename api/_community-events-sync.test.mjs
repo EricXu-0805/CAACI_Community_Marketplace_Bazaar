@@ -1,7 +1,7 @@
 // Offline protocol coverage; every upstream call uses the injected fixture fetch.
 import assert from 'node:assert/strict'
 import { after, afterEach, test } from 'node:test'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 
 const originalFetch = globalThis.fetch
 const originalFlag = process.env.COMMUNITY_SYNC_CAACI_EVENTS
@@ -105,8 +105,12 @@ test('the upstream request is fixed, unauthenticated, bounded and projects only 
     'starts_at', 'summary', 'summary_en', 'takes_registrations', 'time_zone', 'title', 'title_en',
   ]
   for (const projected of applied.args.rows_in) assert.deepEqual(Object.keys(projected).sort(), expectedKeys)
-  const migration = readFileSync(new URL('../supabase/migrations/20261123201501_community_event_sync.sql', import.meta.url), 'utf8')
-  const databaseKeys = [...new Set([...migration.matchAll(/source_row ->> '([^']+)'/g)].map(match => match[1]))].sort()
+  const migrations = new URL('../supabase/migrations/', import.meta.url)
+  const definitions = readdirSync(migrations).filter(name => /^\d{14}_.+\.sql$/.test(name)).sort()
+    .map(name => readFileSync(new URL(name, migrations), 'utf8'))
+    .filter(sql => /^CREATE (?:OR REPLACE )?FUNCTION public\.apply_caaci_event_snapshot\(/m.test(sql))
+  assert.ok(definitions.length >= 2, 'A creates the snapshot function and B replaces it')
+  const databaseKeys = [...new Set([...definitions.at(-1).matchAll(/source_row ->> '([^']+)'/g)].map(match => match[1]))].sort()
   assert.deepEqual(databaseKeys, expectedKeys)
 })
 
@@ -170,6 +174,12 @@ test('upstream and RPC failure classes are stable codes without source content',
     ['apply 404', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_404') }, 'apply_http_404'],
     ['apply redirect', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_redirect') }, 'apply_failed'],
     ['apply size', { throwOn: 'apply_caaci_event_snapshot', error: new Error('response_too_large') }, 'apply_failed'],
+    ['non-Error status', { throwOn: 'apply_caaci_event_snapshot', error: { message: 'provider_status_503' } }, 'apply_failed'],
+    ['non-Error timeout', { throwOn: 'apply_caaci_event_snapshot', error: { message: 'provider_timeout' } }, 'apply_failed'],
+    ['hostile Error', { throwOn: 'apply_caaci_event_snapshot', error: Object.defineProperty(new Error('provider_timeout'), 'message', { get() { throw new Error('Synthetic private detail') } }) }, 'apply_failed'],
+    ['apply 302', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_302') }, 'apply_failed'],
+    ['apply 5030', { throwOn: 'apply_caaci_event_snapshot', error: new Error('provider_status_5030') }, 'apply_failed'],
+    ['apply prefixed status', { throwOn: 'apply_caaci_event_snapshot', error: new Error('xprovider_status_503') }, 'apply_failed'],
   ]
   for (const [name, options, code] of cases) await t.test(name, async () => {
     const actual = await run(options)

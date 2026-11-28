@@ -86,7 +86,24 @@ test('an insufficient pre-finish budget does not record success or call finish',
   })
   assert.deepEqual(result, { outcome: 'failed', code: 'deadline', rejected: 0 })
   assert.deepEqual(calls, ['claim_community_event_sync', 'apply_caaci_event_snapshot'])
-  assert.equal(logs.length, 1)
+  assert.deepEqual(logs, [['[community-events-sync] finish not recorded', { code: 'deadline' }]])
+})
+
+test('a budget exhausted before apply skips finish and logs the deadline', async () => {
+  process.env.COMMUNITY_SYNC_CAACI_EVENTS = '1'
+  const start = 100_000
+  let now = start
+  Date.now = () => now
+  const calls = [], logs = []
+  console.error = (...args) => logs.push(args)
+  const result = await syncCaaciEvents({
+    deadline: start + 20_000,
+    call: async name => { calls.push(name); now = start + 14_500; return true },
+    fetch: async () => new Response(feed),
+  })
+  assert.deepEqual(result, { outcome: 'failed', code: 'deadline', rejected: 0 })
+  assert.deepEqual(calls, ['claim_community_event_sync'])
+  assert.deepEqual(logs, [['[community-events-sync] finish skipped', { code: 'deadline' }]])
 })
 
 test('a missing initial budget makes no claim and no upstream request', async () => {
